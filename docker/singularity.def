@@ -1,0 +1,47 @@
+Bootstrap: docker
+From: eclipse-temurin:21-jre
+
+%labels
+    Author Robert Hoehndorf
+    Description GSPA - Genome-Scale Protein Annotation pipeline
+    Version 0.1.0
+
+%post
+    apt-get update && apt-get install -y --no-install-recommends \
+        wget curl git \
+        python3 python3-pip \
+        prodigal \
+        hmmer \
+        ncbi-blast+ \
+        minced \
+        barrnap \
+        && rm -rf /var/lib/apt/lists/*
+
+    # DIAMOND
+    wget -q https://github.com/bbuchfink/diamond/releases/download/v2.1.9/diamond-linux64.tar.gz \
+        && tar xzf diamond-linux64.tar.gz && mv diamond /usr/local/bin/ && rm diamond-linux64.tar.gz
+
+    # MMseqs2
+    wget -q https://mmseqs.com/latest/mmseqs-linux-avx2.tar.gz \
+        && tar xzf mmseqs-linux-avx2.tar.gz && mv mmseqs/bin/mmseqs /usr/local/bin/ \
+        && rm -rf mmseqs mmseqs-linux-avx2.tar.gz
+
+    # Pyrodigal
+    pip3 install --break-system-packages pyrodigal
+
+    # COBRApy (optional)
+    pip3 install --break-system-packages cobra || true
+
+%files
+    gspa-cli/build/install/gspa-cli /opt/gspa
+
+%environment
+    export PATH="/opt/gspa/bin:${PATH}"
+
+%runscript
+    exec gspa-cli "$@"
+
+%help
+    GSPA - Genome-Scale Protein Annotation
+    Usage: singularity run gspa.sif [annotate|evaluate|compare|report] [options]
+    Run with --help for full usage information.

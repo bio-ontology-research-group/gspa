@@ -1,0 +1,31 @@
+input:
+  kingdom: archaea
+
+predictors:
+  similarity:
+    enabled: true
+    tool: diamond
+  domains:
+    enabled: true
+    applications: [Pfam, TIGRFAM, CDD, SUPERFAMILY]
+  operons:
+    enabled: true
+    maxIntergenicDistance: 300
+    requireSameStrand: true
+  pathway:
+    enabled: true
+    tool: gapseq
+  localization:
+    enabled: true
+    signalP: true
+    tmhmm: true
+
+quality:
+  completeness:
+    profile: archaea
+  coherence:
+    process: true
+    pathway: true
+    complex: true
+  consistency:
+    taxonConstraints: true

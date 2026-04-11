@@ -1,0 +1,29 @@
+input:
+  kingdom: eukaryote
+
+predictors:
+  similarity:
+    enabled: true
+    tool: diamond
+  domains:
+    enabled: true
+    applications: [Pfam, TIGRFAM, CDD, SUPERFAMILY]
+  operons:
+    enabled: false
+  pathway:
+    enabled: true
+    tool: gapseq
+  localization:
+    enabled: true
+    signalP: true
+    tmhmm: true
+
+quality:
+  completeness:
+    profile: eukaryote
+  coherence:
+    process: true
+    pathway: true
+    complex: true
+  consistency:
+    taxonConstraints: true
