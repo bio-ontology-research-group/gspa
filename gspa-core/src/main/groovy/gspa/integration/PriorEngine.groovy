@@ -29,5 +29,34 @@ class PriorEngine {
         sum
     }
 
+    /**
+     * Per-prior breakdown for one (protein, function). Used to populate
+     * {@link ClaimProvenance#priorContributions}.
+     */
+    Map<String, Double> perPriorBoost(String proteinId, String functionKey, IntegrationState state) {
+        Map<String, Double> out = new LinkedHashMap<>()
+        for (Prior p : priors) {
+            double l = lambda.getOrDefault(p.name(), 1.0d)
+            double raw = p.logOddsBoost(proteinId, functionKey, state)
+            if (raw != 0.0) out[p.name()] = l * raw
+        }
+        out
+    }
+
+    /**
+     * Notify every prior that a new refinement iteration is starting.
+     * Priors can recompute cached per-iteration state here.
+     */
+    void beginIteration(IntegrationState state) {
+        for (Prior p : priors) {
+            p.beginIteration(state)
+        }
+    }
+
+    void register(Prior prior, double strength = 1.0) {
+        priors << prior
+        lambda[prior.name()] = strength
+    }
+
     boolean isEmpty() { priors.isEmpty() }
 }

@@ -11,6 +11,16 @@ interface Prior {
     String name()
 
     /**
+     * Called once at the start of each refinement iteration.
+     *
+     * Expensive priors (Consistency, Coherence) should recompute their
+     * per-iteration state here (e.g. run the SAT solver, compute the
+     * currently-annotated set) so that {@link #logOddsBoost} becomes a
+     * cheap lookup. Default: no-op.
+     */
+    default void beginIteration(IntegrationState state) {}
+
+    /**
      * Log-odds contribution for (proteinId, functionKey). Zero means no
      * effect; negative values downweight the claim; positive values boost.
      */

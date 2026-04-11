@@ -1,38 +1,40 @@
 package gspa.integration
 
 import gspa.model.Annotation
-import gspa.model.AnnotationType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 /**
  * Runs the evidence-integration fixed-point loop.
  *
- * <p>Phase 7.1: single-pass likelihood combination only (no priors).
- * Phase 7.3 adds the {@code PriorEngine}, damping, and the convergence
- * check that turns this into the multi-iteration refiner described in
- * plan §A.5.</p>
+ * <p>Phase 7.3 adds the full multi-iteration loop:</p>
+ * <ol>
+ *   <li>Seed with likelihood-only posteriors.</li>
+ *   <li>For each iteration: ask each prior to recompute its cached state,
+ *       then recompute every posterior as
+ *       {@code L_new = L_likelihood + sum_k lambda_k * prior_k.boost()}.</li>
+ *   <li>Apply Jacobi-style under-relaxation with {@code damping} to
+ *       prevent oscillation when non-monotone priors (Consistency)
+ *       flip claims.</li>
+ *   <li>Stop when mean {@code |Δp|} over all function keys falls below
+ *       {@code epsilon}, or when {@code maxIter} is reached, or when
+ *       divergence is detected (two successive iterations with
+ *       increasing {@code Δp}).</li>
+ * </ol>
  *
- * <p>Result: {@link IntegratedAnnotationSet} with per-function provenance
- * and final posterior annotations whose score is the posterior
- * probability.</p>
+ * <p>When {@link #priorEngine} is empty, the loop collapses to a single
+ * likelihood pass — the Phase 7.1/7.2 behaviour — and returns immediately
+ * after the first iteration.</p>
  */
 class IterativeRefiner {
 
     private static final Logger log = LoggerFactory.getLogger(IterativeRefiner)
 
     EvidenceCombiner combiner
+    PriorEngine priorEngine = new PriorEngine()
 
-    /** Not used in Phase 7.1; populated in Phase 7.3. */
-    PriorEngine priorEngine = null
-
-    /** Iteration cap (Phase 7.3). */
     int maxIter = 6
-
-    /** Mean absolute delta in posterior probability to stop iterating. */
     double epsilon = 0.005
-
-    /** Under-relaxation factor (Phase 7.3). */
     double damping = 0.5
 
     IterativeRefiner(EvidenceCombiner combiner) {
@@ -41,51 +43,117 @@ class IterativeRefiner {
 
     /**
      * Refine a set of claims into posterior annotations.
-     *
-     * Phase 7.1 implementation: single pass. Combine each (protein,
-     * function) group once, convert to probability, emit one Annotation
-     * per function key.
      */
     IntegratedAnnotationSet refine(List<EvidenceClaim> claims, IntegrationState state) {
         Map<String, List<EvidenceClaim>> byKey = ClaimExtractor.groupByFunctionKey(claims)
-        log.info("Refining ${claims.size()} claims across ${byKey.size()} (protein, function) groups")
+        log.info("Refining ${claims.size()} claims across ${byKey.size()} (protein, function) groups (maxIter=${maxIter}, damping=${damping})")
 
+        // Precompute likelihood contribution per group — invariant across iterations.
+        Map<String, Double> likelihood = new LinkedHashMap<>()
+        for (Map.Entry<String, List<EvidenceClaim>> entry : byKey.entrySet()) {
+            likelihood[entry.key] = combiner.combineLikelihood(entry.value)
+        }
+
+        // Seed posteriors from likelihood alone.
+        Map<String, Double> posteriorLogOdds = new LinkedHashMap<>(likelihood)
+        state.updatePosteriors(posteriorLogOdds)
+
+        int iterationsRun = 0
+        double prevDelta = Double.POSITIVE_INFINITY
+        int consecutiveIncreases = 0
+        Map<String, Double> lastStableSnapshot = new LinkedHashMap<>(posteriorLogOdds)
+
+        // Always run at least one iteration with priors, since the seed
+        // above is likelihood-only. If there are no priors, the loop
+        // exits after the first pass because delta will be 0.
+        int maxIterations = priorEngine.isEmpty() ? 1 : maxIter
+
+        for (int iter = 0; iter < maxIterations; iter++) {
+            priorEngine.beginIteration(state)
+
+            Map<String, Double> newLogOdds = new LinkedHashMap<>()
+            for (Map.Entry<String, List<EvidenceClaim>> entry : byKey.entrySet()) {
+                String key = entry.key
+                double lLik = likelihood[key]
+                double lPri = priorEngine.totalBoost(entry.value.first().proteinId, key, state)
+                double lNew = clip(lLik + lPri)
+
+                double lOld = posteriorLogOdds.getOrDefault(key, lLik)
+                // Jacobi-style under-relaxation: new = (1-d) * old + d * computed.
+                double lDamped = (1.0d - damping) * lOld + damping * lNew
+                newLogOdds[key] = lDamped
+            }
+
+            double delta = meanAbsDelta(newLogOdds, posteriorLogOdds)
+            log.debug("iter ${iter}: mean |Δp| = ${String.format(Locale.ROOT, '%.5f', delta)}")
+
+            posteriorLogOdds = newLogOdds
+            state.updatePosteriors(posteriorLogOdds)
+            iterationsRun = iter + 1
+
+            if (delta < epsilon) {
+                log.info("Converged at iteration ${iter} (Δp=${String.format(Locale.ROOT, '%.5f', delta)} < ${epsilon})")
+                break
+            }
+
+            // Divergence detection: two consecutive iterations with rising delta → roll back.
+            if (delta > prevDelta) {
+                consecutiveIncreases++
+                if (consecutiveIncreases >= 2) {
+                    log.warn("Divergence detected at iteration ${iter}; rolling back to last stable state")
+                    posteriorLogOdds = lastStableSnapshot
+                    state.updatePosteriors(posteriorLogOdds)
+                    break
+                }
+            } else {
+                consecutiveIncreases = 0
+                lastStableSnapshot = new LinkedHashMap<>(posteriorLogOdds)
+            }
+            prevDelta = delta
+        }
+
+        buildResult(byKey, likelihood, posteriorLogOdds, state, iterationsRun)
+    }
+
+    /**
+     * Build the final IntegratedAnnotationSet with provenance.
+     */
+    private IntegratedAnnotationSet buildResult(
+            Map<String, List<EvidenceClaim>> byKey,
+            Map<String, Double> likelihood,
+            Map<String, Double> posteriorLogOdds,
+            IntegrationState state,
+            int iterations) {
         IntegratedAnnotationSet out = new IntegratedAnnotationSet()
-        Map<String, Double> posteriorLogOdds = new LinkedHashMap<>()
-
         for (Map.Entry<String, List<EvidenceClaim>> entry : byKey.entrySet()) {
             String key = entry.key
             List<EvidenceClaim> group = entry.value
+            double lLik = likelihood[key]
+            double lFinal = posteriorLogOdds[key]
+            double pFinal = sigmoid(lFinal)
 
-            double lLik = combiner.combineLikelihood(group)
-            double lPost = lLik   // Phase 7.1: no prior contribution.
-            double pPost = sigmoid(lPost)
-
-            posteriorLogOdds[key] = lPost
+            Map<String, Double> priorContribs =
+                priorEngine.isEmpty()
+                    ? Collections.<String, Double>emptyMap()
+                    : priorEngine.perPriorBoost(group.first().proteinId, key, state)
 
             ClaimProvenance prov = new ClaimProvenance(
                 functionKey: key,
                 proteinId: group.first().proteinId,
                 supportingClaims: new ArrayList<EvidenceClaim>(group),
+                priorContributions: priorContribs,
                 likelihoodLogOdds: lLik,
-                finalLogOdds: lPost,
-                finalProbability: pPost,
-                convergenceIter: 0,
+                finalLogOdds: lFinal,
+                finalProbability: pFinal,
+                convergenceIter: iterations,
             )
 
-            Annotation ann = buildAnnotation(group.first(), pPost)
+            Annotation ann = buildAnnotation(group.first(), pFinal)
             out.put(prov, ann)
         }
-
-        state.updatePosteriors(posteriorLogOdds)
         out
     }
 
-    /**
-     * Build the final Annotation for a posterior. Uses the first claim's
-     * metadata (type, functionId, aspect) — all claims in the group share
-     * these by construction. The score is the final posterior probability.
-     */
     private static Annotation buildAnnotation(EvidenceClaim claim, double posteriorProb) {
         new Annotation(
             type: claim.functionType,
@@ -98,9 +166,27 @@ class IterativeRefiner {
         )
     }
 
+    private double clip(double logOdds) {
+        Math.min(combiner.lMax, Math.max(combiner.lMin, logOdds))
+    }
+
+    private static double meanAbsDelta(Map<String, Double> a, Map<String, Double> b) {
+        if (a.isEmpty() && b.isEmpty()) return 0.0d
+        Set<String> keys = new LinkedHashSet<>()
+        keys.addAll(a.keySet())
+        keys.addAll(b.keySet())
+        double sum = 0.0d
+        for (String k : keys) {
+            double pA = sigmoid(a.getOrDefault(k, 0.0d))
+            double pB = sigmoid(b.getOrDefault(k, 0.0d))
+            sum += Math.abs(pA - pB)
+        }
+        sum / keys.size()
+    }
+
     private static double sigmoid(double x) {
-        if (x >= 500.0) return 1.0
-        if (x <= -500.0) return 0.0
-        1.0 / (1.0 + Math.exp(-x))
+        if (x >= 500.0) return 1.0d
+        if (x <= -500.0) return 0.0d
+        1.0d / (1.0d + Math.exp(-x))
     }
 }
