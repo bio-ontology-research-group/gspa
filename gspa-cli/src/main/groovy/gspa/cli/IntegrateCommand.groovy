@@ -282,16 +282,27 @@ class IntegrateCommand implements Runnable {
             }
         }
 
-        // Taxonomy + SAT consistency checker
-        if (taxonomyFile != null) {
+        // SAT consistency checker: auto-load taxon constraints from GO
+        // (never_in_taxon / only_in_taxon axioms) whenever the GO ontology
+        // is present, then optionally load the NCBI taxonomy hierarchy from
+        // a TSV for child-implies-parent propagation.
+        if (state.goOntology != null) {
             try {
-                def checker = new gspa.ontology.SatConsistencyChecker()
-                checker.loadTaxonomyHierarchy(taxonomyFile)
+                def taxonConstraints = new gspa.ontology.TaxonConstraints()
+                taxonConstraints.loadFromGoOntology(state.goOntology)
+                def checker = new gspa.ontology.SatConsistencyChecker(taxonConstraints)
+                if (taxonomyFile != null) {
+                    checker.loadTaxonomyHierarchy(taxonomyFile)
+                    println "  SAT checker: taxon constraints from GO + hierarchy from ${taxonomyFile}"
+                } else {
+                    println "  SAT checker: taxon constraints from GO (no taxonomy hierarchy)"
+                }
                 state.satConsistencyChecker = checker
-                println "  Consistency checker wired with taxonomy from ${taxonomyFile}"
             } catch (Exception e) {
-                System.err.println "  [warn] Failed to load taxonomy: ${e.message}"
+                System.err.println "  [warn] Failed to wire SAT consistency checker: ${e.message}"
             }
+        } else if (taxonomyFile != null) {
+            System.err.println "  [warn] taxonomy file provided but GO ontology missing; SAT checker disabled"
         }
 
         // Operons TSV: one line per operon, tab-separated protein IDs.
