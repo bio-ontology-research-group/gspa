@@ -216,7 +216,7 @@ class GoOntology {
         def property = factory.getOWLObjectProperty(IRI.create(propertyIri))
         List<Map<String, String>> axioms = []
 
-        ontology.axioms(AxiomType.SUBCLASS_OF).each { OWLSubClassOfAxiom ax ->
+        ontology.getAxioms(AxiomType.SUBCLASS_OF).each { OWLSubClassOfAxiom ax ->
             if (ax.subClass instanceof OWLClass && ax.superClass instanceof OWLObjectSomeValuesFrom) {
                 OWLObjectSomeValuesFrom svf = (OWLObjectSomeValuesFrom) ax.superClass
                 if (svf.property == property && svf.filler instanceof OWLClass) {

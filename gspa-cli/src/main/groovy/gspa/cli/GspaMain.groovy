@@ -157,6 +157,10 @@ class EvaluateCommand implements Runnable {
     @Option(names = ['--lite'], description = 'Skip ELK initialization (faster, no process coherence)')
     boolean lite
 
+    @Option(names = ['--reasoner-cache'],
+            description = 'Directory for cached has_part pairs (speeds up full ELK init)')
+    File reasonerCache
+
     @Option(names = ['-o', '--output'], description = 'Output report file', defaultValue = 'quality_report.json')
     File output
 
@@ -217,6 +221,9 @@ class EvaluateCommand implements Runnable {
             pipeline.taxonomyFile(taxonomy)
         }
 
+        if (reasonerCache != null) {
+            pipeline.reasonerCacheDir(reasonerCache)
+        }
         if (lite) {
             pipeline.initializeLite()
         } else {

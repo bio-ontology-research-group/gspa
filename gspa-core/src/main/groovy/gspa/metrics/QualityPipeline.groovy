@@ -38,6 +38,7 @@ class QualityPipeline {
     // Config
     private GspaConfig config
     private boolean initialized = false
+    private File reasonerCacheDir
 
     QualityPipeline() {
         this.config = new GspaConfig()
@@ -52,6 +53,11 @@ class QualityPipeline {
     QualityPipeline goOwlFile(String path) {
         goOntology = new GoOntology()
         goOntology.loadOwl(path)
+        this
+    }
+
+    QualityPipeline reasonerCacheDir(File dir) {
+        this.reasonerCacheDir = dir
         this
     }
 
@@ -138,6 +144,9 @@ class QualityPipeline {
 
         // Initialize ELK reasoner
         goReasoner = new GoReasoner(goOntology)
+        if (reasonerCacheDir != null) {
+            goReasoner.cacheDir = reasonerCacheDir
+        }
         goReasoner.initialize()
 
         // Default essential functions if not set
@@ -223,7 +232,7 @@ class QualityPipeline {
 
         def report = new QualityReport(
             genomeId: genome.id,
-            assessmentDate: new Date().format('yyyy-MM-dd'),
+            assessmentDate: new java.text.SimpleDateFormat('yyyy-MM-dd').format(new Date()),
             totalProteinCount: genome.proteinCount,
             annotatedProteinCount: genome.proteins.count { !it.annotations.isEmpty() }
         )
