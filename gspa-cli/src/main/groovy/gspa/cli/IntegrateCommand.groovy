@@ -91,6 +91,10 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--lite'], description = 'Skip ELK initialization (no process coherence).')
     boolean lite = false
 
+    @Option(names = ['--reasoner-cache'],
+            description = 'Directory for caching expensive reasoner results (has_part pairs).')
+    File reasonerCacheDir
+
     @Option(names = ['--dark-matter'],
             description = 'Enable the Phase 8 dark-matter / contextual-gap suggester.')
     boolean darkMatter = false
@@ -235,6 +239,9 @@ class IntegrateCommand implements Runnable {
                 state.goOntology = goOntology
                 if (!lite) {
                     def reasoner = new gspa.ontology.GoReasoner(goOntology)
+                    if (reasonerCacheDir != null) {
+                        reasoner.cacheDir = reasonerCacheDir
+                    }
                     reasoner.initialize()
                     state.goReasoner = reasoner
                 }

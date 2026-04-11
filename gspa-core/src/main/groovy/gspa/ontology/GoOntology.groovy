@@ -110,7 +110,7 @@ class GoOntology {
         ontology.getSubClassAxiomsForSubClass(cls).each { OWLSubClassOfAxiom ax ->
             def superCls = ax.superClass
             if (superCls instanceof OWLClass && !superCls.isOWLThing()) {
-                parents << iriToGo(superCls.IRI)
+                parents << iriToGo(superCls.getIRI())
             }
         }
         parents
@@ -162,7 +162,7 @@ class GoOntology {
             if (superCls instanceof OWLObjectSomeValuesFrom) {
                 OWLObjectSomeValuesFrom svf = (OWLObjectSomeValuesFrom) superCls
                 if (svf.property == partOfProp && svf.filler instanceof OWLClass) {
-                    parents << iriToGo(((OWLClass) svf.filler).IRI)
+                    parents << iriToGo(((OWLClass) svf.filler).getIRI())
                 }
             }
         }
@@ -197,7 +197,7 @@ class GoOntology {
      */
     Set<String> getAllGoTerms() {
         ontology.classesInSignature
-            .collect { iriToGo(it.IRI) }
+            .collect { iriToGo(it.getIRI()) }
             .findAll { it.startsWith('GO:') } as Set
     }
 
@@ -221,8 +221,8 @@ class GoOntology {
                 OWLObjectSomeValuesFrom svf = (OWLObjectSomeValuesFrom) ax.superClass
                 if (svf.property == property && svf.filler instanceof OWLClass) {
                     axioms << [
-                        subject: iriToGo(((OWLClass) ax.subClass).IRI),
-                        object : iriToGo(((OWLClass) svf.filler).IRI)
+                        subject: iriToGo(((OWLClass) ax.subClass).getIRI()),
+                        object : iriToGo(((OWLClass) svf.filler).getIRI())
                     ]
                 }
             }
@@ -232,7 +232,7 @@ class GoOntology {
 
     private void buildLabelCache() {
         ontology.classesInSignature.each { cls ->
-            String goId = iriToGo(cls.IRI)
+            String goId = iriToGo(cls.getIRI())
             for (OWLAnnotation ann : EntitySearcher.getAnnotations(cls, ontology, factory.getRDFSLabel())) {
                 if (ann.value instanceof OWLLiteral) {
                     labelCache[goId] = ((OWLLiteral) ann.value).literal

@@ -27,7 +27,8 @@ class PathwayLoader {
             if (line.startsWith('!') || line.startsWith('#') || line.trim().isEmpty()) return
 
             // Try standard ec2go format: EC:X.X.X.X > GO:name ; GO:XXXXXXX
-            def matcher = line =~ /^(EC:\S+)\s*>\s*GO:\S+\s*;\s*(GO:\d{7})/
+            // The GO name can contain spaces and punctuation, so match non-semicolons.
+            def matcher = line =~ /^(EC:\S+)\s*>\s*GO:[^;]+;\s*(GO:\d{7})/
             if (matcher.find()) {
                 String ec = matcher.group(1)
                 String go = matcher.group(2)

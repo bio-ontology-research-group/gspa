@@ -49,9 +49,9 @@ class GoReasoner {
      */
     Set<String> getSubClasses(String goId, boolean direct = false) {
         def cls = goOntology.getGoClass(goId)
-        reasoner.getSubClasses(cls, direct).flattened()
+        reasoner.getSubClasses(cls, direct).getFlattened()
             .findAll { !it.isOWLNothing() }
-            .collect { goOntology.iriToGo(it.IRI) }
+            .collect { goOntology.iriToGo(it.getIRI()) }
             .findAll { it.startsWith('GO:') } as Set
     }
 
@@ -61,9 +61,9 @@ class GoReasoner {
      */
     Set<String> getSuperClasses(String goId, boolean direct = false) {
         def cls = goOntology.getGoClass(goId)
-        reasoner.getSuperClasses(cls, direct).flattened()
+        reasoner.getSuperClasses(cls, direct).getFlattened()
             .findAll { !it.isOWLThing() }
-            .collect { goOntology.iriToGo(it.IRI) }
+            .collect { goOntology.iriToGo(it.getIRI()) }
             .findAll { it.startsWith('GO:') } as Set
     }
 
@@ -74,7 +74,7 @@ class GoReasoner {
         if (goId == potentialAncestor) return true
         def subCls = goOntology.getGoClass(goId)
         def superCls = goOntology.getGoClass(potentialAncestor)
-        def superClasses = reasoner.getSuperClasses(subCls, false).flattened()
+        def superClasses = reasoner.getSuperClasses(subCls, false).getFlattened()
         superClasses.contains(superCls)
     }
 
@@ -113,11 +113,11 @@ class GoReasoner {
             def restriction = df.getOWLObjectSomeValuesFrom(hasPartProp, fillerCls)
 
             // Get all subclasses of (has_part some filler)
-            def subClasses = reasoner.getSubClasses(restriction, false).flattened()
+            def subClasses = reasoner.getSubClasses(restriction, false).getFlattened()
                 .findAll { !it.isOWLNothing() }
 
             subClasses.each { OWLClass subCls ->
-                String subId = goOntology.iriToGo(subCls.IRI)
+                String subId = goOntology.iriToGo(subCls.getIRI())
                 if (subId.startsWith('GO:') && subId != filler) {
                     pairs << new AbstractMap.SimpleEntry<>(subId, filler)
                 }
