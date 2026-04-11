@@ -1,5 +1,6 @@
 package gspa.integration
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.model.Genome
@@ -123,6 +124,53 @@ class ClaimExtractor {
         Map<String, List<EvidenceClaim>> out = new LinkedHashMap<>()
         for (EvidenceClaim c : claims) {
             out.computeIfAbsent(c.functionKey(), { k -> new ArrayList<EvidenceClaim>() }) << c
+        }
+        out
+    }
+
+    /**
+     * Parse a JSONL claims file (one JSON object per line) into a list of
+     * claims. Format used by the benchmark pipeline and the
+     * {@code gspa-cli integrate} command.
+     *
+     * Required per-line fields: {@code protein_id, function_type,
+     * function_id, source, raw_score}. Optional: {@code go_aspect,
+     * evidence_type, metadata}. The {@code calibrated_prob} is computed via
+     * this extractor's {@link CalibrationTable} unless present on the line.
+     */
+    List<EvidenceClaim> readClaimsJsonl(File file) {
+        ObjectMapper mapper = new ObjectMapper()
+        List<EvidenceClaim> out = []
+        file.withReader { reader ->
+            reader.eachLine { line ->
+                line = line.trim()
+                if (line.isEmpty() || line.startsWith('#')) return
+                Map rec = mapper.readValue(line, Map)
+                String source = rec.source as String
+                double raw = (rec.raw_score as Number)?.doubleValue() ?: 0.0d
+                EvidenceType type = null
+                if (rec.evidence_type) {
+                    try { type = EvidenceType.valueOf(rec.evidence_type as String) } catch (ignored) {}
+                }
+                if (type == null && source) {
+                    type = SOURCE_TO_TYPE[(source as String).toLowerCase(Locale.ROOT)]
+                }
+                if (type == null) return    // unresolved claim; skip
+                double calibrated = rec.calibrated_prob != null
+                    ? ((Number) rec.calibrated_prob).doubleValue()
+                    : calibration.calibrate(source ?: '', raw)
+                out << new EvidenceClaim(
+                    proteinId: rec.protein_id as String,
+                    functionType: AnnotationType.valueOf((rec.function_type as String).toUpperCase(Locale.ROOT)),
+                    functionId: rec.function_id as String,
+                    goAspect: rec.go_aspect as String,
+                    evidenceType: type,
+                    source: source,
+                    rawScore: raw,
+                    calibratedProb: calibrated,
+                    metadata: (rec.metadata ?: [:]) as Map,
+                )
+            }
         }
         out
     }
