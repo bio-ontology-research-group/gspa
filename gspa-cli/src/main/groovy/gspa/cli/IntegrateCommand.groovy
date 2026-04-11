@@ -15,6 +15,10 @@ import gspa.integration.prior.CoherencePrior
 import gspa.integration.prior.EssentialityPrior
 import gspa.integration.prior.GapFillingPrior
 import gspa.integration.prior.GenomicContextPrior
+import gspa.integration.suggester.DarkMatterSuggester
+import gspa.integration.suggester.DisjunctiveSuggestion
+import gspa.integration.suggester.SingletonSuggestion
+import gspa.integration.suggester.Suggestion
 import gspa.model.Genome
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
@@ -87,6 +91,14 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--lite'], description = 'Skip ELK initialization (no process coherence).')
     boolean lite = false
 
+    @Option(names = ['--dark-matter'],
+            description = 'Enable the Phase 8 dark-matter / contextual-gap suggester.')
+    boolean darkMatter = false
+
+    @Option(names = ['--suggestions-out'],
+            description = 'Suggestions TSV output path (only with --dark-matter).')
+    File suggestionsOut
+
     @Override
     void run() {
         println "GSPA integrate"
@@ -135,6 +147,28 @@ class IntegrateCommand implements Runnable {
         // --- Refine ---
         IntegratedAnnotationSet integrated = refiner.refine(claims, state)
         println "  Produced ${integrated.annotations.size()} integrated annotations"
+
+        // --- Phase 8: optional dark-matter suggester ---
+        if (darkMatter) {
+            def suggester = new DarkMatterSuggester()
+            if (theta.dark_matter instanceof Map) {
+                def dm = theta.dark_matter as Map
+                if (dm.bf_min != null)
+                    suggester.bfMin = (dm.bf_min as Number).doubleValue()
+                if (dm.gamma_in_p != null)
+                    suggester.gammaInP = (dm.gamma_in_p as Number).doubleValue()
+                if (dm.coverage_threshold != null)
+                    suggester.coverageThreshold = (dm.coverage_threshold as Number).doubleValue()
+            }
+            suggester.suggest(state, integrated)
+            println "  Dark-matter suggester emitted ${integrated.suggestions.size()} suggestions"
+
+            if (suggestionsOut != null) {
+                suggestionsOut.parentFile?.mkdirs()
+                writeSuggestionsTsv(integrated.suggestions, suggestionsOut)
+                println "  Suggestions: ${suggestionsOut}"
+            }
+        }
 
         // --- Write output TSV ---
         outFile.parentFile?.mkdirs()
@@ -283,6 +317,50 @@ class IntegrateCommand implements Runnable {
             }
             state.metabolicGaps = gaps
             println "  Metabolic gaps: ${gaps.size()}"
+        }
+    }
+
+    /**
+     * Write suggestions to TSV. Columns:
+     *   kind, pathway_id, reaction_id, function_id, go_aspect, operon_id,
+     *   bayes_factor, suggestion_score, protein_ids, q_values, provenance
+     */
+    private static void writeSuggestionsTsv(List<Suggestion> suggestions, File out) {
+        out.withWriter { w ->
+            w.writeLine([
+                'kind', 'pathway_id', 'reaction_id', 'function_id', 'go_aspect',
+                'operon_id', 'bayes_factor', 'suggestion_score',
+                'protein_ids', 'q_values', 'provenance'
+            ].join('\t'))
+            for (Suggestion s : suggestions) {
+                String proteinList
+                String qList
+                if (s instanceof SingletonSuggestion) {
+                    proteinList = s.proteinId
+                    qList = String.format(Locale.ROOT, '%.4f', s.q)
+                } else if (s instanceof DisjunctiveSuggestion) {
+                    proteinList = s.proteinIds.join(',')
+                    qList = s.qValues.collect {
+                        String.format(Locale.ROOT, '%.4f', it)
+                    }.join(',')
+                } else {
+                    proteinList = ''
+                    qList = ''
+                }
+                w.writeLine([
+                    s.kind(),
+                    s.pathwayId ?: '',
+                    s.reactionId ?: '',
+                    s.functionId ?: '',
+                    s.goAspect ?: '',
+                    s.operonId ?: '',
+                    String.format(Locale.ROOT, '%.2f', s.bayesFactor),
+                    String.format(Locale.ROOT, '%.4f', s.suggestionScore),
+                    proteinList,
+                    qList,
+                    s.provenance ?: '',
+                ].join('\t'))
+            }
         }
     }
 

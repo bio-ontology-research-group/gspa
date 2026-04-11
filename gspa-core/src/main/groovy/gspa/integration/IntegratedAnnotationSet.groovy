@@ -1,6 +1,7 @@
 package gspa.integration
 
 import groovy.transform.Canonical
+import gspa.integration.suggester.Suggestion
 import gspa.model.Annotation
 import gspa.model.AnnotationSet
 import gspa.model.AnnotationType
@@ -29,7 +30,7 @@ class IntegratedAnnotationSet {
     Map<String, ClaimProvenance> provenance = new LinkedHashMap<>()
 
     /** Phase 8 suggestions; empty until the suggester runs. */
-    List<Object> suggestions = []
+    List<Suggestion> suggestions = []
 
     void put(ClaimProvenance prov, Annotation ann) {
         provenance[prov.functionKey] = prov

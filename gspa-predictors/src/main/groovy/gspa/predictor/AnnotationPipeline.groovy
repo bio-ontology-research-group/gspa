@@ -8,6 +8,8 @@ import gspa.integration.IntegratedAnnotationSet
 import gspa.integration.IntegrationState
 import gspa.integration.IntegrationWriter
 import gspa.integration.IterativeRefiner
+import gspa.integration.suggester.DarkMatterSuggester
+import gspa.integration.suggester.DarkMatterWriter
 import gspa.io.FastaReader
 import gspa.io.GffReader
 import gspa.io.GffWriter
@@ -283,6 +285,7 @@ class AnnotationPipeline {
      * Run the Phase 7 evidence integration layer. Collects raw claims from
      * every protein's AnnotationSet, runs the iterative refiner, and
      * replaces each protein's annotations with the integrated posteriors.
+     * Optionally follows with Phase 8's DarkMatterSuggester.
      */
     private void runIntegration(Genome genome) {
         log.info("=== Evidence integration (Phase 7) ===")
@@ -306,6 +309,18 @@ class AnnotationPipeline {
         log.info("  ${integrated}")
 
         IntegrationWriter.applyIntegratedAnnotations(genome, integrated)
+
+        // Phase 8: dark-matter / contextual gap suggester.
+        if (config.integration.darkMatter?.enabled) {
+            log.info("=== Dark-matter suggester (Phase 8) ===")
+            def suggester = new DarkMatterSuggester()
+            suggester.bfMin             = config.integration.darkMatter.bfMin
+            suggester.gammaInP          = config.integration.darkMatter.gammaInP
+            suggester.coverageThreshold = config.integration.darkMatter.coverageThreshold
+            suggester.suggest(state, integrated)
+            int touched = DarkMatterWriter.apply(genome, integrated, config.integration.darkMatter.mode)
+            log.info("  ${integrated.suggestions.size()} suggestions emitted; ${touched} proteins updated")
+        }
     }
 
     /**

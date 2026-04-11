@@ -51,6 +51,8 @@ def run_cli_integrate(
     gaps: str | None,
     enabled_priors: str | None,
     lite: bool,
+    dark_matter: bool = False,
+    suggestions_out: str | None = None,
 ) -> float:
     """Invoke gspa-cli integrate and return wall-clock seconds."""
     args = [
@@ -69,6 +71,8 @@ def run_cli_integrate(
     if gaps:              args += ['--gaps', gaps]
     if enabled_priors:    args += ['--enable-priors', enabled_priors]
     if lite:              args.append('--lite')
+    if dark_matter:       args.append('--dark-matter')
+    if suggestions_out:   args += ['--suggestions-out', suggestions_out]
 
     start = time.time()
     result = subprocess.run(args, capture_output=True, text=True)
@@ -98,6 +102,9 @@ def evaluate(
     enabled_priors: str | None = None,
     ablation_fraction: float = 0.10,
     taxon_n_injections: int = 50,
+    dark_matter: bool = False,
+    dark_matter_n_strip: int = 50,
+    partial_n_sample: int = 100,
     lite: bool = False,
     seed: int = 42,
     weights: gspa_eval.ObjectiveWeights | None = None,
@@ -166,6 +173,80 @@ def evaluate(
         predictions, injection.injected_pairs, injection.input_scores,
     )
 
+    # --- 5. Phase 8: dark-matter strip + suggester pass (optional) ---
+    dm_singleton = 0.0
+    dm_recovery = 0.0
+    partial_singleton = 0.0
+    partial_recovery_rate = 0.0
+    dm_elapsed = 0.0
+    if dark_matter:
+        dm_path = workdir / 'claims.dm_stripped.jsonl'
+        dm_strip = perturb.strip_proteins_for_dark_matter_test(
+            claims_path=claims_file,
+            truth=truth,
+            output_path=str(dm_path),
+            n_strip=dark_matter_n_strip,
+            seed=seed + 2,
+        )
+        dm_tsv = workdir / 'integrated.dm.tsv'
+        dm_suggestions_tsv = workdir / 'suggestions.dm.tsv'
+        dm_elapsed = run_cli_integrate(
+            cli_binary=cli_binary,
+            claims_file=str(dm_path),
+            theta_file=theta_file,
+            out_tsv=str(dm_tsv),
+            go_owl=go_owl,
+            essential_profile=essential_profile,
+            essentials_file=essentials_ref_file,
+            ec2go=ec2go,
+            pathways=pathways,
+            taxonomy=taxonomy,
+            operons=operons,
+            gaps=gaps,
+            enabled_priors=enabled_priors,
+            lite=lite,
+            dark_matter=True,
+            suggestions_out=str(dm_suggestions_tsv),
+        )
+        dm_suggestions = gspa_eval.load_suggestions_tsv(str(dm_suggestions_tsv))
+        dm_singleton, dm_recovery = gspa_eval.compute_dark_matter_recovery(
+            dm_suggestions, dm_strip.stripped_pairs,
+        )
+
+        # Partial recovery
+        partial_path = workdir / 'claims.partial_stripped.jsonl'
+        partial_strip = perturb.strip_one_annotation_per_protein(
+            claims_path=claims_file,
+            truth=truth,
+            output_path=str(partial_path),
+            n_sample=partial_n_sample,
+            seed=seed + 3,
+        )
+        partial_tsv = workdir / 'integrated.partial.tsv'
+        partial_suggestions_tsv = workdir / 'suggestions.partial.tsv'
+        dm_elapsed += run_cli_integrate(
+            cli_binary=cli_binary,
+            claims_file=str(partial_path),
+            theta_file=theta_file,
+            out_tsv=str(partial_tsv),
+            go_owl=go_owl,
+            essential_profile=essential_profile,
+            essentials_file=essentials_ref_file,
+            ec2go=ec2go,
+            pathways=pathways,
+            taxonomy=taxonomy,
+            operons=operons,
+            gaps=gaps,
+            enabled_priors=enabled_priors,
+            lite=lite,
+            dark_matter=True,
+            suggestions_out=str(partial_suggestions_tsv),
+        )
+        partial_suggestions = gspa_eval.load_suggestions_tsv(str(partial_suggestions_tsv))
+        partial_singleton, partial_recovery_rate = gspa_eval.compute_partial_recovery(
+            partial_suggestions, partial_strip.stripped_pairs,
+        )
+
     result = gspa_eval.EvaluationResult(
         fmax_go=fmax_go,
         fmax_mf=fmax_mf,
@@ -174,12 +255,17 @@ def evaluate(
         essential_recovery=essential_recovery,
         gapfill_recovery=gapfill_recovery,
         taxon_violation_suppression=taxon_suppression,
-        runtime_seconds=elapsed,
+        dark_matter_singleton=dm_singleton,
+        dark_matter_recovery=dm_recovery,
+        partial_singleton=partial_singleton,
+        partial_recovery=partial_recovery_rate,
+        runtime_seconds=elapsed + dm_elapsed,
         details={
             'ablation_n_removed': ablation.n_removed,
             'injection_n_injected': injection.n_injected,
             'fmax_threshold': t_go,
             'integrated_tsv': str(integrated_tsv),
+            'dark_matter_enabled': dark_matter,
         },
     )
     result.composite = gspa_eval.compute_composite(result, weights)
@@ -209,6 +295,12 @@ def main():
     p.add_argument('--lite', action='store_true', help='Skip ELK (no process coherence)')
     p.add_argument('--ablation-fraction', type=float, default=0.10)
     p.add_argument('--taxon-n-injections', type=int, default=50)
+    p.add_argument('--dark-matter', action='store_true',
+                   help='Also run Phase 8 dark-matter strip + suggester metrics')
+    p.add_argument('--dark-matter-n-strip', type=int, default=50,
+                   help='Number of proteins to strip for dark-matter test (default 50)')
+    p.add_argument('--partial-n-sample', type=int, default=100,
+                   help='Number of proteins to sample for partial-recovery test (default 100)')
     p.add_argument('--seed', type=int, default=42)
     p.add_argument('--tmp-dir', default=None)
     p.add_argument('--result-json', default=None,
@@ -234,6 +326,9 @@ def main():
         enabled_priors=args.enable_priors,
         ablation_fraction=args.ablation_fraction,
         taxon_n_injections=args.taxon_n_injections,
+        dark_matter=args.dark_matter,
+        dark_matter_n_strip=args.dark_matter_n_strip,
+        partial_n_sample=args.partial_n_sample,
         lite=args.lite,
         seed=args.seed,
         tmp_dir=args.tmp_dir,

@@ -124,6 +124,157 @@ def ablate_claims_for_gapfill(
 
 
 # ---------------------------------------------------------------------------
+# Dark-matter strip: remove ALL annotations from selected proteins
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class DarkMatterStripResult:
+    stripped_claims_path: str
+    stripped_pairs: Dict[str, Set[Tuple[str, str]]] = field(default_factory=dict)
+    stripped_proteins: Set[str] = field(default_factory=set)
+    n_removed: int = 0
+
+    def as_dict(self) -> dict:
+        return {
+            'stripped_claims_path': self.stripped_claims_path,
+            'n_removed': self.n_removed,
+            'stripped_proteins': sorted(list(self.stripped_proteins)),
+            'stripped_pairs': {
+                acc: sorted(list(pairs)) for acc, pairs in self.stripped_pairs.items()
+            },
+        }
+
+
+def strip_proteins_for_dark_matter_test(
+    claims_path: str,
+    truth: Mapping[str, Mapping[str, Iterable[str]]],
+    output_path: str,
+    n_strip: int = 50,
+    seed: int = 43,
+) -> DarkMatterStripResult:
+    """
+    Select `n_strip` random well-annotated proteins and remove ALL of
+    their claims from the claims file. The integrator can then try to
+    recover them via the Phase 8 suggester.
+
+    Returns the removed (protein, aspect, go_term) pairs so the evaluator
+    can check whether each stripped protein's true function was
+    recovered as a singleton or disjunctive suggestion.
+    """
+    rng = random.Random(seed)
+    # Prefer proteins that have >= 1 annotation in truth (need something to check).
+    candidates = [acc for acc, aspect_map in truth.items() if aspect_map]
+    if not candidates:
+        return DarkMatterStripResult(stripped_claims_path=output_path)
+    picked = rng.sample(candidates, k=min(n_strip, len(candidates)))
+    stripped_proteins = set(picked)
+
+    stripped_pairs: Dict[str, Set[Tuple[str, str]]] = {}
+    for acc in stripped_proteins:
+        pairs = {(aspect, term)
+                 for aspect, terms in truth[acc].items()
+                 for term in terms}
+        stripped_pairs[acc] = pairs
+
+    claims = _read_claims(claims_path)
+    kept: List[dict] = []
+    n_removed = 0
+    for c in claims:
+        if c.get('protein_id') in stripped_proteins:
+            n_removed += 1
+            continue
+        kept.append(c)
+    _write_claims(output_path, kept)
+    return DarkMatterStripResult(
+        stripped_claims_path=output_path,
+        stripped_pairs=stripped_pairs,
+        stripped_proteins=stripped_proteins,
+        n_removed=n_removed,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Partial strip: remove ONE annotation per protein (partial-recovery test)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class PartialStripResult:
+    stripped_claims_path: str
+    stripped_pairs: Dict[str, Set[Tuple[str, str]]] = field(default_factory=dict)
+    n_removed: int = 0
+
+    def as_dict(self) -> dict:
+        return {
+            'stripped_claims_path': self.stripped_claims_path,
+            'n_removed': self.n_removed,
+            'stripped_pairs': {
+                acc: sorted(list(pairs)) for acc, pairs in self.stripped_pairs.items()
+            },
+        }
+
+
+def strip_one_annotation_per_protein(
+    claims_path: str,
+    truth: Mapping[str, Mapping[str, Iterable[str]]],
+    output_path: str,
+    min_annotations_required: int = 2,
+    n_sample: int = 100,
+    seed: int = 44,
+) -> PartialStripResult:
+    """
+    For each of up to `n_sample` proteins that have >= `min_annotations_required`
+    true annotations, remove exactly one randomly-chosen true annotation
+    from the claims file. Tests whether the integrator / suggester can
+    recover a missing function even when the protein already has other
+    annotations — the user's explicit requirement that the suggester
+    work for non-dark proteins.
+    """
+    rng = random.Random(seed)
+    eligible = [
+        acc for acc, aspect_map in truth.items()
+        if sum(len(t) for t in aspect_map.values()) >= min_annotations_required
+    ]
+    if not eligible:
+        return PartialStripResult(stripped_claims_path=output_path)
+    picked = rng.sample(eligible, k=min(n_sample, len(eligible)))
+
+    stripped_pairs: Dict[str, Set[Tuple[str, str]]] = {}
+    for acc in picked:
+        per_protein: List[Tuple[str, str]] = [
+            (aspect, term)
+            for aspect, terms in truth[acc].items()
+            for term in terms
+        ]
+        if not per_protein:
+            continue
+        removed = rng.choice(per_protein)
+        stripped_pairs[acc] = {removed}
+
+    claims = _read_claims(claims_path)
+    kept: List[dict] = []
+    n_removed = 0
+    for c in claims:
+        acc = c.get('protein_id')
+        if acc not in stripped_pairs:
+            kept.append(c)
+            continue
+        aspect = c.get('go_aspect')
+        func = c.get('function_id')
+        if (aspect, func) in stripped_pairs[acc]:
+            n_removed += 1
+            continue
+        kept.append(c)
+    _write_claims(output_path, kept)
+    return PartialStripResult(
+        stripped_claims_path=output_path,
+        stripped_pairs=stripped_pairs,
+        n_removed=n_removed,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Taxon violation injection
 # ---------------------------------------------------------------------------
 

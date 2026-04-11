@@ -199,6 +199,104 @@ def compute_gapfill_recovery(
 
 
 # ---------------------------------------------------------------------------
+# Phase 8: dark-matter / partial-recovery scoring from suggestions TSV
+# ---------------------------------------------------------------------------
+
+
+def load_suggestions_tsv(suggestions_tsv: str) -> List[dict]:
+    """
+    Parse gspa-cli integrate --suggestions-out TSV into a list of dicts.
+    Returned keys: kind, pathway_id, function_id, protein_ids (list),
+    q_values (list of floats), suggestion_score.
+    """
+    out: List[dict] = []
+    if not os.path.exists(suggestions_tsv):
+        return out
+    with open(suggestions_tsv) as fh:
+        header_line = next(fh, None)
+        if header_line is None:
+            return out
+        headers = header_line.rstrip('\n').split('\t')
+        idx = {h: i for i, h in enumerate(headers)}
+        required = ('kind', 'function_id', 'protein_ids', 'q_values', 'suggestion_score')
+        if not all(h in idx for h in required):
+            raise RuntimeError(f"Unexpected header in {suggestions_tsv}: {headers}")
+        for line in fh:
+            fields = line.rstrip('\n').split('\t')
+            if len(fields) < len(headers):
+                continue
+            pid_field = fields[idx['protein_ids']]
+            q_field = fields[idx['q_values']]
+            try:
+                q_values = [float(x) for x in q_field.split(',') if x]
+            except ValueError:
+                q_values = []
+            out.append({
+                'kind': fields[idx['kind']],
+                'function_id': fields[idx['function_id']],
+                'protein_ids': pid_field.split(',') if pid_field else [],
+                'q_values': q_values,
+                'suggestion_score': float(fields[idx['suggestion_score']]) if fields[idx['suggestion_score']] else 0.0,
+                'pathway_id': fields[idx['pathway_id']] if 'pathway_id' in idx else '',
+                'go_aspect': fields[idx['go_aspect']] if 'go_aspect' in idx else '',
+            })
+    return out
+
+
+def compute_dark_matter_recovery(
+    suggestions: List[dict],
+    stripped_pairs: Mapping[str, Set[Tuple[str, str]]],
+) -> Tuple[float, float]:
+    """
+    For each stripped (protein, aspect, go_term) triple, check whether the
+    suggester recovered the function:
+      - as a singleton suggestion assigning exactly this protein, or
+      - as a disjunctive suggestion whose protein set contains this protein.
+
+    Returns (singleton_rate, disjunctive_rate).
+    """
+    if not stripped_pairs:
+        return 0.0, 0.0
+    # Index suggestions by function_id → list
+    by_function: Dict[str, List[dict]] = defaultdict(list)
+    for s in suggestions:
+        by_function[s['function_id']].append(s)
+
+    total = 0
+    n_singleton = 0
+    n_in_disj = 0
+    for acc, pairs in stripped_pairs.items():
+        for _aspect, term in pairs:
+            total += 1
+            for s in by_function.get(term, []):
+                if acc not in s['protein_ids']:
+                    continue
+                if s['kind'] == 'singleton':
+                    n_singleton += 1
+                    break
+                else:
+                    n_in_disj += 1
+                    break
+    if total == 0:
+        return 0.0, 0.0
+    return n_singleton / total, (n_singleton + n_in_disj) / total
+
+
+def compute_partial_recovery(
+    suggestions: List[dict],
+    stripped_pairs: Mapping[str, Set[Tuple[str, str]]],
+) -> Tuple[float, float]:
+    """
+    Same semantics as dark_matter_recovery but for the partial strip
+    (proteins with other annotations intact). Returns
+    (singleton_rate, any_recovery_rate).
+    """
+    # Implementation is identical — both metrics reduce to "did the
+    # removed (acc, term) pair appear as a suggestion targeting acc".
+    return compute_dark_matter_recovery(suggestions, stripped_pairs)
+
+
+# ---------------------------------------------------------------------------
 # Taxon-violation suppression
 # ---------------------------------------------------------------------------
 
@@ -258,7 +356,10 @@ class EvaluationResult:
     essential_recovery: float = 0.0
     gapfill_recovery: float = 0.0
     taxon_violation_suppression: float = 0.0
-    dark_matter_recovery: float = 0.0
+    dark_matter_singleton: float = 0.0          # strict dark-matter recovery, singleton only
+    dark_matter_recovery: float = 0.0           # singleton OR disjunctive containing the target
+    partial_singleton: float = 0.0              # partial-recovery on partially-annotated proteins
+    partial_recovery: float = 0.0
     runtime_seconds: float = 0.0
     composite: float = 0.0
     details: Dict[str, object] = field(default_factory=dict)
@@ -272,11 +373,19 @@ class EvaluationResult:
             'essential_recovery': self.essential_recovery,
             'gapfill_recovery': self.gapfill_recovery,
             'taxon_violation_suppression': self.taxon_violation_suppression,
+            'dark_matter_singleton': self.dark_matter_singleton,
             'dark_matter_recovery': self.dark_matter_recovery,
+            'partial_singleton': self.partial_singleton,
+            'partial_recovery': self.partial_recovery,
             'runtime_seconds': self.runtime_seconds,
             'composite': self.composite,
             'details': self.details,
         }
+
+
+@dataclass
+class ObjectiveWeightsPhase8(ObjectiveWeights):
+    partial_recovery: float = 0.25
 
 
 def compute_composite(result: EvaluationResult, weights: ObjectiveWeights) -> float:
@@ -288,5 +397,7 @@ def compute_composite(result: EvaluationResult, weights: ObjectiveWeights) -> fl
         + weights.taxon_violation_suppression * result.taxon_violation_suppression
         + weights.dark_matter_recovery * result.dark_matter_recovery
     )
+    if isinstance(weights, ObjectiveWeightsPhase8):
+        score += weights.partial_recovery * result.partial_recovery
     score -= weights.runtime_penalty * result.runtime_seconds
     return score
