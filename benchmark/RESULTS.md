@@ -82,14 +82,15 @@ weakest.
 | ecolo157 | 8 | 1,775 | 223 | 706 | 386 |
 | bsubtilis | 14 | 1,906 | — | 459 | — |
 | mtb | 10 | 2,042 | — | 644 | — |
-| synechocystis | 15 | 1,888 | 190 | 0* | 277 |
+| synechocystis | 15 | 1,888 | 190 | 260 | 277 |
 | paeruginosa | 13 | 1,914 | 271 | 583 | 427 |
 | hpylori | 14 | 1,740 | — | 204 | — |
 | mgenitalium | 17 | 1,305 | — | 55 | — |
 | mjannaschii | 10 | 1,618 | 135 | 120 | 124 |
 
-*Synechocystis GenomicContextPrior = 0 because operons use RefSeq IDs
-(see "Known issues" below).
+Synechocystis required the NCBI `gene_refseq_uniprotkb_collab.gz`
+mapping file because UniProt's `xref_refseq` API returned zero results
+for this proteome (see "Reference data requirements" below).
 
 Dashes (—) indicate gapseq re-runs still in progress for those
 genomes; GapFillingPrior runs but finds no gaps to boost.
@@ -117,36 +118,49 @@ GO term f_R):
 | ecolo157 | 386 | **1,095** | 3,516 | 4,611 |
 | paeruginosa | 427 | **1,083** | 3,835 | 4,918 |
 | mjannaschii | 124 | **193** | 377 | 570 |
-| synechocystis | 277 | 0 | 0 | 0* |
-
-*Synechocystis: operons in RefSeq space, claims in UniProt space —
-no match possible (see below).
+| synechocystis | 277 | **314** | 1,015 | 1,329 |
 
 Singleton suggestions are high-confidence: "protein X in operon Y
 fills the gap for reaction R in pathway P." Each carries full
 provenance: the Bayes factor, the per-protein log-odds decomposition,
 and the softmax probability.
 
-## Known issues
+## Reference data requirements
 
-### Synechocystis operon/claim ID mismatch
+### RefSeq → UniProt ID mapping
 
-Synechocystis sp. PCC 6803 (UP000001425) has **zero RefSeq-to-UniProt
-mappings** via the UniProt API `xref_refseq` field. This means:
+Operons are derived from RefSeq GFFs (protein_id = `WP_*` or `NP_*`)
+but claims use UniProt accessions. The mapping between the two is
+essential for GenomicContextPrior and DarkMatterSuggester.
 
-- The **UniProt proteome FASTA** uses accessions like `P05429`.
-- The **RefSeq GFF** uses protein IDs like `WP_020861325.1`.
-- The **operon file** (derived from the GFF) lists members as
-  `WP_020861325.1`.
-- The **claims.jsonl** (derived from the UniProt FASTA) uses `P05429`.
+**Problem**: the UniProt REST API's `xref_refseq` field is empty for
+some proteomes (notably Synechocystis sp. PCC 6803), returning zero
+mappings.
 
-With no mapping between the two namespaces, the GenomicContextPrior
-and DarkMatterSuggester can't match operon members to claims.
+**Solution**: use NCBI's dedicated collaboration file
+[`gene_refseq_uniprotkb_collab.gz`](https://ftp.ncbi.nlm.nih.gov/refseq/uniprotkb/gene_refseq_uniprotkb_collab.gz)
+(~1.2 GB, 176M rows). Each row maps a RefSeq protein accession to a
+UniProt accession with the method (`identical` or `similar`).
+`build_refseq_uniprot_map.py` scans this file once and extracts
+per-genome TSV mappings.
 
-**Fix**: query the UniProt ID-mapping service specifically for
-Synechocystis (the programmatic `xref_refseq` field is empty but
-the ID-mapping endpoint works), or derive the mapping from the NCBI
-`gene2refseq` table.
+For Synechocystis, this recovered 2,913 mappings (2,905 identical)
+where the API returned zero — fixing the operon/claim mismatch and
+enabling GenomicContextPrior (260 boosts) and DarkMatterSuggester
+(314 singleton + 1,015 disjunctive = 1,329 suggestions).
+
+### Required downloads for a full GSPA benchmark run
+
+| File | Source | Size | Purpose |
+|---|---|---|---|
+| `go.owl` | [GO consortium](http://purl.obolibrary.org/obo/go.owl) | 130 MB | GO hierarchy, class labels |
+| `go-computed-taxon-constraints.obo` | [GO imports](http://current.geneontology.org/ontology/imports/go-computed-taxon-constraints.obo) | 2 MB | 13k only_in + 6k never_in constraints |
+| `ec2go` | [GO external2go](http://current.geneontology.org/ontology/external2go/ec2go) | 350 KB | EC → GO mapping |
+| `gene_refseq_uniprotkb_collab.gz` | [NCBI RefSeq](https://ftp.ncbi.nlm.nih.gov/refseq/uniprotkb/gene_refseq_uniprotkb_collab.gz) | 1.2 GB | RefSeq ↔ UniProt mapping |
+| `goa_uniprot_all.gaf.gz` | [GOA FTP](https://ftp.ebi.ac.uk/pub/databases/GO/goa/UNIPROT/goa_uniprot_all.gaf.gz) | 15 GB | Ground truth (experimental + IEA) |
+| `uniprot_sprot.fasta.gz` | [UniProt](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz) | 93 MB | Leave-N-out reference DB |
+| KEGG ec-pathway link | [KEGG REST](https://rest.kegg.jp/link/pathway/ec) | 1 MB | Built into `kegg_pathways.tsv` via `build_kegg_pathway_tsv.py` |
+| gapseq (conda) | `conda install -c bioconda gapseq` | 2 GB | Metabolic model + gap detection |
 
 ### ConsistencyPrior requires taxonomy lineage
 
