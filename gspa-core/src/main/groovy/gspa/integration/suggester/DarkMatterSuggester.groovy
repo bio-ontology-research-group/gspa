@@ -120,11 +120,32 @@ class DarkMatterSuggester {
         Map<Integer, String> operonIds = new LinkedHashMap<>()
         state.operons.eachWithIndex { op, i -> operonIds[i] = "operon_${i}".toString() }
 
+        // Reverse index: GO term → set of pathway IDs whose required set contains it.
+        Map<String, Set<String>> goToPathways = new LinkedHashMap<>()
+        pathwayTerms.each { pwId, terms ->
+            terms.each { goId ->
+                goToPathways.computeIfAbsent(goId, { new LinkedHashSet<String>() }) << pwId
+            }
+        }
+
         int emitted = 0
         for (MetabolicGap gap : state.metabolicGaps) {
             if (!gap.goTerm) continue                       // no target function → nothing to assign
-            Set<String> pfTerms = pathwayTerms[gap.pathwayId]
-            if (pfTerms == null || pfTerms.isEmpty()) continue
+
+            // Find pathways whose required-term set contains the gap's target GO.
+            // The gap's own pathwayId is MetaCyc (from gapseq), but the pathway DB
+            // may use KEGG IDs. Bridge via the GO term itself.
+            Set<String> candidatePathways = goToPathways[gap.goTerm]
+            if (candidatePathways == null || candidatePathways.isEmpty()) {
+                // Also try via the gap's pathwayId directly (works if DB and gap use same namespace).
+                Set<String> direct = pathwayTerms[gap.pathwayId]
+                if (direct == null || direct.isEmpty()) continue
+                candidatePathways = [gap.pathwayId] as Set
+            }
+
+            // Use the union of all candidate pathways' required terms.
+            Set<String> pfTerms = new LinkedHashSet<>()
+            candidatePathways.each { pwId -> pfTerms.addAll(pathwayTerms[pwId] ?: []) }
 
             for (int i = 0; i < state.operons.size(); i++) {
                 List<String> operon = state.operons[i]
