@@ -182,10 +182,10 @@ class SatConsistencyChecker {
         } else {
             // Extract minimal unsatisfiable core
             try {
-                IVecInt unsatCore = solver.minimalExplanation()
+                int[] unsatCore = solver.minimalExplanation()
                 List<String> coreExplanation = []
-                for (int i = 0; i < unsatCore.size(); i++) {
-                    int var = Math.abs(unsatCore.get(i))
+                for (int idx = 0; idx < unsatCore.length; idx++) {
+                    int var = Math.abs(unsatCore[idx])
                     String taxon = varToTaxon[var]
                     if (taxon) {
                         coreExplanation << (clauseToSource[var] ?: "taxon constraint on ${taxon}")
