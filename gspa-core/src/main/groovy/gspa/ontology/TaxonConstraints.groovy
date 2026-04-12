@@ -44,6 +44,38 @@ class TaxonConstraints {
     }
 
     /**
+     * Load from the GO-computed taxon constraints OBO file
+     * (go-computed-taxon-constraints.obo).
+     *
+     * Format: blocks of [Term] with id: GO:NNNNNNN and
+     * relationship: RO:0002162 NCBITaxon:NNN  (only_in_taxon)
+     * property_value: RO:0002161 NCBITaxon:NNN (never_in_taxon)
+     */
+    void loadFromObo(File oboFile) {
+        log.info("Loading taxon constraints from OBO: ${oboFile}")
+        String currentId = null
+        oboFile.eachLine { line ->
+            line = line.trim()
+            if (line == '[Term]') {
+                currentId = null
+            } else if (line.startsWith('id: GO:')) {
+                currentId = line.substring(4).trim()
+            } else if (currentId != null && line.startsWith('relationship: RO:0002162 ')) {
+                // only_in_taxon (RO:0002162 = in_taxon used as only_in via relationship)
+                String taxon = line.substring('relationship: RO:0002162 '.length()).trim()
+                onlyInTaxon[currentId] << taxon
+            } else if (currentId != null && line.startsWith('property_value: RO:0002161 ')) {
+                // never_in_taxon
+                String taxon = line.substring('property_value: RO:0002161 '.length()).trim()
+                // OBO property_value may have a trailing xsd:string — strip it
+                if (taxon.contains(' ')) taxon = taxon.split('\\s+')[0]
+                neverInTaxon[currentId] << taxon
+            }
+        }
+        log.info("Loaded from OBO: ${onlyInTaxon.size()} only_in_taxon, ${neverInTaxon.size()} never_in_taxon constraints")
+    }
+
+    /**
      * Load taxon constraints from a TSV file.
      * Expected format: GO_term\trelation\tNCBITaxon_ID
      */

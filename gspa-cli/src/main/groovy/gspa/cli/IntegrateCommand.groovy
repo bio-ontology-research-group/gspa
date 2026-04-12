@@ -76,6 +76,10 @@ class IntegrateCommand implements Runnable {
             description = 'NCBI taxonomy hierarchy file (for ConsistencyPrior).')
     File taxonomyFile
 
+    @Option(names = ['--taxon-constraints'],
+            description = 'GO taxon constraints OBO file (go-computed-taxon-constraints.obo).')
+    File taxonConstraintsFile
+
     @Option(names = ['--operons'],
             description = 'Operon assignments TSV (one operon per line, tab-separated protein IDs).')
     File operonsFile
@@ -282,27 +286,29 @@ class IntegrateCommand implements Runnable {
             }
         }
 
-        // SAT consistency checker: auto-load taxon constraints from GO
-        // (never_in_taxon / only_in_taxon axioms) whenever the GO ontology
-        // is present, then optionally load the NCBI taxonomy hierarchy from
-        // a TSV for child-implies-parent propagation.
-        if (state.goOntology != null) {
-            try {
-                def taxonConstraints = new gspa.ontology.TaxonConstraints()
+        // SAT consistency checker: load taxon constraints from the dedicated
+        // OBO file (preferred, ~13k constraints) or fall back to extracting
+        // from the GO OWL (works with go-plus.owl but yields few constraints
+        // from plain go.owl because the SubClassOf encoding differs).
+        try {
+            def taxonConstraints = new gspa.ontology.TaxonConstraints()
+            if (taxonConstraintsFile != null && taxonConstraintsFile.exists()) {
+                taxonConstraints.loadFromObo(taxonConstraintsFile)
+            } else if (state.goOntology != null) {
                 taxonConstraints.loadFromGoOntology(state.goOntology)
+            }
+            if (taxonConstraints.constrainedTermCount() > 0) {
                 def checker = new gspa.ontology.SatConsistencyChecker(taxonConstraints)
                 if (taxonomyFile != null) {
                     checker.loadTaxonomyHierarchy(taxonomyFile)
-                    println "  SAT checker: taxon constraints from GO + hierarchy from ${taxonomyFile}"
-                } else {
-                    println "  SAT checker: taxon constraints from GO (no taxonomy hierarchy)"
                 }
                 state.satConsistencyChecker = checker
-            } catch (Exception e) {
-                System.err.println "  [warn] Failed to wire SAT consistency checker: ${e.message}"
+                println "  SAT checker: ${taxonConstraints.onlyInTaxon.size()} only_in + ${taxonConstraints.neverInTaxon.size()} never_in constraints"
+            } else {
+                println "  SAT checker: 0 taxon constraints loaded (ConsistencyPrior will no-op)"
             }
-        } else if (taxonomyFile != null) {
-            System.err.println "  [warn] taxonomy file provided but GO ontology missing; SAT checker disabled"
+        } catch (Exception e) {
+            System.err.println "  [warn] Failed to wire SAT consistency checker: ${e.message}"
         }
 
         // Operons TSV: one line per operon, tab-separated protein IDs.

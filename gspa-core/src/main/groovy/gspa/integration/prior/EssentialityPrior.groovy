@@ -53,28 +53,37 @@ class EssentialityPrior implements Prior {
         uncoveredCount = 0
 
         if (state.essentialFunctions == null) return
-        if (state.goReasoner == null) {
-            log.debug('EssentialityPrior disabled: no GoReasoner in state')
-            return
-        }
 
-        // Currently covered: propagated up through the GO hierarchy.
-        Set<String> annotatedPropagated = state.currentlyAnnotatedGoTermsPropagated()
+        // Currently covered: use propagated set if reasoner available,
+        // otherwise fall back to the raw annotated set (coarser but
+        // still functional — only misses indirect coverage).
+        Set<String> annotated = state.goReasoner != null
+            ? state.currentlyAnnotatedGoTermsPropagated()
+            : state.currentlyAnnotatedGoTerms()
         Set<String> essentials = state.essentialFunctions.getGoTerms()
         Set<String> uncovered = new LinkedHashSet<>()
         for (String e : essentials) {
-            if (!annotatedPropagated.contains(e)) uncovered << e
+            if (!annotated.contains(e)) uncovered << e
         }
         uncoveredCount = uncovered.size()
 
+        // Boostable = uncovered essentials + their GO descendants.
+        // If ELK reasoner is available, expand via getSubClasses;
+        // otherwise boost exact matches only (still useful — the 32
+        // essential GO terms are broad enough to catch many claims).
         Set<String> descendants = new LinkedHashSet<>()
         for (String u : uncovered) {
             descendants << u
-            try {
-                descendants.addAll(state.goReasoner.getSubClasses(u, false))
-            } catch (Exception ex) {
-                log.warn("EssentialityPrior: getSubClasses failed for ${u}: ${ex.message}")
+            if (state.goReasoner != null) {
+                try {
+                    descendants.addAll(state.goReasoner.getSubClasses(u, false))
+                } catch (Exception ex) {
+                    log.warn("EssentialityPrior: getSubClasses failed for ${u}: ${ex.message}")
+                }
             }
+        }
+        if (state.goReasoner == null && !uncovered.isEmpty()) {
+            log.info("EssentialityPrior: no GoReasoner, boosting ${uncovered.size()} exact essential terms (no descendant expansion)")
         }
         boostableDescendants = descendants
         log.debug("EssentialityPrior: ${uncovered.size()} uncovered essentials, ${descendants.size()} boostable descendants")

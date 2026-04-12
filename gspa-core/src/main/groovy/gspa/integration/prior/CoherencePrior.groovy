@@ -55,12 +55,12 @@ class CoherencePrior implements Prior {
         processMissingTerms = new LinkedHashMap<>()
         pathwayMissingTerms = new LinkedHashMap<>()
 
-        if (state.goReasoner == null) return
+        Set<String> annotated = state.goReasoner != null
+            ? state.currentlyAnnotatedGoTermsPropagated()
+            : state.currentlyAnnotatedGoTerms()
 
-        Set<String> annotated = state.currentlyAnnotatedGoTermsPropagated()
-
-        // --- Process coherence: ask the Coherence metric for unsatisfied pairs ---
-        try {
+        // --- Process coherence: needs GoReasoner for has_part pairs ---
+        if (state.goReasoner != null) try {
             def coherence = new Coherence(state.goOntology, state.goReasoner)
             ProcessCoherenceResult result = coherence.evaluateProcessCoherence(annotated)
             int triggered = result.triggered
