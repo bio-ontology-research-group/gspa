@@ -286,29 +286,30 @@ class IntegrateCommand implements Runnable {
             }
         }
 
-        // SAT consistency checker: load taxon constraints from the dedicated
-        // OBO file (preferred, ~13k constraints) or fall back to extracting
-        // from the GO OWL (works with go-plus.owl but yields few constraints
-        // from plain go.owl because the SubClassOf encoding differs).
-        try {
-            def taxonConstraints = new gspa.ontology.TaxonConstraints()
-            if (taxonConstraintsFile != null && taxonConstraintsFile.exists()) {
-                taxonConstraints.loadFromObo(taxonConstraintsFile)
-            } else if (state.goOntology != null) {
-                taxonConstraints.loadFromGoOntology(state.goOntology)
-            }
-            if (taxonConstraints.constrainedTermCount() > 0) {
-                def checker = new gspa.ontology.SatConsistencyChecker(taxonConstraints)
-                if (taxonomyFile != null) {
-                    checker.loadTaxonomyHierarchy(taxonomyFile)
+        // SAT consistency checker: only wire when a taxonomy hierarchy is
+        // provided (--taxonomy), so the SAT solver knows which taxon the
+        // genome belongs to. Without the hierarchy, the checker can't
+        // distinguish "this is E. coli" from "this could be any organism",
+        // which causes massive false-positive violations.
+        if (taxonomyFile != null) {
+            try {
+                def taxonConstraints = new gspa.ontology.TaxonConstraints()
+                if (taxonConstraintsFile != null && taxonConstraintsFile.exists()) {
+                    taxonConstraints.loadFromObo(taxonConstraintsFile)
+                } else if (state.goOntology != null) {
+                    taxonConstraints.loadFromGoOntology(state.goOntology)
                 }
-                state.satConsistencyChecker = checker
-                println "  SAT checker: ${taxonConstraints.onlyInTaxon.size()} only_in + ${taxonConstraints.neverInTaxon.size()} never_in constraints"
-            } else {
-                println "  SAT checker: 0 taxon constraints loaded (ConsistencyPrior will no-op)"
+                if (taxonConstraints.constrainedTermCount() > 0) {
+                    def checker = new gspa.ontology.SatConsistencyChecker(taxonConstraints)
+                    checker.loadTaxonomyHierarchy(taxonomyFile)
+                    state.satConsistencyChecker = checker
+                    println "  SAT checker: ${taxonConstraints.onlyInTaxon.size()} only_in + ${taxonConstraints.neverInTaxon.size()} never_in (taxonomy from ${taxonomyFile})"
+                }
+            } catch (Exception e) {
+                System.err.println "  [warn] Failed to wire SAT consistency checker: ${e.message}"
             }
-        } catch (Exception e) {
-            System.err.println "  [warn] Failed to wire SAT consistency checker: ${e.message}"
+        } else {
+            println "  SAT checker: disabled (no --taxonomy provided; ConsistencyPrior requires genome taxon context)"
         }
 
         // Operons TSV: one line per operon, tab-separated protein IDs.
