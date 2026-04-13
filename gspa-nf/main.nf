@@ -24,7 +24,7 @@ nextflow.enable.dsl = 2
 
 include { PYRODIGAL }                                    from './modules/gene_calling'
 include { DIAMOND_BLASTP; MMSEQS2_SEARCH; FOLDSEEK }     from './modules/similarity'
-include { HMMSEARCH; EGGNOG_MAPPER; DBCAN }              from './modules/domains'
+include { HMMSEARCH; INTERPROSCAN; EGGNOG_MAPPER; DBCAN } from './modules/domains'
 include { BARRNAP; MINCED; AMRFINDER; ANTISMASH;
           SIGNALP; CHECKM2; GTDBTK }                    from './modules/specialized'
 include { MERGE_ANNOTATIONS }                            from './modules/quality'
@@ -85,6 +85,11 @@ workflow {
                   file("${params.pfam_db}.h3m"), file("${params.pfam_db}.h3p"))
         ch_pfam = HMMSEARCH.out.results
     }
+    ch_interproscan = Channel.empty()
+    if (params.run_interproscan && params.interproscan_dir) {
+        INTERPROSCAN(PYRODIGAL.out.proteins, file(params.interproscan_dir))
+        ch_interproscan = INTERPROSCAN.out.results
+    }
     if (params.run_eggnog && params.eggnog_db) {
         EGGNOG_MAPPER(PYRODIGAL.out.proteins, file(params.eggnog_db))
     }
@@ -139,10 +144,15 @@ workflow {
         ch_crispr :
         PYRODIGAL.out.genome.map { id, f -> tuple(id, empty_file("empty_crispr_${id}.gff")) }
 
+    ch_interproscan_or_empty = params.run_interproscan && params.interproscan_dir ?
+        ch_interproscan :
+        PYRODIGAL.out.proteins.map { id, f -> tuple(id, empty_file("empty_interproscan_${id}.tsv")) }
+
     ch_merge = PYRODIGAL.out.gff
         .join(PYRODIGAL.out.proteins)
         .join(ch_diamond_or_empty)
         .join(ch_pfam_or_empty)
+        .join(ch_interproscan_or_empty)
         .join(ch_rrna_or_empty)
         .join(ch_crispr_or_empty)
 

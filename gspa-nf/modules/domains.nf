@@ -50,6 +50,29 @@ process EGGNOG_MAPPER {
     """
 }
 
+process INTERPROSCAN {
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/interproscan", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(proteins)
+    path interproscan_dir
+
+    output:
+    tuple val(sample_id), path("${sample_id}_interproscan.tsv"), emit: results
+
+    script:
+    """
+    ${interproscan_dir}/interproscan.sh \\
+        -i ${proteins} \\
+        -o ${sample_id}_interproscan.tsv \\
+        -f TSV \\
+        --goterms \\
+        --cpu ${task.cpus} \\
+        -dp
+    """
+}
+
 process DBCAN {
     tag "$sample_id"
     publishDir "${params.outdir}/${sample_id}/dbcan", mode: 'copy'
