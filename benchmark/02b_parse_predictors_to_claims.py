@@ -204,6 +204,64 @@ def parse_eggnog(results_file, out_fh):
     return n
 
 
+def parse_interproscan(results_file, out_fh):
+    """Parse InterProScan TSV output into claims.
+
+    InterProScan TSV columns (0-indexed):
+      0: protein_id, 3: analysis, 8: e-value, 13: GO annotations
+    GO terms are pipe-separated: "GO:0003677(InterPro)|GO:0006260(InterPro)"
+    """
+    if not results_file or not os.path.exists(results_file):
+        return 0
+    seen = set()
+    n = 0
+    with open(results_file) as f:
+        for line in f:
+            fields = line.rstrip('\n').split('\t')
+            if len(fields) < 14:
+                continue
+            protein_id = fields[0]
+            analysis = fields[3]
+            evalue_str = fields[8]
+            go_field = fields[13] if len(fields) > 13 else ''
+            if not go_field or go_field == '-':
+                continue
+            # E-value to score: sigmoid calibration
+            try:
+                ev = float(evalue_str)
+            except (ValueError, TypeError):
+                ev = None
+            if ev is None:
+                score = 0.7
+            elif ev <= 0:
+                score = 0.95
+            else:
+                neg_log = -math.log10(max(ev, 1e-300))
+                score = 0.95 / (1.0 + math.exp(-0.1 * (neg_log - 10.0)))
+                score = max(0.1, min(0.95, score))
+            for go_entry in go_field.split('|'):
+                go_entry = go_entry.strip()
+                if not go_entry.startswith('GO:'):
+                    continue
+                go_id = go_entry.split('(')[0]
+                key = (protein_id, go_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                claim = {
+                    'protein_id': protein_id,
+                    'function_type': 'GO',
+                    'function_id': go_id,
+                    'go_aspect': '',
+                    'source': 'interproscan',
+                    'raw_score': round(score, 4),
+                    'metadata': {'analysis': analysis, 'evalue': evalue_str},
+                }
+                out_fh.write(json.dumps(claim) + '\n')
+                n += 1
+    return n
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--results-dir', required=True,
@@ -212,6 +270,8 @@ def main():
                    help='Swiss-Prot/GOA annotation file (gzipped ok)')
     p.add_argument('--pfam2go', default=None,
                    help='Pfam → GO mapping (external2go format)')
+    p.add_argument('--interproscan', default=None,
+                   help='InterProScan TSV output file (optional)')
     p.add_argument('--output', required=True,
                    help='Output claims.jsonl path')
     p.add_argument('--test-accs', default=None,
@@ -258,6 +318,11 @@ def main():
             print('Parsing eggNOG-mapper…', flush=True)
             n = parse_eggnog(eggnog_file, out_fh)
             print(f'  {n:,} eggNOG claims', flush=True)
+            n_total += n
+        if args.interproscan:
+            print('Parsing InterProScan…', flush=True)
+            n = parse_interproscan(args.interproscan, out_fh)
+            print(f'  {n:,} InterProScan claims', flush=True)
             n_total += n
 
     print(f'Wrote {n_total:,} claims to {args.output}', flush=True)

@@ -73,17 +73,22 @@ python3 benchmark/filter_fasta_by_exclude.py \
 diamond makedb --in reference.fasta --db reference --threads 16
 ```
 
-### Step 3 — Run predictors (~15 min)
+### Step 3 — Run predictors (~40 min)
 
 ```bash
-# DIAMOND blastp
+# DIAMOND blastp — sequence similarity (SEQUENCE_SIMILARITY evidence type)
 diamond blastp --db reference --query bsubtilis.faa \
   --out diamond.tsv --outfmt 6 qseqid sseqid pident length qlen slen evalue bitscore stitle \
   --evalue 1e-5 --max-target-seqs 50 --query-cover 50 --subject-cover 50 --id 30 \
   --threads 16                                                                     # ~10 s
 
-# HMMER/Pfam
+# HMMER/Pfam — protein domain families (SEQUENCE_DOMAIN evidence type)
 hmmsearch --domtblout pfam.domtbl --noali -E 1e-5 --cpu 16 Pfam-A.hmm bsubtilis.faa  # ~15 min
+
+# InterProScan — multi-database domain/family/motif scan with InterPro2GO
+#   (SEQUENCE_DOMAIN evidence type; runs Pfam, TIGRFAM, CDD, SUPERFAMILY,
+#    Panther, ProSite, HAMAP, FunFam, etc. and maps hits to GO via InterPro)
+interproscan.sh -i bsubtilis.faa -o interproscan.tsv -f TSV --goterms --cpu 8 -dp  # ~25 min
 ```
 
 ### Step 4 — Parse predictor outputs → claims.jsonl (~3 min)
@@ -93,6 +98,7 @@ python3 benchmark/02b_parse_predictors_to_claims.py \
   --results-dir ./preds \
   --goa goa_uniprot_all.gaf.gz \
   --pfam2go pfam2go.txt \
+  --interproscan interproscan.tsv \
   --test-accs exclude.txt \
   --output claims.jsonl
 ```
@@ -166,6 +172,7 @@ java -jar gspa.jar evaluate \
 | Build DIAMOND DB | 2 min | One-time per reference set |
 | DIAMOND blastp | 10 s | 16 threads |
 | HMMER/Pfam | 15 min | 16 threads, ~4k proteins |
+| InterProScan | 25 min | 8 threads, ~4k proteins; runs Pfam + TIGRFAM + CDD + SUPERFAMILY + Panther + ... |
 | Parse claims | 3 min | GOA scan dominates; ~10s with pre-built subset |
 | Extract operons | 1 s | Intergenic distance from GFF |
 | gapseq find | **8-10 h** | MetaCyc pathway detection via tblastn |
@@ -174,7 +181,9 @@ java -jar gspa.jar evaluate \
 | **Total** | **~9-11 h** | **Dominated by gapseq** |
 
 Without gapseq (skip step 6, lose GapFillingPrior and dark-matter
-suggestions): **~20 min total**.
+suggestions): **~45 min total**.
+Without InterProScan (lose TIGRFAM/CDD/SUPERFAMILY/Panther GO hits):
+**~20 min total**.
 
 ## Project layout
 
