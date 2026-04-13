@@ -154,6 +154,75 @@ InterProScan since Pfam is one of InterProScan's member databases).
 | KEGG ec-pathway link | [KEGG REST](https://rest.kegg.jp/link/pathway/ec) | 1 MB | Built via `build_kegg_pathway_tsv.py` |
 | gapseq | `conda install -c bioconda gapseq` | 2 GB | Metabolic gap detection |
 
+## 10-Genome PGAP Comparison (extended benchmark)
+
+### Genomes
+
+| Tag | Organism | Assembly | Phylum | Proteins | PGAP GO lines |
+|---|---|---|---|---|---|
+| vcholerae | V. cholerae O1 N16961 | GCF_000006745.1 | Proteobacteria (γ) | 3,447 | 1,991 |
+| saureus | S. aureus N315 | GCF_000009645.1 | Firmicutes | 2,621 | 1,459 |
+| spneumoniae | S. pneumoniae TIGR4 | GCF_000006885.1 | Firmicutes | 1,951 | 1,262 |
+| ccrescentus | C. crescentus CB15 | GCF_000006905.1 | Proteobacteria (α) | 3,808 | 2,289 |
+| rprowazekii | R. prowazekii Madrid E | GCF_000195735.1 | Proteobacteria (α) | 823 | 601 |
+| tpallidum | T. pallidum Nichols | GCF_000008605.1 | Spirochaetes | 985 | 574 |
+| tthermophilus | T. thermophilus HB8 | GCF_000091545.1 | Deinococcus-Thermus | 2,150 | 1,452 |
+| dradiodurans | D. radiodurans R1 | GCF_000008565.1 | Deinococcus-Thermus | 3,134 | 1,805 |
+| scoelicolor | S. coelicolor A3(2) | GCF_000203835.1 | Actinobacteria | 7,872 | 4,856 |
+| pfuriosus | P. furiosus DSM 3638 | GCF_000007305.1 | Euryarchaeota | 2,008 | 856 |
+
+### Method
+
+- **Leave-19-out** Swiss-Prot reference (554,803 proteins; excludes
+  all 9 original + 10 new benchmark genomes).
+- **Three predictors**: DIAMOND blastp, HMMER/Pfam, InterProScan.
+- **Noisy-OR integration** with EssentialityPrior and CoherencePrior.
+- **Bootstrap F-max** (200 resamples, 95% CI) against full-GOA truth.
+- PGAP GO annotations extracted from RefSeq GFF go_function/go_process/
+  go_component fields, mapped to UniProt via NCBI collab file.
+
+### F-max — Full-GOA truth (GSPA D+P+priors vs PGAP)
+
+| Genome | GSPA (D+P) | PGAP | GSPA/PGAP |
+|---|---|---|---|
+| rprowazekii | **0.883** [0.868, 0.900] | 0.503 | **1.76×** |
+| tpallidum | **0.831** [0.810, 0.849] | 0.491 | **1.69×** |
+| vcholerae | **0.811** [0.803, 0.820] | 0.443 | **1.83×** |
+| saureus | **0.809** [0.796, 0.824] | 0.449 | **1.80×** |
+| pfuriosus | **0.805** [0.791, 0.819] | 0.350 | **2.30×** |
+| spneumoniae | **0.786** [0.772, 0.801] | 0.447 | **1.76×** |
+| tthermophilus | **0.752** [0.735, 0.768] | 0.492 | **1.53×** |
+| ccrescentus | **0.722** [0.708, 0.733] | 0.480 | **1.50×** |
+| dradiodurans | **0.704** [0.691, 0.717] | 0.463 | **1.52×** |
+| scoelicolor | **0.698** [0.688, 0.707] | 0.490 | **1.42×** |
+
+**Mean GSPA/PGAP = 1.71×** across 10 genomes. GSPA outperforms PGAP on
+every genome tested. The advantage is largest for archaea (P. furiosus
+2.30×) and small obligate intracellular pathogens (R. prowazekii 1.76×),
+consistent with the original 9-genome benchmark.
+
+### Combined: all 13 genomes with PGAP GO annotations
+
+| Genome | GSPA | PGAP | GSPA/PGAP |
+|---|---|---|---|
+| rprowazekii | **0.883** | 0.503 | **1.76×** |
+| tpallidum | **0.831** | 0.491 | **1.69×** |
+| hpylori | **0.819** | 0.316 | **2.59×** |
+| vcholerae | **0.811** | 0.443 | **1.83×** |
+| saureus | **0.809** | 0.449 | **1.80×** |
+| mgenitalium | **0.908** | 0.469 | **1.94×** |
+| pfuriosus | **0.805** | 0.350 | **2.30×** |
+| spneumoniae | **0.786** | 0.447 | **1.76×** |
+| tthermophilus | **0.752** | 0.492 | **1.53×** |
+| mjannaschii | **0.732** | 0.285 | **2.57×** |
+| ccrescentus | **0.722** | 0.480 | **1.50×** |
+| dradiodurans | **0.704** | 0.463 | **1.52×** |
+| scoelicolor | **0.698** | 0.490 | **1.42×** |
+
+**Mean GSPA/PGAP = 1.86× across all 13 genomes.** GSPA is consistently
+1.4–2.6× better than PGAP across 7 phyla, both domains of life
+(Bacteria + Archaea), and genome sizes from 483 to 7,872 proteins.
+
 ## Known issues
 
 ### ConsistencyPrior requires taxonomy lineage
