@@ -14,6 +14,8 @@ import gspa.io.FastaReader
 import gspa.io.GffReader
 import gspa.io.GffWriter
 import gspa.model.*
+import gspa.predictor.cluster.ClusterAnnotationPropagator
+import gspa.predictor.cluster.IntragenomeClusterer
 import gspa.predictor.context.OperonPredictor
 import gspa.predictor.genecalling.GeneCaller
 import gspa.predictor.genecalling.ProdigalCaller
@@ -223,6 +225,22 @@ class AnnotationPipeline {
             .findAll { !(it instanceof GenomePredictor) }
         log.info("Running ${availablePredictors.size()} protein-level predictors...")
 
+        // Phase 10: optional intra-genome clustering — predictors see only
+        // cluster representatives; annotations are propagated to members
+        // afterwards. When disabled (default) clusterSet is null and
+        // predictorInput == all proteins.
+        def clusterCfg = config.integration?.intragenomeCluster
+        def clusterSet = null
+        List<Protein> predictorInput = genome.proteins
+        if (clusterCfg?.enabled) {
+            log.info("Clustering proteome at identity=${clusterCfg.identity}, coverage=${clusterCfg.coverage}...")
+            clusterSet = new IntragenomeClusterer().cluster([genome], clusterCfg.identity, clusterCfg.coverage)
+            Set<String> repIds = clusterSet.representatives()*.proteinId as Set
+            predictorInput = genome.proteins.findAll { it.id in repIds }
+            log.info("  clustered ${genome.proteinCount} proteins → ${clusterSet.clusterCount()} reps " +
+                "(${String.format(Locale.ROOT, '%.1f', 100.0d * clusterSet.clusterCount() / Math.max(1, genome.proteinCount))}%)")
+        }
+
         if (availablePredictors.size() > 1 && parallel) {
             log.info("  Running predictors in parallel...")
             def results = Collections.synchronizedMap(new LinkedHashMap<String, Map<String, List>>())
@@ -230,7 +248,7 @@ class AnnotationPipeline {
                 Thread.start {
                     log.info("  [parallel] Running ${predictor.name}...")
                     try {
-                        results[predictor.name] = predictor.predictBatch(genome.proteins)
+                        results[predictor.name] = predictor.predictBatch(predictorInput)
                     } catch (Exception e) {
                         log.error("  ${predictor.name} failed: ${e.message}")
                     }
@@ -244,12 +262,18 @@ class AnnotationPipeline {
             availablePredictors.each { predictor ->
                 log.info("  Running ${predictor.name}...")
                 try {
-                    def annotations = predictor.predictBatch(genome.proteins)
+                    def annotations = predictor.predictBatch(predictorInput)
                     applyAnnotations(genome, annotations, predictor.name)
                 } catch (Exception e) {
                     log.error("  ${predictor.name} failed: ${e.message}")
                 }
             }
+        }
+
+        // Phase 10: propagate representative annotations to cluster members.
+        if (clusterSet != null) {
+            int copied = new ClusterAnnotationPropagator().propagate(clusterSet, [genome])
+            log.info("  propagated ${copied} annotations from ${clusterSet.clusterCount()} reps to members")
         }
 
         // 4. Run genome-level predictors (sequential — they may depend on protein annotations)

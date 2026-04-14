@@ -106,6 +106,34 @@ class IterativeRefinerSpec extends Specification {
         state.get('nonexistent') == 0.0
     }
 
+    def "pinned floor protects a DM-promoted claim from downward clipping"() {
+        given:
+        def reliability = new EnumMap<EvidenceType, Double>(EvidenceType)
+        EvidenceType.values().each { reliability[it] = 1.0 }
+        def refiner = new IterativeRefiner(new EvidenceCombiner(reliability))
+        def state = new IntegrationState(new Genome(id: 'test'))
+        // Pin p1|GO|GO:0009999 at log-odds 3.0 (~prob 0.953)
+        def pinned = new ClaimKey(proteinId: 'p1', functionType: AnnotationType.GO, functionId: 'GO:0009999')
+        state.setPinnedFloor(pinned, 3.0d)
+        // Only weak evidence for the pinned claim (calibratedProb 0.1 → log-odds ~ -2.2);
+        // without the floor the final posterior probability would be ~0.1.
+        def claims = [
+            claim('p1', 'GO:0009999', 'dark_matter', EvidenceType.DARK_MATTER, 0.1),
+            claim('p1', 'GO:0001', 'diamond', EvidenceType.SEQUENCE_SIMILARITY, 0.8),
+        ]
+
+        when:
+        def result = refiner.refine(claims, state)
+
+        then:
+        def prov = result.provenance['p1|GO|GO:0009999']
+        prov.finalLogOdds >= 3.0d - 1e-9
+        prov.finalProbability > 0.95d
+        // Unpinned claim clips normally.
+        def other = result.provenance['p1|GO|GO:0001']
+        other.finalProbability < 0.9d
+    }
+
     def "refined annotations carry the integrated source tag"() {
         given:
         def refiner = new IterativeRefiner(new EvidenceCombiner())

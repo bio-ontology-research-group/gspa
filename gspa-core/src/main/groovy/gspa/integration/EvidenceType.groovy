@@ -26,7 +26,8 @@ enum EvidenceType {
     DOMAIN_SPECIFIC_AMR,        // AMRFinder
     DOMAIN_SPECIFIC_CAZY,       // dbCAN
     DOMAIN_SPECIFIC_BGC,        // antiSMASH
-    DOMAIN_SPECIFIC_VF          // VFDB
+    DOMAIN_SPECIFIC_VF,         // VFDB
+    DARK_MATTER                 // claims promoted by DarkMatterSuggester (Phase 10)
 
     /**
      * Correlation group. Claims in the same group are collapsed to the single
@@ -50,6 +51,13 @@ enum EvidenceType {
                 return 'context'
             case GENOMIC_LANGUAGE_MODEL:
                 return 'ml_genomic'
+            case DARK_MATTER:
+                // Isolated: DM promotions are context-inferred, not drawn
+                // from any predictor's homology / ML / structure database.
+                // Keeping this separate from ml_sequence prevents Noisy-OR
+                // collapse against unrelated ML claims and leaves the door
+                // open for Phase 11 cross-genome transfer of DM promotions.
+                return 'inferred_context'
             case SEQUENCE_MOTIF:
                 return 'motif'
             case LOCALIZATION:

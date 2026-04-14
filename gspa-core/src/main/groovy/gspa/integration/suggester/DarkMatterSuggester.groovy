@@ -1,5 +1,6 @@
 package gspa.integration.suggester
 
+import gspa.integration.GapKey
 import gspa.integration.IntegratedAnnotationSet
 import gspa.integration.IntegrationState
 import gspa.integration.MetabolicGap
@@ -129,8 +130,17 @@ class DarkMatterSuggester {
         }
 
         int emitted = 0
+        int skippedClosed = 0
         for (MetabolicGap gap : state.metabolicGaps) {
             if (!gap.goTerm) continue                       // no target function → nothing to assign
+
+            // Skip gaps already closed by a prior outer-loop iteration's
+            // DarkMatter promotion. Preserves the "closed stays closed"
+            // invariant that makes the Phase 10 outer loop terminate
+            // (plan §1). GapKey identity is (pathwayId, reactionId) only,
+            // goTerm is informational and not compared.
+            GapKey gk = new GapKey(pathwayId: gap.pathwayId, reactionId: gap.reactionId, goTerm: gap.goTerm)
+            if (state.isGapClosed(gk)) { skippedClosed++; continue }
 
             // Find pathways whose required-term set contains the gap's target GO.
             // The gap's own pathwayId is MetaCyc (from gapseq), but the pathway DB
@@ -181,7 +191,7 @@ class DarkMatterSuggester {
             }
         }
 
-        log.info("DarkMatterSuggester: emitted ${emitted} suggestions over ${state.metabolicGaps.size()} gaps, ${state.operons.size()} operons")
+        log.info("DarkMatterSuggester: emitted ${emitted} suggestions over ${state.metabolicGaps.size()} gaps (${skippedClosed} skipped as already-closed), ${state.operons.size()} operons")
         integrated
     }
 

@@ -56,8 +56,49 @@ class IntegrationState {
     /** NCBI taxonomy lineage of the genome, parent → child. Optional. */
     Map<String, String> taxonomyParentMap
 
+    // --- Phase 10 outer-loop state ---
+
+    /**
+     * Posterior log-odds floors for pinned DarkMatter promotions, keyed by
+     * the same 3-part function key used in {@link #posteriorLogOdds}.
+     * {@link IterativeRefiner#clip} consults this map: if a floor exists
+     * for a key, the clipped log-odds cannot drop below it. This preserves
+     * the "closed stays closed" invariant across outer-loop iterations
+     * (plan §1).
+     *
+     * Typed read/write via {@link #setPinnedFloor} / {@link #getPinnedFloor}.
+     */
+    Map<String, Double> pinnedFloors = new LinkedHashMap<>()
+
+    /**
+     * Metabolic gaps already closed by DarkMatter singleton promotions.
+     * {@code DarkMatterSuggester} skips any gap whose (pathwayId,
+     * reactionId) is in this set — guarantees monotone outer-loop progress.
+     */
+    Set<GapKey> closedGaps = new LinkedHashSet<>()
+
     IntegrationState(Genome genome) {
         this.genome = genome
+    }
+
+    /** Pin the posterior log-odds floor for a claim (typed accessor). */
+    void setPinnedFloor(ClaimKey key, double logOdds) {
+        pinnedFloors[key.toFunctionKey()] = logOdds
+    }
+
+    /** Current pinned floor for a claim, or null if not pinned. */
+    Double getPinnedFloor(ClaimKey key) {
+        pinnedFloors[key.toFunctionKey()]
+    }
+
+    /** Mark a gap (pathway, reaction) as closed by a promotion. */
+    void markGapClosed(GapKey key) {
+        closedGaps << key
+    }
+
+    /** True if this gap has already been closed by a prior outer-loop iteration. */
+    boolean isGapClosed(GapKey key) {
+        closedGaps.contains(key)
     }
 
     /** Get current posterior log-odds for a function key; 0 if absent. */

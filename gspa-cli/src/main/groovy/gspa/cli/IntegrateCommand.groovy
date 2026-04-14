@@ -9,6 +9,7 @@ import gspa.integration.EvidenceType
 import gspa.integration.IntegratedAnnotationSet
 import gspa.integration.IntegrationState
 import gspa.integration.IterativeRefiner
+import gspa.integration.OuterIterativeRefiner
 import gspa.integration.PriorEngine
 import gspa.integration.prior.ConsistencyPrior
 import gspa.integration.prior.CoherencePrior
@@ -107,12 +108,49 @@ class IntegrateCommand implements Runnable {
             description = 'Suggestions TSV output path (only with --dark-matter).')
     File suggestionsOut
 
+    // --- Phase 10 outer-loop flags ---
+
+    @Option(names = ['--iterate-gapseq'],
+            description = 'Enable the Phase 10 outer fixed-point loop (requires --dark-matter).')
+    boolean iterateGapseq = false
+
+    @Option(names = ['--max-gapseq-iter'],
+            description = 'Max outer-loop iterations (default 5).')
+    int maxGapseqIter = 5
+
+    @Option(names = ['--gapseq-tau-cover'],
+            description = 'Posterior-probability threshold for coverage-based gap recomputation (default 0.5).')
+    double gapseqTauCover = 0.5d
+
+    @Option(names = ['--gapseq-q-base'],
+            description = 'Base q threshold for DarkMatter promotion (default 0.5).')
+    double gapseqQBase = 0.5d
+
+    @Option(names = ['--gapseq-q-step'],
+            description = 'Per-iteration q-threshold increment (default 0.05).')
+    double gapseqQStep = 0.05d
+
+    @Option(names = ['--gapseq-pin-promotions'], arity = '1',
+            description = 'Pin promoted singletons as posterior floors (default true).')
+    boolean gapseqPinPromotions = true
+
+    @Option(names = ['--gapseq-target'],
+            description = 'Gapseq search target: genome (default) | proteome | reps (requires clustering).')
+    String gapseqTarget = 'genome'
+
+    @Option(names = ['--intragenome-cluster'],
+            description = 'Intragenome protein clustering: off (default), 0.9, 0.95, or 1.0.')
+    String intragenomeCluster = 'off'
+
     @Override
     void run() {
         println "GSPA integrate"
         println "  Claims: ${claimsFile}"
         println "  Theta:  ${thetaFile ?: '(defaults)'}"
         println "  Out:    ${outFile}"
+
+        // Phase 10 flag validation.
+        validatePhase10Flags()
 
         // --- Load claims ---
         def calibration = new CalibrationTable()
@@ -158,18 +196,26 @@ class IntegrateCommand implements Runnable {
 
         // --- Phase 8: optional dark-matter suggester ---
         if (darkMatter) {
-            def suggester = new DarkMatterSuggester()
-            if (theta.dark_matter instanceof Map) {
-                def dm = theta.dark_matter as Map
-                if (dm.bf_min != null)
-                    suggester.bfMin = (dm.bf_min as Number).doubleValue()
-                if (dm.gamma_in_p != null)
-                    suggester.gammaInP = (dm.gamma_in_p as Number).doubleValue()
-                if (dm.coverage_threshold != null)
-                    suggester.coverageThreshold = (dm.coverage_threshold as Number).doubleValue()
+            def suggester = buildSuggester(theta)
+
+            if (iterateGapseq) {
+                // Phase 10 outer fixed-point loop over (refine → suggest → promote → pin).
+                println "  Running Phase 10 outer loop (maxIter=${maxGapseqIter}, qBase=${gapseqQBase}, qStep=${gapseqQStep}, pin=${gapseqPinPromotions})"
+                def outer = new OuterIterativeRefiner(refiner)
+                outer.suggester = suggester
+                outer.maxIter = maxGapseqIter
+                outer.qBase = gapseqQBase
+                outer.qStep = gapseqQStep
+                outer.pinPromotions = gapseqPinPromotions
+                def gs = new OuterIterativeRefiner.CoverageGapSource(tauCover: gapseqTauCover, pathwayDb: state.pathwayDatabase)
+                outer.gapSource = gs
+                def outerResult = outer.refine(claims, state)
+                integrated = outerResult.integrated
+                println "  Outer loop: iter=${outerResult.outerIterationsRun}, fixedPoint=${outerResult.fixedPointReached}, cascade=${outerResult.cascadeRolledBack}, promoted_per_iter=${outerResult.promotedPerIter}, gaps_per_iter=${outerResult.gapsPerIter}"
+            } else {
+                suggester.suggest(state, integrated)
+                println "  Dark-matter suggester emitted ${integrated.suggestions.size()} suggestions"
             }
-            suggester.suggest(state, integrated)
-            println "  Dark-matter suggester emitted ${integrated.suggestions.size()} suggestions"
 
             if (suggestionsOut != null) {
                 suggestionsOut.parentFile?.mkdirs()
@@ -387,6 +433,41 @@ class IntegrateCommand implements Runnable {
                 ].join('\t'))
             }
         }
+    }
+
+    /** Validate cross-flag constraints for Phase 10 options. */
+    private void validatePhase10Flags() {
+        if (gapseqTarget != 'genome' && gapseqTarget != 'proteome' && gapseqTarget != 'reps') {
+            throw new IllegalArgumentException(
+                "--gapseq-target must be one of: genome, proteome, reps (got '${gapseqTarget}')")
+        }
+        if (gapseqTarget == 'reps' && (intragenomeCluster == null || intragenomeCluster == 'off')) {
+            throw new IllegalArgumentException(
+                "--gapseq-target=reps requires --intragenome-cluster to be enabled (0.9 | 0.95 | 1.0)")
+        }
+        if (intragenomeCluster != 'off' && intragenomeCluster != '0.9' &&
+                intragenomeCluster != '0.95' && intragenomeCluster != '1.0') {
+            throw new IllegalArgumentException(
+                "--intragenome-cluster must be one of: off, 0.9, 0.95, 1.0 (got '${intragenomeCluster}')")
+        }
+        if (iterateGapseq && !darkMatter) {
+            throw new IllegalArgumentException(
+                "--iterate-gapseq requires --dark-matter (the outer loop consumes suggester output)")
+        }
+    }
+
+    private DarkMatterSuggester buildSuggester(Map theta) {
+        def suggester = new DarkMatterSuggester()
+        if (theta.dark_matter instanceof Map) {
+            def dm = theta.dark_matter as Map
+            if (dm.bf_min != null)
+                suggester.bfMin = (dm.bf_min as Number).doubleValue()
+            if (dm.gamma_in_p != null)
+                suggester.gammaInP = (dm.gamma_in_p as Number).doubleValue()
+            if (dm.coverage_threshold != null)
+                suggester.coverageThreshold = (dm.coverage_threshold as Number).doubleValue()
+        }
+        suggester
     }
 
     private PriorEngine buildPriorEngine(Map theta, Set<String> enabled) {

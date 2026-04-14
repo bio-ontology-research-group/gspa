@@ -172,6 +172,32 @@ class GspaConfig {
 
         /** Dark-matter suggester (Phase 8). */
         DarkMatterConfig darkMatter = new DarkMatterConfig()
+
+        /** Phase 10 intra-genome clustering (cluster proteome, predict reps only, propagate). */
+        IntragenomeClusterConfig intragenomeCluster = new IntragenomeClusterConfig()
+
+        /** Phase 10 outer iterative gapseq+DarkMatter fixed-point loop. */
+        OuterLoopConfig outerLoop = new OuterLoopConfig()
+    }
+
+    /** Phase 10 intra-genome clustering config. Disabled by default. */
+    static class IntragenomeClusterConfig {
+        boolean enabled = false
+        /** Minimum sequence identity (0.9 = 90%). */
+        double identity = 0.9d
+        /** Minimum alignment coverage (0.8 = 80%). */
+        double coverage = 0.8d
+    }
+
+    /** Phase 10 outer-loop config (iterative gapseq + DarkMatter). */
+    static class OuterLoopConfig {
+        boolean enabled = false
+        int maxIter = 5
+        double qBase = 0.5d
+        double qStep = 0.05d
+        double qCap = 0.75d
+        double tauCover = 0.5d
+        boolean pinPromotions = true
     }
 
     /** Phase 8 dark-matter suggester config. Disabled by default. */

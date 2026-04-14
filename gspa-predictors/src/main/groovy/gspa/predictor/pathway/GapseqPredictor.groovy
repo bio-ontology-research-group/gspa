@@ -22,6 +22,28 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
     /** Taxonomy for pathway prediction */
     String taxonomy = 'Bacteria'
 
+    /**
+     * Phase 10: search target for gapseq's reaction-sequence database.
+     * <ul>
+     *   <li>{@code genome}  — tblastn against genome nucleotide (default, v1.0.0 behaviour)</li>
+     *   <li>{@code proteome} — blastp against the full predicted proteome
+     *       (~5× faster but loses small-ORF / frameshift rescue)</li>
+     *   <li>{@code reps}    — blastp against cluster representatives only
+     *       (requires intra-genome clustering to have run). A reaction is
+     *       "found" if any cluster rep has a qualifying hit — equivalent
+     *       to querying the whole proteome under the 90% identity
+     *       equivalence, and the form Phase 11 will cache across genomes.</li>
+     * </ul>
+     */
+    String target = 'genome'
+
+    /**
+     * When {@code target=='reps'}, the list of representative protein IDs
+     * (from the intra-genome clusterer). {@code null} with {@code target=='reps'}
+     * is an error.
+     */
+    Set<String> representativeIds = null
+
     @Override
     String getName() { 'gapseq' }
 
@@ -83,21 +105,18 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
 
     @Override
     Map<String, List<Annotation>> predictGenome(Genome genome) {
-        // Write genome FASTA and run gapseq
+        if (target == 'reps' && (representativeIds == null || representativeIds.isEmpty())) {
+            throw new IllegalStateException(
+                "GapseqPredictor(target='reps') requires representativeIds to be populated " +
+                "by an earlier intra-genome clustering step")
+        }
+
         def tmpDir = File.createTempDir("gspa_gapseq_", '')
         try {
-            def inputFasta = new File(tmpDir, 'genome.fna')
-            inputFasta.withWriter { writer ->
-                genome.contigs.each { contig ->
-                    if (contig.sequence) {
-                        writer.writeLine(">${contig.id}")
-                        writer.writeLine(contig.sequence)
-                    }
-                }
-            }
+            File inputFasta = writeTargetFasta(genome, tmpDir)
 
             def command = buildCommand(inputFasta, tmpDir)
-            log.info("Running gapseq: ${command.join(' ')}")
+            log.info("Running gapseq (target=${target}): ${command.join(' ')}")
             def result = execute(command, tmpDir)
 
             if (result.exitCode != 0) {
@@ -108,6 +127,43 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
             return parseOutput(tmpDir)
         } finally {
             tmpDir.deleteDir()
+        }
+    }
+
+    /** Emit the FASTA gapseq will search, based on the configured target. */
+    private File writeTargetFasta(Genome genome, File dir) {
+        switch (target) {
+            case 'genome':
+                def f = new File(dir, 'genome.fna')
+                f.withWriter { w ->
+                    genome.contigs.each { contig ->
+                        if (contig.sequence) {
+                            w.writeLine(">${contig.id}")
+                            w.writeLine(contig.sequence)
+                        }
+                    }
+                }
+                return f
+            case 'proteome':
+                def f = new File(dir, 'proteins.faa')
+                f.withWriter { w ->
+                    genome.proteins.each { p ->
+                        if (p.sequence) { w.writeLine(">${p.id}"); w.writeLine(p.sequence) }
+                    }
+                }
+                return f
+            case 'reps':
+                def f = new File(dir, 'reps.faa')
+                f.withWriter { w ->
+                    genome.proteins.each { p ->
+                        if (p.sequence && representativeIds.contains(p.id)) {
+                            w.writeLine(">${p.id}"); w.writeLine(p.sequence)
+                        }
+                    }
+                }
+                return f
+            default:
+                throw new IllegalArgumentException("Unknown gapseq target: ${target}; expected genome|proteome|reps")
         }
     }
 

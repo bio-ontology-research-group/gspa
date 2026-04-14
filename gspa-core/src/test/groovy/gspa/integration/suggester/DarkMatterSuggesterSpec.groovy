@@ -124,6 +124,35 @@ class DarkMatterSuggesterSpec extends Specification {
     }
 
     // ------------------------------------------------------------------
+    // Phase 10: closed-gap skipping
+    // ------------------------------------------------------------------
+
+    def "gaps already in state.closedGaps are skipped"() {
+        given: "same setup as the singleton case, but the gap is marked closed"
+        def state = basicState([['p1', 'p2', 'p3', 'p4']], [
+            new MetabolicGap(
+                pathwayId: 'PWY-RIBO',
+                reactionId: 'RXN-28S',
+                goTerm: 'GO:0000028',
+            )
+        ])
+        state.set('p1|GO|GO:0006412', 5.0d)
+        state.set('p2|GO|GO:0003735', 5.0d)
+        state.set('p3|GO|GO:0019843', 5.0d)
+        // Mark the gap as already closed by a prior outer-loop iteration.
+        state.markGapClosed(new gspa.integration.GapKey(
+            pathwayId: 'PWY-RIBO', reactionId: 'RXN-28S', goTerm: 'GO:0000028'))
+
+        def integrated = new IntegratedAnnotationSet()
+
+        when:
+        new DarkMatterSuggester().suggest(state, integrated)
+
+        then: "suggester emits nothing because the only gap is closed"
+        integrated.suggestions.isEmpty()
+    }
+
+    // ------------------------------------------------------------------
     // Non-dark protein still eligible
     // ------------------------------------------------------------------
 
