@@ -277,11 +277,18 @@ InterProScan + priors:
 | pfuriosus | **0.857** | 0.350 | 2.45× |
 | hpylori | **0.819** | 0.316 | 2.59× |
 
-**F-max definition**: per-genome micro-averaged F-max — TP/FP/FN
-summed across all (protein, GO-term) pairs in the genome at each
-posterior threshold; F1 from the global sums; max over thresholds.
-NOT CAFA-style per-protein-averaged F-max. See
-[`benchmark/RESULTS.md`](benchmark/RESULTS.md) for the full procedure.
+**F-max definitions** (we report both per genome):
+- *Micro* — TP/FP/FN summed across all (protein, GO-term) pairs in
+  the genome at each threshold; F1 from the global sums; max over
+  thresholds. Upweights heavily-annotated proteins.
+- *CAFA* — CAFA III/IV per-protein protocol: precision/recall computed
+  per protein, then averaged across proteins; F1 from those averages;
+  max over thresholds. Each protein contributes equally.
+
+The numbers above are micro F-max. Both metrics agree GSPA > PGAP on
+every genome (CAFA mean ratio = 1.96× vs micro 1.93×). See
+[`benchmark/RESULTS.md`](benchmark/RESULTS.md) for full per-genome
+tables and the full procedure for both metrics.
 
 Full tables: [`benchmark/RESULTS.md`](benchmark/RESULTS.md) |
 [`benchmark/ABLATION_REPORT.txt`](benchmark/ABLATION_REPORT.txt) |

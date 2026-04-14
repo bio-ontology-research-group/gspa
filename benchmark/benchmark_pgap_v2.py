@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-Head-to-head evaluation of GSPA vs PGAP (or GSPA alone) on a held-out proteome.
-
-Metrics (per aspect + overall):
-  - F-max via threshold sweep, with bootstrap 95% CIs over proteins
-  - Coverage, unique predicted terms
-  - IC-weighted recall
-
-Supports dual ground-truth sets via --truth (repeatable): name:path
-(e.g. exp:ecoli_truth_exp.tsv all:ecoli_truth_all.tsv)
-Results list includes an outer key for each truth set.
-"""
-
+"""Patched benchmark script: per-genome micro-averaged F-max + CAFA-style protein-centric F-max."""
 import argparse
 import json
 import math
@@ -68,8 +56,13 @@ def load_pgap_binary(path):
     return out
 
 
+# ============================================================
+# Per-genome MICRO-averaged F-max (existing behaviour)
+# TP/FP/FN summed across all (protein, GO-term) pairs in the genome,
+# one F1 from those global sums, max over thresholds.
+# ============================================================
+
 def _count_per_acc(predictions, truth, threshold, aspect):
-    """Return list of (tp, fp, fn) per truth protein, for bootstrapping."""
     per_acc = []
     for acc in truth:
         acc_tp = acc_fp = acc_fn = 0
@@ -95,7 +88,6 @@ def fmax_with_ci(predictions, truth, aspect=None, thresholds=None,
                  n_bootstrap=200, seed=42):
     if thresholds is None:
         thresholds = [i * 0.05 for i in range(1, 21)]
-    # Per-threshold, per-acc counts
     counts_by_t = {t: _count_per_acc(predictions, truth, t, aspect) for t in thresholds}
     totals = {t: (sum(c[1] for c in counts_by_t[t]),
                   sum(c[2] for c in counts_by_t[t]),
@@ -108,7 +100,6 @@ def fmax_with_ci(predictions, truth, aspect=None, thresholds=None,
             best_f = f
             best_t = t
 
-    # Bootstrap over proteins
     accs_at_t = counts_by_t[best_t] if best_t else None
     if not accs_at_t or n_bootstrap <= 0:
         return {'fmax': best_f, 'threshold': best_t, 'ci_low': best_f, 'ci_high': best_f}
@@ -118,8 +109,6 @@ def fmax_with_ci(predictions, truth, aspect=None, thresholds=None,
         return {'fmax': best_f, 'threshold': best_t, 'ci_low': 0.0, 'ci_high': 0.0}
     boots = []
     for _ in range(n_bootstrap):
-        # Sample with replacement, re-pick best threshold each time? No — fix threshold
-        # (biases slightly low but is CAFA-style).
         sample_idx = [rng.randrange(n) for _ in range(n)]
         best_b = 0.0
         for t in thresholds:
@@ -139,6 +128,98 @@ def fmax_with_ci(predictions, truth, aspect=None, thresholds=None,
     hi = boots[int(0.975 * n_bootstrap) - 1]
     return {'fmax': best_f, 'threshold': best_t, 'ci_low': lo, 'ci_high': hi}
 
+
+# ============================================================
+# CAFA-style protein-centric F-max
+# For each threshold:
+#   precision_p = |pred_p ∩ truth_p| / |pred_p|   (only for proteins with >=1 prediction)
+#   recall_p    = |pred_p ∩ truth_p| / |truth_p|  (for all proteins with >=1 truth annotation)
+#   avg_precision = mean(precision_p) over m(t) proteins with predictions
+#   avg_recall    = mean(recall_p)   over n_e proteins with truth (proteins lacking
+#                                    predictions contribute recall = 0)
+#   F1 = 2*avg_p*avg_r / (avg_p+avg_r)
+# F-max = max F1.
+# This is the standard CAFA III/IV protocol (without IC-weighting; that's S-max).
+# ============================================================
+
+def _cafa_per_acc(predictions, truth, threshold, aspect):
+    """Return per-protein (precision_or_None, recall) at this threshold."""
+    out = []
+    for acc in truth:
+        true_set = set()
+        for asp in truth[acc]:
+            if aspect and asp != aspect:
+                continue
+            true_set |= truth[acc][asp]
+        if not true_set:
+            continue
+        pred_set = set()
+        for asp, terms in predictions.get(acc, {}).items():
+            if aspect and asp != aspect:
+                continue
+            for g, s in terms.items():
+                if s >= threshold:
+                    pred_set.add(g)
+        inter = len(true_set & pred_set)
+        if pred_set:
+            precision = inter / len(pred_set)
+        else:
+            precision = None  # this protein doesn't contribute to avg_precision
+        recall = inter / len(true_set)
+        out.append((acc, precision, recall))
+    return out
+
+
+def fmax_cafa_with_ci(predictions, truth, aspect=None, thresholds=None,
+                      n_bootstrap=200, seed=42):
+    if thresholds is None:
+        thresholds = [i * 0.05 for i in range(1, 21)]
+    per_t = {t: _cafa_per_acc(predictions, truth, t, aspect) for t in thresholds}
+
+    def f1_from(rows):
+        precisions = [r[1] for r in rows if r[1] is not None]
+        recalls = [r[2] for r in rows]
+        if not recalls:
+            return 0.0
+        avg_p = sum(precisions) / len(precisions) if precisions else 0.0
+        avg_r = sum(recalls) / len(recalls)
+        if avg_p + avg_r == 0:
+            return 0.0
+        return 2 * avg_p * avg_r / (avg_p + avg_r)
+
+    best_f = 0.0
+    best_t = 0.0
+    for t in thresholds:
+        f = f1_from(per_t[t])
+        if f > best_f:
+            best_f = f
+            best_t = t
+
+    rows_at_best = per_t[best_t] if best_t else (per_t[thresholds[0]] if thresholds else [])
+    if not rows_at_best or n_bootstrap <= 0:
+        return {'fmax': best_f, 'threshold': best_t, 'ci_low': best_f, 'ci_high': best_f}
+    rng = random.Random(seed)
+    n = len(rows_at_best)
+    boots = []
+    for _ in range(n_bootstrap):
+        sample_idx = [rng.randrange(n) for _ in range(n)]
+        best_b = 0.0
+        for t in thresholds:
+            rows = per_t[t]
+            sample_rows = [rows[i] for i in sample_idx]
+            f = f1_from(sample_rows)
+            if f > best_b:
+                best_b = f
+        boots.append(best_b)
+    boots.sort()
+    lo = boots[int(0.025 * n_bootstrap)]
+    hi = boots[int(0.975 * n_bootstrap) - 1]
+    return {'fmax': best_f, 'threshold': best_t, 'ci_low': lo, 'ci_high': hi}
+
+
+# ============================================================
+# Other metrics
+# ============================================================
 
 def coverage(predictions, truth, threshold=0.5):
     denom = len(truth)
@@ -195,6 +276,7 @@ def ic_recall(predictions, truth, ic_map, threshold=0.5, aspect=None):
 
 def summarize(name, preds, truth, ic_map, n_bootstrap):
     row = {'method': name}
+    # Per-genome micro-averaged F-max (existing)
     f = fmax_with_ci(preds, truth, n_bootstrap=n_bootstrap)
     row['fmax_overall'] = f['fmax']
     row['fmax_ci'] = [f['ci_low'], f['ci_high']]
@@ -203,6 +285,15 @@ def summarize(name, preds, truth, ic_map, n_bootstrap):
         fa = fmax_with_ci(preds, truth, aspect=asp, n_bootstrap=n_bootstrap)
         row[f'fmax_{asp}'] = fa['fmax']
         row[f'fmax_{asp}_ci'] = [fa['ci_low'], fa['ci_high']]
+    # CAFA-style protein-centric F-max (new)
+    fc = fmax_cafa_with_ci(preds, truth, n_bootstrap=n_bootstrap)
+    row['fmax_cafa_overall'] = fc['fmax']
+    row['fmax_cafa_ci'] = [fc['ci_low'], fc['ci_high']]
+    row['fmax_cafa_t'] = fc['threshold']
+    for asp in ('MF', 'BP', 'CC'):
+        fca = fmax_cafa_with_ci(preds, truth, aspect=asp, n_bootstrap=n_bootstrap)
+        row[f'fmax_cafa_{asp}'] = fca['fmax']
+        row[f'fmax_cafa_{asp}_ci'] = [fca['ci_low'], fca['ci_high']]
     row['coverage'] = coverage(preds, truth)
     row['unique_terms'] = unique_terms(preds)
     row['ic_recall'] = ic_recall(preds, truth, ic_map)

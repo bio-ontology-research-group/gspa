@@ -36,11 +36,16 @@ Spock framework. Tests use synthetic data in `gspa-core/src/test/resources/test-
 - Package root: `gspa.*`
 - YAML config with hierarchical merging (defaults → kingdom preset → user file → CLI)
 
-## Benchmark F-max convention
+## Benchmark F-max conventions
 
-All F-max numbers in `benchmark/RESULTS.md` are **per-genome
-micro-averaged F-max** (TP/FP/FN summed across all (protein, GO-term)
-pairs in the genome → one F1 → max over thresholds). This is NOT
-CAFA's per-protein-then-averaged F-max. See the "F-max definition"
-section of `benchmark/RESULTS.md` for the full procedure and rationale.
-Implementation in `benchmark/benchmark_pgap_v2.py::fmax_with_ci()`.
+`benchmark/benchmark_pgap_v2.py` reports **two F-max metrics per
+genome**:
+
+1. **Micro** (`fmax_with_ci`) — per-genome TP/FP/FN summed across all
+   (protein, GO-term) pairs → one F1 → max over thresholds.
+2. **CAFA** (`fmax_cafa_with_ci`) — CAFA III/IV protein-centric:
+   per-protein precision/recall averaged across proteins → F1 from
+   those averages → max over thresholds.
+
+The result tables show both, side by side. See the "F-max definitions"
+section of `benchmark/RESULTS.md` for the full procedures and rationale.

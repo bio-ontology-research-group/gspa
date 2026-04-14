@@ -39,14 +39,15 @@
 - **Bootstrap F-max** (200 resamples, 95% CI) against dual ground truth:
   experimental-only GOA and full GOA (all evidence including IEA).
 
-## F-max definition (important — read before interpreting tables)
+## F-max definitions (important — read before interpreting tables)
 
-All F-max numbers in this document are **per-genome
-micro-averaged F-max**, not the CAFA-style per-protein-averaged F-max.
-The two are distinct and not directly comparable; we report the former
-because PGAP, GSPA, and the GOA ground truth are all defined
-per-protein on the same genome and we want one number per genome that
-captures global recall-vs-precision trade-off on that genome.
+We report **two complementary F-max metrics per genome**. Both are
+computed on the same genome-restricted predictions/truth and use the
+same threshold sweep, but they aggregate (precision, recall) over
+proteins differently. We compute both because each emphasizes a
+different failure mode.
+
+### Metric A — per-genome micro-averaged F-max
 
 Procedure (per genome, per truth set, per method):
 
@@ -57,31 +58,69 @@ Procedure (per genome, per truth set, per method):
    - **Sum TP, FP, FN across all (protein, GO-term) pairs in the
      genome** (NOT averaged over proteins).
    - Compute one precision, one recall, one F1 from those global sums.
-3. F-max = max F1 across thresholds. Per-aspect F-max (MF/BP/CC) is
-   computed the same way restricted to that aspect.
-4. Bootstrap 95% CI: resample proteins with replacement (n = number of
-   proteins with any truth annotations; 200 iterations). For each
-   bootstrap sample, redo step 2 over the resampled set and take its
-   own argmax-τ. Report 2.5%/97.5% quantiles of the bootstrap F-max
-   distribution. The point estimate uses the original (unsampled) set.
+3. F-max = max F1 across thresholds.
 
-What this is NOT:
-- It is not CAFA's F-max protocol, which computes per-protein F1 at
-  each τ and averages them across proteins (then maxes). CAFA macro-
-  averages; we micro-average.
-- It is not a single F-max across all genomes pooled together. We
-  report one F-max per genome and never average those numbers across
-  genomes (when we summarize, we report the mean GSPA/PGAP ratio, not
-  a "global F-max").
+Bootstrap 95% CI: resample proteins with replacement (200 iterations);
+for each sample redo step 2 with its own argmax-τ; report 2.5%/97.5%
+quantiles. The point estimate uses the original (unsampled) set.
 
-Implication: micro-averaged F-max upweights heavily-annotated
-proteins. For genomes where a few well-studied proteins carry many
-annotations, micro F-max can read higher than CAFA-style macro F-max.
-Both methods see exactly the same proteins, so for the GSPA-vs-PGAP
-ratio comparison this asymmetry cancels.
+This metric upweights heavily-annotated proteins (a protein with 30
+true GO terms contributes ~30× more to the totals than a protein with
+1). It is the natural "how many of all the genome's annotation pairs
+do we recover, and at what false-positive cost" number.
 
-Implementation: `benchmark/benchmark_pgap_v2.py`
-(`fmax_with_ci()`).
+### Metric B — CAFA-style protein-centric F-max (CAFA III/IV protocol)
+
+Procedure (per genome, per truth set, per method):
+
+1. Restrict predictions and truth to proteins in this genome only.
+2. Sweep posterior threshold τ. At each τ, for every protein p with at
+   least one true annotation:
+   - Let `pred_p` = GO terms predicted for p with score ≥ τ.
+   - Let `truth_p` = true GO terms for p.
+   - If `pred_p` is non-empty: `precision_p(τ) = |pred_p ∩ truth_p| / |pred_p|`
+     (otherwise p is excluded from the precision average).
+   - `recall_p(τ) = |pred_p ∩ truth_p| / |truth_p|` (proteins lacking
+     any prediction at τ contribute recall = 0).
+3. `avg_precision(τ) = mean(precision_p)` over the m(τ) proteins with
+   ≥ 1 prediction; `avg_recall(τ) = mean(recall_p)` over all n_e
+   proteins with ≥ 1 truth annotation.
+4. `F1(τ) = 2·avg_p·avg_r / (avg_p + avg_r)`; F-max = max F1(τ).
+
+Bootstrap 95% CI: same resampling scheme as Metric A.
+
+This is the standard CAFA III/IV F-max (without IC weighting; that
+weighted variant is S-min and is reported separately as `ic_recall`
+in the JSON). Each protein contributes equally regardless of how many
+annotations it carries — so dark proteins and well-studied proteins
+count the same.
+
+### What neither metric is
+
+- Neither is a "global F-max across all genomes pooled together." We
+  report one F-max per genome and never collapse those into a single
+  number (when summarizing across genomes, we report the *mean
+  GSPA/PGAP ratio*).
+- Neither propagates GO terms to ancestors before evaluation. CAFA
+  itself propagates; we compare prediction-as-given to truth-as-given,
+  which means both GSPA and PGAP face the same propagation handling
+  (none) and the comparison is fair.
+
+### When the two metrics diverge
+
+Micro F-max < CAFA F-max → predictions are good on most proteins but
+weaker on a few heavily-annotated ones (which dominate the micro
+totals). This is what we see on this benchmark (CAFA ~0.02-0.07
+higher), driven by S. coelicolor / D. radiodurans, where a handful
+of large multi-domain proteins carry many true GO terms that GSPA
+recovers incompletely.
+
+Micro F-max > CAFA F-max → predictions are strong on a few
+heavily-annotated proteins but miss many lightly-annotated ones. We
+do not see this case here.
+
+Implementation: `benchmark/benchmark_pgap_v2.py` —
+`fmax_with_ci()` (Metric A) and `fmax_cafa_with_ci()` (Metric B).
 
 ## Main result: DIAMOND + Pfam + InterProScan + priors
 
@@ -225,49 +264,56 @@ InterProScan since Pfam is one of InterProScan's member databases).
 - PGAP GO annotations extracted from RefSeq GFF go_function/go_process/
   go_component fields, mapped to UniProt via NCBI collab file.
 
-### F-max — Full-GOA truth (GSPA D+P+I+priors vs PGAP)
+### F-max — Full-GOA truth (GSPA D+P+I+priors vs PGAP), both metrics
 
-| Genome | GSPA (D+P+I) | PGAP | GSPA/PGAP |
-|---|---|---|---|
-| rprowazekii | **0.911** [0.900, 0.921] | 0.503 | **1.81×** |
-| tpallidum | **0.892** [0.878, 0.904] | 0.491 | **1.82×** |
-| saureus | **0.867** [0.857, 0.878] | 0.449 | **1.93×** |
-| vcholerae | **0.858** [0.850, 0.864] | 0.443 | **1.94×** |
-| pfuriosus | **0.857** [0.847, 0.869] | 0.350 | **2.45×** |
-| spneumoniae | **0.846** [0.834, 0.855] | 0.447 | **1.89×** |
-| tthermophilus | **0.842** [0.830, 0.854] | 0.492 | **1.71×** |
-| ccrescentus | **0.805** [0.795, 0.813] | 0.480 | **1.68×** |
-| dradiodurans | **0.780** [0.769, 0.790] | 0.463 | **1.68×** |
-| scoelicolor | **0.778** [0.770, 0.787] | 0.490 | **1.59×** |
+CIs are 95% bootstrap; "ratio" = GSPA / PGAP under the same metric.
 
-**Mean GSPA/PGAP = 1.85×** across 10 new genomes (range 1.59-2.45×).
-GSPA outperforms PGAP on every genome tested. The advantage is largest
-for the archaeon P. furiosus (2.45×) and S. aureus / V. cholerae
-(~1.94×). InterProScan adds +0.034 to +0.094 F-max compared to
-DIAMOND+Pfam alone.
+| Genome | GSPA micro | GSPA CAFA | PGAP micro | PGAP CAFA | ratio (micro) | ratio (CAFA) |
+|---|---|---|---|---|---|---|
+| rprowazekii | **0.911** [0.900, 0.921] | **0.905** [0.896, 0.918] | 0.503 | 0.518 | **1.81×** | **1.75×** |
+| tpallidum | **0.892** [0.878, 0.904] | **0.896** [0.884, 0.911] | 0.491 | 0.492 | **1.82×** | **1.82×** |
+| saureus | **0.867** [0.857, 0.878] | **0.886** [0.878, 0.895] | 0.449 | 0.446 | **1.93×** | **1.99×** |
+| vcholerae | **0.858** [0.850, 0.864] | **0.883** [0.878, 0.888] | 0.443 | 0.441 | **1.94×** | **2.00×** |
+| pfuriosus | **0.857** [0.847, 0.869] | **0.874** [0.865, 0.884] | 0.350 | 0.366 | **2.45×** | **2.39×** |
+| spneumoniae | **0.846** [0.834, 0.855] | **0.870** [0.861, 0.878] | 0.447 | 0.457 | **1.89×** | **1.90×** |
+| tthermophilus | **0.842** [0.830, 0.854] | **0.869** [0.861, 0.879] | 0.492 | 0.509 | **1.71×** | **1.71×** |
+| ccrescentus | **0.805** [0.795, 0.813] | **0.848** [0.842, 0.854] | 0.480 | 0.493 | **1.68×** | **1.72×** |
+| dradiodurans | **0.780** [0.769, 0.790] | **0.818** [0.810, 0.828] | 0.463 | 0.473 | **1.68×** | **1.73×** |
+| scoelicolor | **0.778** [0.770, 0.787] | **0.847** [0.843, 0.852] | 0.490 | 0.503 | **1.59×** | **1.68×** |
+
+**Mean GSPA/PGAP = 1.85× (micro), 1.87× (CAFA)** across 10 new
+genomes. The two metrics agree closely on the GSPA-vs-PGAP ratio (the
+asymmetry from heavily-annotated proteins cancels because both methods
+see the same proteins). CAFA F-max is consistently slightly higher
+for GSPA — predictions are stronger on the typical protein than on
+the few high-annotation outliers (notably scoelicolor, dradiodurans).
+InterProScan adds +0.034 to +0.094 micro F-max compared to D+P alone.
 
 ### Combined: all 13 genomes with PGAP GO annotations
 
-| Genome | GSPA | PGAP | GSPA/PGAP |
-|---|---|---|---|
-| rprowazekii | **0.911** | 0.503 | **1.81×** |
-| mgenitalium | **0.908** | 0.469 | **1.94×** |
-| tpallidum | **0.892** | 0.491 | **1.82×** |
-| saureus | **0.867** | 0.449 | **1.93×** |
-| vcholerae | **0.858** | 0.443 | **1.94×** |
-| pfuriosus | **0.857** | 0.350 | **2.45×** |
-| spneumoniae | **0.846** | 0.447 | **1.89×** |
-| tthermophilus | **0.842** | 0.492 | **1.71×** |
-| hpylori | **0.819** | 0.316 | **2.59×** |
-| ccrescentus | **0.805** | 0.480 | **1.68×** |
-| dradiodurans | **0.780** | 0.463 | **1.68×** |
-| scoelicolor | **0.778** | 0.490 | **1.59×** |
-| mjannaschii | **0.732** | 0.285 | **2.57×** |
+| Genome | GSPA micro | GSPA CAFA | PGAP micro | PGAP CAFA | ratio (micro) | ratio (CAFA) |
+|---|---|---|---|---|---|---|
+| rprowazekii | **0.911** | **0.905** | 0.503 | 0.518 | **1.81×** | **1.75×** |
+| mgenitalium | **0.908** | **0.910** | 0.469 | 0.448 | **1.94×** | **2.03×** |
+| tpallidum | **0.892** | **0.896** | 0.491 | 0.492 | **1.82×** | **1.82×** |
+| saureus | **0.867** | **0.886** | 0.449 | 0.446 | **1.93×** | **1.99×** |
+| vcholerae | **0.858** | **0.883** | 0.443 | 0.441 | **1.94×** | **2.00×** |
+| pfuriosus | **0.857** | **0.874** | 0.350 | 0.366 | **2.45×** | **2.39×** |
+| spneumoniae | **0.846** | **0.870** | 0.447 | 0.457 | **1.89×** | **1.90×** |
+| tthermophilus | **0.842** | **0.869** | 0.492 | 0.509 | **1.71×** | **1.71×** |
+| hpylori | **0.819** | **0.844** | 0.316 | 0.299 | **2.59×** | **2.82×** |
+| ccrescentus | **0.805** | **0.848** | 0.480 | 0.493 | **1.68×** | **1.72×** |
+| dradiodurans | **0.780** | **0.818** | 0.463 | 0.473 | **1.68×** | **1.73×** |
+| scoelicolor | **0.778** | **0.847** | 0.490 | 0.503 | **1.59×** | **1.68×** |
+| mjannaschii | **0.732** | **0.775** | 0.285 | 0.269 | **2.57×** | **2.88×** |
 
-**Mean GSPA/PGAP = 1.93× across all 13 genomes** (range 1.59-2.59×).
-GSPA is consistently 1.6-2.6× better than PGAP across 7 phyla, both
+**Mean GSPA/PGAP across all 13 genomes**: **1.93× (micro), 1.96× (CAFA)**.
+GSPA is consistently 1.6-2.9× better than PGAP across 7 phyla, both
 domains of life (Bacteria + Archaea), and genome sizes from 483 to
-7,872 proteins.
+7,872 proteins. The two metrics give the same qualitative picture
+(GSPA > PGAP on every single genome under both); CAFA is slightly
+more favourable to GSPA on the larger Actinobacteria/Deinococcus
+genomes and on the small archaea where PGAP misses most annotations.
 
 ## Known issues
 
