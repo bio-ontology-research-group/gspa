@@ -70,13 +70,23 @@ for cfg in "${CONFIGS[@]}"; do
   for tag in "${TAGS[@]}"; do
     echo "--- ${cfg} / ${tag} ---"
     k=${GENOME_KINGDOM[$tag]}
-    claims=claims/${tag}_merged.jsonl
+    # Pick whichever merged claims file actually exists.
+    claims=""
+    for cand in claims/${tag}_dpi_merged.jsonl claims/${tag}_merged.jsonl claims/${tag}_dp_claims.jsonl; do
+      [[ -s ${cand} ]] && { claims=${cand}; break; }
+    done
     out_tsv=${out_dir}/${tag}_integrated.tsv
     sug_tsv=${out_dir}/${tag}_suggestions.tsv
     log=${out_dir}/${tag}.log
 
-    [[ -s ${claims} ]] || { echo "  no claims, skip"; continue; }
-    [[ -s ${out_tsv} ]] && { echo "  already done"; continue; }
+    [[ -n ${claims} ]] || { echo "  no claims file found; skip"; continue; }
+    [[ -s ${out_tsv} ]] && { echo "  already done (${out_tsv})"; continue; }
+
+    # Operon / gap files are best-effort: run without them if missing.
+    op_arg=""
+    [[ -s benchmark/operons/${tag}_operons.tsv ]] && op_arg="--operons benchmark/operons/${tag}_operons.tsv"
+    gp_arg=""
+    [[ -s benchmark/gaps/${tag}_gaps.jsonl ]] && gp_arg="--gaps benchmark/gaps/${tag}_gaps.jsonl"
 
     ${JAVA} -jar ${JAR} integrate \
       --claims ${claims} --out ${out_tsv} \
@@ -85,12 +95,15 @@ for cfg in "${CONFIGS[@]}"; do
       --essential-profile ${k} \
       --pathways ${REF}/kegg_pathways.tsv --ec2go ${REF}/ec2go.txt \
       --enable-priors essentiality,coherence,gap_filling,genomic_context \
-      --operons benchmark/operons/${tag}_operons.tsv 2>/dev/null || true \
-      --gaps benchmark/gaps/${tag}_gaps.jsonl 2>/dev/null || true \
+      ${op_arg} ${gp_arg} \
       ${flags} \
-      > ${log} 2>&1
+      > ${log} 2>&1 || echo "  integrate failed (see ${log})"
 
-    echo "  wrote $(wc -l < ${out_tsv}) rows (suggestions: $( [[ -s ${sug_tsv} ]] && wc -l < ${sug_tsv} || echo 0 ))"
+    if [[ -s ${out_tsv} ]]; then
+      echo "  wrote $(wc -l < ${out_tsv}) rows (suggestions: $( [[ -s ${sug_tsv} ]] && wc -l < ${sug_tsv} || echo 0 ))"
+    else
+      echo "  [NO OUTPUT]"
+    fi
   done
 done
 
