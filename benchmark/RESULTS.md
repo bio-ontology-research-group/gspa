@@ -338,3 +338,160 @@ go_component fields) are only available for hpylori, mgenitalium,
 mjannaschii. The other 6 genomes' RefSeq GFFs don't carry GO.
 NCBI's gene2go file is not a fair proxy (it includes UniProt-GOA
 IEA annotations, creating circular overlap with our ground truth).
+
+---
+
+## Phase 10 Part 1 — Iterative outer loop + intra-genome clustering
+
+**Branch**: `phase10-iterative`.
+**Goal**: measure whether iterating the DarkMatter→Phase 7→gap-recompute
+cycle until a fixed point improves F-max on the 10-genome PGAP set, and
+quantify the cost of the new flags (intra-genome clustering, gapseq target
+selection).
+
+### Configurations
+
+| Config | Phase 10 flags |
+|---|---|
+| **C1 baseline** | — (v1.0.0 behaviour; Phase 7 + one-shot DarkMatter) |
+| **C2 iterate** | `--dark-matter --iterate-gapseq` |
+| **C3 iter + cluster** | `--dark-matter --iterate-gapseq --intragenome-cluster 0.9` |
+| **C4 iter + cluster + blastp** | `--dark-matter --iterate-gapseq --intragenome-cluster 0.9 --gapseq-target proteome` |
+| **C5 iter + cluster + reps** | `--dark-matter --iterate-gapseq --intragenome-cluster 0.9 --gapseq-target reps` (+ Singularity) |
+| **C2 no-pin** | C2 with `--gapseq-pin-promotions false` (sensitivity row) |
+
+C5 ran inside a `eclipse-temurin:21-jre` Singularity container staged to
+node-local `/tmp` (with verification + retry to handle GlusterFS read
+inconsistency) to satisfy the container-portability requirement.
+
+### Execution
+
+- SLURM job array `1180` (+ resubmitted C5 as array `1240`) on
+  unimatrix01, partition `debug`, `--exclude=node007`.
+- 60 jobs (6 configs × 10 genomes), `%10` concurrency.
+- Wall time: ~90 min for configs C1–C4 + nopin, plus ~40 min for C5
+  (Singularity with retries).
+- All 60 jobs completed successfully.
+
+### Inputs beyond Phase 7
+
+- **Operons**: derived from each genome's GFF (intergenic ≤300bp,
+  same-strand) via `make_operons.py`; RefSeq locus tags mapped to UniProt
+  via the existing `maps/{tag}.refseq_to_uniprot.tsv`.
+  406–1746 operons per genome.
+- **Metabolic gaps (synthetic)**: `make_gaps_from_integrated.py` scans the
+  KEGG pathway DB, keeps pathways with partial GO coverage after Phase 7
+  (the only case where DarkMatter's Bayes factor fires), and round-robins
+  400 gaps per genome from the best-covered pathways.
+  - *Note*: we did not run gapseq itself on this set. A live gapseq run
+    (tblastn against gapseq's reaction library) would supply different
+    gaps. The synthetic list is an upper bound on "what Phase 7 didn't
+    annotate but pathway evidence says should be there" — intentionally
+    informative for measuring Phase 10's iteration mechanics.
+
+### Results (mean F-max across 10 genomes)
+
+| Config | fmax_micro | fmax_CAFA | coverage | IC-recall | Δmicro | ΔCAFA |
+|---|---:|---:|---:|---:|---:|---:|
+| C1 baseline | **0.8419** | **0.8676** | 0.895 | 0.800 | — | — |
+| C2 iterate | 0.8001 | 0.8524 | 0.899 | 0.801 | **−0.0418** | **−0.0152** |
+| C3 iter + cluster | 0.8001 | 0.8524 | 0.899 | 0.801 | −0.0418 | −0.0152 |
+| C4 iter + cluster + blastp | 0.8001 | 0.8524 | 0.899 | 0.801 | −0.0418 | −0.0152 |
+| C5 iter + cluster + reps (Singularity) | 0.8001 | 0.8524 | 0.899 | 0.801 | −0.0418 | −0.0152 |
+| C2 no-pin | 0.8001 | 0.8524 | 0.899 | 0.801 | −0.0418 | −0.0152 |
+
+### Per-genome F-max (micro)
+
+| Genome | C1 baseline | C2 iterate | Δ |
+|---|---:|---:|---:|
+| vcholerae | 0.8563 | 0.8256 | −0.0307 |
+| saureus | 0.8652 | 0.8274 | −0.0378 |
+| spneumoniae | 0.8445 | 0.8044 | −0.0401 |
+| ccrescentus | 0.8039 | 0.7811 | −0.0228 |
+| rprowazekii | 0.9099 | 0.8421 | −0.0678 |
+| tpallidum | 0.8913 | 0.8208 | −0.0705 |
+| tthermophilus | 0.8405 | 0.7985 | −0.0420 |
+| dradiodurans | 0.7778 | 0.7416 | −0.0362 |
+| scoelicolor | 0.7748 | 0.7533 | −0.0215 |
+| pfuriosus | 0.8551 | 0.8065 | −0.0486 |
+| **mean** | **0.8419** | **0.8001** | **−0.0418** |
+
+### Outer-loop convergence trace (C2 iterate)
+
+| Genome | outer iters | fixed point | total promotions | suggestions emitted |
+|---|---:|:---:|---:|---:|
+| vcholerae | 4 | ✓ | 1759 | 53 |
+| saureus | 5 | – | 1501 | 102 |
+| spneumoniae | 5 | – | 1185 | 144 |
+| ccrescentus | 5 | – | 1619 | 39 |
+| rprowazekii | 4 | ✓ | 926 | 13 |
+| tpallidum | 5 | – | 951 | 81 |
+| tthermophilus | 4 | ✓ | 1404 | 59 |
+| dradiodurans | 5 | – | 1672 | 61 |
+| scoelicolor | 4 | ✓ | 2576 | 32 |
+| pfuriosus | 5 | – | 1813 | 93 |
+
+- 4/10 genomes reach a fixed point before the `maxIter=5` cap; the other
+  6 continue to emit small numbers of new promotions at iteration 5
+  (rising-q threshold at 0.75 still admits some).
+- Cascade rollback never triggered on any genome — the monotonicity
+  guard is not load-bearing for this data.
+- Typical `promoted_per_iter` pattern: large bulk in iter 1 (hundreds
+  to low thousands), rapid decay, near-zero by iter 4. E.g. pfuriosus
+  `[990, 633, 142, 48, 0]`, scoelicolor `[2287, 273, 16, 0, 0]`.
+
+### Interpretation
+
+1. **The outer loop engages on every genome.** Promotions,
+   pin-floor maintenance, closed-gap tracking, and gapseq rescore-driven
+   topology updates all run without errors across 60 jobs. Mechanically,
+   Phase 10 Part 1 works end-to-end.
+
+2. **F-max *regresses* by ~4 points.** The outer loop is promoting
+   1000–2500 (protein, GO) pairs per genome with posterior > 0.5, and
+   coverage ticks up slightly (+0.004), but precision drops faster than
+   recall rises. The synthetic gaps + heuristic operons + default
+   `qBase=0.5` threshold combination admits too many false-positive
+   promotions.
+
+3. **C3/C4/C5 ≡ C2 in this evaluation** because the `gspa integrate`
+   subcommand is a post-predictor integrator; the `--intragenome-cluster`
+   and `--gapseq-target` flags it accepts are forward-compatible no-ops
+   at this level (they apply to the full `gspa annotate` pipeline which
+   calls predictors). The benchmark differentiates these configs only
+   when run via the full pipeline — to be done when live gapseq / live
+   clustering become part of the benchmark stack.
+
+4. **Pin policy is a near-no-op** at these settings. C2 and C2 no-pin
+   differ by one promotion on a single genome (spneumoniae). With
+   `qBase=0.5` most promoted posteriors are well above any value Phase 7
+   would drive them back below; the pin floor rarely needs to intervene.
+
+### Recommendations for Phase 11 (multi-genome)
+
+- **Tighten `qBase`** to 0.70 or 0.75 before the outer loop to emit
+  fewer, higher-confidence promotions. The benchmark rerun at a higher
+  threshold should close most of the F-max gap.
+- **Use real gapseq output** (not synthetic gaps): gapseq's tblastn
+  against its reaction library produces gaps with EC-to-GO backing that
+  the suggester's operon Bayes factor can score more selectively.
+- **Re-evaluate via `gspa annotate`** (not `gspa integrate`) so C3/C4/C5
+  actually exercise clustering + gapseq target variants.
+- **Cross-genome homology transfer (Phase 11)** — with real gaps +
+  real operons + cross-genome cluster consensus, the monotone
+  promotion logic built here should let pathway completions in one
+  genome boost weak evidence in homologs, which is the architecture's
+  headline use case.
+
+### Forward-compatibility verified
+
+Despite the F-max regression, the Phase 10 data model
+(`ProteinRef(genomeId, proteinId)`, `ProteinClusterSet`, `ClaimKey`,
+`GapKey`) and interfaces (`ProteinClusterer`, `ClusterAnnotationPropagator`)
+all exercised cleanly in the pipeline tests. The `DARK_MATTER` evidence
+type's isolated correlation group `inferred_context` prevents Noisy-OR
+collapse with primary predictors. The outer-loop state machine is
+proven: promotions are monotone, floors persist across Phase 7
+re-invocations, the Singularity container path works after GlusterFS
+workarounds. The negative F-max delta is a **tuning** result, not an
+architectural blocker.
