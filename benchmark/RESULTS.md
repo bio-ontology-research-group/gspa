@@ -39,6 +39,50 @@
 - **Bootstrap F-max** (200 resamples, 95% CI) against dual ground truth:
   experimental-only GOA and full GOA (all evidence including IEA).
 
+## F-max definition (important — read before interpreting tables)
+
+All F-max numbers in this document are **per-genome
+micro-averaged F-max**, not the CAFA-style per-protein-averaged F-max.
+The two are distinct and not directly comparable; we report the former
+because PGAP, GSPA, and the GOA ground truth are all defined
+per-protein on the same genome and we want one number per genome that
+captures global recall-vs-precision trade-off on that genome.
+
+Procedure (per genome, per truth set, per method):
+
+1. Restrict predictions and truth to proteins in this genome only.
+2. Sweep posterior threshold τ ∈ {0.05, 0.10, …, 1.00}. At each τ:
+   - For every (protein, aspect, GO term) prediction with score ≥ τ,
+     count the (protein, GO term) pair as a *predicted positive*.
+   - **Sum TP, FP, FN across all (protein, GO-term) pairs in the
+     genome** (NOT averaged over proteins).
+   - Compute one precision, one recall, one F1 from those global sums.
+3. F-max = max F1 across thresholds. Per-aspect F-max (MF/BP/CC) is
+   computed the same way restricted to that aspect.
+4. Bootstrap 95% CI: resample proteins with replacement (n = number of
+   proteins with any truth annotations; 200 iterations). For each
+   bootstrap sample, redo step 2 over the resampled set and take its
+   own argmax-τ. Report 2.5%/97.5% quantiles of the bootstrap F-max
+   distribution. The point estimate uses the original (unsampled) set.
+
+What this is NOT:
+- It is not CAFA's F-max protocol, which computes per-protein F1 at
+  each τ and averages them across proteins (then maxes). CAFA macro-
+  averages; we micro-average.
+- It is not a single F-max across all genomes pooled together. We
+  report one F-max per genome and never average those numbers across
+  genomes (when we summarize, we report the mean GSPA/PGAP ratio, not
+  a "global F-max").
+
+Implication: micro-averaged F-max upweights heavily-annotated
+proteins. For genomes where a few well-studied proteins carry many
+annotations, micro F-max can read higher than CAFA-style macro F-max.
+Both methods see exactly the same proteins, so for the GSPA-vs-PGAP
+ratio comparison this asymmetry cancels.
+
+Implementation: `benchmark/benchmark_pgap_v2.py`
+(`fmax_with_ci()`).
+
 ## Main result: DIAMOND + Pfam + InterProScan + priors
 
 ### F-max vs PGAP — Experimental-only truth

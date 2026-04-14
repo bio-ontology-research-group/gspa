@@ -263,19 +263,25 @@ Benchmark results on 5 genomes with gapseq data:
 
 ## Benchmark results
 
-9-genome head-to-head against PGAP. GSPA outperforms PGAP 1.9–2.4×
-on every genome where PGAP has GO annotations:
+13-genome head-to-head against PGAP (3 original + 10 new).
+**Mean GSPA / PGAP = 1.93×** (range 1.59-2.59×) using DIAMOND + Pfam +
+InterProScan + priors:
 
 | Genome | GSPA F-max | PGAP F-max | Ratio |
 |---|---|---|---|
-| hpylori | **0.754** | 0.316 | 2.4× |
-| mgenitalium | **0.913** | 0.469 | 1.9× |
-| mjannaschii | **0.641** | 0.285 | 2.2× |
+| rprowazekii | **0.911** | 0.503 | 1.81× |
+| mgenitalium | **0.908** | 0.469 | 1.94× |
+| tpallidum | **0.892** | 0.491 | 1.82× |
+| saureus | **0.867** | 0.449 | 1.93× |
+| vcholerae | **0.858** | 0.443 | 1.94× |
+| pfuriosus | **0.857** | 0.350 | 2.45× |
+| hpylori | **0.819** | 0.316 | 2.59× |
 
-Priors hold F-max stable (±0.003) while improving coverage by +0.001
-to +0.068 and IC-recall by +0.001 to +0.027. Largest gains on
-mjannaschii (Archaea, where homology is weakest): coverage
-0.208 → 0.276 (+33% relative).
+**F-max definition**: per-genome micro-averaged F-max — TP/FP/FN
+summed across all (protein, GO-term) pairs in the genome at each
+posterior threshold; F1 from the global sums; max over thresholds.
+NOT CAFA-style per-protein-averaged F-max. See
+[`benchmark/RESULTS.md`](benchmark/RESULTS.md) for the full procedure.
 
 Full tables: [`benchmark/RESULTS.md`](benchmark/RESULTS.md) |
 [`benchmark/ABLATION_REPORT.txt`](benchmark/ABLATION_REPORT.txt) |

@@ -35,3 +35,12 @@ Spock framework. Tests use synthetic data in `gspa-core/src/test/resources/test-
 - Groovy source, Spock tests, Gradle Kotlin DSL for build files
 - Package root: `gspa.*`
 - YAML config with hierarchical merging (defaults → kingdom preset → user file → CLI)
+
+## Benchmark F-max convention
+
+All F-max numbers in `benchmark/RESULTS.md` are **per-genome
+micro-averaged F-max** (TP/FP/FN summed across all (protein, GO-term)
+pairs in the genome → one F1 → max over thresholds). This is NOT
+CAFA's per-protein-then-averaged F-max. See the "F-max definition"
+section of `benchmark/RESULTS.md` for the full procedure and rationale.
+Implementation in `benchmark/benchmark_pgap_v2.py::fmax_with_ci()`.
