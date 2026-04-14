@@ -4,7 +4,7 @@ process MERGE_ANNOTATIONS {
     container 'python:3.12-slim'
 
     input:
-    tuple val(sample_id), path(gff), path(proteins), path(diamond_tsv), path(pfam_domtbl), path(rrna_gff), path(crispr_gff)
+    tuple val(sample_id), path(gff), path(proteins), path(diamond_tsv), path(pfam_domtbl), path(interproscan_tsv), path(rrna_gff), path(crispr_gff)
 
     output:
     tuple val(sample_id), path("${sample_id}_annotations.tsv"), emit: annotations
