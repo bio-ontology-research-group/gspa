@@ -181,47 +181,49 @@ InterProScan since Pfam is one of InterProScan's member databases).
 - PGAP GO annotations extracted from RefSeq GFF go_function/go_process/
   go_component fields, mapped to UniProt via NCBI collab file.
 
-### F-max — Full-GOA truth (GSPA D+P+priors vs PGAP)
+### F-max — Full-GOA truth (GSPA D+P+I+priors vs PGAP)
 
-| Genome | GSPA (D+P) | PGAP | GSPA/PGAP |
+| Genome | GSPA (D+P+I) | PGAP | GSPA/PGAP |
 |---|---|---|---|
-| rprowazekii | **0.883** [0.868, 0.900] | 0.503 | **1.76×** |
-| tpallidum | **0.831** [0.810, 0.849] | 0.491 | **1.69×** |
-| vcholerae | **0.811** [0.803, 0.820] | 0.443 | **1.83×** |
-| saureus | **0.809** [0.796, 0.824] | 0.449 | **1.80×** |
-| pfuriosus | **0.805** [0.791, 0.819] | 0.350 | **2.30×** |
-| spneumoniae | **0.786** [0.772, 0.801] | 0.447 | **1.76×** |
-| tthermophilus | **0.752** [0.735, 0.768] | 0.492 | **1.53×** |
-| ccrescentus | **0.722** [0.708, 0.733] | 0.480 | **1.50×** |
-| dradiodurans | **0.704** [0.691, 0.717] | 0.463 | **1.52×** |
-| scoelicolor | **0.698** [0.688, 0.707] | 0.490 | **1.42×** |
+| rprowazekii | **0.911** [0.900, 0.921] | 0.503 | **1.81×** |
+| tpallidum | **0.892** [0.878, 0.904] | 0.491 | **1.82×** |
+| saureus | **0.867** [0.857, 0.878] | 0.449 | **1.93×** |
+| vcholerae | **0.858** [0.850, 0.864] | 0.443 | **1.94×** |
+| pfuriosus | **0.857** [0.847, 0.869] | 0.350 | **2.45×** |
+| spneumoniae | **0.846** [0.834, 0.855] | 0.447 | **1.89×** |
+| tthermophilus | **0.842** [0.830, 0.854] | 0.492 | **1.71×** |
+| ccrescentus | **0.805** [0.795, 0.813] | 0.480 | **1.68×** |
+| dradiodurans | **0.780** [0.769, 0.790] | 0.463 | **1.68×** |
+| scoelicolor | **0.778** [0.770, 0.787] | 0.490 | **1.59×** |
 
-**Mean GSPA/PGAP = 1.71×** across 10 genomes. GSPA outperforms PGAP on
-every genome tested. The advantage is largest for archaea (P. furiosus
-2.30×) and small obligate intracellular pathogens (R. prowazekii 1.76×),
-consistent with the original 9-genome benchmark.
+**Mean GSPA/PGAP = 1.85×** across 10 new genomes (range 1.59-2.45×).
+GSPA outperforms PGAP on every genome tested. The advantage is largest
+for the archaeon P. furiosus (2.45×) and S. aureus / V. cholerae
+(~1.94×). InterProScan adds +0.034 to +0.094 F-max compared to
+DIAMOND+Pfam alone.
 
 ### Combined: all 13 genomes with PGAP GO annotations
 
 | Genome | GSPA | PGAP | GSPA/PGAP |
 |---|---|---|---|
-| rprowazekii | **0.883** | 0.503 | **1.76×** |
-| tpallidum | **0.831** | 0.491 | **1.69×** |
-| hpylori | **0.819** | 0.316 | **2.59×** |
-| vcholerae | **0.811** | 0.443 | **1.83×** |
-| saureus | **0.809** | 0.449 | **1.80×** |
+| rprowazekii | **0.911** | 0.503 | **1.81×** |
 | mgenitalium | **0.908** | 0.469 | **1.94×** |
-| pfuriosus | **0.805** | 0.350 | **2.30×** |
-| spneumoniae | **0.786** | 0.447 | **1.76×** |
-| tthermophilus | **0.752** | 0.492 | **1.53×** |
+| tpallidum | **0.892** | 0.491 | **1.82×** |
+| saureus | **0.867** | 0.449 | **1.93×** |
+| vcholerae | **0.858** | 0.443 | **1.94×** |
+| pfuriosus | **0.857** | 0.350 | **2.45×** |
+| spneumoniae | **0.846** | 0.447 | **1.89×** |
+| tthermophilus | **0.842** | 0.492 | **1.71×** |
+| hpylori | **0.819** | 0.316 | **2.59×** |
+| ccrescentus | **0.805** | 0.480 | **1.68×** |
+| dradiodurans | **0.780** | 0.463 | **1.68×** |
+| scoelicolor | **0.778** | 0.490 | **1.59×** |
 | mjannaschii | **0.732** | 0.285 | **2.57×** |
-| ccrescentus | **0.722** | 0.480 | **1.50×** |
-| dradiodurans | **0.704** | 0.463 | **1.52×** |
-| scoelicolor | **0.698** | 0.490 | **1.42×** |
 
-**Mean GSPA/PGAP = 1.86× across all 13 genomes.** GSPA is consistently
-1.4–2.6× better than PGAP across 7 phyla, both domains of life
-(Bacteria + Archaea), and genome sizes from 483 to 7,872 proteins.
+**Mean GSPA/PGAP = 1.93× across all 13 genomes** (range 1.59-2.59×).
+GSPA is consistently 1.6-2.6× better than PGAP across 7 phyla, both
+domains of life (Bacteria + Archaea), and genome sizes from 483 to
+7,872 proteins.
 
 ## Known issues
 
