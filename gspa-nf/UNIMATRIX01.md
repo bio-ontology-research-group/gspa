@@ -6,24 +6,36 @@ containers (no Docker daemon needed on workers).
 
 ## Cluster constraints we hit
 
-- `/data/` is GlusterFS — only mounted on `node005` and `node006`
-  (workers `node002`–`node004` and `node007` lack the GlusterFS
-  client). The `clusterOptions = '--nodelist=node005,node006'` line in
-  `slurm_singularity.config` constrains every job to those two nodes.
+- `/data/` is GlusterFS, mounted on all worker nodes (`node002`-`node007`).
+  Singularity 4.2.2 is available on all workers. No nodelist restriction
+  is needed.
 - `/home/<user>/` is local SSD on the login node, NOT shared with
   workers — never put the work directory or the Singularity cache
   there. Use `/data/<user>/...`.
 - `/storage/` is shared but read-only for normal users.
-- Singularity 4.2.2 is available on login node and on `node005` /
-  `node006`.
 - `python:3.12-slim` lacks `procps` (`ps`), which Nextflow needs for
-  task-metric collection. The slurm overlay sets `MERGE_ANNOTATIONS`
-  to run on the host (no container) so the worker's `/usr/bin/ps` is
-  used.
-- `gluster` occasionally surfaces a 0-byte "linkto" stub alongside the
-  real file in `ls`. Singularity tolerates it, but if a pull is
-  interrupted the *real* file may end up zero-bytes — pre-pull all
-  images cleanly before launching Nextflow (`prepull_singularity.sh`).
+  task-metric collection. Use full `python:3.12` instead — its biggest
+  downside is the 367MB image size vs 41MB slim. `MERGE_ANNOTATIONS`
+  runs in this full python container so every pipeline stage is in
+  Singularity.
+- GlusterFS sometimes surfaces duplicate directory entries (one real
+  file + one 0-byte "linkto" stub) after writes; Singularity resolves
+  this fine in practice, but *interrupted* pulls can leave a 0-byte
+  real file. Pull images fresh into `/tmp` and then `cp` to the
+  shared cache — the `stage_images.sh` script automates that. Run
+  once before launching Nextflow, and re-run if any image fails to
+  `singularity inspect`.
+- GlusterFS read inconsistency: a worker occasionally sees a stale /
+  corrupt version of a shared-cache file even though the login node
+  sees a valid one. The `beforeScript` in `slurm_singularity.config`
+  does a full `cat "$img" > /dev/null` pre-read of every cached image
+  to force a fresh FUSE fetch before Singularity opens it. Combined
+  with `errorStrategy = 'retry'` (maxRetries = 2), the occasional
+  stale read is absorbed without human intervention.
+- `node007` on the current cluster is stuck in SLURM `COMPLETING`
+  state (slurmd epilog stall). The config sets
+  `clusterOptions = '--exclude=node007'` to route jobs to healthy
+  nodes. Remove this when node007 recovers.
 
 ## One-time setup
 
@@ -60,16 +72,22 @@ nextflow run gspa-nf/main.nf \
 
 ## Verified (2026-04-14)
 
-| Stage              | Container                                            | SLURM jobid | Time |
-|--------------------|------------------------------------------------------|-------------|------|
-| PYRODIGAL          | quay.io/biocontainers/pyrodigal:3.7.1--py312h247cb63 | 1083        | 2 s  |
-| BARRNAP            | quay.io/biocontainers/barrnap:0.8                    | 1084        | 5 s  |
-| DIAMOND_BLASTP     | quay.io/biocontainers/diamond:2.1.9                  | 1085        | 36 s |
-| MINCED             | quay.io/biocontainers/minced:0.3.0                   | 1086        | 1 s  |
-| HMMSEARCH (Pfam)   | quay.io/biocontainers/hmmer:3.4                      | 1087        | 1m54s |
-| MERGE_ANNOTATIONS  | (host)                                               | 1088        | 2 s  |
+All 6 stages containerized via Singularity, distributed across SLURM
+workers. `node007` excluded due to stuck COMPLETING state.
 
-End-to-end wall time: **2m 22s**. Output:
+| Stage              | Container                                            | Time  |
+|--------------------|------------------------------------------------------|-------|
+| PYRODIGAL          | quay.io/biocontainers/pyrodigal:3.7.1--py312h247cb63 | 22 s  |
+| BARRNAP            | quay.io/biocontainers/barrnap:0.8                    | ~10 s |
+| DIAMOND_BLASTP     | quay.io/biocontainers/diamond:2.1.9                  | ~40 s |
+| MINCED             | quay.io/biocontainers/minced:0.3.0                   | ~5 s  |
+| HMMSEARCH (Pfam)   | quay.io/biocontainers/hmmer:3.4                      | ~3m   |
+| MERGE_ANNOTATIONS  | python:3.12 (with procps)                            | ~5 s  |
+
+End-to-end wall time: **3m 53s** (vs. 2m 22s when MERGE ran on host —
+the extra ~90s is the per-container pre-warm + python:3.12 image load).
+
+Output:
 `results/mgenitalium_genomic/`:
 - `gene_calling/{*.faa, *.gff, *.fna}` — 995 proteins called
 - `diamond/mgenitalium_genomic_diamond.tsv` — DIAMOND hits
