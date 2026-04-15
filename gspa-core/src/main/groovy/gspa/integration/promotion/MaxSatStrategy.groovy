@@ -50,20 +50,22 @@ class MaxSatStrategy implements PromotionStrategy {
     int weightScale = 1000
 
     /**
-     * Solver timeout in seconds. If SAT4J doesn't converge in time we
-     * fall back to {@link GreedyStrategy}. Raised from 30s default after
-     * the Phase 10.3 benchmark showed MaxSAT timing out on ~1500-candidate
-     * problems — 300s gives the coherent-pairs MaxSAT room to finish.
+     * Solver timeout in seconds. On timeout MaxSAT falls back to
+     * {@link GreedyStrategy}. Empirically SAT4J can't handle the
+     * coherence-reified problem at real-benchmark scale (370 candidates
+     * × O(pathways²) pair clauses) in any reasonable time; 60s is enough
+     * to find a first feasible solution on small problems and fail
+     * quickly on infeasible-within-budget ones.
      */
-    int timeoutSeconds = 300
+    int timeoutSeconds = 60
 
     /**
      * Restrict to the top-k candidates per gap before building the MaxSAT
-     * problem. This is an important tractability control: without it the
-     * problem scales with (gaps × avg operons-per-gap) which can exceed
-     * 1500 boolean vars + O(pathways²) coherence aux vars. Default 5.
+     * problem. Without this, real benchmark inputs (thousands of candidates)
+     * exceed SAT4J's capacity. Default 3 — tight enough for sub-second
+     * solves on ~300-candidate inputs.
      */
-    int candidatesPerGap = 5
+    int candidatesPerGap = 3
 
     /**
      * Coherence bonus: reward weight for jointly committing two candidates in
@@ -79,12 +81,10 @@ class MaxSatStrategy implements PromotionStrategy {
     double coherenceBonusWeight = 0.0d
 
     /**
-     * Cap on the number of pairwise coherence clauses. For very dense
-     * pathways the pairwise encoding grows O(k²) and can blow up. When
-     * the count would exceed this cap, we fall back to sampling the
-     * highest-scoring {@link #coherenceBonusPairCap} pairs per pathway.
+     * Cap on the number of pairwise coherence clauses per pathway.
+     * Empirically 50 was still too much for SAT4J — cut to 10.
      */
-    int coherenceBonusPairCap = 500
+    int coherenceBonusPairCap = 10
 
     @Override
     List<SingletonSuggestion> select(
@@ -92,6 +92,15 @@ class MaxSatStrategy implements PromotionStrategy {
             IntegrationState state,
             int iteration) {
         if (candidates == null || candidates.isEmpty()) return []
+
+        // Fast path: with no coherence coupling the MaxSAT problem
+        // decomposes to per-gap argmax + per-protein AM1 — which is
+        // exactly what GreedyStrategy computes. Skip SAT4J entirely;
+        // it was taking 5 min per iteration on 370-candidate inputs
+        // even without coherence clauses.
+        if (coherenceBonusWeight <= 0.0d) {
+            return new GreedyStrategy().select(candidates, state, iteration)
+        }
 
         // Pre-filter: keep only the top-k candidates per gap by log-posterior.
         // Without this, SAT4J MaxSAT routinely times out on ~1500-candidate
