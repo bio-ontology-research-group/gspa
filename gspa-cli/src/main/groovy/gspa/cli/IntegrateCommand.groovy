@@ -12,6 +12,7 @@ import gspa.integration.IterativeRefiner
 import gspa.integration.OuterIterativeRefiner
 import gspa.integration.PriorEngine
 import gspa.integration.promotion.AllAboveThresholdStrategy
+import gspa.integration.promotion.BeamSearchStrategy
 import gspa.integration.promotion.GreedyStrategy
 import gspa.integration.promotion.MaxSatStrategy
 import gspa.integration.promotion.PromotionStrategy
@@ -149,8 +150,16 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--promotion-strategy'],
             description = 'How the outer loop picks promotions from DarkMatter suggestions: ' +
                           'default (all above q threshold), greedy (log-posterior rank, ' +
-                          'conflict-free batch), maxsat (SAT4J weighted MaxSAT).')
+                          'conflict-free batch), maxsat (SAT4J weighted MaxSAT), ' +
+                          'beam (top-k per gap with beam search over assignments).')
     String promotionStrategy = 'default'
+
+    @Option(names = ['--beam-width'], description = 'BeamSearchStrategy: beam width W. Default 5.')
+    int beamWidth = 5
+
+    @Option(names = ['--beam-candidates-per-gap'],
+            description = 'BeamSearchStrategy: top-k candidates per gap. Default 3.')
+    int beamCandidatesPerGap = 3
 
     @Option(names = ['--refined-bf'],
             description = 'Use the Phase 10.1 refined BF (Noisy-OR + IC + purity) in the suggester. Default true.')
@@ -472,10 +481,12 @@ class IntegrateCommand implements Runnable {
         }
         if (promotionStrategy != null && promotionStrategy != 'default' &&
                 promotionStrategy != 'greedy' && promotionStrategy != 'maxsat' &&
-                promotionStrategy != '') {
+                promotionStrategy != 'beam' && promotionStrategy != '') {
             throw new IllegalArgumentException(
-                "--promotion-strategy must be one of: default, greedy, maxsat (got '${promotionStrategy}')")
+                "--promotion-strategy must be one of: default, greedy, maxsat, beam (got '${promotionStrategy}')")
         }
+        if (beamWidth < 1) throw new IllegalArgumentException("--beam-width must be ≥ 1")
+        if (beamCandidatesPerGap < 1) throw new IllegalArgumentException("--beam-candidates-per-gap must be ≥ 1")
     }
 
     private PromotionStrategy buildPromotionStrategy() {
@@ -488,9 +499,11 @@ class IntegrateCommand implements Runnable {
                 return new GreedyStrategy()
             case 'maxsat':
                 return new MaxSatStrategy()
+            case 'beam':
+                return new BeamSearchStrategy(beamWidth: beamWidth, candidatesPerGap: beamCandidatesPerGap)
             default:
                 throw new IllegalArgumentException(
-                    "Unknown --promotion-strategy: '${promotionStrategy}' (expected default|greedy|maxsat)")
+                    "Unknown --promotion-strategy: '${promotionStrategy}' (expected default|greedy|maxsat|beam)")
         }
     }
 

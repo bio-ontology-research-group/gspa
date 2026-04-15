@@ -158,5 +158,66 @@ class PromotionStrategySpec extends Specification {
         new AllAboveThresholdStrategy().select([], emptyState(), 1).isEmpty()
         new GreedyStrategy().select([], emptyState(), 1).isEmpty()
         new MaxSatStrategy().select([], emptyState(), 1).isEmpty()
+        new BeamSearchStrategy().select([], emptyState(), 1).isEmpty()
+    }
+
+    def "BeamSearch picks top candidate per gap when no cross-gap conflicts"() {
+        given:
+        def strat = new BeamSearchStrategy(beamWidth: 5, candidatesPerGap: 3)
+        def candidates = [
+            ss('p1', 'PWY1', 'R1', 'GO:1', 3.0),
+            ss('p2', 'PWY1', 'R1', 'GO:1', 1.0),
+            ss('p3', 'PWY2', 'R2', 'GO:2', 2.5),
+            ss('p4', 'PWY2', 'R2', 'GO:2', 2.0),
+        ]
+
+        when:
+        def out = strat.select(candidates, emptyState(), 1)
+
+        then:
+        out.size() == 2
+        out.any { it.proteinId == 'p1' && it.pathwayId == 'PWY1' }
+        out.any { it.proteinId == 'p3' && it.pathwayId == 'PWY2' }
+    }
+
+    def "BeamSearch with width > 1 can beat greedy when top-1 blocks a better downstream"() {
+        given: "gap G1 top-1 is p1 (score 3.0); gap G2 top-1 is ALSO p1 (score 10.0); gap G2 top-2 is p2 (score 1.0)"
+        // Greedy processes G2 first (higher top score 10.0), commits p1 → G2.
+        // Then for G1, p1 is taken, so falls back to top-2 or skips → suboptimal.
+        // Beam with width ≥ 2 can explore "give p1 to G1, p3 to G2" variant.
+        def candidates = [
+            ss('p1', 'PWY1', 'R1', 'GO:1', 3.0),        // G1 top-1: p1
+            ss('p2', 'PWY1', 'R1', 'GO:1', 0.5),        // G1 top-2: p2
+            ss('p1', 'PWY2', 'R2', 'GO:2', 10.0),       // G2 top-1: p1 (same as G1!)
+            ss('p3', 'PWY2', 'R2', 'GO:2', 9.0),        // G2 top-2: p3
+        ]
+
+        when:
+        def greedyOut = new GreedyStrategy().select(candidates, emptyState(), 1)
+        def beam2Out = new BeamSearchStrategy(beamWidth: 5, candidatesPerGap: 3).select(candidates, emptyState(), 1)
+
+        then: "beam finds the joint-max assignment (p1→G1 3.0, p3→G2 9.0 = 12.0) strictly better than"
+        and:  "greedy's (p1→G2 10.0, p2→G1 0.5 = 10.5)"
+        def greedySum = greedyOut.collect { it.proteinScores[it.proteinId].totalLogOdds }.sum() ?: 0.0
+        def beamSum = beam2Out.collect { it.proteinScores[it.proteinId].totalLogOdds }.sum() ?: 0.0
+        beamSum > greedySum
+    }
+
+    def "BeamSearch degrades to single-path when width = 1"() {
+        given:
+        def strat = new BeamSearchStrategy(beamWidth: 1, candidatesPerGap: 3)
+        def candidates = [
+            ss('p1', 'PWY1', 'R1', 'GO:1', 3.0),
+            ss('p2', 'PWY1', 'R1', 'GO:1', 2.0),
+            ss('p3', 'PWY2', 'R2', 'GO:2', 2.5),
+        ]
+
+        when:
+        def out = strat.select(candidates, emptyState(), 1)
+
+        then:
+        out.size() == 2
+        out.any { it.proteinId == 'p1' }
+        out.any { it.proteinId == 'p3' }
     }
 }
