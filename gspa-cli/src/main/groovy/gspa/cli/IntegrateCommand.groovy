@@ -171,8 +171,9 @@ class IntegrateCommand implements Runnable {
                           'candidates in the same pathway (makes MaxSAT diverge from greedy).')
     double maxsatCoherenceBonus = 0.0d
 
-    @Option(names = ['--refined-bf'],
-            description = 'Use the Phase 10.1 refined BF (Noisy-OR + IC + purity) in the suggester. Default true.')
+    @Option(names = ['--refined-bf'], arity = '0..1', fallbackValue = 'true',
+            description = 'Use the Phase 10.1 refined BF (Noisy-OR + IC + purity) in the ' +
+                          'suggester. Accepts true/false; bare --refined-bf = true. Default true.')
     boolean refinedBf = true
 
     @Override
