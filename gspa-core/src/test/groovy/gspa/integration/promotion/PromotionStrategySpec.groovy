@@ -203,6 +203,38 @@ class PromotionStrategySpec extends Specification {
         beamSum > greedySum
     }
 
+    def "MaxSat coherence bonus prefers completing one pathway (3 commits → 3 pairs) over higher individual scores"() {
+        given: "PWY_X has three gaps; pZ is the only candidate for gap3"
+        and:   "PWY_Y has one gap that pZ also qualifies for with a higher individual score"
+        // Without coherence: put pZ on PWY_Y (best individual 2.0), PWY_X gets only 2/3 gaps.
+        //   Option A: pZ→PWY_Y(2.0), p1→X.R1(1.0), p2→X.R2(1.0). Individual sum 4.0.
+        //             Coherence pairs: (p1,p2) = 1 pair.
+        //   Option B: pZ→X.R3(0.5), p1→X.R1(1.0), p2→X.R2(1.0). Individual sum 2.5.
+        //             Coherence pairs: (p1,p2), (p1,pZ), (p2,pZ) = 3 pairs.
+        //
+        // At bonus weight 1.0: A = 4.0 + 1 = 5.0; B = 2.5 + 3 = 5.5. B wins.
+        def candidates = [
+            ss('p1', 'PWY_X', 'R1', 'GO:1', 1.0),
+            ss('p2', 'PWY_X', 'R2', 'GO:2', 1.0),
+            ss('pZ', 'PWY_X', 'R3', 'GO:3', 0.5),
+            ss('pZ', 'PWY_Y', 'R4', 'GO:4', 2.0),
+        ]
+
+        when: "no coherence bonus"
+        def out0 = new MaxSatStrategy(coherenceBonusWeight: 0.0).select(candidates, emptyState(), 1)
+
+        then: "solver maximizes individual scores → pZ goes to PWY_Y"
+        out0.find { it.pathwayId == 'PWY_Y' }?.proteinId == 'pZ'
+        out0.find { it.reactionId == 'R3' } == null      // PWY_X gap3 uncovered
+
+        when: "strong coherence bonus"
+        def out1 = new MaxSatStrategy(coherenceBonusWeight: 2.0).select(candidates, emptyState(), 1)
+
+        then: "solver prefers completing all 3 PWY_X gaps (3 coherence pairs > 1 pair + pZ's score)"
+        out1.any { it.pathwayId == 'PWY_X' && it.reactionId == 'R3' && it.proteinId == 'pZ' }
+        out1.find { it.pathwayId == 'PWY_Y' } == null     // PWY_Y uncovered (fallback to nothing)
+    }
+
     def "BeamSearch degrades to single-path when width = 1"() {
         given:
         def strat = new BeamSearchStrategy(beamWidth: 1, candidatesPerGap: 3)

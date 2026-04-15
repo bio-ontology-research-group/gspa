@@ -161,6 +161,16 @@ class IntegrateCommand implements Runnable {
             description = 'BeamSearchStrategy: top-k candidates per gap. Default 3.')
     int beamCandidatesPerGap = 3
 
+    @Option(names = ['--gapseq-q-cap'],
+            description = 'Upper cap on the rising q threshold across outer iterations. Default 0.75.')
+    double gapseqQCap = 0.75d
+
+    @Option(names = ['--maxsat-coherence-bonus'],
+            description = 'MaxSatStrategy: weight on pairwise pathway-coherence bonus. ' +
+                          'Zero (default) disables; positive values reward jointly committing ' +
+                          'candidates in the same pathway (makes MaxSAT diverge from greedy).')
+    double maxsatCoherenceBonus = 0.0d
+
     @Option(names = ['--refined-bf'],
             description = 'Use the Phase 10.1 refined BF (Noisy-OR + IC + purity) in the suggester. Default true.')
     boolean refinedBf = true
@@ -230,6 +240,7 @@ class IntegrateCommand implements Runnable {
                 outer.maxIter = maxGapseqIter
                 outer.qBase = gapseqQBase
                 outer.qStep = gapseqQStep
+                outer.qCap = gapseqQCap
                 outer.pinPromotions = gapseqPinPromotions
                 outer.promotionStrategy = buildPromotionStrategy()
                 def gs = new OuterIterativeRefiner.CoverageGapSource(tauCover: gapseqTauCover, pathwayDb: state.pathwayDatabase)
@@ -498,7 +509,7 @@ class IntegrateCommand implements Runnable {
             case 'greedy':
                 return new GreedyStrategy()
             case 'maxsat':
-                return new MaxSatStrategy()
+                return new MaxSatStrategy(coherenceBonusWeight: maxsatCoherenceBonus)
             case 'beam':
                 return new BeamSearchStrategy(beamWidth: beamWidth, candidatesPerGap: beamCandidatesPerGap)
             default:

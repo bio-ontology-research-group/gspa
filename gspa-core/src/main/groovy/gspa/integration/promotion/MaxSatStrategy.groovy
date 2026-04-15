@@ -6,6 +6,7 @@ import gspa.integration.suggester.SingletonSuggestion
 import org.sat4j.core.Vec
 import org.sat4j.core.VecInt
 import org.sat4j.maxsat.WeightedMaxSatDecorator
+import org.sat4j.pb.PseudoOptDecorator
 import org.sat4j.pb.SolverFactory
 import org.sat4j.specs.ContradictionException
 import org.slf4j.Logger
@@ -50,9 +51,40 @@ class MaxSatStrategy implements PromotionStrategy {
 
     /**
      * Solver timeout in seconds. If SAT4J doesn't converge in time we
-     * fall back to {@link GreedyStrategy}.
+     * fall back to {@link GreedyStrategy}. Raised from 30s default after
+     * the Phase 10.3 benchmark showed MaxSAT timing out on ~1500-candidate
+     * problems — 300s gives the coherent-pairs MaxSAT room to finish.
      */
-    int timeoutSeconds = 30
+    int timeoutSeconds = 300
+
+    /**
+     * Restrict to the top-k candidates per gap before building the MaxSAT
+     * problem. This is an important tractability control: without it the
+     * problem scales with (gaps × avg operons-per-gap) which can exceed
+     * 1500 boolean vars + O(pathways²) coherence aux vars. Default 5.
+     */
+    int candidatesPerGap = 5
+
+    /**
+     * Coherence bonus: reward weight for jointly committing two candidates in
+     * the same pathway (but different gaps). Encoded as a pairwise aux
+     * variable {@code y_ij ↔ (x_i ∧ x_j)} with a soft clause on y_ij.
+     *
+     * <p>Zero (default) disables coherence coupling and MaxSAT reduces to
+     * per-gap argmax = greedy. Positive values let MaxSAT prefer "complete
+     * this pathway more" over "best individual score per gap", which can
+     * pick locally-sub-optimal candidates that close more of a pathway
+     * jointly.</p>
+     */
+    double coherenceBonusWeight = 0.0d
+
+    /**
+     * Cap on the number of pairwise coherence clauses. For very dense
+     * pathways the pairwise encoding grows O(k²) and can blow up. When
+     * the count would exceed this cap, we fall back to sampling the
+     * highest-scoring {@link #coherenceBonusPairCap} pairs per pathway.
+     */
+    int coherenceBonusPairCap = 500
 
     @Override
     List<SingletonSuggestion> select(
@@ -60,6 +92,27 @@ class MaxSatStrategy implements PromotionStrategy {
             IntegrationState state,
             int iteration) {
         if (candidates == null || candidates.isEmpty()) return []
+
+        // Pre-filter: keep only the top-k candidates per gap by log-posterior.
+        // Without this, SAT4J MaxSAT routinely times out on ~1500-candidate
+        // problems. With candidatesPerGap=5 a typical problem shrinks by 5-10×.
+        Map<GapKey, List<SingletonSuggestion>> perGapGroups = [:].withDefault { [] }
+        for (SingletonSuggestion ss : candidates) {
+            perGapGroups[PromotionHelpers.gapKey(ss)] << ss
+        }
+        List<SingletonSuggestion> prefiltered = new ArrayList<>()
+        for (List<SingletonSuggestion> group : perGapGroups.values()) {
+            if (group.size() <= candidatesPerGap) {
+                prefiltered.addAll(group)
+            } else {
+                List<SingletonSuggestion> sorted = new ArrayList<>(group)
+                sorted.sort { a, b -> Double.compare(
+                    PromotionHelpers.logPosteriorOf(b) as double,
+                    PromotionHelpers.logPosteriorOf(a) as double) }
+                prefiltered.addAll(sorted.subList(0, candidatesPerGap))
+            }
+        }
+        candidates = prefiltered
 
         int n = candidates.size()
 
@@ -82,21 +135,53 @@ class MaxSatStrategy implements PromotionStrategy {
             weights[i] = w
         }
 
-        // ---- Group by gap / protein for cardinality constraints. ----
+        // ---- Group by gap / protein / pathway. ----
         Map<GapKey, List<Integer>> byGap = [:].withDefault { [] }
         Map<String, List<Integer>> byProtein = [:].withDefault { [] }
+        Map<String, List<Integer>> byPathway = [:].withDefault { [] }
         for (int i = 0; i < n; i++) {
             byGap[PromotionHelpers.gapKey(candidates[i])] << i
             byProtein[candidates[i].proteinId] << i
+            if (candidates[i].pathwayId) byPathway[candidates[i].pathwayId] << i
+        }
+
+        // Pre-compute which candidate pairs would carry a coherence bonus.
+        // A pair (i,j) qualifies if both belong to the same pathway AND
+        // target DIFFERENT gaps. Per-pathway we cap the pair count at
+        // coherenceBonusPairCap and take the top by sum(scores[i]+scores[j]).
+        List<int[]> coherencePairs = []
+        if (coherenceBonusWeight > 0.0d) {
+            for (List<Integer> pwGroup : byPathway.values()) {
+                if (pwGroup.size() < 2) continue
+                List<int[]> pwPairs = []
+                for (int a = 0; a < pwGroup.size(); a++) {
+                    for (int b = a + 1; b < pwGroup.size(); b++) {
+                        int ia = pwGroup[a], ib = pwGroup[b]
+                        if (PromotionHelpers.gapKey(candidates[ia]) == PromotionHelpers.gapKey(candidates[ib])) continue
+                        pwPairs << ([ia, ib] as int[])
+                    }
+                }
+                if (pwPairs.size() > coherenceBonusPairCap) {
+                    pwPairs.sort { p1, p2 -> Double.compare(
+                        scores[p2[0]] + scores[p2[1]],
+                        scores[p1[0]] + scores[p1[1]]) }
+                    pwPairs = pwPairs.subList(0, coherenceBonusPairCap)
+                }
+                coherencePairs.addAll(pwPairs)
+            }
         }
 
         // ---- Build the weighted MaxSAT problem. ----
+        int nAux = coherencePairs.size()
+        int totalVars = n + nAux
+        long bonusClauseWeight = Math.max(1L, Math.round(coherenceBonusWeight * weightScale))
+
         WeightedMaxSatDecorator solver
         try {
             solver = new WeightedMaxSatDecorator(SolverFactory.newDefault())
             solver.setTopWeight(new BigInteger(String.valueOf(weightScale * 1_000_000L)))
-            solver.newVar(n)                           // 1-indexed: vars 1..n
-            solver.setExpectedNumberOfClauses(byGap.size() + byProtein.size() + n)
+            solver.newVar(totalVars)                   // 1-indexed: vars 1..n primary, n+1..n+nAux aux
+            solver.setExpectedNumberOfClauses(byGap.size() + byProtein.size() + n + nAux * 4)
             solver.setTimeout(timeoutSeconds)
 
             // Hard: at most one commit per gap.
@@ -120,40 +205,66 @@ class MaxSatStrategy implements PromotionStrategy {
                 VecInt clause = new VecInt([i + 1] as int[])
                 solver.addSoftClause(weights[i], clause)
             }
+
+            // Coherence bonus (optional): for each (i, j) pair in the same pathway
+            // targeting different gaps, add aux var y = x_i ∧ x_j and a soft
+            // clause rewarding y. This encodes "committing both together is
+            // worth an extra bonusClauseWeight beyond their individual sum".
+            if (nAux > 0) {
+                for (int p = 0; p < nAux; p++) {
+                    int i = coherencePairs[p][0]
+                    int j = coherencePairs[p][1]
+                    int y = n + 1 + p                   // aux var id
+                    // y → x_i
+                    solver.addHardClause(new VecInt([-y, i + 1] as int[]))
+                    // y → x_j
+                    solver.addHardClause(new VecInt([-y, j + 1] as int[]))
+                    // (x_i ∧ x_j) → y   ≡   ¬x_i ∨ ¬x_j ∨ y
+                    solver.addHardClause(new VecInt([-(i + 1), -(j + 1), y] as int[]))
+                    // Soft: y with bonus weight.
+                    solver.addSoftClause(bonusClauseWeight, new VecInt([y] as int[]))
+                }
+            }
         } catch (ContradictionException ce) {
             log.warn("MaxSatStrategy iter=${iteration}: contradiction building problem; falling back to greedy")
             return new GreedyStrategy().select(candidates, state, iteration)
         }
 
-        // ---- Solve. ----
+        // ---- Wrap with PseudoOptDecorator to get the IOptimizationProblem
+        // interface (admitABetterSolution / discardCurrentSolution / model).
+        // WeightedMaxSatDecorator alone doesn't expose these. ----
+        PseudoOptDecorator opt = new PseudoOptDecorator(solver)
+        opt.setTimeout(timeoutSeconds)
+
+        // Each admitABetterSolution()+discard iteration finds a strictly-better
+        // solution; capture model() BEFORE discardCurrentSolution() because
+        // the latter invalidates the current assignment.
+        int[] bestModel = null
         try {
-            boolean hasSol = false
-            while (solver.admitABetterSolution()) {
-                hasSol = true
-                solver.discardCurrentSolution()
-            }
-            if (!hasSol) {
-                log.warn("MaxSatStrategy iter=${iteration}: no solution; falling back to greedy")
-                return new GreedyStrategy().select(candidates, state, iteration)
+            while (opt.admitABetterSolution()) {
+                bestModel = opt.model()
+                opt.discardCurrentSolution()
             }
         } catch (ContradictionException ce) {
-            // Expected when the optimum is reached.
+            // Expected at optimum.
         } catch (Exception ex) {
             log.warn("MaxSatStrategy iter=${iteration}: solver exception (${ex.class.simpleName}: ${ex.message}); falling back to greedy")
             return new GreedyStrategy().select(candidates, state, iteration)
         }
-
-        int[] model = solver.model()
-        if (model == null) {
+        if (bestModel == null) {
+            log.warn("MaxSatStrategy iter=${iteration}: no solution; falling back to greedy")
             return new GreedyStrategy().select(candidates, state, iteration)
         }
+        int[] model = bestModel
         // SAT4J model: positive var = true, negative = false. Literal indices
         // are 1..n; we map back to candidates[literal-1].
         List<SingletonSuggestion> out = new ArrayList<>()
         for (int lit : model) {
             if (lit > 0 && lit <= n) out.add(candidates[lit - 1])
         }
-        log.info("MaxSatStrategy iter=${iteration}: ${n} candidates → ${out.size()} commits (hard: ≤1/gap, ≤${maxPerProtein}/protein)")
+        log.info("MaxSatStrategy iter=${iteration}: ${n} candidates + ${nAux} coherence aux vars " +
+            "(bonus weight=${coherenceBonusWeight}) → ${out.size()} commits " +
+            "(hard: ≤1/gap, ≤${maxPerProtein}/protein)")
         out
     }
 }
