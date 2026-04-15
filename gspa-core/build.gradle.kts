@@ -14,8 +14,9 @@ dependencies {
     // Graph algorithms (pathway coherence)
     api("org.jgrapht:jgrapht-core:${property("jgraphtVersion")}")
 
-    // SAT solver (consistency checking)
+    // SAT solver (consistency checking + weighted MaxSAT promotion strategy)
     api("org.ow2.sat4j:org.ow2.sat4j.core:${property("sat4jVersion")}")
+    api("org.ow2.sat4j:org.ow2.sat4j.maxsat:${property("sat4jVersion")}")
 
     // Configuration
     implementation("com.fasterxml.jackson.core:jackson-databind:${property("jacksonVersion")}")

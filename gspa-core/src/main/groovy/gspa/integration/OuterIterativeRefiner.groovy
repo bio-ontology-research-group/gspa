@@ -1,5 +1,7 @@
 package gspa.integration
 
+import gspa.integration.promotion.AllAboveThresholdStrategy
+import gspa.integration.promotion.PromotionStrategy
 import gspa.integration.suggester.DarkMatterSuggester
 import gspa.integration.suggester.SingletonSuggestion
 import gspa.model.AnnotationType
@@ -60,6 +62,7 @@ class OuterIterativeRefiner {
     IterativeRefiner innerRefiner
     DarkMatterSuggester suggester = new DarkMatterSuggester()
     GapSource gapSource = new CoverageGapSource()
+    PromotionStrategy promotionStrategy = new AllAboveThresholdStrategy()
 
     int maxIter = 5
     double qBase = 0.5d
@@ -116,17 +119,19 @@ class OuterIterativeRefiner {
         for (int k = 1; k <= maxIter; k++) {
             double qThreshold = Math.min(qCap, qBase + qStep * k)
 
-            // Collect singleton promotions that beat the rising threshold
-            // AND whose gap isn't already closed.
-            List<SingletonSuggestion> newPromotions = []
+            // Collect singleton candidates that beat the rising threshold
+            // AND whose gap isn't already closed. The promotion strategy
+            // then decides which of these to actually commit this iteration.
+            List<SingletonSuggestion> eligible = []
             for (def sug : integrated.suggestions) {
                 if (!(sug instanceof SingletonSuggestion)) continue
                 SingletonSuggestion ss = sug as SingletonSuggestion
                 if (ss.q < qThreshold) continue
                 GapKey gk = new GapKey(pathwayId: ss.pathwayId, reactionId: ss.reactionId, goTerm: null)
                 if (state.isGapClosed(gk)) continue
-                newPromotions << ss
+                eligible << ss
             }
+            List<SingletonSuggestion> newPromotions = promotionStrategy.select(eligible, state, k)
 
             log.info("Outer iter ${k}: qThreshold=${String.format(Locale.ROOT, '%.3f', qThreshold)}, " +
                 "suggestions=${integrated.suggestions?.size() ?: 0}, new promotions=${newPromotions.size()}, open gaps=${currentGaps.size()}")

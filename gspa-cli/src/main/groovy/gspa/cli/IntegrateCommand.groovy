@@ -11,6 +11,10 @@ import gspa.integration.IntegrationState
 import gspa.integration.IterativeRefiner
 import gspa.integration.OuterIterativeRefiner
 import gspa.integration.PriorEngine
+import gspa.integration.promotion.AllAboveThresholdStrategy
+import gspa.integration.promotion.GreedyStrategy
+import gspa.integration.promotion.MaxSatStrategy
+import gspa.integration.promotion.PromotionStrategy
 import gspa.integration.prior.ConsistencyPrior
 import gspa.integration.prior.CoherencePrior
 import gspa.integration.prior.EssentialityPrior
@@ -142,6 +146,16 @@ class IntegrateCommand implements Runnable {
             description = 'Intragenome protein clustering: off (default), 0.9, 0.95, or 1.0.')
     String intragenomeCluster = 'off'
 
+    @Option(names = ['--promotion-strategy'],
+            description = 'How the outer loop picks promotions from DarkMatter suggestions: ' +
+                          'default (all above q threshold), greedy (log-posterior rank, ' +
+                          'conflict-free batch), maxsat (SAT4J weighted MaxSAT).')
+    String promotionStrategy = 'default'
+
+    @Option(names = ['--refined-bf'],
+            description = 'Use the Phase 10.1 refined BF (Noisy-OR + IC + purity) in the suggester. Default true.')
+    boolean refinedBf = true
+
     @Override
     void run() {
         println "GSPA integrate"
@@ -197,16 +211,18 @@ class IntegrateCommand implements Runnable {
         // --- Phase 8: optional dark-matter suggester ---
         if (darkMatter) {
             def suggester = buildSuggester(theta)
+            suggester.useRefinedBayesFactor = refinedBf
 
             if (iterateGapseq) {
                 // Phase 10 outer fixed-point loop over (refine → suggest → promote → pin).
-                println "  Running Phase 10 outer loop (maxIter=${maxGapseqIter}, qBase=${gapseqQBase}, qStep=${gapseqQStep}, pin=${gapseqPinPromotions})"
+                println "  Running Phase 10 outer loop (maxIter=${maxGapseqIter}, qBase=${gapseqQBase}, qStep=${gapseqQStep}, pin=${gapseqPinPromotions}, strategy=${promotionStrategy}, refinedBf=${refinedBf})"
                 def outer = new OuterIterativeRefiner(refiner)
                 outer.suggester = suggester
                 outer.maxIter = maxGapseqIter
                 outer.qBase = gapseqQBase
                 outer.qStep = gapseqQStep
                 outer.pinPromotions = gapseqPinPromotions
+                outer.promotionStrategy = buildPromotionStrategy()
                 def gs = new OuterIterativeRefiner.CoverageGapSource(tauCover: gapseqTauCover, pathwayDb: state.pathwayDatabase)
                 outer.gapSource = gs
                 def outerResult = outer.refine(claims, state)
@@ -453,6 +469,28 @@ class IntegrateCommand implements Runnable {
         if (iterateGapseq && !darkMatter) {
             throw new IllegalArgumentException(
                 "--iterate-gapseq requires --dark-matter (the outer loop consumes suggester output)")
+        }
+        if (promotionStrategy != null && promotionStrategy != 'default' &&
+                promotionStrategy != 'greedy' && promotionStrategy != 'maxsat' &&
+                promotionStrategy != '') {
+            throw new IllegalArgumentException(
+                "--promotion-strategy must be one of: default, greedy, maxsat (got '${promotionStrategy}')")
+        }
+    }
+
+    private PromotionStrategy buildPromotionStrategy() {
+        switch (promotionStrategy) {
+            case 'default':
+            case null:
+            case '':
+                return new AllAboveThresholdStrategy()
+            case 'greedy':
+                return new GreedyStrategy()
+            case 'maxsat':
+                return new MaxSatStrategy()
+            default:
+                throw new IllegalArgumentException(
+                    "Unknown --promotion-strategy: '${promotionStrategy}' (expected default|greedy|maxsat)")
         }
     }
 
