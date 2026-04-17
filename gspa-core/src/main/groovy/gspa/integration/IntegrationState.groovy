@@ -77,6 +77,26 @@ class IntegrationState {
      */
     Set<GapKey> closedGaps = new LinkedHashSet<>()
 
+    // --- Phase 11 cross-genome state (optional) ---
+
+    /**
+     * Mapping protein-id → orthogroup cluster id, built from MMseqs2
+     * easy-cluster across all genomes in the study. Read-only for the
+     * integrator; populated once at CLI load time from the orthogroup
+     * TSV.
+     */
+    Map<String, String> orthogroupMap = null
+
+    /**
+     * Cluster-level consensus posterior probabilities, keyed by
+     * "clusterId|type|functionId" → P(function present in cluster).
+     * Computed in an outer pass over all genomes' baseline posteriors
+     * and loaded here for the per-genome cross-genome boost pass.
+     * When null, {@link gspa.integration.prior.HomologyTransferPrior}
+     * no-ops.
+     */
+    Map<String, Double> orthogroupConsensus = null
+
     IntegrationState(Genome genome) {
         this.genome = genome
     }

@@ -94,6 +94,14 @@ class IntegrateCommand implements Runnable {
             description = 'Metabolic gaps JSONL (one gap per line).')
     File gapsFile
 
+    @Option(names = ['--orthogroups'],
+            description = 'Orthogroup TSV (protein_id <TAB> cluster_id), from MMseqs2 easy-cluster across multiple genomes. Required with homology_transfer prior.')
+    File orthogroupsFile
+
+    @Option(names = ['--cluster-consensus'],
+            description = 'Cluster consensus TSV (cluster_id <TAB> function_type <TAB> function_id <TAB> consensus_prob) built from a prior all-genome baseline pass.')
+    File clusterConsensusFile
+
     @Option(names = ['--enable-priors'],
             description = 'Which priors to enable (comma-separated). Default: all.')
     String enabledPriors = 'essentiality,coherence,consistency,gap_filling,genomic_context'
@@ -426,6 +434,37 @@ class IntegrateCommand implements Runnable {
             state.metabolicGaps = gaps
             println "  Metabolic gaps: ${gaps.size()}"
         }
+
+        // Phase 11 cross-genome: orthogroup membership + consensus.
+        if (orthogroupsFile != null && orthogroupsFile.exists()) {
+            Map<String, String> orthogroups = new LinkedHashMap<>()
+            orthogroupsFile.eachLine { line ->
+                line = line.trim()
+                if (line.isEmpty() || line.startsWith('#')) return
+                String[] parts = line.split('\t')
+                if (parts.length >= 2) {
+                    orthogroups[parts[0]] = parts[1]
+                }
+            }
+            state.orthogroupMap = orthogroups
+            println "  Orthogroups: ${orthogroups.size()} protein assignments"
+        }
+        if (clusterConsensusFile != null && clusterConsensusFile.exists()) {
+            Map<String, Double> consensus = new LinkedHashMap<>()
+            clusterConsensusFile.eachLine { line ->
+                line = line.trim()
+                if (line.isEmpty() || line.startsWith('#')) return
+                String[] parts = line.split('\t')
+                if (parts.length >= 4) {
+                    String key = "${parts[0]}|${parts[1]}|${parts[2]}".toString()
+                    try {
+                        consensus[key] = Double.parseDouble(parts[3])
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            state.orthogroupConsensus = consensus
+            println "  Cluster consensus entries: ${consensus.size()}"
+        }
     }
 
     /**
@@ -565,6 +604,14 @@ class IntegrateCommand implements Runnable {
             if (theta.alpha_ctx != null) p.alphaCtx = (theta.alpha_ctx as Number).doubleValue()
             if (theta.alpha_gap_ctx != null) p.alphaGapCtx = (theta.alpha_gap_ctx as Number).doubleValue()
             engine.register(p, (priorWeights.genomic_context ?: 1.0) as double)
+        }
+        if ('homology_transfer' in enabled) {
+            def p = new gspa.integration.prior.HomologyTransferPrior()
+            if (theta.alpha_homology != null) p.alpha = (theta.alpha_homology as Number).doubleValue()
+            if (theta.homology_min_consensus != null) p.minConsensus = (theta.homology_min_consensus as Number).doubleValue()
+            if (theta.homology_min_delta != null) p.minDelta = (theta.homology_min_delta as Number).doubleValue()
+            if (theta.homology_max_boost != null) p.maxBoost = (theta.homology_max_boost as Number).doubleValue()
+            engine.register(p, (priorWeights.homology_transfer ?: 1.0) as double)
         }
         engine
     }
