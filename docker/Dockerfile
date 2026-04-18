@@ -1,7 +1,7 @@
 # GSPA - Genome-Scale Protein Annotation
 # Multi-stage build: build JAR then create runtime image with bioinformatics tools
 
-# --- Stage 1: Build ---
+# --- Stage 1: Build GSPA JAR ---
 FROM eclipse-temurin:21-jdk AS builder
 
 WORKDIR /build
@@ -13,7 +13,20 @@ COPY gspa-cli/ gspa-cli/
 
 RUN ./gradlew :gspa-cli:installDist --no-daemon
 
-# --- Stage 2: Runtime ---
+# --- Stage 2: Build gapsmith (Rust) ---
+# Pinned version; bump when a new gapsmith release with compatible
+# *-Reactions.tbl / *-Pathways.tbl output is needed.
+FROM rust:1.82-bookworm AS gapsmith-builder
+ARG GAPSMITH_REF=v0.1.0
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cmake clang libclang-dev pkg-config git \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch ${GAPSMITH_REF} \
+        https://github.com/bio-ontology-research-group/gapsmith.git /src/gapsmith
+WORKDIR /src/gapsmith
+RUN cargo build --release --bin gapsmith
+
+# --- Stage 3: Runtime ---
 FROM eclipse-temurin:21-jre
 
 LABEL maintainer="Robert Hoehndorf <robert.hoehndorf@kaust.edu.sa>"
@@ -48,6 +61,13 @@ RUN pip3 install --break-system-packages cobra || true
 # Copy GSPA distribution
 COPY --from=builder /build/gspa-cli/build/install/gspa-cli /opt/gspa
 ENV PATH="/opt/gspa/bin:${PATH}"
+
+# Install gapsmith (Phase 11 default pathway tool) + vendored curation data.
+# Large public tables (SEED, MNXref) and sequence DB (~2 GB) are NOT baked
+# in — fetch them at run time with `gapsmith update-data` / `update-sequences`,
+# then point `--data-dir` at the result.
+COPY --from=gapsmith-builder /src/gapsmith/target/release/gapsmith /usr/local/bin/gapsmith
+COPY --from=gapsmith-builder /src/gapsmith/data /opt/gapsmith/data
 
 # Default working directory
 WORKDIR /data
