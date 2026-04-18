@@ -5,15 +5,40 @@ import gspa.predictor.AbstractToolPredictor
 import gspa.predictor.GenomePredictor
 
 /**
- * gapseq predictor for metabolic pathway reconstruction.
- * Identifies metabolic reactions and pathways, performs gap-filling
- * to create draft genome-scale metabolic models.
+ * Pathway/gap predictor wrapping gapsmith (default) or gapseq.
+ *
+ * <p>gapsmith is a Rust reimplementation of gapseq with the same
+ * output-file format (see github.com/bio-ontology-research-group/gapsmith).
+ * The two binaries differ only in CLI flag spellings — the emitted
+ * {@code *-Reactions.tbl} and {@code *-Pathways.tbl} files are
+ * drop-in compatible, so downstream parsers (including gspa's
+ * {@code parse_gapseq_gaps.py}) work unchanged.</p>
+ *
+ * <p>Switch via {@link #tool}: {@code 'gapsmith'} (default) or
+ * {@code 'gapseq'}. {@code 'gapsmith'} is preferred because it's
+ * significantly faster on large proteomes and can share a precomputed
+ * alignment across genomes.</p>
  *
  * Supports community mode for crossfeeding analysis.
  */
 class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
 
-    /** gapseq medium file for gap-filling */
+    /**
+     * External tool to invoke. {@code 'gapsmith'} (default) uses
+     * {@code gapsmith find -p all -t Bacteria -o <out-dir>}.
+     * {@code 'gapseq'} uses {@code gapseq find -p all -b Bacteria}
+     * (legacy R/bash upstream).
+     */
+    String tool = 'gapsmith'
+
+    /**
+     * Reference-data directory for gapsmith ({@code --data-dir}).
+     * When null, gapsmith auto-detects (assumes a sibling {@code data/}
+     * dir, or {@code GAPSMITH_DATA_DIR}). Ignored for {@code tool=='gapseq'}.
+     */
+    String dataDir = null
+
+    /** gapseq/gapsmith medium file for gap-filling */
     String medium
 
     /** Export SBML model */
@@ -45,7 +70,7 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
     Set<String> representativeIds = null
 
     @Override
-    String getName() { 'gapseq' }
+    String getName() { tool }
 
     @Override
     Set<AnnotationType> getOutputTypes() {
@@ -53,16 +78,30 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
     }
 
     @Override
-    String getExecutable() { 'gapseq' }
+    String getExecutable() {
+        tool == 'gapseq' ? 'gapseq' : 'gapsmith'
+    }
 
     @Override
     List<String> buildCommand(File inputFasta, File outputDir) {
-        def outputPrefix = new File(outputDir, 'gapseq_model')
-        def cmd = [
-            executablePath ?: executable,
+        def exe = executablePath ?: getExecutable()
+        if (tool == 'gapseq') {
+            return [
+                exe,
+                'find',
+                '-p', 'all',
+                '-b', taxonomy,
+                inputFasta.absolutePath,
+            ]
+        }
+        // gapsmith: --data-dir is at the top level, out-dir goes to the subcommand
+        def cmd = [exe]
+        if (dataDir) cmd += ['--data-dir', dataDir]
+        cmd += [
             'find',
             '-p', 'all',
-            '-b', taxonomy,
+            '-t', taxonomy,
+            '-o', outputDir.absolutePath,
             inputFasta.absolutePath,
         ]
         cmd
@@ -116,11 +155,11 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
             File inputFasta = writeTargetFasta(genome, tmpDir)
 
             def command = buildCommand(inputFasta, tmpDir)
-            log.info("Running gapseq (target=${target}): ${command.join(' ')}")
+            log.info("Running ${tool} (target=${target}): ${command.join(' ')}")
             def result = execute(command, tmpDir)
 
             if (result.exitCode != 0) {
-                log.error("gapseq failed: ${result.stderr}")
+                log.error("${tool} failed: ${result.stderr}")
                 return [:]
             }
 
