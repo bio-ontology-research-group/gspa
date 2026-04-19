@@ -27,7 +27,10 @@ enum EvidenceType {
     DOMAIN_SPECIFIC_CAZY,       // dbCAN
     DOMAIN_SPECIFIC_BGC,        // antiSMASH
     DOMAIN_SPECIFIC_VF,         // VFDB
-    DARK_MATTER                 // claims promoted by DarkMatterSuggester (Phase 10)
+    DARK_MATTER,                // claims promoted by DarkMatterSuggester (Phase 10)
+    REACTION_LOCAL_CONTEXT,     // claims from ReactionLocalContextSuggester (Phase 12)
+    CROSS_GENOME_TRANSFER,      // conditional-LR-based cross-genome transfer (Phase 12)
+    ML_RANKER                   // learned ranker output (Phase 12 M3+)
 
     /**
      * Correlation group. Claims in the same group are collapsed to the single
@@ -52,11 +55,14 @@ enum EvidenceType {
             case GENOMIC_LANGUAGE_MODEL:
                 return 'ml_genomic'
             case DARK_MATTER:
-                // Isolated: DM promotions are context-inferred, not drawn
-                // from any predictor's homology / ML / structure database.
-                // Keeping this separate from ml_sequence prevents Noisy-OR
-                // collapse against unrelated ML claims and leaves the door
-                // open for Phase 11 cross-genome transfer of DM promotions.
+            case REACTION_LOCAL_CONTEXT:
+            case CROSS_GENOME_TRANSFER:
+            case ML_RANKER:
+                // Isolated: context-inferred claims share this group so
+                // Phase 10 DM and Phase 12 RLGC/cross-genome/ML ranker
+                // alternatives collapse correctly (we never emit more
+                // than one class of context inference for the same
+                // gap in production).
                 return 'inferred_context'
             case SEQUENCE_MOTIF:
                 return 'motif'

@@ -3,9 +3,11 @@ package gspa.integration
 import gspa.config.EssentialFunctions
 import gspa.model.AnnotationType
 import gspa.model.Genome
+import gspa.model.GenomeLayout
 import gspa.ontology.GoOntology
 import gspa.ontology.GoReasoner
 import gspa.ontology.PathwayDatabase
+import gspa.ontology.ReactionGraph
 import gspa.ontology.SatConsistencyChecker
 
 /**
@@ -76,6 +78,20 @@ class IntegrationState {
      * reactionId) is in this set — guarantees monotone outer-loop progress.
      */
     Set<GapKey> closedGaps = new LinkedHashSet<>()
+
+    // --- Phase 12 reaction-local-context state (optional) ---
+
+    /**
+     * Panel-level reaction graph (metabolite-sharing adjacency,
+     * currency-pruned). Required by {@link gspa.integration.suggester.ReactionLocalContextSuggester}.
+     */
+    ReactionGraph reactionGraph = null
+
+    /**
+     * Per-genome protein coordinates. Required by RLGC for kernel
+     * density and strand/intergenic features.
+     */
+    GenomeLayout genomeLayout = null
 
     // --- Phase 11 cross-genome state (optional) ---
 

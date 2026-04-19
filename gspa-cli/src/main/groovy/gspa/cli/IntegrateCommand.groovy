@@ -21,11 +21,18 @@ import gspa.integration.prior.CoherencePrior
 import gspa.integration.prior.EssentialityPrior
 import gspa.integration.prior.GapFillingPrior
 import gspa.integration.prior.GenomicContextPrior
+import gspa.integration.crossgenome.CrossGenomeReScorer
+import gspa.integration.crossgenome.ReactionLocusCatalog
 import gspa.integration.suggester.DarkMatterSuggester
 import gspa.integration.suggester.DisjunctiveSuggestion
+import gspa.integration.suggester.ReactionLocalContextSuggester
 import gspa.integration.suggester.SingletonSuggestion
 import gspa.integration.suggester.Suggestion
 import gspa.model.Genome
+import gspa.model.GenomeLayout
+import gspa.model.GenomeLayoutLoader
+import gspa.ontology.ReactionGraph
+import gspa.ontology.ReactionGraphLoader
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 
@@ -184,6 +191,70 @@ class IntegrateCommand implements Runnable {
                           'suggester. Accepts true/false; bare --refined-bf = true. Default true.')
     boolean refinedBf = true
 
+    // --- Phase 12 RLGC flags ---
+
+    @Option(names = ['--reaction-graph'],
+            description = 'gapsmith seed_reactions.tsv — builds the reaction graph for the RLGC suggester.')
+    File reactionGraphFile
+
+    @Option(names = ['--diffusion-mets'],
+            description = 'gapsmith diffusion_mets.tsv (currency metabolite list).')
+    File diffusionMetsFile
+
+    @Option(names = ['--reaction-ec-aliases'],
+            description = 'gapsmith seed_Enzyme_Class_Reactions_Aliases_unique.tsv (EC → rxn binding).')
+    File reactionEcAliasesFile
+
+    @Option(names = ['--genome-layout'],
+            description = 'Panel layout TSV (protein_id contig start end strand) built by make_layout.py.')
+    File genomeLayoutFile
+
+    @Option(names = ['--rlc-suggester'],
+            description = 'Enable the Phase 12 Reaction-Local Context suggester (M1).')
+    boolean rlcSuggester = false
+
+    @Option(names = ['--rlc-kernel-bandwidth'],
+            description = 'Gaussian kernel bandwidth (bp) for genomic density. Default 5000.')
+    double rlcKernelBandwidth = 5000.0d
+
+    @Option(names = ['--rlc-radius-k'],
+            description = 'Reaction-graph BFS radius. Default 2.')
+    int rlcRadiusK = 2
+
+    @Option(names = ['--rlc-alpha'],
+            description = 'α-decay across reaction-graph hops. Default 0.5.')
+    double rlcAlpha = 0.5d
+
+    @Option(names = ['--rlc-currency-pct'],
+            description = 'Percentile threshold for degree-based currency detection. Default 99.0.')
+    double rlcCurrencyPercentile = 99.0d
+
+    @Option(names = ['--rlc-anchor-threshold'],
+            description = 'Min posterior prob to qualify as an RLGC anchor. Default 0.3.')
+    double rlcAnchorThreshold = 0.3d
+
+    @Option(names = ['--features-out'],
+            description = 'Optional TSV output: per-candidate feature vector from the RLGC suggester (M3 training data).')
+    File featuresOut
+
+    // --- Phase 12 M2 cross-genome LR flags ---
+
+    @Option(names = ['--rxn-locus-catalog'],
+            description = 'ReactionLocusCatalog TSV (from build_catalog.py). Enables M2 cross-genome re-scoring on top of RLGC.')
+    File rxnLocusCatalogFile
+
+    @Option(names = ['--cg-lambda'],
+            description = 'Exponent on cross-genome LR in posterior update. Default 1.0.')
+    double cgLambda = 1.0d
+
+    @Option(names = ['--cg-min-support'],
+            description = 'Min n_sig_total for a (C, R) LR to be trusted. Default 3.')
+    int cgMinSupport = 3
+
+    @Option(names = ['--cg-require-credible'], arity = '1',
+            description = 'Drop LRs whose 90% CI overlaps 1.0 (log-CI excludes 0). Default true.')
+    boolean cgRequireCredible = true
+
     @Override
     void run() {
         println "GSPA integrate"
@@ -235,6 +306,36 @@ class IntegrateCommand implements Runnable {
         // --- Refine ---
         IntegratedAnnotationSet integrated = refiner.refine(claims, state)
         println "  Produced ${integrated.annotations.size()} integrated annotations"
+
+        // --- Phase 12: optional Reaction-Local Context suggester (M1) ---
+        if (rlcSuggester) {
+            def rlc = new ReactionLocalContextSuggester()
+            rlc.radiusK = rlcRadiusK
+            rlc.alpha = rlcAlpha
+            rlc.kernelBandwidth = rlcKernelBandwidth
+            rlc.anchorPosteriorThreshold = rlcAnchorThreshold
+            if (featuresOut != null) rlc.featuresOut = featuresOut
+            rlc.suggest(state, integrated)
+            println "  RLGC suggester emitted ${integrated.suggestions.size()} suggestions"
+
+            // --- Phase 12 M2: cross-genome LR re-scorer ---
+            if (rxnLocusCatalogFile != null && rxnLocusCatalogFile.exists()) {
+                def catalog = ReactionLocusCatalog.readFrom(rxnLocusCatalogFile)
+                println "  ReactionLocusCatalog: ${catalog.size()} (C, R) entries; panel=${catalog.panelSize}"
+                def cgr = new CrossGenomeReScorer()
+                cgr.lambda = cgLambda
+                cgr.minSupport = cgMinSupport
+                cgr.requireCredible = cgRequireCredible
+                cgr.rescore(state, integrated, catalog)
+                println "  Cross-genome rescoring complete; ${integrated.suggestions.size()} suggestions after rescore"
+            }
+
+            if (suggestionsOut != null && !darkMatter) {
+                suggestionsOut.parentFile?.mkdirs()
+                writeSuggestionsTsv(integrated.suggestions, suggestionsOut)
+                println "  Suggestions: ${suggestionsOut}"
+            }
+        }
 
         // --- Phase 8: optional dark-matter suggester ---
         if (darkMatter) {
@@ -443,7 +544,13 @@ class IntegrateCommand implements Runnable {
                 if (line.isEmpty() || line.startsWith('#')) return
                 String[] parts = line.split('\t')
                 if (parts.length >= 2) {
-                    orthogroups[parts[0]] = parts[1]
+                    // Strip optional "namespace:" prefix from the rep so the
+                    // orthogroup ID matches the bare-accession format used by
+                    // build_catalog.py and ReactionLocusCatalog.
+                    String rep = parts[1]
+                    int colon = rep.indexOf(':')
+                    if (colon >= 0) rep = rep.substring(colon + 1)
+                    orthogroups[parts[0]] = rep
                 }
             }
             state.orthogroupMap = orthogroups
@@ -464,6 +571,26 @@ class IntegrateCommand implements Runnable {
             }
             state.orthogroupConsensus = consensus
             println "  Cluster consensus entries: ${consensus.size()}"
+        }
+
+        // Phase 12 RLGC: reaction graph + genome layout.
+        if (reactionGraphFile != null && reactionGraphFile.exists()) {
+            try {
+                state.reactionGraph = ReactionGraphLoader.load(
+                    reactionGraphFile, diffusionMetsFile, rlcCurrencyPercentile,
+                    reactionEcAliasesFile)
+                println "  Reaction graph: ${state.reactionGraph.reactions.size()} reactions, ${state.reactionGraph.currencyMetabolites.size()} currency metabolites, ${state.reactionGraph.ecToReactions.size()} ECs"
+            } catch (Exception e) {
+                System.err.println "  [warn] Failed to load reaction graph: ${e.message}"
+            }
+        }
+        if (genomeLayoutFile != null && genomeLayoutFile.exists()) {
+            try {
+                state.genomeLayout = GenomeLayoutLoader.load(genomeLayoutFile)
+                println "  Genome layout: ${state.genomeLayout.size()} loci across ${state.genomeLayout.byContig.size()} contig(s)"
+            } catch (Exception e) {
+                System.err.println "  [warn] Failed to load genome layout: ${e.message}"
+            }
         }
     }
 
