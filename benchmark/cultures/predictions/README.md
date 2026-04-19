@@ -100,6 +100,63 @@ Additional columns in `validation_candidates_pident.tsv`:
 | max_cos_esm2 | Max cosine between the candidate's ESM-2 t30 embedding and any of 2,259 panel-wide per-EC centroids. Context signal; > 0.9 is typical base rate. |
 | esm2_argmax_ec | EC whose centroid gave that max cos. If different from `gap_ec`, ESM2 alone would have predicted a *different* function. |
 | n_gaps_for_candidate | # distinct gap reactions this candidate appears as top-5 for. Low = specific prediction; high ⇒ positional hub (see caveats below). |
+| orthogroup | Panel orthogroup assigned to the candidate via MMseqs2 easy-search against the 29-genome GTDB panel (≥50 % id, ≥80 % query coverage). `unclustered` ⇒ no panel homolog at that cutoff — this is the norm for truly dark candidates. |
+| seed_rxn_lookup | Comma-separated SEED reaction IDs used to look up cross-genome evidence for this gap (gap_rxn + EC-alias equivalents that exist in the catalog). |
+| n_sig_nonanc / n_sig_total | # panel genomes (out of 29) where the R-signature is present AND this orthogroup has a non-anchor member inside / total genomes with R-signature. Empty ⇒ no catalog match. |
+| n_base_with / n_base_total | # panel genomes where this orthogroup has any member / panel size. Gives the baseline rate to compare against. |
+| log_lr | log₁₀ of `[(n_sig_nonanc / n_sig_total + ε) / (n_base_with / n_base_total + ε)]`. Positive ⇒ orthogroup appears in R-signature contexts more often than its baseline prevalence — cross-genome evidence supports the prediction. 0 ⇒ no signal. Negative ⇒ under-represented. |
+| n_catalog_lookups | # SEED equivalents of gap_rxn that had a catalog entry for this orthogroup. |
+
+### Cross-genome evidence (29-genome panel × culture candidates)
+
+Cross-genome support is computed by:
+1. MMseqs2 easy-search of every culture protein against the
+   concatenated 29-genome panel proteome, taking the best hit at
+   ≥50 % seq id and ≥80 % query cov → assigns each culture protein to
+   the panel orthogroup of its best hit (or `unclustered`).
+2. For the gap reaction, resolving SEED equivalents via EC.
+3. Looking up `(orthogroup, SEED_rxn)` in
+   `nonanchor_catalog_cultures.tsv` (43 M rows, 5,500 SEED reactions ×
+   29 panel genomes, restricted to SEED equivalents of the 5,238 unique
+   culture gap ECs).
+
+Of the 1,525 validation rows:
+
+| step | count | % |
+|---|---|---|
+| predictions in shortlist | 1,525 | 100 |
+| candidate has ≥50% id panel homolog (orthogrouped) | 301 | 19.7 |
+| catalog match (orthogroup × SEED rxn) | 136 | 8.9 |
+| `|log_lr| > 0.1` (meaningful cross-genome signal) | 63 | 4.1 |
+| positive `log_lr > 0.1` (cross-genome *supports* prediction) | 61 | 4.0 |
+
+Low orthogrouped fraction is expected: the shortlist is dark
+candidates (pident < 30 % to Swiss-Prot), so most also lack panel
+homologs at 50 % id. Cross-genome evidence is most useful exactly for
+the subset that *does* have a distant panel ortholog.
+
+### Top cross-genome-supported dark-matter predictions
+
+Candidates with `pident = 0` (no Swiss-Prot annotation homolog at all)
+AND `log_lr > 0.5` (cross-genome strongly supports):
+
+| culture | candidate | gap reaction | EC | orthogroup | n_sig_nonanc / n_sig_tot | log_lr |
+|---|---|---|---|---|---|---|
+| MR59-1 | contig_1_908 | Neuraminidase | 3.2.1.18 | A0A6B0BKS9 | 20 / 30 | **1.29** |
+| MR59-1 | contig_1_908 | N-acetylneuraminate synthase | 2.5.1.56 | A0A6B0BKS9 | 5 / 27 | 0.73 |
+| MR60-1 | contig_1_88 | palmitoyl-ACP 9-desaturase | 1.14.19.2 | A0A3M5EC75 | 5 / 29 | 0.70 |
+| MR59-1 | contig_1_1559 | UDP-NAM-pentapeptide lysyltransferase | 2.3.2.10 | A0A0D1KVH5 | 18 / 30 | 0.65 |
+| MR60-1 | contig_1_617 | CMP-N-acetylneuraminate synthetase | 2.7.7.43 | A0A367M9C3 | 4 / 27 | 0.64 |
+| MR60-1 | contig_1_3647 | allantoinase | 3.5.2.5 | A0A3M5E3X5 | — | 0.62 |
+
+These are the strongest wet-lab candidates in the shortlist:
+**pident = 0** (no sequence annotation) AND context puts the gene into
+the right operon AND across the panel the same orthogroup
+consistently appears as a non-anchor in that reaction's context
+windows. A positive wet-lab result would show three independent lines
+of evidence (genomic context within culture, cross-genome
+non-anchor consistency, operon-level localisation) combining to
+predict a function for a protein with no sequence-level annotation.
 
 ## Dark-matter definition
 
@@ -171,14 +228,13 @@ Examples that satisfy all four:
    3–5 genes, density ranks the highest-density gene first; the
    "correct" dark-matter member may be at rank 2 or 3. Inspect all
    top-3 candidates in the output, not just rank-1.
-5. **No cross-genome evidence used.** These predictions rely on
-   within-culture context only: the culture's own gapsmith gap set,
-   the culture's own integrated posteriors, and the reaction graph.
-   Cross-genome evidence (does this candidate's orthogroup consistently
-   appear as a non-anchor in gap-signature windows across the 29-genome
-   GTDB panel?) is not yet incorporated, though the
-   `nonanchor_catalog_mg1655.tsv` artefact built in the repo can
-   support that re-scoring once wired in.
+5. **Cross-genome evidence is now included in
+   `validation_candidates_pident.tsv`**, but only for the 19.7 % of
+   shortlist candidates that have any panel ortholog at 50 % id /
+   80 % cov. For the remaining 80 % (true dark matter w.r.t. the
+   panel), the prediction rests on within-culture context alone.
+   Raw per-gap predictions (`{tag}_dark_matter.tsv`) are still
+   within-culture-only.
 
 ## Reproducibility
 
