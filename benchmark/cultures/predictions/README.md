@@ -89,6 +89,8 @@ All steps run as SLURM jobs on unimatrix01. The full pipeline for a
 | n_nbr_gos | Number of neighbour-reaction GO terms used to form the anchor set |
 | contig / pos | Candidate's contig + midpoint coordinate |
 | near_anchors | Three nearest anchors to candidate (position + weight) |
+| reaction_name | Human-readable reaction name (from gapsmith Reactions.tbl, fallback SEED reactions.tsv) |
+| ec_name | EC description (extracted from ec2go.txt) |
 
 Additional columns in `validation_candidates_pident.tsv`:
 
@@ -169,9 +171,14 @@ Examples that satisfy all four:
    3–5 genes, density ranks the highest-density gene first; the
    "correct" dark-matter member may be at rank 2 or 3. Inspect all
    top-3 candidates in the output, not just rank-1.
-5. **Not validated against orthogonal signals.** No cross-genome
-   non-anchor LR scoring has been applied yet (the `nonanchor_catalog`
-   infrastructure exists but isn't wired into these predictions).
+5. **No cross-genome evidence used.** These predictions rely on
+   within-culture context only: the culture's own gapsmith gap set,
+   the culture's own integrated posteriors, and the reaction graph.
+   Cross-genome evidence (does this candidate's orthogroup consistently
+   appear as a non-anchor in gap-signature windows across the 29-genome
+   GTDB panel?) is not yet incorporated, though the
+   `nonanchor_catalog_mg1655.tsv` artefact built in the repo can
+   support that re-scoring once wired in.
 
 ## Reproducibility
 
