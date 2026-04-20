@@ -1,43 +1,82 @@
 #!/usr/bin/env bash
-# Stage all candidate genome FASTAs into a single flat directory with
-# stable genome_id filenames so CheckM2 / GTDBtk / skani can all share
-# the same input set.
-#
-# Reads genome_inventory.tsv (source, sample, path, size, depth).
-# Writes symlinks $STAGE/<genome_id>.fna.
-#
-# Also writes genome_list.tsv mapping genome_id → original path.
+# Stage candidate genome FASTAs as symlinks, validating each for:
+#   - target exists + readable
+#   - first byte is '>'
+#   - size >= 100k (resolving symlinks)
+# Writes:
+#   $STAGE/<genome_id>.fna  (symlinks)
+#   $MAP   tsv: genome_id, source, sample, original_path
+#   $REJ   tsv: genome_id, original_path, reason
 
 set -euo pipefail
 
 INV=${1:-/data/hohndor/gspa/proteomes/culture_panel/phase1/genome_inventory.tsv}
 STAGE=${2:-/data/hohndor/gspa/proteomes/culture_panel/phase1/staged}
 MAP=${3:-/data/hohndor/gspa/proteomes/culture_panel/phase1/genome_list.tsv}
+REJ=${4:-/data/hohndor/gspa/proteomes/culture_panel/phase1/rejected.tsv}
 
 mkdir -p "$STAGE"
-echo -e "genome_id\tsource\tsample\toriginal_path" > "$MAP"
+find "$STAGE" -maxdepth 1 -type l -delete 2>/dev/null || true
 
-# Deduplicate by identical paths just in case find hit the same file
-# twice (symlinks).  Keep the first occurrence per genome_id so we
-# don't clobber.
+python3 - "$INV" "$STAGE" "$MAP" "$REJ" <<'PY'
+import csv
+import os
+import re
+import sys
+from pathlib import Path
 
-awk -F'\t' -v stage="$STAGE" -v map="$MAP" '
-NR == 1 { next }
-{
-    src=$1; sample=$2; path=$3
-    # basename without .fna/.fa/.fasta
-    n=split(path, p, "/")
-    base=p[n]
-    sub(/\.(fna|fa|fasta)$/, "", base)
-    gsub(/\//, "_", sample)
-    gid = src "__" sample "__" base
-    if (seen[gid]++) next
-    print gid "\t" src "\t" sample "\t" path >> map
-    # symlink so we don'\''t duplicate the (potentially large) data
-    cmd = "ln -sf \"" path "\" \"" stage "/" gid ".fna\""
-    system(cmd)
-}
-' "$INV"
+inv, stage, map_out, rej_out = sys.argv[1:]
+seen = set()
 
-echo "staged: $(ls $STAGE | wc -l) FASTAs → $STAGE"
-echo "map:    $(wc -l < $MAP) lines → $MAP"
+with open(inv) as fin, \
+     open(map_out, "w") as fmap, \
+     open(rej_out, "w") as frej:
+    fmap.write("genome_id\tsource\tsample\toriginal_path\n")
+    frej.write("genome_id\toriginal_path\treason\n")
+    rdr = csv.DictReader(fin, delimiter="\t")
+    for r in rdr:
+        src = r["source_dir"]
+        sample = r["sample_id"].replace("/", "_")
+        path = r["fasta_path"]
+        base = re.sub(r"\.(fna|fa|fasta)$", "", os.path.basename(path))
+        gid = f"{src}__{sample}__{base}"
+        if gid in seen:
+            continue
+        seen.add(gid)
+
+        # Resolve through symlinks for size
+        try:
+            size = os.stat(path).st_size
+        except (OSError, FileNotFoundError):
+            frej.write(f"{gid}\t{path}\ttarget_missing\n")
+            continue
+        if size < 100_000:
+            frej.write(f"{gid}\t{path}\tsize_below_100k({size})\n")
+            continue
+
+        try:
+            with open(path, "rb") as f:
+                first = f.read(1)
+        except (OSError, FileNotFoundError):
+            frej.write(f"{gid}\t{path}\tunreadable\n")
+            continue
+        if first != b">":
+            frej.write(f"{gid}\t{path}\tinvalid_header({first.decode('latin1')!r})\n")
+            continue
+
+        fmap.write(f"{gid}\t{src}\t{sample}\t{path}\n")
+        dst = os.path.join(stage, f"{gid}.fna")
+        if os.path.lexists(dst):
+            os.unlink(dst)
+        os.symlink(path, dst)
+PY
+
+NREJ=$(( $(wc -l < $REJ) - 1 ))
+NOK=$(( $(wc -l < $MAP) - 1 ))
+echo "staged: $NOK valid FASTAs → $STAGE"
+echo "rejected: $NREJ → see $REJ"
+if [[ $NREJ -gt 0 ]]; then
+    echo "rejection reasons:"
+    awk -F'\t' 'NR>1 {gsub(/\(.*/, "", $3); print $3}' $REJ \
+        | sort | uniq -c | sort -rn
+fi

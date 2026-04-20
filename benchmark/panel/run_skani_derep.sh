@@ -81,7 +81,15 @@ def n_contigs(path):
     except OSError:
         return 10**9
 
-ranks = sorted(genomes, key=lambda p: (n_contigs(p), -Path(p).stat().st_size))
+
+def size_or_zero(path):
+    try:
+        return Path(path).stat().st_size
+    except (OSError, FileNotFoundError):
+        return 0
+
+
+ranks = sorted(genomes, key=lambda p: (n_contigs(p), -size_or_zero(p)))
 
 seen = set()
 cluster_of = {}

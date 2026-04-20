@@ -20,8 +20,12 @@ Pipeline (run on unimatrix01):
    `rh_sequencing/`; emits `genome_inventory.tsv` (one row per
    candidate assembly FASTA). Applies per-source "canonical FASTA"
    rules so a single sample never contributes multiple redundant rows.
-2. `stage_fastas.sh` — turns inventory into symlinks
-   `staged/<genome_id>.fna`, writes `genome_list.tsv`.
+2. `stage_fastas.sh` — validates each candidate FASTA (readable,
+   first byte `>`, resolved size ≥ 100kb) and turns passing inventory
+   rows into symlinks `staged/<genome_id>.fna`. Writes `genome_list.tsv`
+   (accepted) and `rejected.tsv` (skipped + reason). Needed because
+   IBEX-to-GlusterFS redirect stubs show up as 80-byte unreadable
+   pseudo-FASTAs that crash downstream tools.
 3. `run_checkm2.sh` (SLURM) — CheckM2 v1.1.0 on staged dir;
    `quality_report.tsv` with completeness / contamination.
 4. `run_gtdbtk.sh` (SLURM) — GTDB-Tk `classify_wf --skip_ani_screen`

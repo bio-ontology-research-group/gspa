@@ -16,7 +16,9 @@ set -u
 ROOT=/data/hohndor/gspa/proteomes/culture_panel/phase1
 STAGE=$ROOT/staged
 OUT=$ROOT/checkm2
-DB=/data/databases/checkm2/uniref100.KO.1.dmnd
+# Prefer the clean DB copy (the /data/databases one has a gluster
+# split-brain duplicate entry that fails checksumming).
+DB=/data/emptyquarter/ecology-paper-runs/checkm2_db/uniref100.KO.1.dmnd
 
 mkdir -p $OUT
 
