@@ -58,8 +58,19 @@ echo "  $N_CDS proteins called"
 # 2. layout.tsv from GFF
 if [[ ! -s layout/$tag\_layout.tsv ]]; then
     echo "[2/6] layout"
+    # IMPORTANT: protein_id must be the FAA seqid (<contig>_<N>),
+    # not the GFF ID attribute (<contig-idx>_<N>).  Downstream joins
+    # (integrated.tsv, orthogroup_map) use the FAA seqid; a mismatch
+    # silently zero-joins the catalog.
     python3 - <<PY > layout/$tag\_layout.tsv
 import re
+id_to_seqid = {}
+with open("prodigal/$tag.faa") as f:
+    for line in f:
+        if line.startswith(">"):
+            m = re.match(r">(\S+)\s+#[^#]*#[^#]*#[^#]*#\s*ID=([^;]+)", line)
+            if m:
+                id_to_seqid[m.group(2)] = m.group(1)
 print("protein_id\tcontig\tstart\tend\tstrand")
 with open("prodigal/$tag.gff") as f:
     for line in f:
@@ -68,7 +79,9 @@ with open("prodigal/$tag.gff") as f:
         if len(p) < 9 or p[2] != "CDS": continue
         m = re.search(r"ID=([^;]+)", p[8])
         if not m: continue
-        print(f"{m.group(1)}\t{p[0]}\t{p[3]}\t{p[4]}\t{p[6]}")
+        seqid = id_to_seqid.get(m.group(1))
+        if not seqid: continue
+        print(f"{seqid}\t{p[0]}\t{p[3]}\t{p[4]}\t{p[6]}")
 PY
 fi
 

@@ -60,9 +60,13 @@ fi
 MAP=$PH3/ortho/orthogroup_map_50.tsv
 if [[ ! -s $MAP ]]; then
     cd $PH3/ortho
-    mmseqs easy-cluster $FAA cluster50 $PH3/tmp \
+    # Use node-local /tmp for MMseqs scratch — GlusterFS's sticky-T
+    # split-brain entries trip up MMseqs' copy-after-merge step.
+    MM_TMP=$(mktemp -d /tmp/mmseqs_panel.XXXXXX)
+    mmseqs easy-cluster $FAA cluster50 $MM_TMP \
         --min-seq-id 0.5 -c 0.8 --cov-mode 0 \
         --threads 16 2>&1 | tail -20
+    rm -rf $MM_TMP
     # cluster50_cluster.tsv: rep<TAB>member
     awk '{print $2 "\t" $1}' cluster50_cluster.tsv > $MAP
     echo "  orthogroup_map rows: $(wc -l < $MAP)"

@@ -230,6 +230,9 @@ def main():
     # membership.
     per_genome = {}
     base_presence = collections.defaultdict(set)  # og -> {tags}
+    # ortho keys can be plain (<pid>) or tag-prefixed (<tag>:<pid>) —
+    # support both so the catalog builds regardless of which FASTA
+    # prefixing convention the clustering used.
     for tag in tags:
         intg = Path(args.root) / 'integrated' / f'{tag}_integrated.tsv'
         lay = Path(args.root) / 'layout' / f'{tag}_layout.tsv'
@@ -239,7 +242,7 @@ def main():
         layout, by_contig = load_layout(str(lay))
         per_genome[tag] = (posts, layout, by_contig)
         for pid in layout:
-            og = ortho.get(pid)
+            og = ortho.get(pid) or ortho.get(f'{tag}:{pid}')
             if og:
                 base_presence[og].add(tag)
     panel_size = len(per_genome)
@@ -327,7 +330,7 @@ def main():
                 for gmid, gpid in by_contig.get(contig, []):
                     if gpid in anchor_set:
                         continue
-                    og = ortho.get(gpid)
+                    og = ortho.get(gpid) or ortho.get(f'{tag}:{gpid}')
                     if not og:
                         continue
                     # check any anchor within halfwidth of gmid
