@@ -89,25 +89,33 @@ def parse_classification(cls):
 
 
 def load_skani_clusters(path):
-    """{member_path -> cluster_rep_path} from skani dereplicate -o -.
-    skani's output TSV has columns Cluster, Ref_file, Query_file (or
-    similar — we scan the header).
+    """{genome_id -> rep_genome_id} from run_skani_derep.sh output.
+
+    skani operates on staged symlinks ``<stage>/<genome_id>.fna`` — we
+    strip the directory and extension to match genome IDs computed from
+    the inventory.
     """
     reps = {}
     if not path or not Path(path).exists():
         return reps
     with open(path) as f:
         header = f.readline().rstrip('\n').split('\t')
-        idx_cluster = {c: i for i, c in enumerate(header)}
-        rep_col = idx_cluster.get('Cluster_representative') \
-            or idx_cluster.get('cluster_rep') or 0
-        mem_col = idx_cluster.get('Member') \
-            or idx_cluster.get('member') or 1
+        idx = {c: i for i, c in enumerate(header)}
+        mem_col = idx.get('member', 0)
+        rep_col = idx.get('cluster_rep', 1)
         for line in f:
             parts = line.rstrip('\n').split('\t')
             if len(parts) <= max(rep_col, mem_col):
                 continue
-            reps[parts[mem_col]] = parts[rep_col]
+
+            def to_gid(p):
+                name = Path(p).name
+                for ext in ('.fna', '.fa', '.fasta'):
+                    if name.endswith(ext):
+                        return name[: -len(ext)]
+                return name
+
+            reps[to_gid(parts[mem_col])] = to_gid(parts[rep_col])
     return reps
 
 
@@ -163,20 +171,20 @@ def main():
             compl, contam = checkm2.get(gid, (float('nan'), float('nan')))
             cls = gtdbtk.get(gid, '')
             d, p, c, o, fa, g, s = parse_classification(cls)
-            rep = derep.get(path, path)
-            is_rep = 1 if rep == path else 0
+            rep_gid = derep.get(gid, gid)
+            is_rep = 1 if rep_gid == gid else 0
             rows.append([
                 gid, r['source_dir'], path, f'{size_mb:.2f}', nc,
                 f'{compl:.1f}' if compl == compl else '',
                 f'{contam:.1f}' if contam == contam else '',
-                cls, d, p, c, o, fa, g, s, rep, is_rep,
+                cls, d, p, c, o, fa, g, s, rep_gid, is_rep,
                 tier(compl, contam),
             ])
 
     header = ['genome_id', 'source', 'path', 'size_mb', 'n_contigs',
              'completeness', 'contamination', 'classification',
              'domain', 'phylum', 'class', 'order', 'family', 'genus',
-             'species', 'cluster_rep_path', 'is_representative',
+             'species', 'cluster_rep', 'is_representative',
              'quality_tier']
     with open(args.out, 'w') as f:
         f.write('\t'.join(header) + '\n')
