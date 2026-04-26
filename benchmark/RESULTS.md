@@ -738,3 +738,127 @@ new predictor needs only:
 4. Nextflow process in `gspa-nf/modules/`
 5. `database_manifest.tsv` row + `nextflow.config` opt-in flag
 
+# v1.3 — Track A predictor fixes + Track B phage / prophage track
+
+## Track A — deferred FOSS protein predictors
+
+Two of the v1.2 deferred predictors are now production-ready on IBEX
+with the standard `python/3.11.0` venv (no GPU, no extra container):
+
+| Predictor | License | hpylori panel result | Issue fixed in v1.3 |
+|---|---|---|---|
+| **DeepFRI** | BSD-3-Clause | **10,591 GO term rows** | upstream `predict.py` uses `--fasta_fn` not `--seqres`; `-ont` is multi-arg not comma-list; CSV starts with a `###` comment line that DictReader was treating as the header. Also patched py3.11-incompat `'rU'` mode in `deepfrier/utils.py`. |
+| **DeepEC**  | AGPL-3.0      | **366 EC numbers** | pickled estimators reference `sklearn.preprocessing.label` (private path before sklearn 0.22). Sidecar now injects a `sys.modules` shim aliasing it to `sklearn.preprocessing._label`, and adds the deepec repo dir to `sys.path` so its `from deepec import ...` resolves under exec(). |
+
+v1.3 working FOSS protein predictors on hpylori panel (1,436 proteins):
+
+```
+metapredict     525 disorder regions
+deepsig         135 signal peptides
+psortb         1118 localization calls
+deeparg           0 AMR rows (correct: hpylori carries none)
+deepec          366 EC numbers           ← NEW v1.3
+deepfri       10591 GO term rows          ← NEW v1.3
+```
+
+Still deferred to v1.4 (each requires a custom container, not a sidecar
+fix):
+
+- **MusiteDeep** — relies on Keras 2.0.x APIs (`keras.utils.np_utils`,
+  `keras.layers.merge.concatenate`, `keras.engine.topology.Layer`, …)
+  that were removed in Keras 2.4+. A runtime shim is impractical
+  because seven distinct deprecated entry points are touched. Needs a
+  pinned `tensorflow==2.4.4` + `keras==2.4.3` Singularity image.
+- **TMbed** — upstream's `T5Tokenizer.batch_encode_plus` call is broken
+  on every sentencepiece release we tried. Needs an upstream fix or a
+  Docker image with a known-good legacy combination.
+- **TPpred 3** — needs MEME / EMBOSS / libsvm system libraries. Wrap
+  in a dedicated Docker image (`leechuck/gspa-tppred3-stack`).
+- **ScanNet** — requires the structures-provisioning pipeline
+  (`STRUCTURE_PROVIDER` Nextflow process, esmfold or AFDB lookup),
+  which is itself v1.3-untested.
+
+## Track B — phage / prophage genomic-region track
+
+New 6-column genomic-region TSV shape coexists with the per-protein
+shapes:
+
+```
+contig_id<TAB>region_start<TAB>region_end<TAB>region_type<TAB>score<TAB>attributes
+```
+
+`region_type ∈ {prophage, plasmid, viral_contig, phage_function_*}`;
+attributes are `key=val|key=val` pairs (e.g. `length=22225|taxonomy=...|topology=Provirus`).
+
+End-to-end validation on **E. coli K-12 MG1655** (NC_000913.3, 4.6 Mb):
+
+```
+contig_id	region_start	region_end	region_type	score	attributes
+NC_000913.3	1412000	1434224	prophage	0.9628	length=22225|taxonomy=...Caudoviricetes;;|topology=Provirus
+NC_000913.3	1196867	1213107	prophage	0.9605	length=16241|taxonomy=...Caudoviricetes;;|topology=Provirus
+NC_000913.3	2463012	2476510	prophage	0.9555	length=13499|taxonomy=...Caudoviricetes;;|topology=Provirus
+NC_000913.3	563848	584430	prophage	0.8940	length=20583|taxonomy=...Caudoviricetes;;|topology=Provirus
+NC_000913.3	1627517	1656149	prophage	0.8863	length=28633|taxonomy=...Caudoviricetes;;|topology=Provirus
+```
+
+These five regions correspond to known E. coli K-12 prophages
+**DLP12, e14, Rac, Qin, CP4-44** (coordinates within ±1 kb). All
+classified as Caudoviricetes by geNomad.
+
+CheckV validated on M. tuberculosis H37Rv: emits 1 viral_contig
+(NC_000962.3) with 53 viral genes flagged — consistent with mtb's
+phiRv1 + phiRv2 prophages contributing viral marker genes (CheckV
+classifies whole-contig, so it doesn't separate the two prophages
+the way geNomad would).
+
+## Track B tooling notes (IBEX deployment)
+
+The `quay.io/biocontainers/genomad:1.7.4--pyhdfd78af_0` SIF hits a
+mmseqs Smith-Waterman score divergence bug (`Score of forward/backward
+SW differ`) on certain query/db combinations. Workaround: install
+geNomad via pip into the host venv and provide static `mmseqs` +
+`aragorn` binaries on PATH. The sidecar honours both modes
+(`--genomad-sif` for Singularity, none for native) so the Nextflow
+profile can pick whichever is healthy on the target cluster.
+
+Required runtime tools for native-mode geNomad:
+
+- `mmseqs` (static AVX2 binary from <https://mmseqs.com/latest/>)
+- `aragorn` (single-file C source from <https://www.trna.se/ARAGORN/>)
+
+CheckV is well-behaved in its biocontainer (`checkv:1.0.3--pyhdfd78af_0`).
+
+## Vocabulary additions (RDF / JSON-LD report)
+
+```turtle
+gspa:GenomicRegion       rdfs:subClassOf sio:001405 .   # chromosomal_region
+gspa:Prophage            rdfs:subClassOf gspa:GenomicRegion .
+gspa:Plasmid             rdfs:subClassOf gspa:GenomicRegion .
+gspa:ViralContig         rdfs:subClassOf gspa:GenomicRegion .
+gspa:PhageFunction       rdfs:subClassOf gspa:FunctionPrediction .
+
+gspa:onContig            rdfs:subPropertyOf sio:000628 .
+gspa:contigStart         rdfs:subPropertyOf sio:000300 .
+gspa:contigEnd           rdfs:subPropertyOf sio:000300 .
+gspa:completeness        rdfs:subPropertyOf sio:000216 .
+gspa:viralTaxonomy       rdfs:subPropertyOf sio:000008 .
+```
+
+Per-region IRI:
+`https://gspa.bio2vec.net/gregion/<sample>/<contig>/<type>/<start>-<end>`
+
+`make_report.py --genomic-region NAME:PATH` emits a "Prophages & viral
+elements" HTML section and the corresponding RDF/JSON-LD triples;
+TTL ↔ JSON-LD agreement validated locally on synthetic fixture
+(136 triples, all 11 RDF classes correctly typed).
+
+## Out of scope for v1.3 (deferred to v1.4)
+
+- VirSorter2, VIBRANT, Phigaro (additional viral predictors)
+- vConTACT3 (phage taxonomy via gene-content network)
+- Genomic-region ensemble (interval-overlap fusion across geNomad /
+  CheckV / PhiSpy)
+- Eukaryote-specific viral predictors
+- PhiSpy native-mode validation (sidecar code committed but not yet
+  exercised on a GenBank input)
+- MusiteDeep / TMbed / TPpred3 / ScanNet protein predictors
