@@ -30,7 +30,8 @@ enum EvidenceType {
     DARK_MATTER,                // claims promoted by DarkMatterSuggester (Phase 10)
     REACTION_LOCAL_CONTEXT,     // claims from ReactionLocalContextSuggester (Phase 12)
     CROSS_GENOME_TRANSFER,      // conditional-LR-based cross-genome transfer (Phase 12)
-    ML_RANKER                   // learned ranker output (Phase 12 M3+)
+    ML_RANKER,                  // learned ranker output (Phase 12 M3+)
+    SEQUENCE_REGION_ML          // region-level ML predictors (Metapredict, SignalP region, TMHMM helix)
 
     /**
      * Correlation group. Claims in the same group are collapsed to the single
@@ -68,6 +69,12 @@ enum EvidenceType {
                 return 'motif'
             case LOCALIZATION:
                 return 'localization'
+            case SEQUENCE_REGION_ML:
+                // Region-level ML predictors (disorder, signal peptide
+                // cleavage site, TM helix) predict positional features
+                // that do not compete with whole-protein homology or
+                // structure evidence, so they get their own group.
+                return 'region_features'
             case DOMAIN_SPECIFIC_AMR:
             case DOMAIN_SPECIFIC_CAZY:
             case DOMAIN_SPECIFIC_BGC:

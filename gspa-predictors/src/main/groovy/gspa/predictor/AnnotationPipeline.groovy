@@ -137,10 +137,19 @@ class AnnotationPipeline {
             }
         }
 
-        // Structure
+        // Structure (homology-transfer by default; centroid mode when configured)
         if (config.predictors.structure.enabled) {
+            def structureCfg = config.predictors.structure
+            String modeStr = (structureCfg.centroidMode ?: 'none').toUpperCase(Locale.ROOT)
+            def mode = gspa.predictor.structure.FoldSeekPredictor.CentroidMode.valueOf(modeStr)
+            String dbPath = mode != gspa.predictor.structure.FoldSeekPredictor.CentroidMode.NONE &&
+                    structureCfg.centroidDb ?
+                    structureCfg.centroidDb :
+                    structureCfg.database
             def p = new gspa.predictor.structure.FoldSeekPredictor(
-                database: config.predictors.structure.database,
+                database: dbPath,
+                prostt5Model: structureCfg.prostt5Model,
+                centroidMode: mode,
             )
             predictors << p
         }
@@ -192,6 +201,57 @@ class AnnotationPipeline {
         // eggNOG-mapper
         if (config.predictors.enable.contains('eggnog-mapper')) {
             predictors << new gspa.predictor.function.EggNogMapperPredictor()
+        }
+
+        // Disorder (Metapredict)
+        if (config.predictors.disorder.enabled) {
+            predictors << new gspa.predictor.disorder.MetapredictPredictor(
+                minRegionLen: config.predictors.disorder.minRegionLen,
+                minScore: config.predictors.disorder.minScore,
+            )
+        }
+
+        // Neural sidecar predictors
+        def neural = config.predictors.neural
+        if (neural.esm2DeepGoPlus.enabled) {
+            predictors << new gspa.predictor.neural.DeepGoPlusEsm2Predictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                checkpoint: neural.esm2DeepGoPlus.checkpoint,
+                terms: neural.esm2DeepGoPlus.terms,
+                esm2Model: neural.esm2DeepGoPlus.model,
+                batchSize: neural.esm2DeepGoPlus.batchSize,
+                minScore: neural.esm2DeepGoPlus.minScore,
+            )
+        }
+        if (neural.proteinfer.enabled) {
+            predictors << new gspa.predictor.neural.ProteInferPredictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                modelDir: neural.proteinfer.modelDir,
+                batchSize: neural.proteinfer.batchSize,
+                minScore: neural.proteinfer.minScore,
+            )
+        }
+        if (neural.clean.enabled) {
+            predictors << new gspa.predictor.neural.CleanPredictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                modelDir: neural.clean.modelDir,
+                batchSize: neural.clean.batchSize,
+                minScore: neural.clean.minScore,
+            )
+        }
+        if (neural.esm2Centroid.enabled) {
+            predictors << new gspa.predictor.neural.Esm2CentroidPredictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                centroidDb: neural.esm2Centroid.db,
+                esm2Model: neural.esm2Centroid.model,
+                topK: neural.esm2Centroid.topK,
+                batchSize: neural.esm2Centroid.batchSize,
+                minScore: neural.esm2Centroid.minScore,
+            )
         }
 
         predictors

@@ -1,0 +1,39 @@
+# GSPA ProteInfer stack — wraps benchmark/neural/run_neural_predictors.py
+# --predictor proteinfer.
+#
+# ProteInfer is a TensorFlow 2 SavedModel. CPU-friendly out of the box;
+# small enough that GPU is rarely worth it for a single-genome run.
+#
+# Build:
+#   docker build -f gspa-nf/docker/Dockerfile.proteinfer-stack \
+#     -t leechuck/gspa-proteinfer-stack:0.1 \
+#     --build-context gspa-root=. .
+#
+# After publishing, set the image name in gspa-nf/nextflow.config under
+# the withName: PROTEINFER directive.
+
+FROM tensorflow/tensorflow:2.15.0
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates tar && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install \
+    numpy>=1.24,<2.0 \
+    pandas>=2.0 \
+    biopython>=1.81 \
+    tqdm \
+    absl-py \
+    tensorflow-hub
+
+COPY benchmark/neural/run_neural_predictors.py /opt/gspa/run_neural_predictors.py
+
+ENV PATH=/opt/gspa:$PATH
+
+RUN python3 -c "import tensorflow as tf, numpy, pandas, Bio; print('proteinfer-stack ok', tf.__version__)"
+
+WORKDIR /work

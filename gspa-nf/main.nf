@@ -28,6 +28,11 @@ include { HMMSEARCH; INTERPROSCAN; EGGNOG_MAPPER; DBCAN } from './modules/domain
 include { BARRNAP; MINCED; AMRFINDER; ANTISMASH;
           SIGNALP; CHECKM2; GTDBTK }                    from './modules/specialized'
 include { MERGE_ANNOTATIONS }                            from './modules/quality'
+include { ESM2_DEEPGOPLUS; ESM2_CENTROID;
+          CLEAN; PROTEINFER }                            from './modules/neural'
+include { ENSEMBLE_PREDS }                               from './modules/ensemble'
+include { EVAL_PGAP }                                    from './modules/eval'
+include { MAKE_REPORT }                                  from './modules/report'
 
 if (!params.input) {
     error "Please provide --input (FASTA file or samplesheet CSV)"
@@ -124,6 +129,80 @@ workflow {
     }
     if (params.run_gtdbtk && params.gtdbtk_db) {
         GTDBTK(PYRODIGAL.out.genome, file(params.gtdbtk_db))
+    }
+
+    // ===== Step 6.5: Neural function predictors (opt-in) =====
+    // Each predictor is enabled independently via params.run_<name>; their
+    // outputs are NOT threaded into MERGE_ANNOTATIONS (which keeps its
+    // 6-column schema). Neural TSVs land under
+    //   ${outdir}/${sample_id}/{esm2_deepgoplus,esm2_centroid,clean,proteinfer}/
+    // and the per-sample union is fed to ENSEMBLE_PREDS + (optionally) EVAL_PGAP.
+
+    ch_neural = Channel.empty()
+    if (params.run_esm2_deepgoplus && params.esm2_dgp_ckpt && params.esm2_dgp_terms) {
+        ESM2_DEEPGOPLUS(PYRODIGAL.out.proteins,
+                        file(params.esm2_dgp_ckpt),
+                        file(params.esm2_dgp_terms))
+        ch_neural = ch_neural.mix(ESM2_DEEPGOPLUS.out.results.map { id, f -> tuple(id, 'esm2-deepgoplus', f) })
+    }
+    if (params.run_esm2_centroid && params.esm2_centroid_db) {
+        ESM2_CENTROID(PYRODIGAL.out.proteins, file(params.esm2_centroid_db))
+        ch_neural = ch_neural.mix(ESM2_CENTROID.out.results.map { id, f -> tuple(id, 'esm2-centroid', f) })
+    }
+    if (params.run_clean && params.clean_model_dir) {
+        CLEAN(PYRODIGAL.out.proteins, file(params.clean_model_dir))
+        ch_neural = ch_neural.mix(CLEAN.out.results.map { id, f -> tuple(id, 'clean', f) })
+    }
+    if (params.run_proteinfer && params.proteinfer_model_dir) {
+        PROTEINFER(PYRODIGAL.out.proteins, file(params.proteinfer_model_dir))
+        ch_neural = ch_neural.mix(PROTEINFER.out.results.map { id, f -> tuple(id, 'proteinfer', f) })
+    }
+
+    // Ensemble: collect TSVs per sample
+    ch_ensemble = Channel.empty()
+    if (params.run_ensemble) {
+        ch_for_ensemble = ch_neural
+            .map { id, _name, f -> tuple(id, f) }
+            .groupTuple()
+        ENSEMBLE_PREDS(ch_for_ensemble)
+        ch_ensemble = ENSEMBLE_PREDS.out.results.map { id, f -> tuple(id, 'ensemble-' + params.ensemble_mode, f) }
+    }
+
+    // Eval: each predictor TSV (and ensemble) joined to per-sample truth
+    ch_eval_results = Channel.empty()
+    if (params.run_eval && params.truth_dir) {
+        ch_truth = Channel.fromPath("${params.truth_dir}/*_truth.tsv")
+                          .map { f -> tuple(f.simpleName.replace('_truth',''), f) }
+        ch_for_eval = ch_neural.mix(ch_ensemble)
+            .combine(ch_truth, by: 0)
+            .map { id, predictor, pred_tsv, truth_tsv -> tuple(id, predictor, pred_tsv, truth_tsv) }
+        def aspect_map = params.go_obo ? file(params.go_obo) : file('NO_ASPECT_MAP')
+        EVAL_PGAP(ch_for_eval, aspect_map)
+        ch_eval_results = EVAL_PGAP.out.results
+    }
+
+    // Report: HTML + TTL (SIO-based RDF) + JSON-LD per sample
+    // Collect (name, file) pairs across all neural + ensemble channels and
+    // optional eval JSONs. Files are staged under unique names; --predictor
+    // flag uses name:staged_filename so make_report.py reads each correctly.
+    if (params.run_report) {
+        ch_pred_pairs = ch_neural.mix(ch_ensemble)
+            .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
+            .groupTuple()
+            .map { id, specs, files -> tuple(id, specs, files) }
+        ch_eval_pairs = ch_eval_results
+            .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
+            .groupTuple()
+            .map { id, specs, files -> tuple(id, specs, files) }
+            .ifEmpty( Channel.empty() )
+        // Outer-join: every sample with predictions reports, with or without eval
+        ch_report = ch_pred_pairs
+            .join(ch_eval_pairs, remainder: true)
+            .map { id, pred_specs, pred_files, eval_specs, eval_files ->
+                tuple(id, pred_specs, pred_files,
+                      eval_specs ?: [], eval_files ?: file('NO_EVAL_FILE'))
+            }
+        MAKE_REPORT(ch_report)
     }
 
     // ===== Step 7: Merge annotations =====

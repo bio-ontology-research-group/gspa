@@ -45,6 +45,8 @@ class GspaConfig {
         OperonConfig operons = new OperonConfig()
         PathwayConfig pathway = new PathwayConfig()
         LocalizationConfig localization = new LocalizationConfig()
+        DisorderConfig disorder = new DisorderConfig()
+        NeuralConfig neural = new NeuralConfig()
 
         /** Additional predictors to enable (by name) */
         Set<String> enable = []
@@ -70,6 +72,18 @@ class GspaConfig {
         String database
         /** Whether to predict structures first (via ESMFold) */
         boolean predictStructures = false
+        /** Path to ProstT5 model directory for sequence→structure search */
+        String prostt5Model
+        /**
+         * Path to a FoldSeek function-centroid database (built by
+         * {@code benchmark/neural/build_foldseek_centroids.py}). When set
+         * together with a {@link #centroidMode} other than {@code "none"},
+         * FoldSeek runs in centroid mode against this DB instead of doing
+         * homology transfer against {@link #database}.
+         */
+        String centroidDb
+        /** Centroid mode: none | go | ec | both (default none). */
+        String centroidMode = 'none'
     }
 
     static class DomainConfig {
@@ -105,6 +119,72 @@ class GspaConfig {
         boolean signalP = true
         boolean tmhmm = true
         boolean psort = false
+    }
+
+    /** Intrinsic-disorder prediction (Metapredict). */
+    static class DisorderConfig {
+        boolean enabled = false
+        /** Minimum residue length of an IDR to emit. */
+        int minRegionLen = 10
+        /** Minimum mean disorder score to emit. */
+        double minScore = 0.5
+    }
+
+    /**
+     * Neural / deep-learning predictors running via the Python sidecar at
+     * {@code benchmark/neural/run_neural_predictors.py}.
+     */
+    static class NeuralConfig {
+        /** Absolute path to {@code run_neural_predictors.py}. Required for
+         *  any of the neural predictors. */
+        String sidecarScript
+        /** Python executable used to invoke the sidecar. */
+        String pythonExecutable = 'python3'
+
+        Esm2DeepGoPlusConfig esm2DeepGoPlus = new Esm2DeepGoPlusConfig()
+        ProteInferConfig proteinfer = new ProteInferConfig()
+        CleanNeuralConfig clean = new CleanNeuralConfig()
+        Esm2CentroidConfig esm2Centroid = new Esm2CentroidConfig()
+    }
+
+    static class Esm2DeepGoPlusConfig {
+        boolean enabled = false
+        /** Trained ESM2Head checkpoint (.pt). Required when enabled. */
+        String checkpoint
+        /** Vocabulary file: one GO term per line, column index = FC output idx. */
+        String terms
+        /** ESM2 variant matching the checkpoint. */
+        String model = 'esm2_t33_650M_UR50D'
+        int batchSize = 16
+        double minScore = 0.1
+    }
+
+    static class ProteInferConfig {
+        boolean enabled = false
+        /** Directory with a ProteInfer model release. */
+        String modelDir
+        int batchSize = 16
+        double minScore = 0.1
+    }
+
+    static class CleanNeuralConfig {
+        boolean enabled = false
+        /** Directory with a CLEAN checkpoint (contains CLEAN_infer_fasta.py). */
+        String modelDir
+        int batchSize = 16
+        double minScore = 0.1
+    }
+
+    static class Esm2CentroidConfig {
+        boolean enabled = false
+        /** NPZ file with centroids / terms / annotation_types arrays. */
+        String db
+        /** ESM2 variant used to embed queries at inference time. */
+        String model = 'esm2_t12_35M_UR50D'
+        /** Top-k centroid neighbours to keep per protein. */
+        int topK = 5
+        int batchSize = 16
+        double minScore = 0.2
     }
 
     static class QualityConfig {

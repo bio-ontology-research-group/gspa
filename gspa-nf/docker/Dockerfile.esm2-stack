@@ -1,0 +1,52 @@
+# GSPA ESM2 stack — wraps benchmark/neural/run_neural_predictors.py for the
+# ESM2-based predictors: esm2-deepgoplus, esm2-centroid, clean.
+#
+# The GPU runtime base lets the same image serve CPU-only profiles (the
+# fair-esm + torch wheels tolerate `cuda not available`); for CPU-only
+# deployments you can swap the base for `python:3.11-slim` and pip install
+# `torch --index-url https://download.pytorch.org/whl/cpu`.
+#
+# Build:
+#   docker build -f gspa-nf/docker/Dockerfile.esm2-stack \
+#     -t leechuck/gspa-esm2-stack:0.1 \
+#     --build-context gspa-root=. .
+# Push:
+#   docker push leechuck/gspa-esm2-stack:0.1
+#
+# After publishing, set the image name in gspa-nf/nextflow.config under
+# the withName: ESM2_DEEPGOPLUS / ESM2_CENTROID / CLEAN directives.
+
+FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn9-runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# System deps for downloading ESM weights at runtime + tarball ops
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates tar && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install \
+    fair-esm==2.0.0 \
+    numpy>=1.24,<2.0 \
+    scipy>=1.11 \
+    scikit-learn>=1.3 \
+    pandas>=2.0 \
+    biopython>=1.81 \
+    tqdm
+
+# CLEAN imports its own loader from the model dir; the upstream package is
+# pure-python and depends on the above stack only. ESM2-DGP / centroid use
+# only torch + fair-esm + numpy.
+
+# Sidecar scripts (must be present at build root via build context)
+COPY benchmark/neural/run_neural_predictors.py /opt/gspa/run_neural_predictors.py
+COPY benchmark/neural/build_ensemble_preds.py  /opt/gspa/build_ensemble_preds.py
+
+ENV PATH=/opt/gspa:$PATH
+
+# Smoke test (build-time): import-only, no model load
+RUN python3 -c "import esm, torch, numpy, scipy, sklearn, pandas, Bio; print('esm2-stack ok')"
+
+WORKDIR /work

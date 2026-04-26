@@ -1,0 +1,25 @@
+# GSPA eval stack — pure-python image for ENSEMBLE_PREDS + EVAL_PGAP.
+# No GPU, no TF, no torch — just numpy + the metrics primitives in
+# benchmark_pgap_v2.py + evaluate_panel.py.
+
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN pip install \
+    numpy>=1.24,<2.0 \
+    scipy>=1.11
+
+COPY benchmark/neural/build_ensemble_preds.py  /opt/gspa/build_ensemble_preds.py
+COPY benchmark/neural/evaluate_panel.py        /opt/gspa/evaluate_panel.py
+COPY benchmark/neural/make_report.py           /opt/gspa/make_report.py
+COPY benchmark/benchmark_pgap_v2.py            /opt/gspa/benchmark_pgap_v2.py
+
+ENV PATH=/opt/gspa:$PATH \
+    PYTHONPATH=/opt/gspa:$PYTHONPATH
+
+RUN python3 -c "import numpy, scipy; print('eval-stack ok')"
+
+WORKDIR /work

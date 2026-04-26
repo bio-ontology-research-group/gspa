@@ -42,7 +42,20 @@ class Annotation {
      */
     EvidenceType evidenceType
 
+    /**
+     * Region-level annotations: 1-based inclusive residue indices within the
+     * protein sequence. Null for whole-protein annotations (the default).
+     * Populated by predictors that localise a feature to a sub-sequence
+     * (e.g. SignalP cleavage site, DeepTMHMM helix, Metapredict disorder
+     * stretch). {@link #regionType} is a free-form tag such as
+     * {@code "disorder"}, {@code "signal_peptide"}, {@code "tm_helix"}.
+     */
+    Integer regionStart
+    Integer regionEnd
+    String regionType
+
     boolean isGO() { type == AnnotationType.GO }
     boolean isEC() { type == AnnotationType.EC }
     boolean isPfam() { type == AnnotationType.PFAM }
+    boolean hasRegion() { regionStart != null && regionEnd != null }
 }

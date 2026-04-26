@@ -1,0 +1,9 @@
+predictor	artefact	version	url	sha256	size_bytes	required	notes
+esm2-deepgoplus	head_ckpt	v1.0	${GSPA_DB_BASE}/esm2_dgp/v1.0/head.pt	REPLACE_WITH_SHA256	5000000000	yes	Frozen ESM2-t33 + FC head. GPU recommended.
+esm2-deepgoplus	go_terms	v1.0	${GSPA_DB_BASE}/esm2_dgp/v1.0/terms.txt	REPLACE_WITH_SHA256	200000	yes	One GO term per line; column index aligns to head_ckpt output.
+esm2-centroid	centroid_db	v1.0	${GSPA_DB_BASE}/esm2_centroid/v1.0/db.npz	REPLACE_WITH_SHA256	75000000	yes	NPZ with centroids/terms/annotation_types. CPU OK.
+proteinfer	saved_model	v1.0	${GSPA_DB_BASE}/proteinfer/v1.0/model.tar.gz	REPLACE_WITH_SHA256	200000000	yes	TF SavedModel. CPU OK.
+clean	weights	upstream	https://github.com/tttianhao/CLEAN/archive/refs/heads/main.tar.gz	REPLACE_WITH_SHA256	1000000000	yes	Upstream release (CLEAN repo + bundled weights). GPU recommended. NOT mirrored on bio2vec.net per upstream license.
+truth	swissprot_go_ec	2026.04	${GSPA_DB_BASE}/truth/2026.04/swissprot_go_ec.tsv.gz	REPLACE_WITH_SHA256	50000000	no	UniProt accession -> GO/EC. Used for centroid build + eval.
+truth	smoke_fixture	2026.04	${GSPA_DB_BASE}/truth/2026.04/smoke_fixture.tsv	REPLACE_WITH_SHA256	5000	no	Truth file for the smoke test genome.
+go_aspect_map	go_obo	2026.04	${GSPA_DB_BASE}/go/2026.04/go.obo	REPLACE_WITH_SHA256	150000000	no	Required by EVAL_PGAP for aspect lookup.

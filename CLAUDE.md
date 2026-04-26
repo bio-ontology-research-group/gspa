@@ -16,7 +16,14 @@ Multi-module Gradle (Groovy 4 + Java):
 
 - **gspa-core** — Data model, ontology (OWL API + ELK), quality metrics (SAT4J for consistency), I/O, config
 - **gspa-predictors** — Predictor interfaces + tool wrappers (DIAMOND, InterProScan, FoldSeek, eggNOG, gapseq, operons, etc.), gene callers, crossfeeding analyzer, AnnotationPipeline orchestrator
-- **gspa-cli** — picocli CLI: `annotate`, `evaluate`, `compare`, `report`
+- **gspa-cli** — picocli CLI: `annotate`, `evaluate`, `compare`, `report`. Each subcommand lives in its own file (`AnnotateCommand.groovy`, `EvaluateCommand.groovy`, `CompareCommand.groovy`, `ReportCommand.groovy`); `GspaMain.groovy` only wires them together.
+
+Also in the repo but NOT part of the Gradle build:
+
+- **gspa-nf/** — Nextflow sibling pipeline (`main.nf` + 5 `modules/*.nf`), runs the same external tools as the JVM CLI but via Singularity / Docker on HPC. Run with `nextflow run gspa-nf/main.nf`. Convenience Gradle tasks: `./gradlew nfHelp` (no-Nextflow quickstart) and `./gradlew nfLint` (parse check, skipped when Nextflow isn't on PATH). See `gspa-nf/README.md` for the full story and `gspa-nf/UNIMATRIX01.md` for the worked cluster example.
+- **benchmark/** — Python evaluation harness + neural-predictor sidecar (`benchmark/neural/run_neural_predictors.py`). See `benchmark/README.md` for script layout.
+
+The exclusions are recorded in `settings.gradle.kts` so they aren't mistaken for "forgotten" subprojects.
 
 ## Key Design Decisions
 

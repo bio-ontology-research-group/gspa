@@ -21,5 +21,6 @@ enum AnnotationType {
     TRANSMEMBRANE,
     SUBCELLULAR_LOCALIZATION,
     SECONDARY_METABOLITE,
+    DISORDER,   // Intrinsically disordered region
     CUSTOM      // User-defined annotation type
 }
