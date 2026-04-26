@@ -206,27 +206,34 @@ def run_deepfri(rows: list[ManifestRow], args: argparse.Namespace) -> None:
     for row in rows:
         out = output_path(row, "deepfri")
         with tempfile.TemporaryDirectory() as tmp:
+            # Upstream DeepFRI flags: --fasta_fn (not --seqres), -ont (single
+            # dash) accepts multiple choices, -o is a file prefix.
+            out_prefix = str(Path(tmp) / row.tag)
             cmd = ["python3", str(predict),
-                   "--seqres", str(row.fasta_path),
-                   "--ont", "mf,bp,cc",
-                   "--output_dir", tmp,
-                   "--saliency", "False"]
+                   "--fasta_fn", str(row.fasta_path),
+                   "-ont", "mf", "bp", "cc",
+                   "-o", out_prefix]
             subprocess.run(cmd, check=True, cwd=args.model_dir)
 
             fh, w = open_output(out)
             n = 0
+            # DeepFRI CSV: line 1 is "### Predictions made by DeepFRI." comment
+            # line 2 is header: Protein,GO_term/EC_number,Score,...
             for csv_file in Path(tmp).glob("*_predictions.csv"):
                 with csv_file.open() as fin:
+                    first = fin.readline()
+                    if not first.startswith("###"):
+                        fin.seek(0)
                     reader = csv.DictReader(fin)
                     for r in reader:
                         try:
                             score = float(r.get("Score", 0))
-                        except ValueError:
+                        except (ValueError, TypeError):
                             continue
                         if score < args.min_score:
                             continue
-                        pid = r.get("Protein", "").split()[0]
-                        go = r.get("GO_term", "")
+                        pid = (r.get("Protein") or "").split()[0]
+                        go = r.get("GO_term/EC_number") or r.get("GO_term") or ""
                         if pid and go.startswith("GO:"):
                             w.writerow([pid, go, f"{score:.4f}", "GO"])
                             n += 1
@@ -251,9 +258,19 @@ def run_deepec(rows: list[ManifestRow], args: argparse.Namespace) -> None:
     for row in rows:
         out = output_path(row, "deepec")
         with tempfile.TemporaryDirectory() as tmp:
-            cmd = ["python3", str(runner),
-                   "-i", str(row.fasta_path),
-                   "-o", tmp]
+            # DeepEC pickles use 'sklearn.preprocessing.label' (private path
+            # before sklearn 0.22). Modern sklearn moved it to '_label'.
+            # Inject a shim + add deepec/ to sys.path so its 'from deepec
+            # import ...' works when invoked via exec().
+            wrapper = Path(tmp) / "_deepec_wrapper.py"
+            wrapper.write_text(
+                "import sys, sklearn.preprocessing as _sp\n"
+                "sys.modules['sklearn.preprocessing.label'] = _sp._label\n"
+                f"sys.path.insert(0, {str(args.model_dir)!r})\n"
+                f"sys.argv = [{str(runner)!r}, '-i', {str(row.fasta_path)!r}, '-o', {tmp!r}]\n"
+                f"exec(open({str(runner)!r}).read())\n"
+            )
+            cmd = ["python3", str(wrapper)]
             subprocess.run(cmd, check=True, cwd=args.model_dir)
 
             fh, w = open_output(out)
