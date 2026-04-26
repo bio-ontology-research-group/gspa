@@ -98,55 +98,93 @@ PSORTB_LOC_TO_GO = {
 }
 
 def run_psortb(rows: list[ManifestRow], args: argparse.Namespace) -> None:
-    """Run PSORTb 3.0 (CLI: ``psortb``).
+    """Run PSORTb 3.0 via the brinkmanlab/psortb_commandline Singularity
+    image (GPL-3.0).
 
-    Native output is plain text per-protein. We parse the
-    "Final Prediction" stanzas. PSORTb runs as a Docker/Singularity
-    image typically; this sidecar invokes the CLI directly.
+    The image's perl wrapper writes long-format output to
+    ``/results/<timestamp>_psortb_<gram>.txt`` inside the container, so
+    we bind a host scratch dir to ``/results`` and parse that file. The
+    input FASTA is bound as ``/in/<basename>``.
+
+    Args:
+        --psortb-sif <path>   Singularity image (mandatory for psortb)
+        --gram {positive,negative,archaea}
     """
-    if not shutil.which("psortb"):
-        raise SystemExit("psortb binary not on PATH (install brinkmanlab/psortb_commandline)")
+    if not args.psortb_sif:
+        raise SystemExit("psortb requires --psortb-sif <SIF path>")
+    if not Path(args.psortb_sif).exists():
+        raise SystemExit(f"psortb SIF not found: {args.psortb_sif}")
+    if not shutil.which("singularity"):
+        raise SystemExit("singularity binary not on PATH")
+
+    gram_flag = f"--{args.gram}"  # --positive | --negative | --archaea
 
     for row in rows:
         out = output_path(row, "psortb")
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_out = Path(tmp) / f"{row.tag}.psortb.txt"
-            cmd = ["psortb", f"--{args.gram}", "-i", str(row.fasta_path), "-r", tmp]
-            subprocess.run(cmd, check=True)
-            # Find the long-format output file
-            outputs = list(Path(tmp).glob("*.txt"))
-            if not outputs:
-                LOG.warning("no psortb output for %s", row.tag)
+        # The brinkmanlab perl wrapper hardcodes /tmp/results inside the
+        # container. Singularity 3.9 will not auto-create bind targets, so
+        # we bind a host dir to /tmp and pre-create /tmp/results on it.
+        bind_root = Path(tempfile.mkdtemp(prefix=f"psortb-{row.tag}-"))
+        results_dir = bind_root / "results"
+        results_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            in_path = row.fasta_path.resolve()
+            in_dir = in_path.parent
+            cmd = ["singularity", "exec",
+                   "--bind", f"{bind_root}:/tmp",
+                   "--bind", f"{in_dir}:/in",
+                   args.psortb_sif,
+                   "/usr/local/psortb/bin/psort",
+                   gram_flag,
+                   "-i", f"/in/{in_path.name}",
+                   "-o", "long"]
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0:
+                LOG.warning("%s: psort exit %d; stderr=%s", row.tag, r.returncode, r.stderr[:300])
                 continue
-            tmp_out = outputs[0]
+
+            result_files = sorted(results_dir.glob("*.txt"))
+            if not result_files:
+                LOG.warning("%s: no PSORTb output in %s", row.tag, results_dir)
+                continue
 
             fh, w = open_output(out)
             n = 0
-            current_pid = None
-            with tmp_out.open() as fin:
+            # PSORTb 3.0 ``-o long`` actually emits a single TSV with one row
+            # per protein and per-sub-tool columns plus three summary columns:
+            # ``Final_Localization``, ``Final_Localization_Details``, ``Final_Score``.
+            with result_files[0].open() as fin:
+                header_line = fin.readline().rstrip("\n").split("\t")
+                try:
+                    i_id    = header_line.index("SeqID")
+                    i_loc   = header_line.index("Final_Localization")
+                    i_score = header_line.index("Final_Score")
+                except ValueError:
+                    LOG.warning("%s: PSORTb header missing expected columns", row.tag)
+                    continue
                 for line in fin:
-                    s = line.rstrip("\n")
-                    if s.startswith("SeqID:"):
-                        current_pid = s.split(":", 1)[1].strip().split()[0]
-                    elif s.strip().startswith("Final Prediction:") and current_pid:
-                        rest = s.split("Final Prediction:", 1)[1].strip()
-                        # rest is like "Cytoplasmic 9.97" or "Unknown" — split last token as score
-                        bits = rest.split()
-                        if len(bits) >= 2:
-                            label = "".join(bits[:-1]).lower()
-                            try:
-                                score = float(bits[-1])
-                            except ValueError:
-                                continue
-                            # PSORTb scores are 0-10 — normalize to [0, 1]
-                            norm = score / 10.0
-                            if norm < args.min_score:
-                                continue
-                            go_term = PSORTB_LOC_TO_GO.get(label)
-                            if go_term:
-                                w.writerow([current_pid, go_term, f"{norm:.4f}", "GO"])
-                                n += 1
+                    fields = line.rstrip("\n").split("\t")
+                    if len(fields) <= max(i_id, i_loc, i_score):
+                        continue
+                    pid = fields[i_id].split()[0]   # take first whitespace token
+                    label_raw = fields[i_loc].strip()
+                    if not label_raw or label_raw.lower() == "unknown":
+                        continue
+                    try:
+                        score = float(fields[i_score])
+                    except ValueError:
+                        continue
+                    norm = score / 10.0
+                    if norm < args.min_score:
+                        continue
+                    label = label_raw.replace(" ", "").lower()
+                    go_term = PSORTB_LOC_TO_GO.get(label)
+                    if go_term:
+                        w.writerow([pid, go_term, f"{norm:.4f}", "GO"])
+                        n += 1
             fh.close()
+        finally:
+            shutil.rmtree(bind_root, ignore_errors=True)
         LOG.info("%s psortb: %d term rows -> %s", row.tag, n, out)
 
 
@@ -252,25 +290,55 @@ def run_deepec(rows: list[ManifestRow], args: argparse.Namespace) -> None:
 # ---------- DeepARG -------------------------------------------------------
 
 def run_deeparg(rows: list[ManifestRow], args: argparse.Namespace) -> None:
-    """Run DeepARG (Arango-Argoty et al. 2018).
+    """Run DeepARG (Arango-Argoty et al. 2018, MIT).
 
-    CLI: ``deeparg predict --model SS --type prot --input X --output OUT``
-    produces ``OUT.mapping.ARG`` with ARG class predictions.
+    CLI (pip or Singularity-bound):
+        deeparg predict --model SS --type prot --input X --output OUT -d DB
+
+    Output ``<OUT>.mapping.ARG`` is a TSV with ARG class predictions.
+
+    With ``--deeparg-sif`` set, run via Singularity (binds the input dir
+    and the model DB into the container). Else delegate to a pip install.
     """
-    if not shutil.which("deeparg"):
-        raise SystemExit("deeparg binary not on PATH")
+    use_sif = bool(args.deeparg_sif)
+    if not use_sif and not shutil.which("deeparg"):
+        raise SystemExit("deeparg not on PATH (and no --deeparg-sif provided)")
+
+    db_dir = args.model_dir or os.environ.get("DEEPARG_DB", "")
+    if not db_dir:
+        raise SystemExit("deeparg requires --model-dir <database dir>")
 
     for row in rows:
         out = output_path(row, "deeparg")
         with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp) / row.tag
-            cmd = ["deeparg", "predict",
-                   "--model", "SS",
-                   "--type", args.deeparg_type,
-                   "--input", str(row.fasta_path),
-                   "--output", str(base),
-                   "-d", args.model_dir or os.environ.get("DEEPARG_DB", "")]
-            subprocess.run(cmd, check=True)
+            base_name = row.tag
+            if use_sif:
+                in_dir = row.fasta_path.parent.resolve()
+                cmd = ["singularity", "exec",
+                       "--bind", f"{in_dir}:/in",
+                       "--bind", f"{tmp}:/out",
+                       "--bind", f"{db_dir}:/db",
+                       args.deeparg_sif,
+                       "deeparg", "predict",
+                       "--model", "SS",
+                       "--type", args.deeparg_type,
+                       "--input", f"/in/{row.fasta_path.name}",
+                       "--output", f"/out/{base_name}",
+                       "-d", "/db"]
+                base = Path(tmp) / base_name
+            else:
+                base = Path(tmp) / base_name
+                cmd = ["deeparg", "predict",
+                       "--model", "SS",
+                       "--type", args.deeparg_type,
+                       "--input", str(row.fasta_path),
+                       "--output", str(base),
+                       "-d", db_dir]
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0:
+                LOG.warning("%s: deeparg exit %d; stderr=%s",
+                            row.tag, r.returncode, r.stderr[:300])
+                continue
 
             fh, w = open_output(out)
             n = 0
@@ -318,8 +386,12 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--model-dir", help="DeepFRI / DeepEC / DeepARG model directory")
     ap.add_argument("--gram", default="negative",
                     help="PSORTb: positive | negative | archaea")
+    ap.add_argument("--psortb-sif",
+                    help="Path to brinkmanlab/psortb_commandline Singularity SIF")
     ap.add_argument("--deeparg-type", default="prot",
                     help="DeepARG input type: prot | nucl")
+    ap.add_argument("--deeparg-sif",
+                    help="Path to deeparg Singularity SIF (optional)")
     return ap.parse_args()
 
 

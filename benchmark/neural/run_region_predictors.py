@@ -152,23 +152,42 @@ def run_metapredict(rows: list[ManifestRow], args: argparse.Namespace) -> None:
 # ---------- DeepSig -------------------------------------------------------
 
 def run_deepsig(rows: list[ManifestRow], args: argparse.Namespace) -> None:
-    """Run DeepSig (CLI: ``deepsig``) and parse its TSV/JSON output.
+    """Run DeepSig (BolognaBiocomp/DeepSig).
 
-    DeepSig CLI: ``deepsig -f input.fasta -k {gramp,gramn,euk} -o out.tsv``
-    Output rows: id, source(='DeepSig'), type, start, end, score, evidence_class
+    Real CLI (deepsig-biocomp 0.9):
+        deepsig -f INPUT -o OUTPUT -k {euk,gramp,gramn} [-m {json,gff3}]
+
+    Output is GFF3 by default. Each predicted feature is one line:
+        seqid  source  type  start  end  score  strand  phase  attributes
+
+    The ``type`` column is human-readable with spaces ("Signal peptide",
+    "Lipoprotein signal peptide", ...). We lowercase + underscore so the
+    GSPA report's REGION_TYPE_TO_CLASS map can resolve it.
+
+    DeepSig requires the ``DEEPSIG_ROOT`` env var; auto-set from the pip
+    install location when missing.
     """
     if not shutil.which("deepsig"):
         raise SystemExit("deepsig binary not on PATH")
 
+    env = os.environ.copy()
+    if "DEEPSIG_ROOT" not in env:
+        try:
+            import deepsig as _ds
+            env["DEEPSIG_ROOT"] = str(Path(_ds.__file__).parent)
+            LOG.info("auto-set DEEPSIG_ROOT=%s", env["DEEPSIG_ROOT"])
+        except ImportError:
+            raise SystemExit("DEEPSIG_ROOT not set and deepsig package not importable")
+
     for row in rows:
         out = output_path(row, "deepsig")
         with tempfile.TemporaryDirectory() as tmp:
-            tmp_out = Path(tmp) / f"{row.tag}.deepsig.tsv"
-            subprocess.run(
-                ["deepsig", "-f", str(row.fasta_path),
-                 "-k", args.kingdom, "-o", str(tmp_out)],
-                check=True,
-            )
+            tmp_out = Path(tmp) / f"{row.tag}.deepsig.gff3"
+            cmd = ["deepsig", "-f", str(row.fasta_path),
+                   "-k", args.kingdom, "-o", str(tmp_out),
+                   "-m", "gff3"]
+            subprocess.run(cmd, check=True, env=env)
+
             fh, w = open_output(out)
             n_regions = 0
             with tmp_out.open() as fin:
@@ -179,7 +198,7 @@ def run_deepsig(rows: list[ManifestRow], args: argparse.Namespace) -> None:
                     if len(parts) < 6:
                         continue
                     pid = parts[0]
-                    region_type = parts[2].lower()  # 'signal_peptide', 'transit_peptide'
+                    feat_type = parts[2].lower().replace(" ", "_")
                     try:
                         start = int(parts[3])
                         end = int(parts[4])
@@ -188,8 +207,18 @@ def run_deepsig(rows: list[ManifestRow], args: argparse.Namespace) -> None:
                         continue
                     if score < args.min_score:
                         continue
-                    if region_type not in ("signal_peptide", "transit_peptide", "lipo"):
-                        continue
+                    # Normalise common DeepSig type strings to GSPA region types
+                    if "signal_peptide" in feat_type or feat_type.startswith("signal_"):
+                        region_type = "signal_peptide"
+                    elif "lipoprotein" in feat_type:
+                        region_type = "lipo"
+                    elif "tat" in feat_type or "twin-arginine" in feat_type:
+                        region_type = "tat_signal_peptide"
+                    elif feat_type == "transit_peptide":
+                        region_type = "transit_peptide"
+                    else:
+                        # Unknown DeepSig feature type — keep verbatim (lower+underscore)
+                        region_type = feat_type
                     w.writerow([pid, start, end, region_type, f"{score:.4f}"])
                     n_regions += 1
             fh.close()
