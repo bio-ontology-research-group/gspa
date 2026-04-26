@@ -54,8 +54,22 @@ class Annotation {
     Integer regionEnd
     String regionType
 
+    /**
+     * Genomic-region annotations (v1.3): when {@link #contigId} is set, the
+     * annotation refers to a region on the chromosome / contig rather than
+     * to a single protein. Populated by predictors that detect prophages,
+     * plasmids or whole-contig viral classifications (geNomad, CheckV,
+     * PhiSpy). {@link #genomicStart} / {@link #genomicEnd} are 1-based
+     * inclusive contig coordinates. Existing per-protein consumers ignore
+     * these fields when {@code contigId == null}.
+     */
+    String contigId
+    Integer genomicStart
+    Integer genomicEnd
+
     boolean isGO() { type == AnnotationType.GO }
     boolean isEC() { type == AnnotationType.EC }
     boolean isPfam() { type == AnnotationType.PFAM }
     boolean hasRegion() { regionStart != null && regionEnd != null }
+    boolean hasGenomicRegion() { contigId != null && genomicStart != null && genomicEnd != null }
 }

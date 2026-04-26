@@ -38,6 +38,7 @@ include { PSORTB }                                       from './modules/loc'
 include { DEEPFRI; DEEPEC; DEEPARG }                     from './modules/term_extras'
 include { MUSITEDEEP; SCANNET }                          from './modules/sites'
 include { STRUCTURE_PROVIDER }                           from './modules/structure'
+include { GENOMAD; CHECKV; PHISPY; FLATTEN_PROPHAGE_CDS } from './modules/viral'
 
 if (!params.input) {
     error "Please provide --input (FASTA file or samplesheet CSV)"
@@ -220,6 +221,33 @@ workflow {
         ch_sites = ch_sites.mix(SCANNET.out.results.map { id, f -> tuple(id, 'scannet', f) })
     }
 
+    // ===== Step 6.9: v1.3 Phage / prophage track (genomic-level, opt-in) =====
+    ch_genomic = Channel.empty()
+    if (params.run_genomad && params.genomad_db) {
+        GENOMAD(PYRODIGAL.out.genome, file(params.genomad_db))
+        ch_genomic = ch_genomic.mix(GENOMAD.out.results.map { id, f -> tuple(id, 'genomad', f) })
+    }
+    if (params.run_checkv && params.checkv_db) {
+        CHECKV(PYRODIGAL.out.genome, file(params.checkv_db))
+        ch_genomic = ch_genomic.mix(CHECKV.out.results.map { id, f -> tuple(id, 'checkv', f) })
+    }
+    // PhiSpy needs a GenBank file (caller must supply it as params.gbk_input
+    // or skip the predictor); kept as opt-in
+    if (params.run_phispy && params.phispy_input) {
+        ch_phispy_in = Channel.fromPath(params.phispy_input)
+                              .map { f -> tuple(f.simpleName, f) }
+        PHISPY(ch_phispy_in)
+        ch_genomic = ch_genomic.mix(PHISPY.out.results.map { id, f -> tuple(id, 'phispy', f) })
+    }
+    // Flatten genomic regions to per-CDS region annotations (joins ch_regions)
+    if (params.run_flatten_prophage_cds) {
+        ch_flat_in = ch_genomic
+            .map { id, name, f -> tuple(id, f) }
+            .combine(PYRODIGAL.out.gff, by: 0)
+        FLATTEN_PROPHAGE_CDS(ch_flat_in)
+        ch_regions = ch_regions.mix(FLATTEN_PROPHAGE_CDS.out.results.map { id, f -> tuple(id, 'prophage_cds', f) })
+    }
+
     // Ensemble: collect TSVs per sample
     ch_ensemble = Channel.empty()
     if (params.run_ensemble) {
@@ -245,7 +273,8 @@ workflow {
 
     // Report: HTML + TTL (SIO-based RDF) + JSON-LD per sample
     // Collects (name, file) tuples across all neural + ensemble channels,
-    // region channels, site channels, and optional eval JSONs.
+    // region channels, site channels, genomic-region channels, and
+    // optional eval JSONs.
     if (params.run_report) {
         ch_pred_pairs = ch_neural.mix(ch_ensemble)
             .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
@@ -259,21 +288,26 @@ workflow {
             .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
             .groupTuple()
             .map { id, specs, files -> tuple(id, specs, files) }
+        ch_genomic_pairs = ch_genomic
+            .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
+            .groupTuple()
+            .map { id, specs, files -> tuple(id, specs, files) }
         ch_eval_pairs = ch_eval_results
             .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
             .groupTuple()
             .map { id, specs, files -> tuple(id, specs, files) }
-        // Outer-join everything so every sample with predictions reports,
-        // even when regions/sites/eval are empty for that sample.
+        // Outer-join everything so every sample with predictions reports
         ch_report = ch_pred_pairs
-            .join(ch_region_pairs, remainder: true)
-            .join(ch_site_pairs,   remainder: true)
-            .join(ch_eval_pairs,   remainder: true)
-            .map { id, p_specs, p_files, r_specs, r_files, s_specs, s_files, e_specs, e_files ->
+            .join(ch_region_pairs,  remainder: true)
+            .join(ch_site_pairs,    remainder: true)
+            .join(ch_genomic_pairs, remainder: true)
+            .join(ch_eval_pairs,    remainder: true)
+            .map { id, p_specs, p_files, r_specs, r_files, s_specs, s_files, g_specs, g_files, e_specs, e_files ->
                 tuple(id,
                       p_specs, p_files,
                       r_specs ?: [], r_files ?: file('NO_REGION_FILE'),
                       s_specs ?: [], s_files ?: file('NO_SITE_FILE'),
+                      g_specs ?: [], g_files ?: file('NO_GENOMIC_FILE'),
                       e_specs ?: [], e_files ?: file('NO_EVAL_FILE'))
             }
         MAKE_REPORT(ch_report)

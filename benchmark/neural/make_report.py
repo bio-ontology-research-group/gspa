@@ -211,15 +211,59 @@ def load_site_tsv(path: Path) -> list[dict]:
     return rows
 
 
+def load_genomic_tsv(path: Path) -> list[dict]:
+    """6-col genomic-region TSV (v1.3 phage track):
+    contig_id, region_start, region_end, region_type, score, attributes
+    """
+    rows: list[dict] = []
+    if not path.exists() or path.stat().st_size == 0:
+        return rows
+    with path.open() as fh:
+        header = fh.readline().rstrip("\n").split("\t")
+        try:
+            i_c    = header.index("contig_id")
+            i_s    = header.index("region_start")
+            i_e    = header.index("region_end")
+            i_t    = header.index("region_type")
+            i_sc   = header.index("score")
+            i_attr = header.index("attributes") if "attributes" in header else -1
+        except ValueError as exc:
+            raise SystemExit(f"{path}: missing genomic-region column ({exc})")
+        for line in fh:
+            f = line.rstrip("\n").split("\t")
+            if len(f) <= max(i_c, i_s, i_e, i_t, i_sc):
+                continue
+            try:
+                attrs = {}
+                if i_attr >= 0 and len(f) > i_attr:
+                    for kv in f[i_attr].split("|"):
+                        if "=" in kv:
+                            k, v = kv.split("=", 1)
+                            attrs[k.strip()] = v.strip()
+                rows.append({
+                    "contig_id":    f[i_c],
+                    "region_start": int(f[i_s]),
+                    "region_end":   int(f[i_e]),
+                    "region_type":  f[i_t],
+                    "score":        float(f[i_sc]),
+                    "attributes":   attrs,
+                })
+            except ValueError:
+                continue
+    return rows
+
+
 # ----- Turtle emit ----------------------------------------------------------
 
 
 def emit_turtle(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]],
                 eval_records: dict[str, dict],
                 region_rows: dict[str, list[dict]] | None = None,
-                site_rows: dict[str, list[dict]] | None = None) -> None:
-    region_rows = region_rows or {}
-    site_rows   = site_rows or {}
+                site_rows: dict[str, list[dict]] | None = None,
+                genomic_rows: dict[str, list[dict]] | None = None) -> None:
+    region_rows  = region_rows  or {}
+    site_rows    = site_rows    or {}
+    genomic_rows = genomic_rows or {}
     lines: list[str] = [
         "@prefix gspa: <https://gspa.bio2vec.net/ns/> .",
         "@prefix sio:  <http://semanticscience.org/resource/SIO_> .",
@@ -332,6 +376,33 @@ def emit_turtle(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]]
                 "",
             ])
 
+    # Genomic regions (v1.3 phage track)
+    for pname, rs in sorted(genomic_rows.items()):
+        if not rs:
+            continue
+        lines.append(f"# Genomic regions from {pname}")
+        for r in rs:
+            cls = GENOMIC_TYPE_TO_CLASS.get(r["region_type"], "GenomicRegion")
+            iri = gregion_iri(sample_id, r["contig_id"], r["region_type"],
+                              r["region_start"], r["region_end"])
+            lines.extend([
+                f"<{iri}> a gspa:{cls} ;",
+                f"    gspa:onContig    \"{r['contig_id']}\" ;",
+                f"    gspa:contigStart \"{r['region_start']}\"^^xsd:integer ;",
+                f"    gspa:contigEnd   \"{r['region_end']}\"^^xsd:integer ;",
+                f"    gspa:hasScore    \"{r['score']:.4f}\"^^xsd:float ;",
+                f"    gspa:hasPredictor <{predictor_iri(pname)}> ;",
+                f"    gspa:fromSample  <{GSPA_PRED_BASE}{sample_id}> ",
+            ])
+            # attributes → gspa:viralTaxonomy / gspa:completeness if present
+            attrs = r.get("attributes", {})
+            if "taxonomy" in attrs:
+                lines.append(f"    ; gspa:viralTaxonomy \"{attrs['taxonomy']}\" ")
+            if "completeness" in attrs:
+                lines.append(f"    ; gspa:completeness \"{attrs['completeness']}\" ")
+            lines[-1] = lines[-1] + " ."
+            lines.append("")
+
     out.write_text("\n".join(lines))
 
 
@@ -362,6 +433,16 @@ JSONLD_CONTEXT = {
     "PPIInterfaceSite":   "gspa:PPIInterfaceSite",
     "LocalizationCall":   "gspa:LocalizationCall",
     "AMRGeneCall":        "gspa:AMRGeneCall",
+    "GenomicRegion":      "gspa:GenomicRegion",
+    "Prophage":           "gspa:Prophage",
+    "Plasmid":            "gspa:Plasmid",
+    "ViralContig":        "gspa:ViralContig",
+    "PhageFunction":      "gspa:PhageFunction",
+    "onContig":      {"@id": "gspa:onContig"},
+    "contigStart":   {"@id": "gspa:contigStart", "@type": "xsd:integer"},
+    "contigEnd":     {"@id": "gspa:contigEnd",   "@type": "xsd:integer"},
+    "completeness":  {"@id": "gspa:completeness"},
+    "viralTaxonomy": {"@id": "gspa:viralTaxonomy"},
     "regionStart":   {"@id": "gspa:regionStart", "@type": "xsd:integer"},
     "regionEnd":     {"@id": "gspa:regionEnd",   "@type": "xsd:integer"},
     "position":      {"@id": "gspa:position",    "@type": "xsd:integer"},
@@ -392,6 +473,12 @@ VOCAB_STUB = [
     ("PPIInterfaceSite",    "subClassOf",    GSPA_NS + "Site"),
     ("LocalizationCall",    "subClassOf",    GSPA_NS + "FunctionPrediction"),
     ("AMRGeneCall",         "subClassOf",    GSPA_NS + "FunctionPrediction"),
+    # v1.3 genomic-region classes
+    ("GenomicRegion",       "subClassOf",    SIO_NS + "001405"),  # 'chromosomal_region'
+    ("Prophage",            "subClassOf",    GSPA_NS + "GenomicRegion"),
+    ("Plasmid",             "subClassOf",    GSPA_NS + "GenomicRegion"),
+    ("ViralContig",         "subClassOf",    GSPA_NS + "GenomicRegion"),
+    ("PhageFunction",       "subClassOf",    GSPA_NS + "FunctionPrediction"),
     ("hasTarget",           "subPropertyOf", SIO_NS + "000628"),
     ("hasFunction",         "subPropertyOf", SIO_NS + "000235"),
     ("hasScore",            "subPropertyOf", SIO_NS + "000216"),
@@ -404,6 +491,12 @@ VOCAB_STUB = [
     ("position",            "subPropertyOf", SIO_NS + "000300"),
     ("onProtein",           "subPropertyOf", SIO_NS + "000628"),
     ("siteType",            "subPropertyOf", SIO_NS + "000008"),
+    # v1.3 genomic-region properties
+    ("onContig",            "subPropertyOf", SIO_NS + "000628"),
+    ("contigStart",         "subPropertyOf", SIO_NS + "000300"),
+    ("contigEnd",           "subPropertyOf", SIO_NS + "000300"),
+    ("completeness",        "subPropertyOf", SIO_NS + "000216"),
+    ("viralTaxonomy",       "subPropertyOf", SIO_NS + "000008"),
 ]
 
 
@@ -425,8 +518,23 @@ SITE_ANN_TO_CLASS = {
 }
 
 
-GSPA_REGION_BASE = "https://gspa.bio2vec.net/region/"
-GSPA_SITE_BASE   = "https://gspa.bio2vec.net/site/"
+GENOMIC_TYPE_TO_CLASS = {
+    "prophage":     "Prophage",
+    "plasmid":      "Plasmid",
+    "viral_contig": "ViralContig",
+}
+
+
+GSPA_REGION_BASE   = "https://gspa.bio2vec.net/region/"
+GSPA_SITE_BASE     = "https://gspa.bio2vec.net/site/"
+GSPA_GREGION_BASE  = "https://gspa.bio2vec.net/gregion/"
+
+
+def gregion_iri(sample_id: str, contig_id: str, region_type: str,
+                start: int, end: int) -> str:
+    safe_contig = contig_id.replace("/", "_").replace(" ", "_")
+    safe_type   = region_type.replace(" ", "_")
+    return f"{GSPA_GREGION_BASE}{sample_id}/{safe_contig}/{safe_type}/{start}-{end}"
 
 
 def region_iri(sample_id: str, pid: str, region_type: str, start: int, end: int) -> str:
@@ -442,9 +550,11 @@ def site_iri(sample_id: str, pid: str, site_type: str, position: int) -> str:
 def emit_jsonld(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]],
                 eval_records: dict[str, dict],
                 region_rows: dict[str, list[dict]] | None = None,
-                site_rows: dict[str, list[dict]] | None = None) -> None:
-    region_rows = region_rows or {}
-    site_rows   = site_rows or {}
+                site_rows: dict[str, list[dict]] | None = None,
+                genomic_rows: dict[str, list[dict]] | None = None) -> None:
+    region_rows  = region_rows  or {}
+    site_rows    = site_rows    or {}
+    genomic_rows = genomic_rows or {}
     graph: list[dict] = []
 
     # Vocabulary stub — same triples as the TTL emit so the two graphs agree.
@@ -526,6 +636,28 @@ def emit_jsonld(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]]
                 "fromSample": sample_id_iri,
             })
 
+    # Genomic regions (v1.3 phage track)
+    for pname, rs in sorted(genomic_rows.items()):
+        for r in rs:
+            cls = GENOMIC_TYPE_TO_CLASS.get(r["region_type"], "GenomicRegion")
+            node = {
+                "@id": gregion_iri(sample_id, r["contig_id"], r["region_type"],
+                                   r["region_start"], r["region_end"]),
+                "@type":      cls,
+                "onContig":   r["contig_id"],
+                "contigStart": r["region_start"],
+                "contigEnd":   r["region_end"],
+                "hasScore":   round(r["score"], 4),
+                "hasPredictor": predictor_iri(pname),
+                "fromSample": sample_id_iri,
+            }
+            attrs = r.get("attributes", {})
+            if "taxonomy" in attrs:
+                node["viralTaxonomy"] = attrs["taxonomy"]
+            if "completeness" in attrs:
+                node["completeness"] = attrs["completeness"]
+            graph.append(node)
+
     doc = {"@context": JSONLD_CONTEXT, "@graph": graph}
     out.write_text(json.dumps(doc, indent=2))
 
@@ -580,9 +712,11 @@ def protein_link(pid: str) -> str:
 def emit_html(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]],
               eval_records: dict[str, dict],
               region_rows: dict[str, list[dict]] | None = None,
-              site_rows: dict[str, list[dict]] | None = None) -> None:
-    region_rows = region_rows or {}
-    site_rows   = site_rows or {}
+              site_rows: dict[str, list[dict]] | None = None,
+              genomic_rows: dict[str, list[dict]] | None = None) -> None:
+    region_rows  = region_rows  or {}
+    site_rows    = site_rows    or {}
+    genomic_rows = genomic_rows or {}
     parts: list[str] = [HTML_HEAD.format(sample_id=html.escape(sample_id))]
 
     # Top-line summary
@@ -694,6 +828,28 @@ def emit_html(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]],
                 parts.append(f"<tr><td colspan='5'><em>… {len(rs) - 500} more rows truncated; see {pname} TSV.</em></td></tr>")
             parts.append("</tbody></table></details></div>")
 
+    # Genomic regions (v1.3 phage track) — at the genome level, not per-protein
+    if genomic_rows:
+        parts.append("<h2>Prophages &amp; viral elements</h2>")
+        for pname in sorted(genomic_rows):
+            rs = genomic_rows[pname]
+            if not rs:
+                continue
+            parts.append(f"<div class='pred-section'><h3>{html.escape(pname)} "
+                         f"<span class='pill'>{len(rs):,} regions</span></h3>")
+            parts.append('<table><thead><tr><th>contig_id</th><th>start</th><th>end</th><th>region_type</th><th>score</th><th>attributes</th></tr></thead><tbody>')
+            for r in rs[:500]:
+                attr_html = "; ".join(f"{k}={v}" for k, v in r.get("attributes", {}).items())
+                parts.append(f"<tr><td>{html.escape(r['contig_id'])}</td>"
+                             f"<td class='score'>{r['region_start']:,}</td>"
+                             f"<td class='score'>{r['region_end']:,}</td>"
+                             f"<td>{html.escape(r['region_type'])}</td>"
+                             f"<td class='score'>{r['score']:.4f}</td>"
+                             f"<td><code>{html.escape(attr_html)}</code></td></tr>")
+            if len(rs) > 500:
+                parts.append(f"<tr><td colspan='6'><em>… {len(rs) - 500} more rows truncated.</em></td></tr>")
+            parts.append("</tbody></table></div>")
+
     parts.append("</body></html>")
     out.write_text("".join(parts))
 
@@ -713,6 +869,9 @@ def parse_args() -> argparse.Namespace:
                     help="NAME:PATH of a region (5-col) TSV; repeatable.")
     ap.add_argument("--site", action="append", default=[],
                     help="NAME:PATH of a site (5-col) TSV; repeatable.")
+    ap.add_argument("--genomic-region", action="append", default=[],
+                    help="NAME:PATH of a genomic-region (6-col) TSV from the "
+                         "phage track (geNomad / CheckV / PhiSpy); repeatable.")
     ap.add_argument("--eval", action="append", default=[],
                     help="NAME:PATH of an eval JSON file; repeatable.")
     ap.add_argument("--out-dir", required=True, type=Path)
@@ -746,15 +905,25 @@ def main() -> None:
         site_rows[name] = rows
         print(f"  site      {name:<22} {len(rows):>8} sites ({path})")
 
+    genomic_rows: dict[str, list[dict]] = {}
+    for spec in args.genomic_region:
+        name, path = parse_kv(spec)
+        rows = [r for r in load_genomic_tsv(path) if r["score"] >= args.min_score]
+        genomic_rows[name] = rows
+        print(f"  gregion   {name:<22} {len(rows):>8} genomic regions ({path})")
+
     eval_records: dict[str, dict] = {}
     for spec in args.eval:
         name, path = parse_kv(spec)
         eval_records[name] = load_eval_json(path)
 
     base = args.out_dir / args.sample_id
-    emit_turtle(base.with_suffix(".ttl"),    args.sample_id, predictor_rows, eval_records, region_rows, site_rows)
-    emit_jsonld(base.with_suffix(".jsonld"), args.sample_id, predictor_rows, eval_records, region_rows, site_rows)
-    emit_html(base.with_suffix(".html"),     args.sample_id, predictor_rows, eval_records, region_rows, site_rows)
+    emit_turtle(base.with_suffix(".ttl"),    args.sample_id, predictor_rows, eval_records,
+                region_rows, site_rows, genomic_rows)
+    emit_jsonld(base.with_suffix(".jsonld"), args.sample_id, predictor_rows, eval_records,
+                region_rows, site_rows, genomic_rows)
+    emit_html(base.with_suffix(".html"),     args.sample_id, predictor_rows, eval_records,
+              region_rows, site_rows, genomic_rows)
     print(f"wrote {base}.{{html,ttl,jsonld}}")
 
 

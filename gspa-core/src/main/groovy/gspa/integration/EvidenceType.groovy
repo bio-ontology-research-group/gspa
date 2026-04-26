@@ -31,7 +31,8 @@ enum EvidenceType {
     REACTION_LOCAL_CONTEXT,     // claims from ReactionLocalContextSuggester (Phase 12)
     CROSS_GENOME_TRANSFER,      // conditional-LR-based cross-genome transfer (Phase 12)
     ML_RANKER,                  // learned ranker output (Phase 12 M3+)
-    SEQUENCE_REGION_ML          // region-level ML predictors (Metapredict, SignalP region, TMHMM helix)
+    SEQUENCE_REGION_ML,         // region-level ML predictors (Metapredict, SignalP region, TMHMM helix)
+    GENOMIC_REGION_ML           // genome-level ML predictors (geNomad, CheckV, PhiSpy)
 
     /**
      * Correlation group. Claims in the same group are collapsed to the single
@@ -75,6 +76,13 @@ enum EvidenceType {
                 // that do not compete with whole-protein homology or
                 // structure evidence, so they get their own group.
                 return 'region_features'
+            case GENOMIC_REGION_ML:
+                // Genome-level ML predictors (prophage / plasmid / viral
+                // contig). geNomad, CheckV and PhiSpy use overlapping
+                // signal classes (HMMs, codon-usage features), so they
+                // collapse into one group: only the strongest call per
+                // genomic region survives the Noisy-OR step.
+                return 'viral'
             case DOMAIN_SPECIFIC_AMR:
             case DOMAIN_SPECIFIC_CAZY:
             case DOMAIN_SPECIFIC_BGC:

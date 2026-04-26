@@ -22,10 +22,11 @@ process MAKE_REPORT {
 
     input:
     tuple val(sample_id),
-          val(pred_specs),    path(pred_files,   stageAs: 'pred_*'),
-          val(region_specs),  path(region_files, stageAs: 'region_*'),
-          val(site_specs),    path(site_files,   stageAs: 'site_*'),
-          val(eval_specs),    path(eval_files,   stageAs: 'eval_*')
+          val(pred_specs),     path(pred_files,    stageAs: 'pred_*'),
+          val(region_specs),   path(region_files,  stageAs: 'region_*'),
+          val(site_specs),     path(site_files,    stageAs: 'site_*'),
+          val(genomic_specs),  path(genomic_files, stageAs: 'genomic_*'),
+          val(eval_specs),     path(eval_files,    stageAs: 'eval_*')
 
     output:
     tuple val(sample_id),
@@ -34,16 +35,18 @@ process MAKE_REPORT {
           path("${sample_id}.jsonld"), emit: results
 
     script:
-    def pred_args   = pred_specs.collect   { "--predictor ${it}" }.join(' ')
-    def region_args = region_specs.collect { "--region ${it}" }.join(' ')
-    def site_args   = site_specs.collect   { "--site ${it}" }.join(' ')
-    def eval_args   = eval_specs.collect   { "--eval ${it}" }.join(' ')
+    def pred_args    = pred_specs.collect    { "--predictor ${it}" }.join(' ')
+    def region_args  = region_specs.collect  { "--region ${it}" }.join(' ')
+    def site_args    = site_specs.collect    { "--site ${it}" }.join(' ')
+    def genomic_args = genomic_specs.collect { "--genomic-region ${it}" }.join(' ')
+    def eval_args    = eval_specs.collect    { "--eval ${it}" }.join(' ')
     """
     python3 /opt/gspa/make_report.py \\
         --sample-id ${sample_id} \\
         ${pred_args} \\
         ${region_args} \\
         ${site_args} \\
+        ${genomic_args} \\
         ${eval_args} \\
         --out-dir . \\
         --min-score ${params.report_min_score}

@@ -48,6 +48,7 @@ class GspaConfig {
         DisorderConfig disorder = new DisorderConfig()
         NeuralConfig neural = new NeuralConfig()
         FossPredictorConfig foss = new FossPredictorConfig()
+        ViralConfig viral = new ViralConfig()
 
         /** Additional predictors to enable (by name) */
         Set<String> enable = []
@@ -255,6 +256,42 @@ class GspaConfig {
         String modelDir
         /** Directory of {@code <tag>/*.pdb} structure files. */
         String structureDir
+        double minScore = 0.5
+    }
+
+    /**
+     * v1.3 phage / prophage / viral predictors. All FOSS; consume
+     * {@code genome_fasta} (not protein FASTA).
+     */
+    static class ViralConfig {
+        /** Absolute path to {@code run_genomic_predictors.py}. */
+        String genomicSidecar
+        String pythonExecutable = 'python3'
+
+        GenomadConfig genomad = new GenomadConfig()
+        CheckVConfig  checkv  = new CheckVConfig()
+        PhiSpyConfig  phispy  = new PhiSpyConfig()
+    }
+
+    static class GenomadConfig {
+        boolean enabled = false
+        String dbPath          // path to geNomad model DB
+        String sif             // optional Singularity image
+        double minScore = 0.7
+    }
+
+    static class CheckVConfig {
+        boolean enabled = false
+        String dbPath
+        String sif
+        int threads = 4
+        double minScore = 0.5
+    }
+
+    static class PhiSpyConfig {
+        boolean enabled = false
+        String sif
+        String trainset        // optional path to a custom trainset
         double minScore = 0.5
     }
 

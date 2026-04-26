@@ -335,6 +335,37 @@ class AnnotationPipeline {
             )
         }
 
+        // v1.3 viral / prophage predictors (genome-level)
+        def viral = config.predictors.viral
+        if (viral.genomad.enabled) {
+            predictors << new gspa.predictor.viral.GenomadPredictor(
+                sidecarScript: viral.genomicSidecar,
+                pythonExecutable: viral.pythonExecutable,
+                dbPath: viral.genomad.dbPath,
+                genomadSif: viral.genomad.sif,
+                minScore: viral.genomad.minScore,
+            )
+        }
+        if (viral.checkv.enabled) {
+            predictors << new gspa.predictor.viral.CheckVPredictor(
+                sidecarScript: viral.genomicSidecar,
+                pythonExecutable: viral.pythonExecutable,
+                dbPath: viral.checkv.dbPath,
+                checkvSif: viral.checkv.sif,
+                threads: viral.checkv.threads,
+                minScore: viral.checkv.minScore,
+            )
+        }
+        if (viral.phispy.enabled) {
+            predictors << new gspa.predictor.viral.PhiSpyPredictor(
+                sidecarScript: viral.genomicSidecar,
+                pythonExecutable: viral.pythonExecutable,
+                phispySif: viral.phispy.sif,
+                trainset: viral.phispy.trainset,
+                minScore: viral.phispy.minScore,
+            )
+        }
+
         predictors
     }
 
