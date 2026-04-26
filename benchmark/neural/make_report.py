@@ -147,11 +147,79 @@ def load_eval_json(path: Path) -> dict:
         return json.load(fh)
 
 
+def load_region_tsv(path: Path) -> list[dict]:
+    """5-col region TSV: protein_id, region_start, region_end, region_type, score."""
+    rows: list[dict] = []
+    if not path.exists() or path.stat().st_size == 0:
+        return rows
+    with path.open() as fh:
+        header = fh.readline().rstrip("\n").split("\t")
+        try:
+            i_pid = header.index("protein_id")
+            i_s   = header.index("region_start")
+            i_e   = header.index("region_end")
+            i_t   = header.index("region_type")
+            i_sc  = header.index("score")
+        except ValueError as exc:
+            raise SystemExit(f"{path}: missing region column ({exc})")
+        for line in fh:
+            f = line.rstrip("\n").split("\t")
+            if len(f) <= max(i_pid, i_s, i_e, i_t, i_sc):
+                continue
+            try:
+                rows.append({
+                    "protein_id":   f[i_pid],
+                    "region_start": int(f[i_s]),
+                    "region_end":   int(f[i_e]),
+                    "region_type":  f[i_t],
+                    "score":        float(f[i_sc]),
+                })
+            except ValueError:
+                continue
+    return rows
+
+
+def load_site_tsv(path: Path) -> list[dict]:
+    """5-col site TSV: protein_id, position, site_type, score, annotation_type."""
+    rows: list[dict] = []
+    if not path.exists() or path.stat().st_size == 0:
+        return rows
+    with path.open() as fh:
+        header = fh.readline().rstrip("\n").split("\t")
+        try:
+            i_pid = header.index("protein_id")
+            i_pos = header.index("position")
+            i_t   = header.index("site_type")
+            i_sc  = header.index("score")
+            i_ann = header.index("annotation_type")
+        except ValueError as exc:
+            raise SystemExit(f"{path}: missing site column ({exc})")
+        for line in fh:
+            f = line.rstrip("\n").split("\t")
+            if len(f) <= max(i_pid, i_pos, i_t, i_sc, i_ann):
+                continue
+            try:
+                rows.append({
+                    "protein_id":      f[i_pid],
+                    "position":        int(f[i_pos]),
+                    "site_type":       f[i_t],
+                    "score":           float(f[i_sc]),
+                    "annotation_type": f[i_ann],
+                })
+            except ValueError:
+                continue
+    return rows
+
+
 # ----- Turtle emit ----------------------------------------------------------
 
 
 def emit_turtle(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]],
-                eval_records: dict[str, dict]) -> None:
+                eval_records: dict[str, dict],
+                region_rows: dict[str, list[dict]] | None = None,
+                site_rows: dict[str, list[dict]] | None = None) -> None:
+    region_rows = region_rows or {}
+    site_rows   = site_rows or {}
     lines: list[str] = [
         "@prefix gspa: <https://gspa.bio2vec.net/ns/> .",
         "@prefix sio:  <http://semanticscience.org/resource/SIO_> .",
@@ -163,22 +231,24 @@ def emit_turtle(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]]
         "@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .",
         "",
         "# Vocabulary stub. Full ontology lives at gspa: namespace.",
-        "gspa:FunctionPrediction  rdfs:subClassOf sio:000663 .",
-        "gspa:Predictor           rdfs:subClassOf sio:000596 .",
-        "gspa:Sample              rdfs:subClassOf sio:000414 .",
-        "gspa:hasTarget           rdfs:subPropertyOf sio:000628 .",
-        "gspa:hasFunction         rdfs:subPropertyOf sio:000235 .",
-        "gspa:hasScore            rdfs:subPropertyOf sio:000216 .",
-        "gspa:hasPredictor        rdfs:subPropertyOf sio:000563 .",
-        "gspa:annotationType      rdfs:subPropertyOf sio:000008 .",
-        "gspa:fromSample          rdfs:subPropertyOf sio:000095 .",
-        "gspa:hasMetric           rdfs:subPropertyOf sio:000008 .",
+    ]
+    # Programmatically render VOCAB_STUB so TTL stays in sync with JSON-LD.
+    for term, rel, parent in VOCAB_STUB:
+        # parent is a full IRI (sio: or gspa: prefixed)
+        if parent.startswith(SIO_NS):
+            p = "sio:" + parent[len(SIO_NS):]
+        elif parent.startswith(GSPA_NS):
+            p = "gspa:" + parent[len(GSPA_NS):]
+        else:
+            p = f"<{parent}>"
+        lines.append(f"gspa:{term:<22} rdfs:{rel} {p} .")
+    lines.extend([
         "",
         f"# Sample",
         f"<{GSPA_PRED_BASE}{sample_id}> a gspa:Sample ;",
         f"    rdfs:label \"{sample_id}\" .",
         "",
-    ]
+    ])
 
     # Predictor declarations
     for pname in sorted(predictor_rows):
@@ -223,6 +293,45 @@ def emit_turtle(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]]
         lines[-1] = lines[-1].rstrip(" ;") + " ."
         lines.append("")
 
+    # Regions
+    for pname, rs in sorted(region_rows.items()):
+        if not rs:
+            continue
+        lines.append(f"# Regions from {pname}")
+        for r in rs:
+            cls = REGION_TYPE_TO_CLASS.get(r["region_type"], "Region")
+            riri = region_iri(sample_id, r["protein_id"], r["region_type"],
+                              r["region_start"], r["region_end"])
+            lines.extend([
+                f"<{riri}> a gspa:{cls} ;",
+                f"    gspa:onProtein   <{protein_iri(sample_id, r['protein_id'])}> ;",
+                f"    gspa:regionStart \"{r['region_start']}\"^^xsd:integer ;",
+                f"    gspa:regionEnd   \"{r['region_end']}\"^^xsd:integer ;",
+                f"    gspa:hasScore    \"{r['score']:.4f}\"^^xsd:float ;",
+                f"    gspa:hasPredictor <{predictor_iri(pname)}> ;",
+                f"    gspa:fromSample  <{GSPA_PRED_BASE}{sample_id}> .",
+                "",
+            ])
+
+    # Sites
+    for pname, rs in sorted(site_rows.items()):
+        if not rs:
+            continue
+        lines.append(f"# Sites from {pname}")
+        for r in rs:
+            cls = SITE_ANN_TO_CLASS.get(r["annotation_type"], "Site")
+            siri = site_iri(sample_id, r["protein_id"], r["site_type"], r["position"])
+            lines.extend([
+                f"<{siri}> a gspa:{cls} ;",
+                f"    gspa:onProtein   <{protein_iri(sample_id, r['protein_id'])}> ;",
+                f"    gspa:position    \"{r['position']}\"^^xsd:integer ;",
+                f"    gspa:siteType    \"{r['site_type']}\" ;",
+                f"    gspa:hasScore    \"{r['score']:.4f}\"^^xsd:float ;",
+                f"    gspa:hasPredictor <{predictor_iri(pname)}> ;",
+                f"    gspa:fromSample  <{GSPA_PRED_BASE}{sample_id}> .",
+                "",
+            ])
+
     out.write_text("\n".join(lines))
 
 
@@ -242,6 +351,22 @@ JSONLD_CONTEXT = {
     "Predictor":          "gspa:Predictor",
     "Sample":             "gspa:Sample",
     "EvalRecord":         "gspa:EvalRecord",
+    "Region":             "gspa:Region",
+    "DisorderRegion":     "gspa:DisorderRegion",
+    "SignalPeptide":      "gspa:SignalPeptide",
+    "TMHelix":            "gspa:TMHelix",
+    "TMBeta":             "gspa:TMBeta",
+    "TargetingPeptide":   "gspa:TargetingPeptide",
+    "Site":               "gspa:Site",
+    "PTMSite":            "gspa:PTMSite",
+    "PPIInterfaceSite":   "gspa:PPIInterfaceSite",
+    "LocalizationCall":   "gspa:LocalizationCall",
+    "AMRGeneCall":        "gspa:AMRGeneCall",
+    "regionStart":   {"@id": "gspa:regionStart", "@type": "xsd:integer"},
+    "regionEnd":     {"@id": "gspa:regionEnd",   "@type": "xsd:integer"},
+    "position":      {"@id": "gspa:position",    "@type": "xsd:integer"},
+    "onProtein":     {"@id": "gspa:onProtein",   "@type": "@id"},
+    "siteType":      {"@id": "gspa:siteType"},
     "hasTarget":     {"@id": "gspa:hasTarget", "@type": "@id"},
     "hasFunction":   {"@id": "gspa:hasFunction", "@type": "@id"},
     "hasPredictor":  {"@id": "gspa:hasPredictor", "@type": "@id"},
@@ -253,21 +378,73 @@ JSONLD_CONTEXT = {
 
 
 VOCAB_STUB = [
-    ("FunctionPrediction", "subClassOf", SIO_NS + "000663"),
-    ("Predictor",          "subClassOf", SIO_NS + "000596"),
-    ("Sample",             "subClassOf", SIO_NS + "000414"),
-    ("hasTarget",          "subPropertyOf", SIO_NS + "000628"),
-    ("hasFunction",        "subPropertyOf", SIO_NS + "000235"),
-    ("hasScore",           "subPropertyOf", SIO_NS + "000216"),
-    ("hasPredictor",       "subPropertyOf", SIO_NS + "000563"),
-    ("annotationType",     "subPropertyOf", SIO_NS + "000008"),
-    ("fromSample",         "subPropertyOf", SIO_NS + "000095"),
-    ("hasMetric",          "subPropertyOf", SIO_NS + "000008"),
+    ("FunctionPrediction",  "subClassOf",    SIO_NS + "000663"),  # data item
+    ("Predictor",           "subClassOf",    SIO_NS + "000596"),  # agent
+    ("Sample",              "subClassOf",    SIO_NS + "000414"),
+    ("Region",              "subClassOf",    SIO_NS + "000657"),  # sequence segment
+    ("DisorderRegion",      "subClassOf",    GSPA_NS + "Region"),
+    ("SignalPeptide",       "subClassOf",    GSPA_NS + "Region"),
+    ("TMHelix",             "subClassOf",    GSPA_NS + "Region"),
+    ("TMBeta",              "subClassOf",    GSPA_NS + "Region"),
+    ("TargetingPeptide",    "subClassOf",    GSPA_NS + "Region"),
+    ("Site",                "subClassOf",    SIO_NS + "000657"),
+    ("PTMSite",             "subClassOf",    GSPA_NS + "Site"),
+    ("PPIInterfaceSite",    "subClassOf",    GSPA_NS + "Site"),
+    ("LocalizationCall",    "subClassOf",    GSPA_NS + "FunctionPrediction"),
+    ("AMRGeneCall",         "subClassOf",    GSPA_NS + "FunctionPrediction"),
+    ("hasTarget",           "subPropertyOf", SIO_NS + "000628"),
+    ("hasFunction",         "subPropertyOf", SIO_NS + "000235"),
+    ("hasScore",            "subPropertyOf", SIO_NS + "000216"),
+    ("hasPredictor",        "subPropertyOf", SIO_NS + "000563"),
+    ("annotationType",      "subPropertyOf", SIO_NS + "000008"),
+    ("fromSample",          "subPropertyOf", SIO_NS + "000095"),
+    ("hasMetric",           "subPropertyOf", SIO_NS + "000008"),
+    ("regionStart",         "subPropertyOf", SIO_NS + "000300"),  # has value
+    ("regionEnd",           "subPropertyOf", SIO_NS + "000300"),
+    ("position",            "subPropertyOf", SIO_NS + "000300"),
+    ("onProtein",           "subPropertyOf", SIO_NS + "000628"),
+    ("siteType",            "subPropertyOf", SIO_NS + "000008"),
 ]
 
 
+REGION_TYPE_TO_CLASS = {
+    "disorder":          "DisorderRegion",
+    "signal_peptide":    "SignalPeptide",
+    "transit_peptide":   "TargetingPeptide",
+    "lipo":              "SignalPeptide",
+    "tm_helix":          "TMHelix",
+    "tm_beta":           "TMBeta",
+    "targeting_peptide": "TargetingPeptide",
+    "mito_targeting":    "TargetingPeptide",
+    "chloro_targeting":  "TargetingPeptide",
+}
+
+SITE_ANN_TO_CLASS = {
+    "PTM_SITE":       "PTMSite",
+    "PPI_INTERFACE":  "PPIInterfaceSite",
+}
+
+
+GSPA_REGION_BASE = "https://gspa.bio2vec.net/region/"
+GSPA_SITE_BASE   = "https://gspa.bio2vec.net/site/"
+
+
+def region_iri(sample_id: str, pid: str, region_type: str, start: int, end: int) -> str:
+    safe = region_type.replace(" ", "_")
+    return f"{GSPA_REGION_BASE}{sample_id}/{pid}/{safe}/{start}-{end}"
+
+
+def site_iri(sample_id: str, pid: str, site_type: str, position: int) -> str:
+    safe = site_type.replace(" ", "_")
+    return f"{GSPA_SITE_BASE}{sample_id}/{pid}/{safe}/{position}"
+
+
 def emit_jsonld(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]],
-                eval_records: dict[str, dict]) -> None:
+                eval_records: dict[str, dict],
+                region_rows: dict[str, list[dict]] | None = None,
+                site_rows: dict[str, list[dict]] | None = None) -> None:
+    region_rows = region_rows or {}
+    site_rows   = site_rows or {}
     graph: list[dict] = []
 
     # Vocabulary stub — same triples as the TTL emit so the two graphs agree.
@@ -317,6 +494,37 @@ def emit_jsonld(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]]
             if k in rec and rec[k] is not None:
                 node[k] = rec[k]
         graph.append(node)
+
+    # Regions
+    for pname, rs in sorted(region_rows.items()):
+        for r in rs:
+            cls = REGION_TYPE_TO_CLASS.get(r["region_type"], "Region")
+            graph.append({
+                "@id": region_iri(sample_id, r["protein_id"], r["region_type"],
+                                  r["region_start"], r["region_end"]),
+                "@type": cls,
+                "onProtein":   protein_iri(sample_id, r["protein_id"]),
+                "regionStart": r["region_start"],
+                "regionEnd":   r["region_end"],
+                "hasScore":    round(r["score"], 4),
+                "hasPredictor": predictor_iri(pname),
+                "fromSample":  sample_id_iri,
+            })
+
+    # Sites
+    for pname, rs in sorted(site_rows.items()):
+        for r in rs:
+            cls = SITE_ANN_TO_CLASS.get(r["annotation_type"], "Site")
+            graph.append({
+                "@id": site_iri(sample_id, r["protein_id"], r["site_type"], r["position"]),
+                "@type": cls,
+                "onProtein":  protein_iri(sample_id, r["protein_id"]),
+                "position":   r["position"],
+                "siteType":   r["site_type"],
+                "hasScore":   round(r["score"], 4),
+                "hasPredictor": predictor_iri(pname),
+                "fromSample": sample_id_iri,
+            })
 
     doc = {"@context": JSONLD_CONTEXT, "@graph": graph}
     out.write_text(json.dumps(doc, indent=2))
@@ -370,17 +578,25 @@ def protein_link(pid: str) -> str:
 
 
 def emit_html(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]],
-              eval_records: dict[str, dict]) -> None:
+              eval_records: dict[str, dict],
+              region_rows: dict[str, list[dict]] | None = None,
+              site_rows: dict[str, list[dict]] | None = None) -> None:
+    region_rows = region_rows or {}
+    site_rows   = site_rows or {}
     parts: list[str] = [HTML_HEAD.format(sample_id=html.escape(sample_id))]
 
     # Top-line summary
     n_total = sum(len(rs) for rs in predictor_rows.values())
     n_predictors = len(predictor_rows)
+    n_regions = sum(len(rs) for rs in region_rows.values())
+    n_sites = sum(len(rs) for rs in site_rows.values())
     n_proteins = len({r["protein_id"] for rs in predictor_rows.values() for r in rs})
     n_terms = len({r["term"] for rs in predictor_rows.values() for r in rs})
     parts.append('<div class="summary">')
-    parts.append(f'<div class="card"><div>Predictors</div><div class="num">{n_predictors}</div></div>')
-    parts.append(f'<div class="card"><div>Predictions</div><div class="num">{n_total:,}</div></div>')
+    parts.append(f'<div class="card"><div>Term predictors</div><div class="num">{n_predictors}</div></div>')
+    parts.append(f'<div class="card"><div>Term predictions</div><div class="num">{n_total:,}</div></div>')
+    parts.append(f'<div class="card"><div>Region calls</div><div class="num">{n_regions:,}</div></div>')
+    parts.append(f'<div class="card"><div>Site calls</div><div class="num">{n_sites:,}</div></div>')
     parts.append(f'<div class="card"><div>Proteins</div><div class="num">{n_proteins:,}</div></div>')
     parts.append(f'<div class="card"><div>Distinct terms</div><div class="num">{n_terms:,}</div></div>')
     parts.append('</div>')
@@ -436,6 +652,48 @@ def emit_html(out: Path, sample_id: str, predictor_rows: dict[str, list[dict]],
                          f"<td class='score'>{r['score']:.4f}</td></tr>")
     parts.append("</tbody></table></details>")
 
+    # Regions per tool
+    if region_rows:
+        parts.append("<h2>Regions</h2>")
+        for pname in sorted(region_rows):
+            rs = region_rows[pname]
+            if not rs:
+                continue
+            parts.append(f"<div class='pred-section'><h3>{html.escape(pname)} "
+                         f"<span class='pill'>{len(rs):,} regions</span></h3>")
+            parts.append("<details><summary>Show regions</summary>")
+            parts.append('<table><thead><tr><th>protein_id</th><th>start</th><th>end</th><th>type</th><th>score</th></tr></thead><tbody>')
+            for r in rs[:500]:  # cap at 500 per predictor in HTML
+                parts.append(f"<tr><td>{protein_link(r['protein_id'])}</td>"
+                             f"<td class='score'>{r['region_start']}</td>"
+                             f"<td class='score'>{r['region_end']}</td>"
+                             f"<td>{html.escape(r['region_type'])}</td>"
+                             f"<td class='score'>{r['score']:.4f}</td></tr>")
+            if len(rs) > 500:
+                parts.append(f"<tr><td colspan='5'><em>… {len(rs) - 500} more rows truncated; see {pname} TSV.</em></td></tr>")
+            parts.append("</tbody></table></details></div>")
+
+    # Sites per tool
+    if site_rows:
+        parts.append("<h2>Sites</h2>")
+        for pname in sorted(site_rows):
+            rs = site_rows[pname]
+            if not rs:
+                continue
+            parts.append(f"<div class='pred-section'><h3>{html.escape(pname)} "
+                         f"<span class='pill'>{len(rs):,} sites</span></h3>")
+            parts.append("<details><summary>Show sites</summary>")
+            parts.append('<table><thead><tr><th>protein_id</th><th>position</th><th>site_type</th><th>score</th><th>annotation_type</th></tr></thead><tbody>')
+            for r in rs[:500]:
+                parts.append(f"<tr><td>{protein_link(r['protein_id'])}</td>"
+                             f"<td class='score'>{r['position']}</td>"
+                             f"<td>{html.escape(r['site_type'])}</td>"
+                             f"<td class='score'>{r['score']:.4f}</td>"
+                             f"<td>{html.escape(r['annotation_type'])}</td></tr>")
+            if len(rs) > 500:
+                parts.append(f"<tr><td colspan='5'><em>… {len(rs) - 500} more rows truncated; see {pname} TSV.</em></td></tr>")
+            parts.append("</tbody></table></details></div>")
+
     parts.append("</body></html>")
     out.write_text("".join(parts))
 
@@ -451,6 +709,10 @@ def parse_args() -> argparse.Namespace:
                     help="NAME:PATH of a predictor TSV; repeatable.")
     ap.add_argument("--ensemble", action="append", default=[],
                     help="NAME:PATH of an ensemble TSV; repeatable.")
+    ap.add_argument("--region", action="append", default=[],
+                    help="NAME:PATH of a region (5-col) TSV; repeatable.")
+    ap.add_argument("--site", action="append", default=[],
+                    help="NAME:PATH of a site (5-col) TSV; repeatable.")
     ap.add_argument("--eval", action="append", default=[],
                     help="NAME:PATH of an eval JSON file; repeatable.")
     ap.add_argument("--out-dir", required=True, type=Path)
@@ -468,7 +730,21 @@ def main() -> None:
         name, path = parse_kv(spec)
         rows = [r for r in load_pred_tsv(path) if r["score"] >= args.min_score]
         predictor_rows[name] = rows
-        print(f"  {name:<22} {len(rows):>8} predictions ({path})")
+        print(f"  predictor {name:<22} {len(rows):>8} rows ({path})")
+
+    region_rows: dict[str, list[dict]] = {}
+    for spec in args.region:
+        name, path = parse_kv(spec)
+        rows = [r for r in load_region_tsv(path) if r["score"] >= args.min_score]
+        region_rows[name] = rows
+        print(f"  region    {name:<22} {len(rows):>8} regions ({path})")
+
+    site_rows: dict[str, list[dict]] = {}
+    for spec in args.site:
+        name, path = parse_kv(spec)
+        rows = [r for r in load_site_tsv(path) if r["score"] >= args.min_score]
+        site_rows[name] = rows
+        print(f"  site      {name:<22} {len(rows):>8} sites ({path})")
 
     eval_records: dict[str, dict] = {}
     for spec in args.eval:
@@ -476,9 +752,9 @@ def main() -> None:
         eval_records[name] = load_eval_json(path)
 
     base = args.out_dir / args.sample_id
-    emit_turtle(base.with_suffix(".ttl"), args.sample_id, predictor_rows, eval_records)
-    emit_jsonld(base.with_suffix(".jsonld"), args.sample_id, predictor_rows, eval_records)
-    emit_html(base.with_suffix(".html"), args.sample_id, predictor_rows, eval_records)
+    emit_turtle(base.with_suffix(".ttl"),    args.sample_id, predictor_rows, eval_records, region_rows, site_rows)
+    emit_jsonld(base.with_suffix(".jsonld"), args.sample_id, predictor_rows, eval_records, region_rows, site_rows)
+    emit_html(base.with_suffix(".html"),     args.sample_id, predictor_rows, eval_records, region_rows, site_rows)
     print(f"wrote {base}.{{html,ttl,jsonld}}")
 
 

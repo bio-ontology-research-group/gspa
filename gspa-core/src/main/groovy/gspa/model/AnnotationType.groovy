@@ -21,6 +21,9 @@ enum AnnotationType {
     TRANSMEMBRANE,
     SUBCELLULAR_LOCALIZATION,
     SECONDARY_METABOLITE,
-    DISORDER,   // Intrinsically disordered region
-    CUSTOM      // User-defined annotation type
+    DISORDER,           // Intrinsically disordered region
+    TARGETING_PEPTIDE,  // N-terminal mito/chloro/Sec/Tat targeting
+    PTM_SITE,           // Post-translational modification site (1-residue)
+    PPI_INTERFACE,      // Protein-protein interaction interface residue
+    CUSTOM              // User-defined annotation type
 }

@@ -33,6 +33,11 @@ include { ESM2_DEEPGOPLUS; ESM2_CENTROID;
 include { ENSEMBLE_PREDS }                               from './modules/ensemble'
 include { EVAL_PGAP }                                    from './modules/eval'
 include { MAKE_REPORT }                                  from './modules/report'
+include { METAPREDICT; DEEPSIG; TMBED; TPPRED3 }         from './modules/region'
+include { PSORTB }                                       from './modules/loc'
+include { DEEPFRI; DEEPEC; DEEPARG }                     from './modules/term_extras'
+include { MUSITEDEEP; SCANNET }                          from './modules/sites'
+include { STRUCTURE_PROVIDER }                           from './modules/structure'
 
 if (!params.input) {
     error "Please provide --input (FASTA file or samplesheet CSV)"
@@ -158,6 +163,63 @@ workflow {
         ch_neural = ch_neural.mix(PROTEINFER.out.results.map { id, f -> tuple(id, 'proteinfer', f) })
     }
 
+    // ===== Step 6.6: FOSS region predictors (opt-in) =====
+    ch_regions = Channel.empty()
+    if (params.run_metapredict) {
+        METAPREDICT(PYRODIGAL.out.proteins)
+        ch_regions = ch_regions.mix(METAPREDICT.out.results.map { id, f -> tuple(id, 'metapredict', f) })
+    }
+    if (params.run_deepsig) {
+        DEEPSIG(PYRODIGAL.out.proteins)
+        ch_regions = ch_regions.mix(DEEPSIG.out.results.map { id, f -> tuple(id, 'deepsig', f) })
+    }
+    if (params.run_tmbed) {
+        def prott5 = params.tmbed_prott5_dir ? file(params.tmbed_prott5_dir) : file('NO_PROTT5')
+        TMBED(PYRODIGAL.out.proteins, prott5)
+        ch_regions = ch_regions.mix(TMBED.out.results.map { id, f -> tuple(id, 'tmbed', f) })
+    }
+    if (params.run_tppred3) {
+        TPPRED3(PYRODIGAL.out.proteins)
+        ch_regions = ch_regions.mix(TPPRED3.out.results.map { id, f -> tuple(id, 'tppred3', f) })
+    }
+
+    // ===== Step 6.7: FOSS term-extra predictors (auto-join ensemble) =====
+    if (params.run_psortb) {
+        PSORTB(PYRODIGAL.out.proteins)
+        ch_neural = ch_neural.mix(PSORTB.out.results.map { id, f -> tuple(id, 'psortb', f) })
+    }
+    if (params.run_deepfri && params.deepfri_model_dir) {
+        DEEPFRI(PYRODIGAL.out.proteins, file(params.deepfri_model_dir))
+        ch_neural = ch_neural.mix(DEEPFRI.out.results.map { id, f -> tuple(id, 'deepfri', f) })
+    }
+    if (params.run_deepec && params.deepec_model_dir) {
+        DEEPEC(PYRODIGAL.out.proteins, file(params.deepec_model_dir))
+        ch_neural = ch_neural.mix(DEEPEC.out.results.map { id, f -> tuple(id, 'deepec', f) })
+    }
+    if (params.run_deeparg && params.deeparg_model_dir) {
+        DEEPARG(PYRODIGAL.out.proteins, file(params.deeparg_model_dir))
+        ch_neural = ch_neural.mix(DEEPARG.out.results.map { id, f -> tuple(id, 'deeparg', f) })
+    }
+
+    // ===== Step 6.8: Optional structure provisioning + site predictors =====
+    ch_sites = Channel.empty()
+    ch_structures = Channel.empty()
+    if (params.structures_from && params.structures_from != 'none') {
+        STRUCTURE_PROVIDER(PYRODIGAL.out.proteins)
+        ch_structures = STRUCTURE_PROVIDER.out.structures
+    }
+    if (params.run_musitedeep && params.musitedeep_model_dir) {
+        MUSITEDEEP(PYRODIGAL.out.proteins, file(params.musitedeep_model_dir))
+        ch_sites = ch_sites.mix(MUSITEDEEP.out.results.map { id, f -> tuple(id, 'musitedeep', f) })
+    }
+    if (params.run_scannet && params.scannet_model_dir &&
+        params.structures_from && params.structures_from != 'none') {
+        ch_scannet_in = PYRODIGAL.out.proteins.join(ch_structures, by: 0)
+                          .map { id, prot, struct -> tuple(id, prot) }
+        SCANNET(ch_scannet_in, file(params.scannet_model_dir), ch_structures.map { id, d -> d })
+        ch_sites = ch_sites.mix(SCANNET.out.results.map { id, f -> tuple(id, 'scannet', f) })
+    }
+
     // Ensemble: collect TSVs per sample
     ch_ensemble = Channel.empty()
     if (params.run_ensemble) {
@@ -182,11 +244,18 @@ workflow {
     }
 
     // Report: HTML + TTL (SIO-based RDF) + JSON-LD per sample
-    // Collect (name, file) pairs across all neural + ensemble channels and
-    // optional eval JSONs. Files are staged under unique names; --predictor
-    // flag uses name:staged_filename so make_report.py reads each correctly.
+    // Collects (name, file) tuples across all neural + ensemble channels,
+    // region channels, site channels, and optional eval JSONs.
     if (params.run_report) {
         ch_pred_pairs = ch_neural.mix(ch_ensemble)
+            .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
+            .groupTuple()
+            .map { id, specs, files -> tuple(id, specs, files) }
+        ch_region_pairs = ch_regions
+            .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
+            .groupTuple()
+            .map { id, specs, files -> tuple(id, specs, files) }
+        ch_site_pairs = ch_sites
             .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
             .groupTuple()
             .map { id, specs, files -> tuple(id, specs, files) }
@@ -194,13 +263,18 @@ workflow {
             .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
             .groupTuple()
             .map { id, specs, files -> tuple(id, specs, files) }
-            .ifEmpty( Channel.empty() )
-        // Outer-join: every sample with predictions reports, with or without eval
+        // Outer-join everything so every sample with predictions reports,
+        // even when regions/sites/eval are empty for that sample.
         ch_report = ch_pred_pairs
-            .join(ch_eval_pairs, remainder: true)
-            .map { id, pred_specs, pred_files, eval_specs, eval_files ->
-                tuple(id, pred_specs, pred_files,
-                      eval_specs ?: [], eval_files ?: file('NO_EVAL_FILE'))
+            .join(ch_region_pairs, remainder: true)
+            .join(ch_site_pairs,   remainder: true)
+            .join(ch_eval_pairs,   remainder: true)
+            .map { id, p_specs, p_files, r_specs, r_files, s_specs, s_files, e_specs, e_files ->
+                tuple(id,
+                      p_specs, p_files,
+                      r_specs ?: [], r_files ?: file('NO_REGION_FILE'),
+                      s_specs ?: [], s_files ?: file('NO_SITE_FILE'),
+                      e_specs ?: [], e_files ?: file('NO_EVAL_FILE'))
             }
         MAKE_REPORT(ch_report)
     }

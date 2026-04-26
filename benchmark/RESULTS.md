@@ -642,3 +642,99 @@ eval scripts under
 `/ibex/scratch/projects/c2014/rob/gspa-neural-deploy/` accept new
 predictors by editing one bash list each — extensible for future tools.
 
+
+---
+
+# v1.2 — FOSS-only fast ML predictors
+
+Released 2026-04-26. Adds 10 OSI-licensed fast predictors with three new
+output shapes (region, term-extra, site), extends the report to cover
+all three shapes in HTML + RDF/Turtle + JSON-LD, and ships three new
+Docker images.
+
+## What was added
+
+**Region predictors** (5-col TSV, `protein_id, region_start, region_end,
+region_type, score`):
+
+- Metapredict v2 (MIT) — disorder regions
+- DeepSig v3 (GPL-3.0) — Sec/Tat signal peptides; FOSS replacement for SignalP 6
+- TMbed (Apache-2.0) — TM helices via ProtT5; FOSS replacement for DeepTMHMM
+- TPpred 3 (GPL-3.0) — N-terminal targeting peptides; FOSS replacement for TargetP 2
+
+**Term-extras** (4-col TSV, auto-join the v1.1 ensemble):
+
+- PSORTb 3.0 (GPL-3.0) — bacterial subcellular localization; FOSS replacement for DeepLoc 2
+- DeepFRI (BSD-3-Clause) — sequence-only GO; complements ESM2-DGP/ProteInfer
+- DeepEC (AGPL-3.0 ⚠) — EC predictor; complements CLEAN/DIAMOND
+- DeepARG (MIT) — antimicrobial-resistance gene calls
+
+**Site predictors** (5-col TSV, `protein_id, position, site_type, score,
+annotation_type`):
+
+- MusiteDeep_web (MIT) — PTM sites (phospho-S/T/Y default; configurable);
+  FOSS replacement for NetPhos / NetPhosBac
+- ScanNet (Apache-2.0) — PPI interface residues; needs structures
+
+**License-walled tools dropped** (FOSS replacement in parens):
+
+- DeepLoc 2 (PSORTb), DeepTMHMM (TMbed), IUPred3 (Metapredict),
+  TargetP 2 (TPpred 3), SignalP 6 (DeepSig), NetPhos / NetPhosBac
+  (MusiteDeep), MULocDeep (none — academic-only), DR-BERT (no LICENSE
+  file)
+
+The existing v1.1 JVM wrappers for SignalP 6 and DeepTMHMM remain in
+the codebase (deletion would be breaking) but are NOT productionised
+in Nextflow; FOSS replacements are the recommended path.
+
+## Vocabulary additions (RDF / JSON-LD report)
+
+```turtle
+gspa:Region              rdfs:subClassOf sio:000657 .   # sequence segment
+gspa:DisorderRegion      rdfs:subClassOf gspa:Region .
+gspa:SignalPeptide       rdfs:subClassOf gspa:Region .
+gspa:TMHelix             rdfs:subClassOf gspa:Region .
+gspa:TMBeta              rdfs:subClassOf gspa:Region .
+gspa:TargetingPeptide    rdfs:subClassOf gspa:Region .
+gspa:Site                rdfs:subClassOf sio:000657 .   # 1-residue
+gspa:PTMSite             rdfs:subClassOf gspa:Site .
+gspa:PPIInterfaceSite    rdfs:subClassOf gspa:Site .
+gspa:LocalizationCall    rdfs:subClassOf gspa:FunctionPrediction .
+gspa:AMRGeneCall         rdfs:subClassOf gspa:FunctionPrediction .
+
+gspa:regionStart         rdfs:subPropertyOf sio:000300 .   # has value
+gspa:regionEnd           rdfs:subPropertyOf sio:000300 .
+gspa:position            rdfs:subPropertyOf sio:000300 .
+gspa:onProtein           rdfs:subPropertyOf sio:000628 .
+gspa:siteType            rdfs:subPropertyOf sio:000008 .
+```
+
+Per-region IRI: `https://gspa.bio2vec.net/region/<sample>/<protein>/<region_type>/<start>-<end>`
+Per-site IRI:   `https://gspa.bio2vec.net/site/<sample>/<protein>/<site_type>/<position>`
+
+Validated: TTL and JSON-LD report files agree triple-for-triple
+(122 triples on the sample test fixture). SPARQL queries over the
+extended vocabulary work.
+
+## Docker images (FOSS-only)
+
+| Image | Wraps | Base | License |
+|---|---|---|---|
+| `leechuck/gspa-region-stack:0.1` | metapredict, deepsig, tmbed, tppred3 | pytorch:2.4.0-cuda12.1 | MIT/GPL-3/Apache-2 |
+| `leechuck/gspa-tf-stack:0.1` | deepfri, deepec, deeparg, musitedeep | tensorflow:2.15.0 | BSD-3/AGPL-3/MIT |
+| `leechuck/gspa-struct-stack:0.1` | scannet, esmfold (structure provider) | pytorch:2.4.0-cuda12.1 | Apache-2/MIT |
+
+PSORTb uses upstream `brinkmanlab/psortb_commandline:1.0.4` (GPL-3.0).
+
+## Configurability
+
+Adding a new predictor scales the report automatically — `make_report.py`
+takes repeatable `--predictor`/`--region`/`--site`/`--eval` flags. A
+new predictor needs only:
+
+1. Sidecar runner registration in `run_{region,term,site}_predictors.py`
+2. `*Predictor.groovy` JVM wrapper (extends one of the three abstract bases)
+3. Config block in `GspaConfig.groovy` + `AnnotationPipeline.createAllPredictors` branch
+4. Nextflow process in `gspa-nf/modules/`
+5. `database_manifest.tsv` row + `nextflow.config` opt-in flag
+

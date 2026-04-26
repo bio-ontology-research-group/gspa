@@ -224,6 +224,72 @@ and wired in `nextflow.config` (process `withName:` directives).
 | FoldSeek-homology + ProstT5 | ~3 hr | ~12 hr |
 | Ensemble fusion | ~10 min | ~10 min |
 
+## Region predictors (FOSS)
+
+Per-residue predictors that emit `(protein_id, region_start, region_end,
+region_type, score)` 5-column TSVs. Each region appears in the
+`region/` HTML section and as a `gspa:Region` instance in the RDF/JSON-LD.
+
+| Predictor | Capability | License | Container |
+|---|---|---|---|
+| `--run_metapredict` | Disorder regions (Metapredict v2) | MIT | `gspa-region-stack` |
+| `--run_deepsig` | Sec/Tat signal peptides | GPL-3.0 | `gspa-region-stack` |
+| `--run_tmbed` | TM helices via ProtT5 | Apache-2.0 | `gspa-region-stack` |
+| `--run_tppred3` | N-terminal targeting peptides | GPL-3.0 | `gspa-region-stack` |
+
+## Localization & secretion
+
+| Predictor | Capability | License | Container |
+|---|---|---|---|
+| `--run_psortb` | Bacterial subcellular localization (5–8 classes) | GPL-3.0 | upstream `brinkmanlab/psortb_commandline:1.0.4` |
+
+PSORTb output is whole-protein (4-col TSV), so it auto-joins
+`ENSEMBLE_PREDS` when `--run_ensemble` is on.
+
+## Term-extra predictors (auto-join the ensemble)
+
+| Predictor | Capability | License | Container |
+|---|---|---|---|
+| `--run_deepfri` | Sequence-only GO (MF/BP/CC) | BSD-3-Clause | `gspa-tf-stack` |
+| `--run_deepec` | EC numbers | **AGPL-3.0** ⚠ | `gspa-tf-stack` |
+| `--run_deeparg` | Antimicrobial-resistance gene calls | MIT | `gspa-tf-stack` |
+
+⚠ **DeepEC AGPL clause:** fine to bundle and run locally / on HPC. If
+you ever expose GSPA as a hosted web service, the AGPL network-clause
+requires publishing source to users of that service. If that's a
+problem, omit `--run_deepec` — CLEAN + DIAMOND already cover EC well.
+
+## Site-level predictors
+
+| Predictor | Capability | License | Container |
+|---|---|---|---|
+| `--run_musitedeep` | PTM sites (phospho-S/T/Y by default) | MIT | `gspa-tf-stack` |
+| `--run_scannet` | PPI interface residues (needs structures) | Apache-2.0 | `gspa-struct-stack` |
+
+ScanNet requires per-protein PDB/CIF files under
+`${outdir}/${sample_id}/structures/`. Set `--structures_from
+{esmfold,afdb}` to provision them, or pre-stage your own.
+
+## License-restricted tools (replaced)
+
+The following tools were previously considered but are NOT included
+because their licenses are not OSI-approved Free Software. The chosen
+FOSS replacement is in the right column.
+
+| Excluded tool | Restriction | FOSS replacement |
+|---|---|---|
+| DeepLoc 2 | DTU academic EULA | PSORTb 3.0 |
+| MULocDeep | "academic users only" | (no FOSS DL alt; PSORTb covers bacterial) |
+| DeepTMHMM | BioLib academic ToS | TMbed |
+| IUPred3 | enquiry-walled | Metapredict |
+| TargetP 2 | CC BY-NC-SA | TPpred 3 |
+| SignalP 6 | DTU academic EULA | DeepSig |
+| NetPhos / NetPhosBac | DTU EULA | MusiteDeep |
+
+Existing JVM wrappers for SignalP 6 and DeepTMHMM remain in the
+codebase from v1.1.0 for users who have those licenses, but are NOT
+wired into Nextflow. Use the FOSS replacements above by default.
+
 ## Relationship to the JVM side
 
 `MERGE_ANNOTATIONS` writes a merged TSV that is **not** the same as the

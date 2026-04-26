@@ -1,0 +1,48 @@
+# GSPA TensorFlow stack — covers the FOSS term predictors that ship as
+# Keras/TF SavedModels:
+#   - DeepFRI seq-only (BSD-3-Clause)
+#   - DeepEC          (AGPL-3.0)  ⚠ network-clause
+#   - DeepARG         (MIT)
+#   - MusiteDeep      (MIT)
+#
+# Build:
+#   docker build -f gspa-nf/docker/Dockerfile.tf-stack \
+#     -t leechuck/gspa-tf-stack:0.1 .
+
+FROM tensorflow/tensorflow:2.15.0
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install \
+    numpy>=1.24,<2.0 \
+    pandas>=2.0 \
+    biopython>=1.81 \
+    scikit-learn \
+    h5py \
+    networkx \
+    nose \
+    tqdm
+
+# DeepARG (MIT)
+RUN pip install deeparg
+
+# Sidecars
+COPY benchmark/neural/run_term_predictors.py /opt/gspa/run_term_predictors.py
+COPY benchmark/neural/run_site_predictors.py /opt/gspa/run_site_predictors.py
+ENV PATH=/opt/gspa:$PATH
+
+# DeepFRI / DeepEC / MusiteDeep are typically used by clone-and-run; the
+# Nextflow process passes --model-dir pointing at a host-mounted clone.
+# Container does not bake those weights; users fetch them via
+# fetch_databases.sh.
+
+RUN python3 -c "import tensorflow as tf, biopython; print('tf-stack ok', tf.__version__)" 2>/dev/null \
+    || python3 -c "import tensorflow as tf; print('tf-stack ok', tf.__version__)"
+
+WORKDIR /work

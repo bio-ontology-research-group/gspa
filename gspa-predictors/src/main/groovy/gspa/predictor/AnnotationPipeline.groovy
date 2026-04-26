@@ -254,6 +254,87 @@ class AnnotationPipeline {
             )
         }
 
+        // FOSS region predictors (use run_region_predictors.py sidecar)
+        def loc = config.predictors.localization
+        def foss = config.predictors.foss
+        if (loc.deepSig) {
+            predictors << new gspa.predictor.localization.DeepSigPredictor(
+                sidecarScript: foss.regionSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                kingdom: loc.deepSigKingdom,
+            )
+        }
+        if (loc.tmbed) {
+            predictors << new gspa.predictor.localization.TmbedPredictor(
+                sidecarScript: foss.regionSidecar,
+                pythonExecutable: foss.pythonExecutable,
+            )
+        }
+        if (loc.tppred3) {
+            predictors << new gspa.predictor.localization.TPpred3Predictor(
+                sidecarScript: foss.regionSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                kingdom: loc.tppred3Kingdom,
+            )
+        }
+        // FOSS term predictors (use run_term_predictors.py sidecar)
+        if (loc.psortb) {
+            predictors << new gspa.predictor.localization.PSORTbPredictor(
+                sidecarScript: foss.termSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                gram: loc.psortbGram,
+            )
+        }
+        if (foss.deepFri.enabled) {
+            predictors << new gspa.predictor.structure.DeepFriPredictor(
+                sidecarScript: foss.termSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.deepFri.modelDir,
+                structureMode: foss.deepFri.mode,
+                minScore: foss.deepFri.minScore,
+            )
+        }
+        if (foss.deepEc.enabled) {
+            if (!foss.deepEc.acknowledgeAgpl) {
+                log.warn("DeepEC is AGPL-3.0; if running as a service you must " +
+                         "publish source. Set predictors.foss.deepEc.acknowledgeAgpl=true to silence this warning.")
+            }
+            predictors << new gspa.predictor.neural.DeepEcPredictor(
+                sidecarScript: foss.termSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.deepEc.modelDir,
+                minScore: foss.deepEc.minScore,
+            )
+        }
+        if (foss.deepArg.enabled) {
+            predictors << new gspa.predictor.specialized.DeepArgPredictor(
+                sidecarScript: foss.termSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.deepArg.modelDir,
+                type: foss.deepArg.type,
+                minScore: foss.deepArg.minScore,
+            )
+        }
+        // FOSS site predictors (use run_site_predictors.py sidecar)
+        if (foss.musiteDeep.enabled) {
+            predictors << new gspa.predictor.sites.MusiteDeepPredictor(
+                sidecarScript: foss.siteSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.musiteDeep.modelDir,
+                residueTypes: foss.musiteDeep.residueTypes,
+                minScore: foss.musiteDeep.minScore,
+            )
+        }
+        if (foss.scanNet.enabled) {
+            predictors << new gspa.predictor.sites.ScanNetPredictor(
+                sidecarScript: foss.siteSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.scanNet.modelDir,
+                structureDir: foss.scanNet.structureDir,
+                minScore: foss.scanNet.minScore,
+            )
+        }
+
         predictors
     }
 

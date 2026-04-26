@@ -47,6 +47,7 @@ class GspaConfig {
         LocalizationConfig localization = new LocalizationConfig()
         DisorderConfig disorder = new DisorderConfig()
         NeuralConfig neural = new NeuralConfig()
+        FossPredictorConfig foss = new FossPredictorConfig()
 
         /** Additional predictors to enable (by name) */
         Set<String> enable = []
@@ -116,9 +117,16 @@ class GspaConfig {
 
     static class LocalizationConfig {
         boolean enabled = false
-        boolean signalP = true
-        boolean tmhmm = true
+        boolean signalP = true   // licensed; FOSS replacement: deepSig
+        boolean tmhmm = true     // licensed; FOSS replacement: tmbed
         boolean psort = false
+        boolean deepSig = false  // FOSS Sec/Tat signal peptide
+        boolean tmbed = false    // FOSS TM helices via ProtT5
+        boolean tppred3 = false  // FOSS N-terminal targeting peptide
+        boolean psortb = false   // FOSS bacterial localization
+        String deepSigKingdom = 'gramn'   // gramp | gramn | euk
+        String tppred3Kingdom = 'nonplant' // plant | nonplant
+        String psortbGram = 'negative'    // positive | negative | archaea
     }
 
     /** Intrinsic-disorder prediction (Metapredict). */
@@ -185,6 +193,69 @@ class GspaConfig {
         int topK = 5
         int batchSize = 16
         double minScore = 0.2
+    }
+
+    /**
+     * FOSS region/term/site predictors that delegate to the
+     * {@code run_region_predictors.py}, {@code run_term_predictors.py},
+     * and {@code run_site_predictors.py} sidecars under {@code benchmark/neural/}.
+     */
+    static class FossPredictorConfig {
+        /** Absolute paths to the three sidecar scripts. */
+        String regionSidecar
+        String termSidecar
+        String siteSidecar
+        String pythonExecutable = 'python3'
+
+        DeepFriConfig    deepFri    = new DeepFriConfig()
+        DeepEcConfig     deepEc     = new DeepEcConfig()
+        DeepArgConfig    deepArg    = new DeepArgConfig()
+        MusiteDeepConfig musiteDeep = new MusiteDeepConfig()
+        ScanNetConfig    scanNet    = new ScanNetConfig()
+    }
+
+    static class DeepFriConfig {
+        boolean enabled = false
+        /** Path to DeepFRI repo clone (predict.py + bundled weights). */
+        String modelDir
+        /** Mode: 'seq' (default) or 'struct'. */
+        String mode = 'seq'
+        double minScore = 0.5
+    }
+
+    static class DeepEcConfig {
+        boolean enabled = false
+        /** Path to DeepEC repo clone. */
+        String modelDir
+        double minScore = 0.5
+        /** AGPL-3.0 acknowledgement. Set true to acknowledge network-clause. */
+        boolean acknowledgeAgpl = false
+    }
+
+    static class DeepArgConfig {
+        boolean enabled = false
+        /** Path to DeepARG database directory. */
+        String modelDir
+        /** prot | nucl */
+        String type = 'prot'
+        double minScore = 0.5
+    }
+
+    static class MusiteDeepConfig {
+        boolean enabled = false
+        /** Path to MusiteDeep_web repo clone. */
+        String modelDir
+        /** Underscore-joined PTM types matching MusiteDeep --residue-types. */
+        String residueTypes = 'Phosphoserine_Phosphothreonine'
+        double minScore = 0.5
+    }
+
+    static class ScanNetConfig {
+        boolean enabled = false
+        String modelDir
+        /** Directory of {@code <tag>/*.pdb} structure files. */
+        String structureDir
+        double minScore = 0.5
     }
 
     static class QualityConfig {
