@@ -146,15 +146,19 @@ def run_genomad(rows: list[ManifestRow], args: argparse.Namespace) -> None:
                        args.genomad_sif,
                        "genomad", "end-to-end",
                        "--cleanup",
+                       "--threads", str(args.threads),
                        f"/in/{row.genome_fasta.name}",
                        "/out", "/db"]
             else:
                 cmd = ["genomad", "end-to-end", "--cleanup",
+                       "--threads", str(args.threads),
                        str(row.genome_fasta), str(tmp_path), str(args.db_path)]
             r = subprocess.run(cmd, capture_output=True, text=True)
             if r.returncode != 0:
                 LOG.warning("%s genomad exit %d: %s",
-                            row.tag, r.returncode, r.stderr[-500:])
+                            row.tag, r.returncode, r.stderr[-3000:])
+                LOG.warning("%s genomad stdout tail: %s",
+                            row.tag, r.stdout[-2000:])
                 continue
 
             stem = row.genome_fasta.stem
