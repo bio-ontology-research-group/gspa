@@ -862,3 +862,117 @@ TTL ↔ JSON-LD agreement validated locally on synthetic fixture
 - PhiSpy native-mode validation (sidecar code committed but not yet
   exercised on a GenBank input)
 - MusiteDeep / TMbed / TPpred3 / ScanNet protein predictors
+
+# v1.4 — Track A finishers + viral expansion + genomic-region ensemble
+
+## Track A — three of four deferred predictors land
+
+| Predictor | License | hpylori panel result | Container path |
+|---|---|---|---|
+| **TPpred3**    | GPL-3.0    | **3 transit-peptide regions**           | upstream `bolognabiocomp/tppred3:latest` SIF |
+| **MusiteDeep** | MIT        | **10,429 PTM sites** (pS/pT)            | upstream `duolinwang/musitedeep_backend:2.0` SIF |
+| **TMbed**      | Apache-2.0 | **1,865 regions** (1393 helix + 255 beta + 217 SP) | pinned-deps venv (CPU torch + ProtT5 weights) |
+| **ScanNet**    | Apache-2.0 | code-ready, validation pending CPU window | upstream `jertubiana/scannet:latest` SIF |
+
+v1.4 lifts the FOSS protein-predictor count from **6/10** (v1.3) to
+**9/10**, with the existing v1.3 set unchanged:
+
+```
+metapredict     525 disorder regions
+deepsig         135 signal peptides
+psortb         1118 localization calls
+deeparg           0 AMR rows (correct: hpylori carries none)
+deepec          366 EC numbers
+deepfri       10591 GO term rows
+tppred3           3 transit-peptide regions       ← NEW v1.4
+musitedeep    10429 PTM sites                     ← NEW v1.4
+tmbed          1865 region rows                   ← NEW v1.4
+scannet        (pending validation)               ← code in v1.4, run pending
+```
+
+### v1.4 install gotchas (committed in code, called out for posterity)
+
+- **TPpred3** CLI uses `-k P` / `-k N` (single-letter), not the
+  `plant`/`nonplant` strings the v1.3 sidecar passed. Output is GFF3,
+  not TSV — parser keys on `feature == "Transit peptide"`.
+- **MusiteDeep** `-output` is a *file prefix*, not a directory. The
+  `-residue-types` flag is a training-script flag; predict_multi_batch
+  takes only `-input / -output / -model-prefix`. Output uses
+  `>`-interleaved FASTA-style headers between rows; the score column
+  is `<PTM_type>:<probability>`.
+- **TMbed** needs `transformers<4.38` AND `sentencepiece==0.1.99` (not
+  0.2.x). PyPI's default torch wheel is the CUDA build (~2 GB) and
+  hangs silently on slow networks; CPU wheel
+  (`--index-url .../whl/cpu`) installs in 4 min vs >36 min timeout.
+- **ScanNet** CLI is `predict_bindingsites.py`, not `predict_features.py`.
+  Pass `--noMSA` to skip HHblits / UniRef30. ScanNet requires Python
+  3.6 + TF 1.14, can NOT coexist in the TMbed venv — must use its
+  own SIF.
+
+## Track B — viral expansion + genomic-region ensemble
+
+### B1. Genomic-region ensemble (interval-overlap fusion)
+
+`build_genomic_ensemble.py` consumes N 6-col genomic-region TSVs and
+emits a consensus 6-col TSV via greedy union-find on reciprocal
+overlap. Default 50% reciprocal-overlap cutoff (the standard CAMI /
+IMG/VR threshold for viral predictions). Three score-fusion modes:
+
+- `max`  — take the highest-scoring member's score
+- `mean` — arithmetic mean across cluster
+- `wcov` — length-weighted mean (longer high-confidence calls dominate)
+
+Output attributes record `predictors=A,B,C` + `n_members=N` + each
+member's original attribute string, so the consensus is auditable.
+
+Validated locally on synthetic mg1655-style fixture: three prophages
+where geNomad and PhiSpy overlap correctly merge into 2-member
+clusters with bumped scores; geNomad-only singletons survive at
+their original scores; CheckV's whole-contig viral_contig stays
+separate (different region_type → never merged with prophages).
+
+### B2. VirSorter2 + VIBRANT
+
+Both ship as upstream biocontainers — no GSPA-built image:
+
+- `quay.io/biocontainers/virsorter:2.2.4--pyhdfd78af1_2` (GPL-2)
+- `quay.io/biocontainers/vibrant:1.2.1--hdfd78af_2` (GPL-3)
+
+VirSorter2's `final-viral-boundary.tsv` already gives 0-1 scores via
+`trim_pr`; the `partial` flag distinguishes prophage from
+whole-contig viral. VIBRANT has no per-call probability, so its
+quality strings (`complete circular` → 1.0, `high quality draft` → 0.9,
+`medium quality draft` → 0.7, `low quality draft` → 0.5) are mapped
+to a calibrated score. Both runners follow the same Singularity
+bind-mount pattern as the v1.3 trio.
+
+### Nextflow integration (gspa-nf)
+
+Two new processes (`VIRSORTER2`, `VIBRANT`) feeding `ch_genomic`,
+plus an `ENSEMBLE_GENOMIC` process that consumes the full genomic
+stream when `params.run_ensemble_genomic` is set. Per-tool TSVs
+stage as `NAME:FILENAME` so the consensus output records which
+predictors voted for each fused region.
+
+```groovy
+params {
+    run_virsorter2          = false
+    run_vibrant             = false
+    run_ensemble_genomic    = false
+    virsorter2_db           = null   // ~11 GB
+    vibrant_db              = null
+    genomic_ensemble_mode   = 'max'  // max | mean | wcov
+    genomic_ensemble_min_overlap = 0.5
+}
+```
+
+## Out of scope for v1.4 (deferred to v1.5)
+
+- ScanNet IBEX validation (CPU-quota window pending; planned mirror
+  validation on unimatrix01)
+- Phigaro (4th viral predictor; deferred)
+- vConTACT3 (phage taxonomy via gene-content network)
+- Eukaryote-specific viral predictors
+- PhiSpy native-mode validation (still un-exercised on a GenBank input)
+- STRUCTURE_PROVIDER end-to-end validation (afdb mode driving ScanNet
+  on a full panel, not just hand-picked accessions)
