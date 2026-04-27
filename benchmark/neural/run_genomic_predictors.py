@@ -390,12 +390,240 @@ def run_phispy(rows: list[ManifestRow], args: argparse.Namespace) -> None:
         LOG.info("%s phispy: %d prophage regions -> %s", row.tag, n, out)
 
 
+# ---------- VirSorter2 ----------------------------------------------------
+
+def run_virsorter2(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+    """Run VirSorter2 (Guo et al. 2021, GPL-2). Biocontainer:
+    ``quay.io/biocontainers/virsorter:2.2.4--pyhdfd78af1_2``.
+
+    CLI::
+
+        virsorter run --keep-original-seq -i contigs.fa -w out \\
+            --include-groups dsDNAphage,ssDNA,NCLDV,RNA,lavidaviridae \\
+            --min-length 1500 --min-score 0.5 -j N all
+
+    Output parse: ``out/final-viral-boundary.tsv`` columns
+    ``seqname, trim_bp_start, trim_bp_end, trim_pr, group, shape, partial``
+    where ``trim_pr`` is already 0-1, ``partial==1`` ⇒ prophage,
+    ``partial==0`` ⇒ whole-contig viral.
+    """
+    if not args.virsorter2_sif and not shutil.which("virsorter"):
+        raise SystemExit("virsorter2 not on PATH and no --virsorter2-sif")
+    if not args.db_path:
+        raise SystemExit("virsorter2 requires --db-path (~11 GB DB)")
+
+    for row in rows:
+        out = output_path(row, "virsorter2")
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            in_dir = row.genome_fasta.parent.resolve()
+            if args.virsorter2_sif:
+                cmd = ["singularity", "exec",
+                       "--bind", f"{in_dir}:/in",
+                       "--bind", f"{tmp_path}:/out",
+                       "--bind", f"{args.db_path}:/db",
+                       args.virsorter2_sif,
+                       "virsorter", "run",
+                       "--keep-original-seq",
+                       "-i", f"/in/{row.genome_fasta.name}",
+                       "-w", "/out/vs2",
+                       "-d", "/db",
+                       "--min-length", "1500",
+                       "--min-score", str(args.min_score),
+                       "-j", str(args.threads),
+                       "all"]
+            else:
+                cmd = ["virsorter", "run",
+                       "--keep-original-seq",
+                       "-i", str(row.genome_fasta),
+                       "-w", str(tmp_path / "vs2"),
+                       "-d", str(args.db_path),
+                       "--min-length", "1500",
+                       "--min-score", str(args.min_score),
+                       "-j", str(args.threads),
+                       "all"]
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0:
+                LOG.warning("%s virsorter2 exit %d: %s",
+                            row.tag, r.returncode, r.stderr[-2000:])
+                continue
+
+            boundary = tmp_path / "vs2" / "final-viral-boundary.tsv"
+            fh, w = open_output(out)
+            n = 0
+            if boundary.exists():
+                with boundary.open() as fin:
+                    header = fin.readline().rstrip("\n").split("\t")
+                    h = {c: i for i, c in enumerate(header)}
+                    for line in fin:
+                        f = line.rstrip("\n").split("\t")
+                        if len(f) < len(header):
+                            continue
+                        # Strip VS2's "||full"/"||partial" seq-name suffix
+                        contig = f[h.get("seqname", 0)].split("||")[0]
+                        try:
+                            start = int(f[h["trim_bp_start"]])
+                            end   = int(f[h["trim_bp_end"]])
+                            score = float(f[h["trim_pr"]])
+                        except (ValueError, KeyError):
+                            continue
+                        if score < args.min_score:
+                            continue
+                        partial = f[h.get("partial", -1)] if "partial" in h else "0"
+                        rtype = "prophage" if partial == "1" else "viral_contig"
+                        attrs = fmt_attrs({
+                            "tool":  "virsorter2",
+                            "group": f[h.get("group", -1)] if "group" in h else "",
+                            "shape": f[h.get("shape", -1)] if "shape" in h else "",
+                        })
+                        w.writerow([contig, start, end, rtype,
+                                    f"{score:.4f}", attrs])
+                        n += 1
+            fh.close()
+        LOG.info("%s virsorter2: %d genomic regions -> %s", row.tag, n, out)
+
+
+# ---------- VIBRANT ------------------------------------------------------
+
+# VIBRANT has no per-call probability; map its Quality string to a 0-1 score.
+VIBRANT_QUALITY_TO_SCORE = {
+    "complete circular":   1.00,
+    "high quality draft":  0.90,
+    "medium quality draft": 0.70,
+    "low quality draft":   0.50,
+}
+
+
+def run_vibrant(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+    """Run VIBRANT (Kieft et al. 2020, GPL-3). Biocontainer:
+    ``quay.io/biocontainers/vibrant:1.2.1--hdfd78af_2``.
+
+    CLI::
+
+        VIBRANT_run.py -i contigs.fa -t N -folder out \\
+            -d <db>/databases -m <db>/files -no_plot
+
+    Output parse:
+      - prophage coords:
+        ``out/VIBRANT_<name>/VIBRANT_results_<name>/VIBRANT_integrated_prophage_coordinates_<name>.tsv``
+        columns: ``scaffold, fragment, nucleotide start, nucleotide stop, ...``
+      - whole-contig viral calls:
+        ``out/VIBRANT_<name>/VIBRANT_results_<name>/VIBRANT_genome_quality_<name>.tsv``
+        columns: ``scaffold, type, Quality``
+
+    VIBRANT doesn't emit a per-call probability — we map Quality to a
+    score via VIBRANT_QUALITY_TO_SCORE.
+    """
+    if not args.vibrant_sif and not shutil.which("VIBRANT_run.py"):
+        raise SystemExit("VIBRANT not on PATH and no --vibrant-sif")
+    if not args.db_path:
+        raise SystemExit("vibrant requires --db-path (HMM databases dir)")
+
+    for row in rows:
+        out = output_path(row, "vibrant")
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            in_dir = row.genome_fasta.parent.resolve()
+            if args.vibrant_sif:
+                cmd = ["singularity", "exec",
+                       "--bind", f"{in_dir}:/in",
+                       "--bind", f"{tmp_path}:/out",
+                       "--bind", f"{args.db_path}:/db",
+                       args.vibrant_sif,
+                       "VIBRANT_run.py",
+                       "-i",      f"/in/{row.genome_fasta.name}",
+                       "-folder", "/out",
+                       "-d",      "/db/databases",
+                       "-m",      "/db/files",
+                       "-t",      str(args.threads),
+                       "-no_plot"]
+            else:
+                cmd = ["VIBRANT_run.py",
+                       "-i",      str(row.genome_fasta),
+                       "-folder", str(tmp_path),
+                       "-d",      str(args.db_path / "databases"),
+                       "-m",      str(args.db_path / "files"),
+                       "-t",      str(args.threads),
+                       "-no_plot"]
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0:
+                LOG.warning("%s vibrant exit %d: %s",
+                            row.tag, r.returncode, r.stderr[-2000:])
+                continue
+
+            stem = row.genome_fasta.stem
+            results_dir = (tmp_path / f"VIBRANT_{stem}"
+                           / f"VIBRANT_results_{stem}")
+            prophage_tsv = (results_dir
+                / f"VIBRANT_integrated_prophage_coordinates_{stem}.tsv")
+            quality_tsv  = (results_dir
+                / f"VIBRANT_genome_quality_{stem}.tsv")
+
+            fh, w = open_output(out)
+            n = 0
+            # Prophage rows (partial-contig integrated prophages)
+            if prophage_tsv.exists():
+                with prophage_tsv.open() as fin:
+                    header = fin.readline().rstrip("\n").split("\t")
+                    h = {c: i for i, c in enumerate(header)}
+                    for line in fin:
+                        f = line.rstrip("\n").split("\t")
+                        if len(f) < len(header):
+                            continue
+                        contig = f[h.get("scaffold", 0)]
+                        try:
+                            start = int(f[h["nucleotide start"]])
+                            end   = int(f[h["nucleotide stop"]])
+                        except (ValueError, KeyError):
+                            continue
+                        # No native score; emit 0.9 (medium-high confidence)
+                        score = 0.9
+                        if score < args.min_score:
+                            continue
+                        attrs = fmt_attrs({
+                            "tool":     "vibrant",
+                            "fragment": f[h["fragment"]] if "fragment" in h else "",
+                        })
+                        w.writerow([contig, start, end, "prophage",
+                                    f"{score:.4f}", attrs])
+                        n += 1
+            # Whole-contig viral calls (quality-graded)
+            if quality_tsv.exists():
+                with quality_tsv.open() as fin:
+                    header = fin.readline().rstrip("\n").split("\t")
+                    h = {c: i for i, c in enumerate(header)}
+                    for line in fin:
+                        f = line.rstrip("\n").split("\t")
+                        if len(f) < len(header):
+                            continue
+                        contig = f[h.get("scaffold", 0)]
+                        quality = f[h.get("Quality", -1)] if "Quality" in h else ""
+                        score = VIBRANT_QUALITY_TO_SCORE.get(quality.lower(), 0.5)
+                        if score < args.min_score:
+                            continue
+                        # VIBRANT quality TSV doesn't repeat coords; flag
+                        # the whole contig and let downstream consumers
+                        # join in a length lookup if needed.
+                        attrs = fmt_attrs({
+                            "tool":    "vibrant",
+                            "quality": quality,
+                            "type":    f[h["type"]] if "type" in h else "",
+                        })
+                        w.writerow([contig, 1, 0, "viral_contig",
+                                    f"{score:.4f}", attrs])
+                        n += 1
+            fh.close()
+        LOG.info("%s vibrant: %d genomic regions -> %s", row.tag, n, out)
+
+
 # ---------- registry + CLI ------------------------------------------------
 
 RUNNERS: dict[str, Callable] = {
-    "genomad": run_genomad,
-    "checkv":  run_checkv,
-    "phispy":  run_phispy,
+    "genomad":    run_genomad,
+    "checkv":     run_checkv,
+    "phispy":     run_phispy,
+    "virsorter2": run_virsorter2,
+    "vibrant":    run_vibrant,
 }
 
 
@@ -418,6 +646,10 @@ def parse_args() -> argparse.Namespace:
                     help="Singularity image for PhiSpy (optional)")
     ap.add_argument("--phispy-trainset",
                     help="PhiSpy trainset file path (default: genericAll)")
+    ap.add_argument("--virsorter2-sif",
+                    help="Singularity image for VirSorter2 (biocontainer recommended)")
+    ap.add_argument("--vibrant-sif",
+                    help="Singularity image for VIBRANT (biocontainer recommended)")
     return ap.parse_args()
 
 

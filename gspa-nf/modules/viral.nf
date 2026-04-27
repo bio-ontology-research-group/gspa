@@ -93,6 +93,58 @@ EOF
     """
 }
 
+process VIRSORTER2 {
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/viral/virsorter2", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(genome)
+    path db_path
+
+    output:
+    tuple val(sample_id), path("${sample_id}.virsorter2.genomic.tsv"), emit: results
+
+    script:
+    def manifest_text = write_genomic_manifest(sample_id, genome, null)
+    """
+    cat > manifest.tsv <<'EOF'
+${manifest_text}
+EOF
+    python3 /opt/gspa/run_genomic_predictors.py \\
+        --predictor virsorter2 \\
+        --manifest manifest.tsv \\
+        --db-path ${db_path} \\
+        --threads ${task.cpus} \\
+        --min-score ${params.virsorter2_min_score}
+    """
+}
+
+process VIBRANT {
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/viral/vibrant", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(genome)
+    path db_path
+
+    output:
+    tuple val(sample_id), path("${sample_id}.vibrant.genomic.tsv"), emit: results
+
+    script:
+    def manifest_text = write_genomic_manifest(sample_id, genome, null)
+    """
+    cat > manifest.tsv <<'EOF'
+${manifest_text}
+EOF
+    python3 /opt/gspa/run_genomic_predictors.py \\
+        --predictor vibrant \\
+        --manifest manifest.tsv \\
+        --db-path ${db_path} \\
+        --threads ${task.cpus} \\
+        --min-score ${params.vibrant_min_score}
+    """
+}
+
 /**
  * Flatten genomic-region calls (prophage/plasmid/viral_contig) to
  * per-CDS region annotations using the GFF gene coordinates. Emits a
