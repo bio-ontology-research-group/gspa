@@ -215,20 +215,28 @@ def run_musitedeep(rows: list[ManifestRow], args: argparse.Namespace) -> None:
 # ---------- ScanNet -------------------------------------------------------
 
 def run_scannet(rows: list[ManifestRow], args: argparse.Namespace) -> None:
-    """Run ScanNet on per-protein structures.
+    """Run ScanNet on per-protein structures via the upstream
+    ``jertubiana/scannet`` Singularity image.
 
-    For each tag, ScanNet expects a directory of PDB/CIF files under
-    ``--structure-dir/<tag>/``. We invoke ScanNet's ``predict_features.py``
-    once per protein file. Output: per-residue PPI-interface probability.
+    Inside the container, the CLI is ``predict_bindingsites.py`` (NOT
+    ``predict_features.py``). It accepts one PDB at a time, writes a
+    CSV under ``predictions/<query_basename>/`` with columns:
+
+        Model, Chain, Residue Index, Sequence, Binding site probability
+
+    The image bakes in the model weights; no separate download.
+    ``--noMSA`` skips the HHblits step so we don't need UniRef30 on
+    disk. ``--mode interface`` selects PPI binding-site mode.
+
+    Inputs: per-tag dir of PDB/CIF files at ``--structure-dir/<tag>/``,
+    typically populated upstream by the STRUCTURE_PROVIDER Nextflow
+    process in afdb mode (UniProt → AFDB lookup).
     """
-    if not args.model_dir:
-        raise SystemExit("scannet requires --model-dir (path to ScanNet repo)")
+    if not args.scannet_sif and not args.model_dir:
+        raise SystemExit(
+            "scannet requires --scannet-sif or --model-dir")
     if not args.structure_dir:
         raise SystemExit("scannet requires --structure-dir")
-
-    runner = Path(args.model_dir) / "predict_features.py"
-    if not runner.exists():
-        raise SystemExit(f"ScanNet predict_features.py not found at {runner}")
 
     for row in rows:
         out = output_path(row, "scannet")
@@ -248,26 +256,62 @@ def run_scannet(rows: list[ManifestRow], args: argparse.Namespace) -> None:
         for pdb in pdbs:
             pid = pdb.stem
             with tempfile.TemporaryDirectory() as tmp:
-                cmd = ["python3", str(runner),
-                       "--pdb", str(pdb),
-                       "--mode", "interface",
-                       "--out", tmp]
+                tmp_path = Path(tmp)
+                if args.scannet_sif:
+                    pdb_dir = pdb.parent.resolve()
+                    # The upstream jertubiana/scannet image bakes /ScanNet
+                    # source as mode-600 root-owned files (need --fakeroot
+                    # to read), and predict_bindingsites unconditionally
+                    # mkdirs an MSA/ folder relative to cwd even with
+                    # --noMSA. /ScanNet is read-only squashfs and
+                    # --writable-tmpfs / sandbox-mode workarounds either
+                    # don't make the right path writable or break Python's
+                    # site module. Strategy used here: cd to /out (which
+                    # is bound from a host tmpdir, fully writable) and
+                    # symlink /ScanNet/{models,utilities,network,etc.}
+                    # into /out, plus pre-create the MSA/ + predictions/
+                    # dirs that the upstream script wants relative to cwd.
+                    cmd = ["singularity", "exec", "--fakeroot",
+                           "--bind", f"{pdb_dir}:/in",
+                           "--bind", f"{tmp_path}:/out",
+                           args.scannet_sif,
+                           "sh", "-c",
+                           "cd /out && "
+                           "for d in /ScanNet/*; do "
+                           "  bn=$(basename \"$d\"); "
+                           "  [ -e \"$bn\" ] || ln -s \"$d\" \"$bn\"; "
+                           "done && "
+                           "mkdir -p MSA predictions && "
+                           f"python predict_bindingsites.py "
+                           f"/in/{pdb.name} --noMSA --mode interface "
+                           f"--predictions_folder /out/predictions"]
+                else:
+                    runner = Path(args.model_dir) / "predict_bindingsites.py"
+                    cmd = ["python3", str(runner), str(pdb),
+                           "--noMSA", "--mode", "interface"]
                 try:
-                    subprocess.run(cmd, check=True, cwd=args.model_dir)
+                    subprocess.run(cmd, check=True, cwd=tmp_path)
                 except subprocess.CalledProcessError as exc:
                     LOG.warning("scannet failed on %s: %s", pid, exc)
                     continue
-                # Output: a per-residue TSV (residue_index, score)
-                for tsv in Path(tmp).glob("*.tsv"):
-                    with tsv.open() as fin:
-                        next(fin, None)
+                # ScanNet writes predictions/<basename>/predictions_*.csv
+                pred_dir = tmp_path / "predictions"
+                csvs = list(pred_dir.rglob("predictions_*.csv"))
+                for csv_file in csvs:
+                    with csv_file.open() as fin:
+                        header = fin.readline().rstrip("\n").split(",")
+                        h = {c.strip().lower(): i for i, c in enumerate(header)}
+                        ri = h.get("residue index")
+                        si = h.get("binding site probability")
+                        if ri is None or si is None:
+                            continue
                         for line in fin:
-                            parts = line.rstrip("\n").split("\t")
-                            if len(parts) < 2:
+                            parts = line.rstrip("\n").split(",")
+                            if len(parts) <= max(ri, si):
                                 continue
                             try:
-                                pos = int(parts[0])
-                                score = float(parts[1])
+                                pos = int(parts[ri])
+                                score = float(parts[si])
                             except ValueError:
                                 continue
                             if score < args.min_score:
@@ -300,6 +344,8 @@ def parse_args() -> argparse.Namespace:
                          "Phosphoserine_Phosphothreonine,Phosphotyrosine")
     ap.add_argument("--musitedeep-sif",
                     help="Path to duolinwang/musitedeep_backend Singularity image")
+    ap.add_argument("--scannet-sif",
+                    help="Path to jertubiana/scannet Singularity image")
     ap.add_argument("--structure-dir",
                     help="ScanNet: dir with <tag>/*.pdb subdirs")
     return ap.parse_args()
