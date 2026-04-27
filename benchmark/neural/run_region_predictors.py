@@ -276,23 +276,45 @@ def run_tmbed(rows: list[ManifestRow], args: argparse.Namespace) -> None:
 # ---------- TPpred 3 ------------------------------------------------------
 
 def run_tppred3(rows: list[ManifestRow], args: argparse.Namespace) -> None:
-    """Run TPpred3 (BolognaBiocomp).
+    """Run TPpred3 (BolognaBiocomp), upstream Docker image
+    ``bolognabiocomp/tppred3:latest``.
 
-    CLI: ``tppred3.py -f input.fasta -k {plant,nonplant} -o out.tsv``
-    Output has cleavage-site predictions for transit peptides.
+    CLI: ``tppred3.py -f input.fasta -k {P,N} [-o out.gff]``. The kingdom
+    flag is **single-letter** (``P``=plant predicting both mito and
+    chloroplast TPs, ``N``=non-plant predicting mito only). The
+    ``--kingdom`` argparse value is mapped: ``plant``→``P``, anything
+    else (default ``nonplant``) → ``N``.
+
+    Output is GFF3, not TSV. We keep the rows whose ``feature`` is
+    ``Transit peptide`` (one per protein with a positive call), look up
+    the targeting compartment in the ``Note=`` attribute, and emit a
+    single 5-col region row per protein with start=1, end=cleavage_site.
     """
-    if not shutil.which("tppred3.py"):
-        raise SystemExit("tppred3.py not on PATH")
+    if not args.tppred3_sif and not shutil.which("tppred3.py"):
+        raise SystemExit("tppred3.py not on PATH and no --tppred3-sif provided")
+
+    kingdom = "P" if args.kingdom == "plant" else "N"
 
     for row in rows:
         out = output_path(row, "tppred3")
         with tempfile.TemporaryDirectory() as tmp:
-            tmp_out = Path(tmp) / f"{row.tag}.tppred3.tsv"
-            subprocess.run(
-                ["tppred3.py", "-f", str(row.fasta_path),
-                 "-k", args.kingdom, "-o", str(tmp_out)],
-                check=True,
-            )
+            tmp_path = Path(tmp)
+            tmp_out = tmp_path / f"{row.tag}.tppred3.gff"
+            if args.tppred3_sif:
+                in_dir = row.fasta_path.parent.resolve()
+                cmd = ["singularity", "exec",
+                       "--bind", f"{in_dir}:/in",
+                       "--bind", f"{tmp_path}:/out",
+                       args.tppred3_sif,
+                       "tppred3.py",
+                       "-f", f"/in/{row.fasta_path.name}",
+                       "-k", kingdom,
+                       "-o", f"/out/{tmp_out.name}"]
+            else:
+                cmd = ["tppred3.py", "-f", str(row.fasta_path),
+                       "-k", kingdom, "-o", str(tmp_out)]
+            subprocess.run(cmd, check=True)
+
             fh, w = open_output(out)
             n_regions = 0
             with tmp_out.open() as fin:
@@ -300,26 +322,30 @@ def run_tppred3(rows: list[ManifestRow], args: argparse.Namespace) -> None:
                     if line.startswith("#") or not line.strip():
                         continue
                     parts = line.rstrip("\n").split("\t")
-                    if len(parts) < 5:
+                    if len(parts) < 9:
                         continue
-                    pid = parts[0]
-                    # TPpred3 columns: id, prediction, cleavage_site, score, ...
-                    pred = parts[1].lower()
+                    pid, source, feature = parts[0], parts[1], parts[2]
+                    if feature != "Transit peptide":
+                        continue
                     try:
-                        cs = int(parts[2])
-                        score = float(parts[3])
+                        start = int(parts[3])
+                        end   = int(parts[4])
+                        score = float(parts[5])
                     except ValueError:
                         continue
                     if score < args.min_score:
                         continue
-                    if pred in ("none", "no", "n", "0"):
-                        continue
+                    attrs = dict(
+                        kv.split("=", 1) for kv in parts[8].split(";")
+                        if "=" in kv
+                    )
+                    note = attrs.get("Note", "").lower()
                     region_type = (
-                        "mito_targeting"   if "mito"   in pred else
-                        "chloro_targeting" if "chloro" in pred else
+                        "mito_targeting"   if "mitochondrion" in note else
+                        "chloro_targeting" if "chloroplast"   in note else
                         "targeting_peptide"
                     )
-                    w.writerow([pid, 1, cs, region_type, f"{score:.4f}"])
+                    w.writerow([pid, start, end, region_type, f"{score:.4f}"])
                     n_regions += 1
             fh.close()
         LOG.info("%s tppred3: %d regions -> %s", row.tag, n_regions, out)
@@ -346,6 +372,8 @@ def parse_args() -> argparse.Namespace:
                     help="Drop regions shorter than this many residues (default 10)")
     ap.add_argument("--kingdom", default="gramn",
                     help="DeepSig: gramp|gramn|euk; TPpred3: plant|nonplant")
+    ap.add_argument("--tppred3-sif",
+                    help="Path to bolognabiocomp/tppred3 Singularity image")
     return ap.parse_args()
 
 
