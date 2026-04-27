@@ -30,7 +30,7 @@ include { BARRNAP; MINCED; AMRFINDER; ANTISMASH;
 include { MERGE_ANNOTATIONS }                            from './modules/quality'
 include { ESM2_DEEPGOPLUS; ESM2_CENTROID;
           CLEAN; PROTEINFER }                            from './modules/neural'
-include { ENSEMBLE_PREDS }                               from './modules/ensemble'
+include { ENSEMBLE_PREDS; ENSEMBLE_GENOMIC }              from './modules/ensemble'
 include { EVAL_PGAP }                                    from './modules/eval'
 include { MAKE_REPORT }                                  from './modules/report'
 include { METAPREDICT; DEEPSIG; TMBED; TPPRED3 }         from './modules/region'
@@ -38,7 +38,7 @@ include { PSORTB }                                       from './modules/loc'
 include { DEEPFRI; DEEPEC; DEEPARG }                     from './modules/term_extras'
 include { MUSITEDEEP; SCANNET }                          from './modules/sites'
 include { STRUCTURE_PROVIDER }                           from './modules/structure'
-include { GENOMAD; CHECKV; PHISPY; FLATTEN_PROPHAGE_CDS } from './modules/viral'
+include { GENOMAD; CHECKV; PHISPY; VIRSORTER2; VIBRANT; FLATTEN_PROPHAGE_CDS } from './modules/viral'
 
 if (!params.input) {
     error "Please provide --input (FASTA file or samplesheet CSV)"
@@ -238,6 +238,27 @@ workflow {
                               .map { f -> tuple(f.simpleName, f) }
         PHISPY(ch_phispy_in)
         ch_genomic = ch_genomic.mix(PHISPY.out.results.map { id, f -> tuple(id, 'phispy', f) })
+    }
+    if (params.run_virsorter2 && params.virsorter2_db) {
+        VIRSORTER2(PYRODIGAL.out.genome, file(params.virsorter2_db))
+        ch_genomic = ch_genomic.mix(VIRSORTER2.out.results.map { id, f -> tuple(id, 'virsorter2', f) })
+    }
+    if (params.run_vibrant && params.vibrant_db) {
+        VIBRANT(PYRODIGAL.out.genome, file(params.vibrant_db))
+        ch_genomic = ch_genomic.mix(VIBRANT.out.results.map { id, f -> tuple(id, 'vibrant', f) })
+    }
+    // v1.4 genomic-region ensemble (interval-overlap fusion)
+    if (params.run_ensemble_genomic) {
+        ch_for_genomic_ensemble = ch_genomic
+            .map { id, name, f -> tuple(id, "${name}:${f.name}", f) }
+            .groupTuple()
+            .map { id, specs, files -> tuple(id, specs, files) }
+        ENSEMBLE_GENOMIC(ch_for_genomic_ensemble)
+        ch_genomic = ch_genomic.mix(
+            ENSEMBLE_GENOMIC.out.results.map { id, f ->
+                tuple(id, 'ensemble-genomic-' + params.genomic_ensemble_mode, f)
+            }
+        )
     }
     // Flatten genomic regions to per-CDS region annotations (joins ch_regions)
     if (params.run_flatten_prophage_cds) {
