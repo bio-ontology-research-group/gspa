@@ -872,10 +872,10 @@ TTL ↔ JSON-LD agreement validated locally on synthetic fixture
 | **TPpred3**    | GPL-3.0    | **3 transit-peptide regions**           | upstream `bolognabiocomp/tppred3:latest` SIF |
 | **MusiteDeep** | MIT        | **10,429 PTM sites** (pS/pT)            | upstream `duolinwang/musitedeep_backend:2.0` SIF |
 | **TMbed**      | Apache-2.0 | **1,865 regions** (1393 helix + 255 beta + 217 SP) | pinned-deps venv (CPU torch + ProtT5 weights) |
-| **ScanNet**    | Apache-2.0 | code-ready, validation pending CPU window | upstream `jertubiana/scannet:latest` SIF |
+| **ScanNet**    | Apache-2.0 | **584 PPI interface sites** (5 AFDB structures, validated on unimatrix01) | upstream `jertubiana/scannet:latest` SIF |
 
 v1.4 lifts the FOSS protein-predictor count from **6/10** (v1.3) to
-**9/10**, with the existing v1.3 set unchanged:
+**10/10**, with the existing v1.3 set unchanged:
 
 ```
 metapredict     525 disorder regions
@@ -887,7 +887,7 @@ deepfri       10591 GO term rows
 tppred3           3 transit-peptide regions       ← NEW v1.4
 musitedeep    10429 PTM sites                     ← NEW v1.4
 tmbed          1865 region rows                   ← NEW v1.4
-scannet        (pending validation)               ← code in v1.4, run pending
+scannet         584 PPI interface sites (5 AFDB)  ← NEW v1.4.1
 ```
 
 ### v1.4 install gotchas (committed in code, called out for posterity)
@@ -907,7 +907,14 @@ scannet        (pending validation)               ← code in v1.4, run pending
 - **ScanNet** CLI is `predict_bindingsites.py`, not `predict_features.py`.
   Pass `--noMSA` to skip HHblits / UniRef30. ScanNet requires Python
   3.6 + TF 1.14, can NOT coexist in the TMbed venv — must use its
-  own SIF.
+  own SIF. Three additional gotchas (all fixed in v1.4.1): /ScanNet
+  source files are mode-600 root-owned (need `--fakeroot`),
+  predict_bindingsites unconditionally `mkdir`s an MSA/ dir relative
+  to cwd even with `--noMSA`, and the standard read-only-overlay
+  workarounds (`--writable-tmpfs`, sandbox + `--writable`) either
+  don't help or break Python's `site` module. Working recipe: SIF +
+  `--fakeroot`, cd to a writable bind-mounted dir, symlink each
+  `/ScanNet/*` entry in, then run.
 
 ## Track B — viral expansion + genomic-region ensemble
 
@@ -968,8 +975,6 @@ params {
 
 ## Out of scope for v1.4 (deferred to v1.5)
 
-- ScanNet IBEX validation (CPU-quota window pending; planned mirror
-  validation on unimatrix01)
 - Phigaro (4th viral predictor; deferred)
 - vConTACT3 (phage taxonomy via gene-content network)
 - Eukaryote-specific viral predictors
