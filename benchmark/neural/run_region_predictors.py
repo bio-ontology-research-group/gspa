@@ -259,10 +259,14 @@ def run_tmbed(rows: list[ManifestRow], args: argparse.Namespace) -> None:
                 if not header.startswith(">"):
                     continue
                 pid = header[1:].split()[0]
-                # Extract runs of H, B, S
-                for code, label in (("H", "tm_helix"),
-                                     ("B", "tm_beta"),
-                                     ("S", "signal_peptide")):
+                # TMbed v1.0.2 format-0 alphabet: B b H h S . where
+                # upper/lower distinguish IN→OUT vs OUT→IN orientation.
+                # We collapse to one region_type per H/B run regardless
+                # of orientation (the orientation is recoverable from
+                # the strand of TMHs around the residue if needed).
+                for code, label in (("[Hh]", "tm_helix"),
+                                     ("[Bb]", "tm_beta"),
+                                     ("S",    "signal_peptide")):
                     for m in re.finditer(f"{code}+", topo):
                         s, e = m.start() + 1, m.end()  # 1-based inclusive
                         if (e - s + 1) < args.min_region_len and label != "signal_peptide":
