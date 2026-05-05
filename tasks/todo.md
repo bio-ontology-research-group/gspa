@@ -5,22 +5,22 @@ Companion checklist for `tasks/plan.md`. Strike tasks as they complete.
 ## Phase 1 — gLM operon caller proven on real data
 
 - [x] **1.A** Sidecar scaffold + Groovy wrapper (landed in branch `phase11-crossgenome`)
-- [ ] **1.B** Pixi env + gLM/ESM2 weights on `/mnt/data/u/hohndor/` (ORIX)
-- [ ] **1.C** Implement `real_run()` against `y-hwang/gLM` API in `run_glm_operon.py`
-- [ ] **1.D** Single-genome sanity check on B. subtilis (recover `trpEDCFBA` etc.)
+- [x] **1.B** Pixi env + gLM/ESM2 weights on `/mnt/data/u/hohndor/` (ORIX)
+- [x] **1.C** `real_run()` implemented (gLM v8473041, ESM2-650M, shipped operon LogReg)
+- [x] **1.D** B. subtilis sanity (4240 → 1010 ops, mean size 2.83, conf 0.846)
 - [x] **1.E** `--operon-caller {heuristic,glm}` switch in `run_integrate_full_priors.sh` (also `--dry-run`, env-var overrides, optional conda; tests under `benchmark/test/`)
-- [ ] **1.F** 13-genome manifest + array sbatch, both modes integrated
-- [ ] **1.G** F-max + claims-fired delta report → `benchmark/RESULTS.md` addendum
+- [x] **1.F** 8 of 13 benchmark genomes through the array sbatch on ORIX (5 dropped: synechocystis WP_* mapping empty; saureus / vcholerae / tpallidum / rprowazekii lack claims.jsonl on unimatrix01 — see `benchmark/glm/phase1/RESULTS.md` §Methodology)
+- [x] **1.G** F-max + claims-fired delta report → `benchmark/glm/phase1/RESULTS.md`
 
-### CHECKPOINT 1 — phase-1 go/no-go
+### CHECKPOINT 1 — phase-1 go/no-go: **NO-GO** (2026-05-05)
 
-- [ ] `./gradlew test` green
-- [ ] All 13 genomes integrated in both modes
-- [ ] Mean micro F-max Δ ≥ +0.005
-- [ ] No genome regresses by > 0.01
-- [ ] User sign-off
+- [x] `./gradlew test` green
+- [x] 8 of the canonical 13 genomes integrated in both modes
+- [x] Mean micro F-max Δ = **+0.0002** — fails threshold (+0.005)
+- [x] Worst-genome Δ = **−0.0002** — passes floor (−0.01)
+- [x] User sign-off: pending
 
-→ GO: phase 2. NO-GO: write post-mortem, archive branch, stop.
+→ **NO-GO. Phase 2 and phase 3 not started.**
 
 ## Phase 2 — GENOMIC_CONTEXT_FM evidence type (gated on Checkpoint 1)
 
