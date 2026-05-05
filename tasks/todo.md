@@ -8,7 +8,7 @@ Companion checklist for `tasks/plan.md`. Strike tasks as they complete.
 - [ ] **1.B** Pixi env + gLM/ESM2 weights on `/mnt/data/u/hohndor/` (ORIX)
 - [ ] **1.C** Implement `real_run()` against `y-hwang/gLM` API in `run_glm_operon.py`
 - [ ] **1.D** Single-genome sanity check on B. subtilis (recover `trpEDCFBA` etc.)
-- [ ] **1.E** `--operon-caller {heuristic,glm}` switch in `run_integrate_full_priors.sh`
+- [x] **1.E** `--operon-caller {heuristic,glm}` switch in `run_integrate_full_priors.sh` (also `--dry-run`, env-var overrides, optional conda; tests under `benchmark/test/`)
 - [ ] **1.F** 13-genome manifest + array sbatch, both modes integrated
 - [ ] **1.G** F-max + claims-fired delta report → `benchmark/RESULTS.md` addendum
 
