@@ -224,37 +224,312 @@ def real_run(
     weights: Path,
     *,
     device: str = "cuda",
+    glm_repo: Optional[Path] = None,
     context_window: int = 30,
-) -> Tuple[List[Optional[float]], "np.ndarray", "np.ndarray"]:
-    """Real gLM inference path. Requires gLM repo + ESM2 weights on disk.
+    glm_batch_size: int = 32,
+    esm_batch_size: int = 4,
+    esm_max_aa: int = 1022,
+) -> Tuple[List[Gene], List[Optional[float]], "np.ndarray", "np.ndarray"]:
+    """Real gLM inference: ESM2 → normalize → gLM forward → operon logreg.
 
-    The gLM API surface is intentionally encapsulated here so the user
-    on ORIX can adapt it to whatever ``y-hwang/gLM`` exposes at the
-    pinned commit. The contract this function must satisfy:
+    Pipeline (matches y-hwang/gLM at commit 8473041):
 
-    1. Load ESM2-650M, embed each protein in ``fasta`` to a fixed-dim
-       vector (1280 for esm2_t33_650M_UR50D).
-    2. For each contig, build gene-token sequences of (esm_emb,
-       intergenic_distance_bin, strand_bit). Slide a ``context_window``
-       sized window if the contig exceeds it.
-    3. Run gLM forward to obtain contextualized per-gene embeddings AND
-       per-pair "next gene starts a new operon" probabilities. The exact
-       extraction depends on gLM's head — the paper uses a fine-tuned
-       binary classifier over adjacent gene pair representations.
-    4. Return:
-         - ``pair_break_prob`` (length len(genes)-1; None at hard breaks)
-         - ``esm_embeddings`` of shape (n_genes, 1280)
-         - ``glm_embeddings`` of shape (n_genes, d_ctx)
+    1. ESM2-650M (esm2_t33_650M_UR50D) per protein, mean-pooled over
+       residues → 1280-dim vectors.
+    2. Normalize with ``data/norm.pkl`` (mean / std from gLM training).
+    3. Build subcontig windows of ≤30 same-contig proteins with overlap
+       1 so every adjacent pair appears in at least one window.
+    4. Per subcontig, prepend strand bit (+0.5 / −0.5) to make a
+       (30, 1281) input. Forward through gLM in batches → contacts of
+       shape (B, 30, 30, 190) where 190 = NLAYERS(19) * NHEADS(10).
+    5. Apply the shipped sklearn ``operon_predictor.pkl`` (LogisticRegression
+       trained on E. coli operon ground truth) to each adjacent-pair
+       190-dim contact vector → P(same operon) → 1 − P = pair_break_prob.
+    6. Hard breaks (different contig OR opposite strand) get ``None``.
 
-    For first integration on ORIX, fill in ``# TODO[gLM-API]`` blocks
-    after cloning ``y-hwang/gLM`` and confirming module / class names.
+    Returns ``(pair_break_prob, esm_embeddings, glm_embeddings)`` where
+    glm_embeddings are gLM's last-layer hidden states (1280-dim) per
+    protein, averaged over windows when a protein is covered by more
+    than one window.
     """
-    raise NotImplementedError(
-        "Real gLM inference is not wired in this revision. "
-        "Run with --mode mock for harness testing, or implement the "
-        "TODO[gLM-API] blocks in real_run() once gLM is cloned on ORIX. "
-        "See SPEC.md §Resolved decisions for the weights path."
+    import numpy as np
+    import torch
+    import pickle as pk
+
+    # gLM repo path. Default mirrors SPEC.md §Resolved decisions.
+    repo = glm_repo or Path("/mnt/data/u/hohndor/gLM/repo")
+    if not (repo / "gLM" / "gLM.py").is_file():
+        raise FileNotFoundError(
+            f"gLM repo not found at {repo}. Pass --glm-repo or set the "
+            f"default path; clone from https://github.com/y-hwang/gLM."
+        )
+    if not weights.is_file():
+        raise FileNotFoundError(f"gLM checkpoint not found at {weights}")
+    sys.path.insert(0, str(repo / "gLM"))
+    sys.path.insert(0, str(repo / "data"))
+    # Compat shims for newer transformers (gLM was written against 4.22):
+    # 1. RobertaPreTrainedModel.update_keys_to_ignore was removed → no-op.
+    # 2. ModelOutput subclasses now require an explicit @dataclass decorator.
+    from transformers.models.roberta import modeling_roberta as _gm
+    if not hasattr(_gm.RobertaPreTrainedModel, "update_keys_to_ignore"):
+        def _noop_update_keys_to_ignore(self, config, keys):
+            return None
+        _gm.RobertaPreTrainedModel.update_keys_to_ignore = _noop_update_keys_to_ignore
+
+    import gLM as _glm_mod  # noqa: E402  (gLM.py imports populate this namespace)
+    from gLM import gLM     # noqa: E402
+    import dataclasses as _dc
+    for _attr in dir(_glm_mod):
+        _obj = getattr(_glm_mod, _attr)
+        if (
+            isinstance(_obj, type)
+            and not _dc.is_dataclass(_obj)
+            and _attr.endswith("Output")
+        ):
+            try:
+                setattr(_glm_mod, _attr, _dc.dataclass(_obj))
+            except Exception as _e:  # pragma: no cover (best-effort patch)
+                LOG.warning("could not @dataclass %s: %s", _attr, _e)
+    from transformers import RobertaConfig
+
+    # Auxiliary tensors shipped with gLM.
+    with (repo / "data" / "norm.pkl").open("rb") as fh:
+        norm = pk.load(fh)
+    embed_mean = np.asarray(norm["mean"], dtype=np.float32)
+    embed_std = np.asarray(norm["std"], dtype=np.float32)
+    with (repo / "data" / "operon_predictor.pkl").open("rb") as fh:
+        operon_logreg = pk.load(fh)
+
+    # ---------------- 1. ESM2 embedding -----------------------------------
+    LOG.info("loading ESM2-650M (esm2_t33_650M_UR50D)")
+    import esm
+    esm_model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
+    batch_converter = alphabet.get_batch_converter()
+    esm_model = esm_model.to(device).eval()
+    esm_layer = 33
+    esm_dim = 1280
+
+    esm_embs = np.zeros((len(genes), esm_dim), dtype=np.float32)
+    seqid_to_idx = {g.seqid: i for i, g in enumerate(genes)}
+
+    seqs = _load_fasta_sequences(fasta)
+    # Drop genes whose seqid is absent from the FAA (typically GFF pseudogene
+    # CDS entries that NCBI does not emit a protein for). Mirror the
+    # make_operons.py policy of silently skipping such genes — ID bridging is
+    # FAA-seqid-dominant, the GFF is the secondary source of order/strand.
+    missing = [g.seqid for g in genes if g.seqid not in seqs]
+    if missing:
+        LOG.warning(
+            "%d GFF gene seqids absent from FASTA — skipping (first 5: %s)",
+            len(missing), missing[:5],
+        )
+        genes = [g for g in genes if g.seqid in seqs]
+    # Truncate very long proteins for ESM2 (mean-pool over the prefix).
+    # ESM2 attention scales O(L^2); a 6 kAA protein on H200 OOMs at batch=4.
+    truncated = sum(1 for g in genes if len(seqs[g.seqid]) > esm_max_aa)
+    if truncated:
+        LOG.warning(
+            "truncating %d proteins to %d aa for ESM2 (longest source: %d aa)",
+            truncated, esm_max_aa, max(len(seqs[g.seqid]) for g in genes),
+        )
+
+    LOG.info("embedding %d proteins with ESM2", len(genes))
+    with torch.no_grad():
+        # Sort by length for batch efficiency; restore order via seqid lookup.
+        # Truncate to esm_max_aa to bound attention memory.
+        items = [(g.seqid, seqs[g.seqid][:esm_max_aa]) for g in genes]
+        items.sort(key=lambda kv: len(kv[1]))
+        for chunk_start in range(0, len(items), esm_batch_size):
+            chunk = items[chunk_start:chunk_start + esm_batch_size]
+            labels, strs, toks = batch_converter(chunk)
+            toks = toks.to(device)
+            out = esm_model(toks, repr_layers=[esm_layer], return_contacts=False)
+            reps = out["representations"][esm_layer].cpu()
+            # mean-pool over residues, excluding BOS / EOS / pad tokens.
+            for j, (label, seq) in enumerate(chunk):
+                L = len(seq)
+                # tokens are: <bos> aa1 aa2 ... aaL <eos> <pad>...
+                rep = reps[j, 1:L + 1].mean(dim=0).numpy().astype(np.float32)
+                esm_embs[seqid_to_idx[label]] = rep
+            if chunk_start % (esm_batch_size * 50) == 0:
+                LOG.info("  ESM2: %d / %d proteins", chunk_start + len(chunk), len(items))
+    del esm_model
+    if device.startswith("cuda"):
+        torch.cuda.empty_cache()
+
+    # ---------------- 2. Normalize ----------------------------------------
+    norm_embs = (esm_embs - embed_mean) / embed_std
+
+    # ---------------- 3. Build subcontig windows --------------------------
+    MAX_SEQ = context_window  # 30
+    OVERLAP = 1
+    STRIDE = MAX_SEQ - OVERLAP
+
+    # Group genes by (contig, strand) into runs of consecutive same-strand
+    # genes on the same contig — we only place same-strand neighbours in a
+    # window so the model sees only co-strand context.
+    runs: List[List[int]] = []
+    cur: List[int] = []
+    for i, g in enumerate(genes):
+        if cur:
+            prev = genes[cur[-1]]
+            if g.contig != prev.contig or g.strand != prev.strand:
+                runs.append(cur); cur = []
+        cur.append(i)
+    if cur:
+        runs.append(cur)
+
+    # Slide windows of ≤MAX_SEQ over each run.
+    windows: List[List[int]] = []
+    for run in runs:
+        if len(run) <= MAX_SEQ:
+            windows.append(run)
+            continue
+        for s in range(0, len(run) - 1, STRIDE):
+            w = run[s:s + MAX_SEQ]
+            windows.append(w)
+            if s + MAX_SEQ >= len(run):
+                break
+    LOG.info("built %d gLM windows over %d gene runs", len(windows), len(runs))
+
+    # ---------------- 4. gLM forward --------------------------------------
+    LOG.info("loading gLM checkpoint from %s", weights)
+    NHEADS, NLAYERS, HIDDEN_SIZE, EMB_DIM, NUM_PC = 10, 19, 1280, 1281, 100
+    config = RobertaConfig(
+        max_position_embedding=MAX_SEQ,
+        hidden_size=HIDDEN_SIZE,
+        num_attention_heads=NHEADS,
+        type_vocab_size=1,
+        tie_word_embeddings=False,
+        num_hidden_layers=NLAYERS,
+        num_pc=NUM_PC,
+        num_pred=4,
+        predict_probs=True,
+        emb_dim=EMB_DIM,
+        output_attentions=True,
+        output_hidden_states=True,
+        position_embedding_type="relative_key_query",
     )
+    glm_model = gLM(config)
+    state = torch.load(str(weights), map_location=device)
+    # gLM is trained with inputs_embeds only — the token embedding tables in
+    # the checkpoint use BERT vocab size (30522) while RobertaConfig defaults
+    # to 50265. We never tokenize text, so drop these unused params before
+    # load. Also drop any nested-prefixed duplicates that the gLM training
+    # script saves alongside the canonical keys.
+    state = {k: v for k, v in state.items() if "word_embeddings" not in k}
+    missing_unexp = glm_model.load_state_dict(state, strict=False)
+    LOG.info(
+        "gLM weights loaded; missing=%d unexpected=%d",
+        len(missing_unexp.missing_keys), len(missing_unexp.unexpected_keys),
+    )
+    glm_model = glm_model.to(device).eval()
+
+    # Per protein: sum of last-hidden-state vectors across windows + count
+    # (averaged at the end). pair_probs[i] aggregates predictions for the
+    # pair (genes[i], genes[i+1]) across all windows that cover it.
+    glm_sum = np.zeros((len(genes), HIDDEN_SIZE), dtype=np.float32)
+    glm_cnt = np.zeros(len(genes), dtype=np.int32)
+    pair_same_op_sum = np.zeros(len(genes) - 1, dtype=np.float32)
+    pair_same_op_cnt = np.zeros(len(genes) - 1, dtype=np.int32)
+
+    for batch_start in range(0, len(windows), glm_batch_size):
+        batch = windows[batch_start:batch_start + glm_batch_size]
+        bsz = len(batch)
+        embeds = np.zeros((bsz, MAX_SEQ, EMB_DIM), dtype=np.float32)
+        attn = np.zeros((bsz, MAX_SEQ), dtype=np.float32)
+        for bi, w in enumerate(batch):
+            for pi, gi in enumerate(w):
+                strand_bit = 0.5 if genes[gi].strand == "+" else -0.5
+                embeds[bi, pi, :HIDDEN_SIZE] = norm_embs[gi]
+                embeds[bi, pi, HIDDEN_SIZE] = strand_bit
+                attn[bi, pi] = 1.0
+
+        embeds_t = torch.from_numpy(embeds).to(device)
+        attn_t = torch.from_numpy(attn).to(device)
+        # Match the inference convention in glm_embed.py: nothing is masked.
+        masked_tokens = torch.zeros(bsz, MAX_SEQ, 1, dtype=torch.bool, device=device)
+        with torch.no_grad(), torch.amp.autocast(device_type="cuda" if device.startswith("cuda") else "cpu", dtype=torch.float16):
+            outputs = glm_model(
+                inputs_embeds=embeds_t,
+                attention_mask=attn_t,
+                labels=torch.zeros(bsz, MAX_SEQ, NUM_PC, device=device),
+                masked_tokens=masked_tokens,
+                output_attentions=False,
+            )
+        last_hidden = outputs.last_hidden_state.detach().to(torch.float32).cpu().numpy()  # (B, 30, 1280)
+        contacts = outputs.contacts.detach().to(torch.float32).cpu().numpy()              # (B, 30, 30, 190)
+
+        for bi, w in enumerate(batch):
+            wlen = len(w)
+            for pi, gi in enumerate(w):
+                if pi >= wlen:
+                    break
+                glm_sum[gi] += last_hidden[bi, pi]
+                glm_cnt[gi] += 1
+            # Adjacent pairs inside this window.
+            for pi in range(wlen - 1):
+                gi_a, gi_b = w[pi], w[pi + 1]
+                # Pair index in the global (genes[i], genes[i+1]) space.
+                # gi_b should equal gi_a+1 by construction (consecutive in run).
+                if gi_b == gi_a + 1:
+                    feat = contacts[bi, pi, pi + 1].reshape(1, -1)
+                    p_same = float(operon_logreg.predict_proba(feat)[0, 1])
+                    pair_same_op_sum[gi_a] += p_same
+                    pair_same_op_cnt[gi_a] += 1
+
+        if batch_start % (glm_batch_size * 10) == 0:
+            LOG.info("  gLM: %d / %d windows", batch_start + bsz, len(windows))
+
+    del glm_model
+    if device.startswith("cuda"):
+        torch.cuda.empty_cache()
+
+    # ---------------- 5. Aggregate ----------------------------------------
+    # Per-protein gLM embedding = mean of last_hidden across windows.
+    glm_embs = np.zeros((len(genes), HIDDEN_SIZE), dtype=np.float32)
+    nz = glm_cnt > 0
+    glm_embs[nz] = glm_sum[nz] / glm_cnt[nz, None]
+    # If a protein was not in any window (shouldn't happen unless a run had
+    # length 1 AND we excluded singletons — but we don't), leave at zeros.
+
+    # Pair break probability = 1 - mean P(same operon) across covering windows.
+    pair_break: List[Optional[float]] = []
+    for i in range(len(genes) - 1):
+        a, b = genes[i], genes[i + 1]
+        if a.contig != b.contig or a.strand != b.strand:
+            pair_break.append(None)              # hard break
+            continue
+        cnt = pair_same_op_cnt[i]
+        if cnt == 0:
+            # Same-strand same-contig but never co-windowed — should be rare;
+            # fall back to a soft 0.5 (no information either direction).
+            pair_break.append(0.5)
+            continue
+        p_same = pair_same_op_sum[i] / cnt
+        pair_break.append(float(1.0 - p_same))
+
+    return genes, pair_break, esm_embs, glm_embs
+
+
+def _load_fasta_sequences(fasta: Path) -> Dict[str, str]:
+    """Return ``{seqid: sequence}`` over the FASTA file."""
+    out: Dict[str, str] = {}
+    cur_id = None
+    cur_buf: List[str] = []
+    with fasta.open() as fh:
+        for line in fh:
+            line = line.rstrip()
+            if line.startswith(">"):
+                if cur_id is not None:
+                    out[cur_id] = "".join(cur_buf)
+                cur_id = line[1:].split()[0]
+                cur_buf = []
+            else:
+                cur_buf.append(line)
+        if cur_id is not None:
+            out[cur_id] = "".join(cur_buf)
+    return out
 
 
 # --------------------------------------------------------------- driver ---
@@ -415,7 +690,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             if args.weights is None:
                 LOG.error("--mode real requires --weights")
                 return 2
-            pair, esm, glm = real_run(genes, args.fasta, args.weights, device=args.device)
+            # real_run may drop genes whose seqid is missing in the FAA;
+            # take its returned (possibly shorter) gene list as the truth
+            # for downstream segmentation and output.
+            genes, pair, esm, glm = real_run(genes, args.fasta, args.weights, device=args.device)
 
     operons = segment_operons(
         genes, pair,
