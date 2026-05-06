@@ -21,19 +21,24 @@ class EssentialityPriorSpec extends Specification {
         prior.logOddsBoost('p1', 'p1|GO|GO:0006412', state) == 0.0
     }
 
-    def "no-ops when goReasoner is missing even if essential functions present"() {
-        given:
+    def "without goReasoner, boosts exact essential matches but cannot expand to descendants"() {
+        given: "essential GO:0006412 but no GoReasoner to expand to descendants"
         def state = new IntegrationState(new Genome(id: 'g'))
         state.essentialFunctions = Mock(EssentialFunctions) {
             getGoTerms() >> (['GO:0006412'] as Set)
         }
+        // goReasoner and goOntology intentionally null
         def prior = new EssentialityPrior()
+        prior.alphaEss = 1.5d
 
         when:
         prior.beginIteration(state)
 
-        then:
-        prior.logOddsBoost('p1', 'p1|GO|GO:0006412', state) == 0.0
+        then: "exact match to the essential itself is boosted"
+        prior.logOddsBoost('p1', 'p1|GO|GO:0006412', state) == 1.5d
+
+        and: "a non-essential claim is not boosted (no descendants expanded)"
+        prior.logOddsBoost('p1', 'p1|GO|GO:0001234', state) == 0.0d
     }
 
     def "boosts candidate claim whose function is a descendant of an uncovered essential"() {

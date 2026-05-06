@@ -35,6 +35,15 @@ class EvidenceTypeSpec extends Specification {
         EvidenceType.METABOLIC_CONTEXT.correlationGroup() == 'context'
     }
 
+    def "DARK_MATTER lives in its own inferred_context group"() {
+        expect:
+        EvidenceType.DARK_MATTER.correlationGroup() == 'inferred_context'
+        // Isolated from other groups so Noisy-OR doesn't collapse DM
+        // promotions against unrelated ML or homology evidence.
+        EvidenceType.DARK_MATTER.correlationGroup() != EvidenceType.SEQUENCE_DEEPLEARNING.correlationGroup()
+        EvidenceType.DARK_MATTER.correlationGroup() != EvidenceType.GENOMIC_CONTEXT.correlationGroup()
+    }
+
     def "domain-specific types each live in their own group"() {
         given:
         def groups = [

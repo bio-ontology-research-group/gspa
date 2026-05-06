@@ -1,0 +1,17 @@
+predictor	artefact	version	url	sha256	size_bytes	required	notes
+esm2-deepgoplus	head_ckpt	v1.0	${GSPA_DB_BASE}/esm2_dgp/v1.0/head.pt	REPLACE_WITH_SHA256	5000000000	yes	Frozen ESM2-t33 + FC head. GPU recommended.
+esm2-deepgoplus	go_terms	v1.0	${GSPA_DB_BASE}/esm2_dgp/v1.0/terms.txt	REPLACE_WITH_SHA256	200000	yes	One GO term per line; column index aligns to head_ckpt output.
+esm2-centroid	centroid_db	v1.0	${GSPA_DB_BASE}/esm2_centroid/v1.0/db.npz	REPLACE_WITH_SHA256	75000000	yes	NPZ with centroids/terms/annotation_types. CPU OK.
+proteinfer	saved_model	v1.0	${GSPA_DB_BASE}/proteinfer/v1.0/model.tar.gz	REPLACE_WITH_SHA256	200000000	yes	TF SavedModel. CPU OK.
+clean	weights	upstream	https://github.com/tttianhao/CLEAN/archive/refs/heads/main.tar.gz	REPLACE_WITH_SHA256	1000000000	yes	Upstream release (CLEAN repo + bundled weights). GPU recommended. NOT mirrored on bio2vec.net per upstream license.
+truth	swissprot_go_ec	2026.04	${GSPA_DB_BASE}/truth/2026.04/swissprot_go_ec.tsv.gz	REPLACE_WITH_SHA256	50000000	no	UniProt accession -> GO/EC. Used for centroid build + eval.
+truth	smoke_fixture	2026.04	${GSPA_DB_BASE}/truth/2026.04/smoke_fixture.tsv	REPLACE_WITH_SHA256	5000	no	Truth file for the smoke test genome.
+go_aspect_map	go_obo	2026.04	${GSPA_DB_BASE}/go/2026.04/go.obo	REPLACE_WITH_SHA256	150000000	no	Required by EVAL_PGAP for aspect lookup.
+tmbed	prott5	v1.0	${GSPA_DB_BASE}/tmbed/v1.0/prott5.tar.gz	REPLACE_WITH_SHA256	5500000000	no	ProtT5 weights; large. Optional - TMbed downloads on first run if missing.
+deepfri	model	v1.0	${GSPA_DB_BASE}/deepfri/v1.0/DeepFRI.tar.gz	REPLACE_WITH_SHA256	200000000	yes	BSD-3-Clause. Sequence-only mode by default.
+deepec	model	v1.0	${GSPA_DB_BASE}/deepec/v1.0/deepec.tar.gz	REPLACE_WITH_SHA256	50000000	yes	AGPL-3.0; service deployments must publish source.
+deeparg	model	v1.0	https://bench.cs.vt.edu/ftp/data/gustavo1/deeparg/database/deeparg.zip	REPLACE_WITH_SHA256	100000000	yes	Upstream Virginia Tech mirror. MIT.
+musitedeep	model	v1.0	${GSPA_DB_BASE}/musitedeep/v1.0/MusiteDeep_web.tar.gz	REPLACE_WITH_SHA256	50000000	yes	MIT. Bundled with phospho-S/T/Y models by default.
+tppred3	model	v1.0	${GSPA_DB_BASE}/tppred3/v1.0/tppred3.tar.gz	REPLACE_WITH_SHA256	10000000	yes	GPL-3.0. Bundled with the upstream release.
+scannet	model	v1.0	${GSPA_DB_BASE}/scannet/v1.0/ScanNet_models.tar.gz	REPLACE_WITH_SHA256	50000000	no	Apache-2.0. Requires structures (set --structures_from).
+psortb	bundled	v3.0.6	docker://brinkmanlab/psortb_commandline:1.0.4	BUNDLED	0	no	GPL-3.0. Container ships weights; manifest only documents version pin.

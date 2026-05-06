@@ -1,8 +1,11 @@
 package gspa.predictor.localization
 
+import gspa.integration.EvidenceType
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+
+import java.util.regex.Pattern
 
 /**
  * SignalP predictor for signal peptide detection.
@@ -100,10 +103,34 @@ class SignalPPredictor extends AbstractToolPredictor {
                     source: name,
                     score: probability,
                 )
+
+                // Region annotation spanning the signal peptide (1..cleavage_site).
+                // SignalP 6 long-format output embeds "CS pos: N-M. Pr: X" on the
+                // prediction line; parse whatever the short/long format exposed.
+                def csMatcher = CS_POS_PATTERN.matcher(line)
+                if (csMatcher.find()) {
+                    int cs = csMatcher.group(1) as int
+                    if (cs >= 1) {
+                        results[proteinId] << new Annotation(
+                            type: AnnotationType.SIGNAL_PEPTIDE,
+                            value: prediction,
+                            source: name,
+                            score: probability,
+                            evidenceType: EvidenceType.SEQUENCE_REGION_ML,
+                            regionStart: 1,
+                            regionEnd: cs,
+                            regionType: 'signal_peptide',
+                            metadata: [signalType: prediction, cleavageSite: cs],
+                        )
+                    }
+                }
             }
         }
         results
     }
+
+    private static final Pattern CS_POS_PATTERN =
+            Pattern.compile(/CS pos:?\s*(\d+)\s*-\s*(\d+)/)
 
     private static double safeDouble(String s) {
         try { return s as double } catch (Exception e) { return 0.0 }

@@ -26,6 +26,24 @@ From: eclipse-temurin:21-jre
         && tar xzf mmseqs-linux-avx2.tar.gz && mv mmseqs/bin/mmseqs /usr/local/bin/ \
         && rm -rf mmseqs mmseqs-linux-avx2.tar.gz
 
+    # gapsmith (Phase 11 default pathway tool). Build toolchain is heavy,
+    # so we build in a scratch dir and drop the sources after installing
+    # the stripped release binary.
+    GAPSMITH_REF=v0.1.0
+    apt-get update && apt-get install -y --no-install-recommends \
+        cmake clang libclang-dev pkg-config \
+        && rm -rf /var/lib/apt/lists/*
+    curl -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.82.0 \
+        --profile minimal
+    . "$HOME/.cargo/env"
+    git clone --depth 1 --branch $GAPSMITH_REF \
+        https://github.com/bio-ontology-research-group/gapsmith.git /src/gapsmith
+    (cd /src/gapsmith && cargo build --release --bin gapsmith)
+    install -m 0755 /src/gapsmith/target/release/gapsmith /usr/local/bin/gapsmith
+    mkdir -p /opt/gapsmith
+    cp -r /src/gapsmith/data /opt/gapsmith/data
+    rm -rf /src/gapsmith /root/.cargo /root/.rustup
+
     # Pyrodigal
     pip3 install --break-system-packages pyrodigal
 
@@ -45,3 +63,11 @@ From: eclipse-temurin:21-jre
     GSPA - Genome-Scale Protein Annotation
     Usage: singularity run gspa.sif [annotate|evaluate|compare|report] [options]
     Run with --help for full usage information.
+
+    gapsmith (Phase 11 default pathway tool) is installed at /usr/local/bin/gapsmith.
+    Vendored curation data is at /opt/gapsmith/data. Fetch the remaining tables
+    and sequence DB with:
+        gapsmith update-data -o /path/to/dat
+        gapsmith update-sequences -D /path/to/dat/seq -t Bacteria
+    then pass --data-dir /path/to/dat to gapsmith (or to GSPA via the
+    GapseqPredictor dataDir field).

@@ -76,11 +76,19 @@ class IterativeRefiner {
                 String key = entry.key
                 double lLik = likelihood[key]
                 double lPri = priorEngine.totalBoost(entry.value.first().proteinId, key, state)
-                double lNew = clip(lLik + lPri)
+                double lNew = clip(lLik + lPri, key, state)
 
                 double lOld = posteriorLogOdds.getOrDefault(key, lLik)
                 // Jacobi-style under-relaxation: new = (1-d) * old + d * computed.
                 double lDamped = (1.0d - damping) * lOld + damping * lNew
+                // Re-apply the pin floor after damping. Damping can drag a
+                // floored lNew back toward an unfloored lOld (seed = raw
+                // likelihood on iteration 1), which would silently undo the
+                // pin. Clamp to [floor, lMax] if a floor exists.
+                Double floor = state.pinnedFloors != null ? state.pinnedFloors[key] : null
+                if (floor != null && lDamped < floor) {
+                    lDamped = Math.min(combiner.lMax, (double) floor)
+                }
                 newLogOdds[key] = lDamped
             }
 
@@ -166,8 +174,20 @@ class IterativeRefiner {
         )
     }
 
-    private double clip(double logOdds) {
-        Math.min(combiner.lMax, Math.max(combiner.lMin, logOdds))
+    /**
+     * Clip log-odds to the combiner's [lMin, lMax] range, then raise to
+     * the pinned floor if one is set for this function key. The floor
+     * preserves the "closed stays closed" invariant across Phase 10 outer
+     * iterations: a DarkMatter-promoted claim cannot be driven below its
+     * promoted posterior by later prior adjustments.
+     */
+    private double clip(double logOdds, String functionKey, IntegrationState state) {
+        double clamped = Math.min(combiner.lMax, Math.max(combiner.lMin, logOdds))
+        if (state != null && state.pinnedFloors != null) {
+            Double floor = state.pinnedFloors[functionKey]
+            if (floor != null && floor > clamped) return Math.min(combiner.lMax, floor)
+        }
+        clamped
     }
 
     private static double meanAbsDelta(Map<String, Double> a, Map<String, Double> b) {

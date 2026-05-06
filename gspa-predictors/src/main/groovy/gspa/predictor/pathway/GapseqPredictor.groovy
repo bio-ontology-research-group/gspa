@@ -5,15 +5,40 @@ import gspa.predictor.AbstractToolPredictor
 import gspa.predictor.GenomePredictor
 
 /**
- * gapseq predictor for metabolic pathway reconstruction.
- * Identifies metabolic reactions and pathways, performs gap-filling
- * to create draft genome-scale metabolic models.
+ * Pathway/gap predictor wrapping gapsmith (default) or gapseq.
+ *
+ * <p>gapsmith is a Rust reimplementation of gapseq with the same
+ * output-file format (see github.com/bio-ontology-research-group/gapsmith).
+ * The two binaries differ only in CLI flag spellings — the emitted
+ * {@code *-Reactions.tbl} and {@code *-Pathways.tbl} files are
+ * drop-in compatible, so downstream parsers (including gspa's
+ * {@code parse_gapseq_gaps.py}) work unchanged.</p>
+ *
+ * <p>Switch via {@link #tool}: {@code 'gapsmith'} (default) or
+ * {@code 'gapseq'}. {@code 'gapsmith'} is preferred because it's
+ * significantly faster on large proteomes and can share a precomputed
+ * alignment across genomes.</p>
  *
  * Supports community mode for crossfeeding analysis.
  */
 class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
 
-    /** gapseq medium file for gap-filling */
+    /**
+     * External tool to invoke. {@code 'gapsmith'} (default) uses
+     * {@code gapsmith find -p all -t Bacteria -o <out-dir>}.
+     * {@code 'gapseq'} uses {@code gapseq find -p all -b Bacteria}
+     * (legacy R/bash upstream).
+     */
+    String tool = 'gapsmith'
+
+    /**
+     * Reference-data directory for gapsmith ({@code --data-dir}).
+     * When null, gapsmith auto-detects (assumes a sibling {@code data/}
+     * dir, or {@code GAPSMITH_DATA_DIR}). Ignored for {@code tool=='gapseq'}.
+     */
+    String dataDir = null
+
+    /** gapseq/gapsmith medium file for gap-filling */
     String medium
 
     /** Export SBML model */
@@ -22,8 +47,30 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
     /** Taxonomy for pathway prediction */
     String taxonomy = 'Bacteria'
 
+    /**
+     * Phase 10: search target for gapseq's reaction-sequence database.
+     * <ul>
+     *   <li>{@code genome}  — tblastn against genome nucleotide (default, v1.0.0 behaviour)</li>
+     *   <li>{@code proteome} — blastp against the full predicted proteome
+     *       (~5× faster but loses small-ORF / frameshift rescue)</li>
+     *   <li>{@code reps}    — blastp against cluster representatives only
+     *       (requires intra-genome clustering to have run). A reaction is
+     *       "found" if any cluster rep has a qualifying hit — equivalent
+     *       to querying the whole proteome under the 90% identity
+     *       equivalence, and the form Phase 11 will cache across genomes.</li>
+     * </ul>
+     */
+    String target = 'genome'
+
+    /**
+     * When {@code target=='reps'}, the list of representative protein IDs
+     * (from the intra-genome clusterer). {@code null} with {@code target=='reps'}
+     * is an error.
+     */
+    Set<String> representativeIds = null
+
     @Override
-    String getName() { 'gapseq' }
+    String getName() { tool }
 
     @Override
     Set<AnnotationType> getOutputTypes() {
@@ -31,16 +78,30 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
     }
 
     @Override
-    String getExecutable() { 'gapseq' }
+    String getExecutable() {
+        tool == 'gapseq' ? 'gapseq' : 'gapsmith'
+    }
 
     @Override
     List<String> buildCommand(File inputFasta, File outputDir) {
-        def outputPrefix = new File(outputDir, 'gapseq_model')
-        def cmd = [
-            executablePath ?: executable,
+        def exe = executablePath ?: getExecutable()
+        if (tool == 'gapseq') {
+            return [
+                exe,
+                'find',
+                '-p', 'all',
+                '-b', taxonomy,
+                inputFasta.absolutePath,
+            ]
+        }
+        // gapsmith: --data-dir is at the top level, out-dir goes to the subcommand
+        def cmd = [exe]
+        if (dataDir) cmd += ['--data-dir', dataDir]
+        cmd += [
             'find',
             '-p', 'all',
-            '-b', taxonomy,
+            '-t', taxonomy,
+            '-o', outputDir.absolutePath,
             inputFasta.absolutePath,
         ]
         cmd
@@ -83,31 +144,65 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
 
     @Override
     Map<String, List<Annotation>> predictGenome(Genome genome) {
-        // Write genome FASTA and run gapseq
+        if (target == 'reps' && (representativeIds == null || representativeIds.isEmpty())) {
+            throw new IllegalStateException(
+                "GapseqPredictor(target='reps') requires representativeIds to be populated " +
+                "by an earlier intra-genome clustering step")
+        }
+
         def tmpDir = File.createTempDir("gspa_gapseq_", '')
         try {
-            def inputFasta = new File(tmpDir, 'genome.fna')
-            inputFasta.withWriter { writer ->
-                genome.contigs.each { contig ->
-                    if (contig.sequence) {
-                        writer.writeLine(">${contig.id}")
-                        writer.writeLine(contig.sequence)
-                    }
-                }
-            }
+            File inputFasta = writeTargetFasta(genome, tmpDir)
 
             def command = buildCommand(inputFasta, tmpDir)
-            log.info("Running gapseq: ${command.join(' ')}")
+            log.info("Running ${tool} (target=${target}): ${command.join(' ')}")
             def result = execute(command, tmpDir)
 
             if (result.exitCode != 0) {
-                log.error("gapseq failed: ${result.stderr}")
+                log.error("${tool} failed: ${result.stderr}")
                 return [:]
             }
 
             return parseOutput(tmpDir)
         } finally {
             tmpDir.deleteDir()
+        }
+    }
+
+    /** Emit the FASTA gapseq will search, based on the configured target. */
+    private File writeTargetFasta(Genome genome, File dir) {
+        switch (target) {
+            case 'genome':
+                def f = new File(dir, 'genome.fna')
+                f.withWriter { w ->
+                    genome.contigs.each { contig ->
+                        if (contig.sequence) {
+                            w.writeLine(">${contig.id}")
+                            w.writeLine(contig.sequence)
+                        }
+                    }
+                }
+                return f
+            case 'proteome':
+                def f = new File(dir, 'proteins.faa')
+                f.withWriter { w ->
+                    genome.proteins.each { p ->
+                        if (p.sequence) { w.writeLine(">${p.id}"); w.writeLine(p.sequence) }
+                    }
+                }
+                return f
+            case 'reps':
+                def f = new File(dir, 'reps.faa')
+                f.withWriter { w ->
+                    genome.proteins.each { p ->
+                        if (p.sequence && representativeIds.contains(p.id)) {
+                            w.writeLine(">${p.id}"); w.writeLine(p.sequence)
+                        }
+                    }
+                }
+                return f
+            default:
+                throw new IllegalArgumentException("Unknown gapseq target: ${target}; expected genome|proteome|reps")
         }
     }
 

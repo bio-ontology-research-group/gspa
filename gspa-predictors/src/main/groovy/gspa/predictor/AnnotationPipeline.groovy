@@ -14,6 +14,8 @@ import gspa.io.FastaReader
 import gspa.io.GffReader
 import gspa.io.GffWriter
 import gspa.model.*
+import gspa.predictor.cluster.ClusterAnnotationPropagator
+import gspa.predictor.cluster.IntragenomeClusterer
 import gspa.predictor.context.OperonPredictor
 import gspa.predictor.genecalling.GeneCaller
 import gspa.predictor.genecalling.ProdigalCaller
@@ -135,10 +137,19 @@ class AnnotationPipeline {
             }
         }
 
-        // Structure
+        // Structure (homology-transfer by default; centroid mode when configured)
         if (config.predictors.structure.enabled) {
+            def structureCfg = config.predictors.structure
+            String modeStr = (structureCfg.centroidMode ?: 'none').toUpperCase(Locale.ROOT)
+            def mode = gspa.predictor.structure.FoldSeekPredictor.CentroidMode.valueOf(modeStr)
+            String dbPath = mode != gspa.predictor.structure.FoldSeekPredictor.CentroidMode.NONE &&
+                    structureCfg.centroidDb ?
+                    structureCfg.centroidDb :
+                    structureCfg.database
             def p = new gspa.predictor.structure.FoldSeekPredictor(
-                database: config.predictors.structure.database,
+                database: dbPath,
+                prostt5Model: structureCfg.prostt5Model,
+                centroidMode: mode,
             )
             predictors << p
         }
@@ -192,6 +203,169 @@ class AnnotationPipeline {
             predictors << new gspa.predictor.function.EggNogMapperPredictor()
         }
 
+        // Disorder (Metapredict)
+        if (config.predictors.disorder.enabled) {
+            predictors << new gspa.predictor.disorder.MetapredictPredictor(
+                minRegionLen: config.predictors.disorder.minRegionLen,
+                minScore: config.predictors.disorder.minScore,
+            )
+        }
+
+        // Neural sidecar predictors
+        def neural = config.predictors.neural
+        if (neural.esm2DeepGoPlus.enabled) {
+            predictors << new gspa.predictor.neural.DeepGoPlusEsm2Predictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                checkpoint: neural.esm2DeepGoPlus.checkpoint,
+                terms: neural.esm2DeepGoPlus.terms,
+                esm2Model: neural.esm2DeepGoPlus.model,
+                batchSize: neural.esm2DeepGoPlus.batchSize,
+                minScore: neural.esm2DeepGoPlus.minScore,
+            )
+        }
+        if (neural.proteinfer.enabled) {
+            predictors << new gspa.predictor.neural.ProteInferPredictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                modelDir: neural.proteinfer.modelDir,
+                batchSize: neural.proteinfer.batchSize,
+                minScore: neural.proteinfer.minScore,
+            )
+        }
+        if (neural.clean.enabled) {
+            predictors << new gspa.predictor.neural.CleanPredictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                modelDir: neural.clean.modelDir,
+                batchSize: neural.clean.batchSize,
+                minScore: neural.clean.minScore,
+            )
+        }
+        if (neural.esm2Centroid.enabled) {
+            predictors << new gspa.predictor.neural.Esm2CentroidPredictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                centroidDb: neural.esm2Centroid.db,
+                esm2Model: neural.esm2Centroid.model,
+                topK: neural.esm2Centroid.topK,
+                batchSize: neural.esm2Centroid.batchSize,
+                minScore: neural.esm2Centroid.minScore,
+            )
+        }
+
+        // FOSS region predictors (use run_region_predictors.py sidecar)
+        def loc = config.predictors.localization
+        def foss = config.predictors.foss
+        if (loc.deepSig) {
+            predictors << new gspa.predictor.localization.DeepSigPredictor(
+                sidecarScript: foss.regionSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                kingdom: loc.deepSigKingdom,
+            )
+        }
+        if (loc.tmbed) {
+            predictors << new gspa.predictor.localization.TmbedPredictor(
+                sidecarScript: foss.regionSidecar,
+                pythonExecutable: foss.pythonExecutable,
+            )
+        }
+        if (loc.tppred3) {
+            predictors << new gspa.predictor.localization.TPpred3Predictor(
+                sidecarScript: foss.regionSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                kingdom: loc.tppred3Kingdom,
+            )
+        }
+        // FOSS term predictors (use run_term_predictors.py sidecar)
+        if (loc.psortb) {
+            predictors << new gspa.predictor.localization.PSORTbPredictor(
+                sidecarScript: foss.termSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                gram: loc.psortbGram,
+            )
+        }
+        if (foss.deepFri.enabled) {
+            predictors << new gspa.predictor.structure.DeepFriPredictor(
+                sidecarScript: foss.termSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.deepFri.modelDir,
+                structureMode: foss.deepFri.mode,
+                minScore: foss.deepFri.minScore,
+            )
+        }
+        if (foss.deepEc.enabled) {
+            if (!foss.deepEc.acknowledgeAgpl) {
+                log.warn("DeepEC is AGPL-3.0; if running as a service you must " +
+                         "publish source. Set predictors.foss.deepEc.acknowledgeAgpl=true to silence this warning.")
+            }
+            predictors << new gspa.predictor.neural.DeepEcPredictor(
+                sidecarScript: foss.termSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.deepEc.modelDir,
+                minScore: foss.deepEc.minScore,
+            )
+        }
+        if (foss.deepArg.enabled) {
+            predictors << new gspa.predictor.specialized.DeepArgPredictor(
+                sidecarScript: foss.termSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.deepArg.modelDir,
+                type: foss.deepArg.type,
+                minScore: foss.deepArg.minScore,
+            )
+        }
+        // FOSS site predictors (use run_site_predictors.py sidecar)
+        if (foss.musiteDeep.enabled) {
+            predictors << new gspa.predictor.sites.MusiteDeepPredictor(
+                sidecarScript: foss.siteSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.musiteDeep.modelDir,
+                residueTypes: foss.musiteDeep.residueTypes,
+                minScore: foss.musiteDeep.minScore,
+            )
+        }
+        if (foss.scanNet.enabled) {
+            predictors << new gspa.predictor.sites.ScanNetPredictor(
+                sidecarScript: foss.siteSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                modelDir: foss.scanNet.modelDir,
+                structureDir: foss.scanNet.structureDir,
+                minScore: foss.scanNet.minScore,
+            )
+        }
+
+        // v1.3 viral / prophage predictors (genome-level)
+        def viral = config.predictors.viral
+        if (viral.genomad.enabled) {
+            predictors << new gspa.predictor.viral.GenomadPredictor(
+                sidecarScript: viral.genomicSidecar,
+                pythonExecutable: viral.pythonExecutable,
+                dbPath: viral.genomad.dbPath,
+                genomadSif: viral.genomad.sif,
+                minScore: viral.genomad.minScore,
+            )
+        }
+        if (viral.checkv.enabled) {
+            predictors << new gspa.predictor.viral.CheckVPredictor(
+                sidecarScript: viral.genomicSidecar,
+                pythonExecutable: viral.pythonExecutable,
+                dbPath: viral.checkv.dbPath,
+                checkvSif: viral.checkv.sif,
+                threads: viral.checkv.threads,
+                minScore: viral.checkv.minScore,
+            )
+        }
+        if (viral.phispy.enabled) {
+            predictors << new gspa.predictor.viral.PhiSpyPredictor(
+                sidecarScript: viral.genomicSidecar,
+                pythonExecutable: viral.pythonExecutable,
+                phispySif: viral.phispy.sif,
+                trainset: viral.phispy.trainset,
+                minScore: viral.phispy.minScore,
+            )
+        }
+
         predictors
     }
 
@@ -223,6 +397,22 @@ class AnnotationPipeline {
             .findAll { !(it instanceof GenomePredictor) }
         log.info("Running ${availablePredictors.size()} protein-level predictors...")
 
+        // Phase 10: optional intra-genome clustering — predictors see only
+        // cluster representatives; annotations are propagated to members
+        // afterwards. When disabled (default) clusterSet is null and
+        // predictorInput == all proteins.
+        def clusterCfg = config.integration?.intragenomeCluster
+        def clusterSet = null
+        List<Protein> predictorInput = genome.proteins
+        if (clusterCfg?.enabled) {
+            log.info("Clustering proteome at identity=${clusterCfg.identity}, coverage=${clusterCfg.coverage}...")
+            clusterSet = new IntragenomeClusterer().cluster([genome], clusterCfg.identity, clusterCfg.coverage)
+            Set<String> repIds = clusterSet.representatives()*.proteinId as Set
+            predictorInput = genome.proteins.findAll { it.id in repIds }
+            log.info("  clustered ${genome.proteinCount} proteins → ${clusterSet.clusterCount()} reps " +
+                "(${String.format(Locale.ROOT, '%.1f', 100.0d * clusterSet.clusterCount() / Math.max(1, genome.proteinCount))}%)")
+        }
+
         if (availablePredictors.size() > 1 && parallel) {
             log.info("  Running predictors in parallel...")
             def results = Collections.synchronizedMap(new LinkedHashMap<String, Map<String, List>>())
@@ -230,7 +420,7 @@ class AnnotationPipeline {
                 Thread.start {
                     log.info("  [parallel] Running ${predictor.name}...")
                     try {
-                        results[predictor.name] = predictor.predictBatch(genome.proteins)
+                        results[predictor.name] = predictor.predictBatch(predictorInput)
                     } catch (Exception e) {
                         log.error("  ${predictor.name} failed: ${e.message}")
                     }
@@ -244,12 +434,18 @@ class AnnotationPipeline {
             availablePredictors.each { predictor ->
                 log.info("  Running ${predictor.name}...")
                 try {
-                    def annotations = predictor.predictBatch(genome.proteins)
+                    def annotations = predictor.predictBatch(predictorInput)
                     applyAnnotations(genome, annotations, predictor.name)
                 } catch (Exception e) {
                     log.error("  ${predictor.name} failed: ${e.message}")
                 }
             }
+        }
+
+        // Phase 10: propagate representative annotations to cluster members.
+        if (clusterSet != null) {
+            int copied = new ClusterAnnotationPropagator().propagate(clusterSet, [genome])
+            log.info("  propagated ${copied} annotations from ${clusterSet.clusterCount()} reps to members")
         }
 
         // 4. Run genome-level predictors (sequential — they may depend on protein annotations)

@@ -1,0 +1,33 @@
+[workspace]
+name = "gspa-glm"
+channels = ["conda-forge", "pytorch", "nvidia"]
+platforms = ["linux-64"]
+channel-priority = "disabled"
+
+[system-requirements]
+cuda = "12"
+
+[dependencies]
+python = "3.10.*"
+numpy = ">=1.23,<2"
+scipy = "*"
+scikit-learn = ">=1.1"
+pandas = "*"
+tqdm = "*"
+matplotlib = "*"
+huggingface_hub = ">=0.20,<1"
+biopython = "*"
+pytorch-gpu = ">=2.1"
+cuda-version = "12.*"
+
+[pypi-dependencies]
+fair-esm = "==1.0.2"
+transformers = ">=4.22,<5"
+accelerate = "*"
+fairscale = "*"
+admin-torch = "*"
+einops = "*"
+
+[tasks]
+gpu-check = "python -c 'import torch; print(torch.__version__, torch.cuda.is_available())'"
+glm-import = "python -c 'import sys; sys.path.insert(0, \"/mnt/data/u/hohndor/gLM/repo/gLM\"); from gLM import gLM; from transformers import RobertaConfig; print(\"gLM OK\")'"

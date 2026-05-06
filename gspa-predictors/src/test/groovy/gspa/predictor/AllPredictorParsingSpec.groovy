@@ -158,6 +158,21 @@ class AllPredictorParsingSpec extends Specification {
 
         // protein_005: OTHER — should not appear
         !results.containsKey('protein_005')
+
+        // Cleavage-site region annotations for each positive call
+        def p1Region = results['protein_001'].find { it.hasRegion() }
+        p1Region != null
+        p1Region.regionStart == 1
+        p1Region.regionEnd == 24
+        p1Region.regionType == 'signal_peptide'
+
+        def p3Region = results['protein_003'].find { it.hasRegion() }
+        p3Region != null
+        p3Region.regionEnd == 19
+
+        def p4Region = results['protein_004'].find { it.hasRegion() }
+        p4Region != null
+        p4Region.regionEnd == 32
     }
 
     // --- DeepTMHMM ---
@@ -176,14 +191,21 @@ class AllPredictorParsingSpec extends Specification {
 
         // protein_002: 2 TM helices
         results['protein_002'].any { it.type == AnnotationType.TRANSMEMBRANE }
-        results['protein_002'].find { it.type == AnnotationType.TRANSMEMBRANE }.metadata.tmHelixCount == 2
+        results['protein_002'].find { it.type == AnnotationType.TRANSMEMBRANE && it.metadata?.tmHelixCount != null }.metadata.tmHelixCount == 2
         results['protein_002'].any { it.type == AnnotationType.SUBCELLULAR_LOCALIZATION && it.value == 'integral membrane' }
+
+        // protein_002: per-helix region annotations
+        def p2Regions = results['protein_002'].findAll { it.hasRegion() && it.regionType == 'tm_helix' }
+        p2Regions.size() == 2
+        p2Regions.every { it.type == AnnotationType.TRANSMEMBRANE }
+        p2Regions.every { it.regionStart <= it.regionEnd }
 
         // protein_003: no TM helices
         !results.containsKey('protein_003')
 
-        // protein_004: 3 TM helices
-        results['protein_004'].find { it.type == AnnotationType.TRANSMEMBRANE }.metadata.tmHelixCount == 3
+        // protein_004: 3 TM helices, 3 regions
+        results['protein_004'].find { it.type == AnnotationType.TRANSMEMBRANE && it.metadata?.tmHelixCount != null }.metadata.tmHelixCount == 3
+        results['protein_004'].findAll { it.hasRegion() && it.regionType == 'tm_helix' }.size() == 3
     }
 
     // --- antiSMASH ---

@@ -1,0 +1,49 @@
+# GSPA region-level FOSS predictor stack.
+# Wraps benchmark/neural/run_region_predictors.py for:
+#   - metapredict (MIT)
+#   - deepsig     (GPL-3.0)
+#   - tmbed       (Apache-2.0)
+#   - tppred3     (GPL-3.0)
+#
+# Build:
+#   docker build -f gspa-nf/docker/Dockerfile.region-stack \
+#     -t leechuck/gspa-region-stack:0.1 .
+# Push:
+#   docker push leechuck/gspa-region-stack:0.1
+
+FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn9-runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+# Metapredict (MIT) and DeepSig (GPL-3.0) are pip-installable.
+RUN pip install \
+    metapredict \
+    deepsig-biocomp \
+    biopython \
+    numpy>=1.24,<2.0 \
+    transformers \
+    sentencepiece \
+    h5py
+
+# TMbed (Apache-2.0) — install from upstream
+RUN pip install tmbed
+
+# TPpred3 (GPL-3.0) — clone + setup
+RUN git clone --depth 1 https://github.com/BolognaBiocomp/tppred3 /opt/tppred3 && \
+    pip install -r /opt/tppred3/requirements.txt 2>/dev/null || true && \
+    chmod +x /opt/tppred3/tppred3.py
+ENV PATH=/opt/tppred3:$PATH
+
+# GSPA sidecar
+COPY benchmark/neural/run_region_predictors.py /opt/gspa/run_region_predictors.py
+ENV PATH=/opt/gspa:$PATH
+
+RUN python3 -c "import metapredict, torch; print('region-stack ok')"
+
+WORKDIR /work

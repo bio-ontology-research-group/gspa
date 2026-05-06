@@ -1,0 +1,41 @@
+# GSPA structure-based predictor stack:
+#   - ScanNet (Apache-2.0) — PPI interface residues from PDB/CIF
+#   - ESMFold (MIT, fair-esm) — for STRUCTURE_PROVIDER esmfold mode
+#   - Bio.PDB for AFDB lookup mode
+#
+# Build:
+#   docker build -f gspa-nf/docker/Dockerfile.struct-stack \
+#     -t leechuck/gspa-struct-stack:0.1 .
+
+FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn9-runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install \
+    fair-esm \
+    biopython \
+    biotite \
+    numpy>=1.24,<2.0 \
+    scipy \
+    pandas \
+    tqdm \
+    h5py \
+    networkx
+
+# ScanNet — clone the upstream repo (Apache-2.0)
+RUN git clone --depth 1 https://github.com/jertubiana/ScanNet /opt/ScanNet
+ENV SCANNET_DIR=/opt/ScanNet
+
+# Sidecar
+COPY benchmark/neural/run_site_predictors.py /opt/gspa/run_site_predictors.py
+ENV PATH=/opt/gspa:$PATH
+
+RUN python3 -c "import esm, Bio.PDB; print('struct-stack ok')"
+
+WORKDIR /work

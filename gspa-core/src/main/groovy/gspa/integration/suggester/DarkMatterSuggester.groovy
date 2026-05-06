@@ -1,5 +1,6 @@
 package gspa.integration.suggester
 
+import gspa.integration.GapKey
 import gspa.integration.IntegratedAnnotationSet
 import gspa.integration.IntegrationState
 import gspa.integration.MetabolicGap
@@ -83,6 +84,35 @@ class DarkMatterSuggester {
     double minFreeProbability = 1.0e-4d
 
     // ------------------------------------------------------------------
+    // Phase 10.1 refined-BF hyperparameters (opt-in)
+    // ------------------------------------------------------------------
+
+    /**
+     * Toggle between the original BF (soft-count × log γ, counts paralogs
+     * multiply) and the refined BF (Noisy-OR diversity + IC-weighted
+     * matches + purity penalty). Refined is off by default to keep
+     * existing tests stable; the CLI / benchmark driver flips it on.
+     */
+    boolean useRefinedBayesFactor = false
+
+    /** Floor on the per-function base rate π₀(f) used in IC-weighting. */
+    double minBaseRate = 1.0e-4d
+
+    /** Floor on operon pathway purity to prevent log(0). */
+    double minPurity = 0.01d
+
+    /**
+     * Weight applied to the purity-penalty term
+     * {@code λ · log(inWeight / totalWeight)}. 1.0 = full log-likelihood
+     * ratio; 0 = ignore purity. Larger values penalize ambiguous
+     * operons more strongly.
+     */
+    double purityWeight = 1.0d
+
+    /** Annotation weight below this is ignored in purity accounting. */
+    double purityMinAnnotationWeight = 0.1d
+
+    // ------------------------------------------------------------------
     // Main entry point
     // ------------------------------------------------------------------
 
@@ -128,9 +158,25 @@ class DarkMatterSuggester {
             }
         }
 
+        // Phase 10.1: per-function base rate π₀(f). Computed once per
+        // suggest() call from current-state posteriors. Used by refined
+        // Bayes factor to weight rare pathway functions more strongly.
+        Map<String, Double> baseRates = useRefinedBayesFactor
+            ? computeBaseRates(state)
+            : Collections.<String, Double>emptyMap()
+
         int emitted = 0
+        int skippedClosed = 0
         for (MetabolicGap gap : state.metabolicGaps) {
             if (!gap.goTerm) continue                       // no target function → nothing to assign
+
+            // Skip gaps already closed by a prior outer-loop iteration's
+            // DarkMatter promotion. Preserves the "closed stays closed"
+            // invariant that makes the Phase 10 outer loop terminate
+            // (plan §1). GapKey identity is (pathwayId, reactionId) only,
+            // goTerm is informational and not compared.
+            GapKey gk = new GapKey(pathwayId: gap.pathwayId, reactionId: gap.reactionId, goTerm: gap.goTerm)
+            if (state.isGapClosed(gk)) { skippedClosed++; continue }
 
             // Find pathways whose required-term set contains the gap's target GO.
             // The gap's own pathwayId is MetaCyc (from gapseq), but the pathway DB
@@ -152,7 +198,9 @@ class DarkMatterSuggester {
                 if (operon == null || operon.size() < 1) continue
 
                 // Layer 1: Bayes factor for this operon / pathway.
-                double bf = computeBayesFactor(operon, pfTerms, state)
+                double bf = useRefinedBayesFactor
+                    ? computeRefinedBayesFactor(operon, pfTerms, state, baseRates)
+                    : computeBayesFactor(operon, pfTerms, state)
                 if (bf < bfMin) continue
 
                 // Layer 2: per-protein L_R decomposition.
@@ -181,7 +229,7 @@ class DarkMatterSuggester {
             }
         }
 
-        log.info("DarkMatterSuggester: emitted ${emitted} suggestions over ${state.metabolicGaps.size()} gaps, ${state.operons.size()} operons")
+        log.info("DarkMatterSuggester: emitted ${emitted} suggestions over ${state.metabolicGaps.size()} gaps (${skippedClosed} skipped as already-closed), ${state.operons.size()} operons")
         integrated
     }
 
@@ -347,6 +395,115 @@ class DarkMatterSuggester {
             proteinScores: allDecomposed,
             provenance: "gap=${gap.pathwayId}/${gap.reactionId}, operon=${operonId}, BF=${String.format(Locale.ROOT, '%.2f', bf)}, k=${(int) k}, coverage=${String.format(Locale.ROOT, '%.2f', cumulative)}".toString(),
         )
+    }
+
+    // ------------------------------------------------------------------
+    // Phase 10.1 refined Bayes factor: Noisy-OR diversity +
+    // IC-weighted pathway matches + purity penalty for off-pathway
+    // strong annotations.
+    // ------------------------------------------------------------------
+
+    /**
+     * Compute per-function base rate {@code π₀(f)} from the current
+     * integration state: fraction of proteins in the genome with
+     * posterior > 0.5 for each GO term. Floor by {@link #minBaseRate}
+     * to prevent {@code log(γ/0)} blowup.
+     *
+     * Called once per {@link #suggest} invocation.
+     */
+    private Map<String, Double> computeBaseRates(IntegrationState state) {
+        int nProteins = state.genome?.proteinCount ?: 0
+        if (nProteins <= 0) {
+            // Fall back to counting distinct protein IDs in the posterior map.
+            Set<String> ids = new HashSet<>()
+            for (String key : state.posteriorLogOdds.keySet()) {
+                String[] parts = IntegrationState.splitFunctionKey(key)
+                if (parts != null) ids.add(parts[0])
+            }
+            nProteins = ids.size()
+        }
+        if (nProteins <= 0) return Collections.emptyMap()
+        Map<String, Integer> hits = new HashMap<>()
+        for (Map.Entry<String, Double> e : state.posteriorLogOdds.entrySet()) {
+            if (sigmoid(e.value) <= 0.5d) continue
+            String[] parts = IntegrationState.splitFunctionKey(e.key)
+            if (parts == null || parts[1] != 'GO') continue
+            hits.merge(parts[2], 1, Integer::sum)
+        }
+        Map<String, Double> out = new HashMap<>()
+        double invN = 1.0d / nProteins
+        for (Map.Entry<String, Integer> e : hits.entrySet()) {
+            double rate = Math.max(minBaseRate, e.value.intValue() * invN)
+            out[e.key] = rate
+        }
+        out
+    }
+
+    /**
+     * Refined BF(O, P) combining three effects the original sum-of-soft-counts
+     * BF misses:
+     * <ol>
+     *   <li><b>Diversity</b> via Noisy-OR aggregation over operon members per
+     *       pathway function. {@code P_hit(O, f) = 1 − ∏_{p ∈ O}(1 − π(p,f))}.
+     *       Four paralogs all hitting the same GO term no longer count as
+     *       four independent pieces of evidence.</li>
+     *   <li><b>IC-weighting</b> by per-function base rate. Rare pathway
+     *       functions (e.g., committed biosynthetic steps) contribute more
+     *       than common ones (e.g., generic "catalytic activity"). Weight is
+     *       {@code log(γ / π₀(f))}.</li>
+     *   <li><b>Purity penalty</b> — log-ratio of in-pathway annotation
+     *       weight to total annotation weight. Operons whose strong
+     *       annotations are mostly off-pathway score lower.</li>
+     * </ol>
+     */
+    private double computeRefinedBayesFactor(
+            List<String> operon,
+            Set<String> pfTerms,
+            IntegrationState state,
+            Map<String, Double> baseRates) {
+
+        // 1. Positive term: per-pathway-function Noisy-OR hit × IC weight.
+        double logBf = 0.0d
+        double logGamma = Math.log(gammaInP)
+        for (String f : pfTerms) {
+            double oneMinusHit = 1.0d
+            for (String pid : operon) {
+                String key = "${pid}|GO|${f}".toString()
+                Double lo = state.posteriorLogOdds[key]
+                if (lo == null) continue
+                double p = sigmoid(lo)
+                if (p <= 0.0d) continue
+                oneMinusHit *= (1.0d - p)
+            }
+            double pHit = 1.0d - oneMinusHit
+            if (pHit < 1e-9) continue
+            double pi0 = baseRates.getOrDefault(f, minBaseRate)
+            if (pi0 < minBaseRate) pi0 = minBaseRate
+            // log(γ / π₀). Contribution is P_hit × that.
+            logBf += pHit * (logGamma - Math.log(pi0))
+        }
+
+        // 2. Purity penalty: log fraction of operon's strong-annotation
+        //    weight that falls in functions(P). Operons with lots of
+        //    off-pathway strong evidence pay a log-probability penalty.
+        double inWeight = 0.0d
+        double totalWeight = 0.0d
+        for (String pid : operon) {
+            for (String key : state.functionKeysForProtein(pid)) {
+                String[] parts = IntegrationState.splitFunctionKey(key)
+                if (parts == null || parts[1] != 'GO') continue
+                double w = sigmoid(state.posteriorLogOdds.getOrDefault(key, 0.0d))
+                if (w < purityMinAnnotationWeight) continue
+                totalWeight += w
+                if (pfTerms.contains(parts[2])) inWeight += w
+            }
+        }
+        if (totalWeight > 1e-9) {
+            double purity = Math.max(minPurity, inWeight / totalWeight)
+            logBf += purityWeight * Math.log(purity)
+        }
+
+        Math.exp(logBf)
     }
 
     private static double sigmoid(double x) {

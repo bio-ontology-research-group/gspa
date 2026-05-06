@@ -1,5 +1,6 @@
 package gspa.predictor.localization
 
+import gspa.integration.EvidenceType
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
@@ -50,16 +51,16 @@ class DeepTmhmmPredictor extends AbstractToolPredictor {
             // lines[i+1] = sequence
             String topology = lines[i + 2]  // topology string: i=inside, o=outside, M=membrane, S=signal
 
-            int tmCount = countTransmembraneHelices(topology)
+            def helices = transmembraneHelixRegions(topology)
 
-            if (tmCount > 0) {
+            if (!helices.isEmpty()) {
                 results[proteinId] << new Annotation(
                     type: AnnotationType.TRANSMEMBRANE,
-                    value: "${tmCount} TM helices",
+                    value: "${helices.size()} TM helices",
                     source: name,
                     score: 0.9,
                     metadata: [
-                        tmHelixCount: tmCount,
+                        tmHelixCount: helices.size(),
                         topology: topology,
                     ]
                 )
@@ -70,22 +71,47 @@ class DeepTmhmmPredictor extends AbstractToolPredictor {
                     source: name,
                     score: 0.9,
                 )
+
+                // One region annotation per helix (1-based inclusive residue
+                // indices read straight off the topology string).
+                helices.each { int[] span ->
+                    results[proteinId] << new Annotation(
+                        type: AnnotationType.TRANSMEMBRANE,
+                        value: 'tm_helix',
+                        source: name,
+                        score: 0.9,
+                        evidenceType: EvidenceType.SEQUENCE_REGION_ML,
+                        regionStart: span[0],
+                        regionEnd: span[1],
+                        regionType: 'tm_helix',
+                    )
+                }
             }
         }
         results
     }
 
-    private static int countTransmembraneHelices(String topology) {
-        int count = 0
-        boolean inTM = false
-        topology.each { ch ->
-            if (ch == 'M' && !inTM) {
-                count++
-                inTM = true
-            } else if (ch != 'M') {
-                inTM = false
+    /**
+     * Walk the topology string and collect contiguous runs of {@code 'M'}
+     * as 1-based inclusive (start, end) residue spans.
+     */
+    private static List<int[]> transmembraneHelixRegions(String topology) {
+        List<int[]> out = []
+        int start = -1
+        for (int i = 0; i < topology.length(); i++) {
+            char ch = topology.charAt(i)
+            if (ch == (char) 'M') {
+                if (start < 0) start = i
+            } else if (start >= 0) {
+                int[] span = [start + 1, i] as int[]
+                out.add(span)
+                start = -1
             }
         }
-        count
+        if (start >= 0) {
+            int[] span = [start + 1, topology.length()] as int[]
+            out.add(span)
+        }
+        out
     }
 }
