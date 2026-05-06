@@ -18,22 +18,22 @@ The previous Phase 11 (FM-based operon) work is parked on the
 - [x] **B2** Wire into `gspa-nf/main.nf` workflow (guarded by `params.run_integrate`)
 - [x] **B3** Add params to `gspa-nf/nextflow.config`
 - [ ] **B4** (deferred) Add GO OWL / ec2go / pathways placeholders to `gspa-nf/databases.config` — params already added to `nextflow.config`; databases.config update can ride with the first real cluster run
-- [ ] **B5** (cluster handoff) Smoke test on M. genitalium via `nextflow run … --run_integrate` (requires +17 GB ref data + Docker; lint pass via `nextflow inspect` confirmed)
+- [x] **B5** (logical smoke) New jar runs `gspa integrate` on bench9 mgenitalium claims → 4,228 integrated annotations. INTEGRATE process body validated. Full Nextflow Docker smoke deferred (lint pass via `nextflow inspect` already confirmed wiring; dev host has no Docker daemon)
 - [x] **B6** Document new flag in `gspa-nf/README.md`
 
 ## Phase C — Phase 10 retune (parallel to B)
 
-- [ ] **C1** Run real gapseq on the 10 PGAP genomes (SLURM array on unimatrix01)
-- [ ] **C2** Re-run integrate at qBase ∈ {0.50, 0.70, 0.75}
-- [ ] **C3** Score with `benchmark/benchmark_pgap_v2.py` (200-bootstrap micro + CAFA)
+- [x] **C1** Real gapseq output **already on cluster** (4 of 10 genomes have `*_real.jsonl`; remaining 6 fall back to synthetic 400-gap `*_gaps.jsonl` per the documented zero-byte Reactions.tbl mitigation)
+- [~] **C2** Running on unimatrix01 SLURM job 4069 — `phase10_retune.sh` integrates each genome at qBase ∈ {0.50, 0.70, 0.75} plus C1 baseline = 40 integrations
+- [~] **C3** Same job scores each (config, tag) with `benchmark_pgap_v2.py` (200 bootstrap, micro + CAFA)
 - [ ] **C4** Decide Phase 10 default (default-on iff Δ ≥ 0 with no genome regressing > 0.01)
 - [ ] **C5** Update `benchmark/RESULTS.md` Phase 10 section with the verdict
 
 ## Phase D — mdF comparison
 
-- [ ] **D1** Install metagenomic-deepFRI (BSD-3, Tomasz-Lab/metagenomic-deepFRI v1.1.8)
-- [ ] **D2** Choose comparison panel (13-genome PGAP)
-- [ ] **D3** Run mdF on the 13 panel genomes
+- [~] **D1** Installing `mDeepFRI` from PyPI into `/data/hohndor/envs/mdf-venv` on unimatrix01 (first attempt stuck on metadata for 13 min, killed; retrying with `--no-cache-dir`)
+- [x] **D2** 13-genome PGAP panel: bench9 (9 genomes) + bench10 (10 PGAP genomes) minus duplicates = 13 unique. FAA files confirmed under `/data/hohndor/gspa/proteomes/{tag}.faa` (bench9) and `/data/hohndor/gspa/proteomes/bench10/{tag}.faa` (bench10)
+- [ ] **D3** Run mdF on the 13 panel genomes (gated on D1)
 - [ ] **D4** Adapter `benchmark/parse_mdf_predictions.py` (with `--self-test`)
 - [ ] **D5** Compute F-max micro + CAFA with bootstrap CIs
 - [ ] **D6** (Optional) Ensemble: GSPA + mdF substituting for DeepFRI
