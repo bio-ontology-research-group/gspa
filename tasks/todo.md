@@ -1,74 +1,56 @@
-# Todo: FM operon understanding (gspa)
+# Todo: GSPA v1.5.0 release
 
 Companion checklist for `tasks/plan.md`. Strike tasks as they complete.
 
-## Phase 1 — gLM operon caller proven on real data
+The previous Phase 11 (FM-based operon) work is parked on the
+`parking/phase11-glm` branch (NO-GO verdict, 2026-05-05).
 
-- [x] **1.A** Sidecar scaffold + Groovy wrapper (landed in branch `phase11-crossgenome`)
-- [x] **1.B** Pixi env + gLM/ESM2 weights on `/mnt/data/u/hohndor/` (ORIX)
-- [x] **1.C** `real_run()` implemented (gLM v8473041, ESM2-650M, shipped operon LogReg)
-- [x] **1.D** B. subtilis sanity (4240 → 1010 ops, mean size 2.83, conf 0.846)
-- [x] **1.E** `--operon-caller {heuristic,glm}` switch in `run_integrate_full_priors.sh` (also `--dry-run`, env-var overrides, optional conda; tests under `benchmark/test/`)
-- [x] **1.F** 8 of 13 benchmark genomes through the array sbatch on ORIX (5 dropped: synechocystis WP_* mapping empty; saureus / vcholerae / tpallidum / rprowazekii lack claims.jsonl on unimatrix01 — see `benchmark/glm/phase1/RESULTS.md` §Methodology)
-- [x] **1.G** F-max + claims-fired delta report → `benchmark/glm/phase1/RESULTS.md`
+## Phase A — Triage and yank
 
-### CHECKPOINT 1 — phase-1 go/no-go: **NO-GO** (2026-05-05)
+- [x] **A1** `./gradlew clean test` exits 0 (verified 2026-05-06: 338 tests, 0 failures)
+- [x] **A2** Park Phase 11 to `parking/phase11-glm`; remove gLM files; remove `--operon-caller` switch
+- [ ] **A3** Fix CLI version drift (build.gradle.kts → 1.5.0-SNAPSHOT, GspaMain.groovy sync)
+- [ ] **A4** Add GPL-3.0-or-later `LICENSE` at repo root; update `README.md` license section
 
-- [x] `./gradlew test` green
-- [x] 8 of the canonical 13 genomes integrated in both modes
-- [x] Mean micro F-max Δ = **+0.0002** — fails threshold (+0.005)
-- [x] Worst-genome Δ = **−0.0002** — passes floor (−0.01)
-- [x] User sign-off: pending
+## Phase B — gspa-nf integrator parity
 
-→ **NO-GO. Phase 2 and phase 3 not started.**
+- [ ] **B1** New `gspa-nf/modules/integrate.nf` with `BUILD_CLAIMS` + `INTEGRATE` processes
+- [ ] **B2** Wire into `gspa-nf/main.nf` workflow (guarded by `params.run_integrate`)
+- [ ] **B3** Add params to `gspa-nf/nextflow.config`
+- [ ] **B4** Update `gspa-nf/databases.config` with GO OWL / ec2go / pathways placeholders
+- [ ] **B5** Smoke test on M. genitalium via `nextflow run … --run_integrate`
+- [ ] **B6** Document new flag in `gspa-nf/README.md` and `gspa-nf/UNIMATRIX01.md`
 
-## Phase 2 — GENOMIC_CONTEXT_FM evidence type (gated on Checkpoint 1)
+## Phase C — Phase 10 retune (parallel to B)
 
-- [ ] **2.A** `benchmark/glm/phase2/build_glm_centroids.py` — gLM contextualized centroid catalog from the 500-genome KAUST panel (leakage-checked vs. 13-genome benchmark + EQ MAGs)
-- [ ] **2.B** `--predictor glm-centroid` mode in `run_neural_predictors.py`
-- [ ] **2.C** Wire as `GENOMIC_LANGUAGE_MODEL` claims via `02b_parse_predictors_to_claims.py`
-- [ ] **2.D** Default Platt calibration registered + B. subtilis end-to-end check
-- [ ] **2.E** 13-genome ablation, all-protein and dark-matter slice
-- [ ] **2.F** Phase-2 closeout report + go/no-go on phase 3
+- [ ] **C1** Run real gapseq on the 10 PGAP genomes (SLURM array on unimatrix01)
+- [ ] **C2** Re-run integrate at qBase ∈ {0.50, 0.70, 0.75}
+- [ ] **C3** Score with `benchmark/benchmark_pgap_v2.py` (200-bootstrap micro + CAFA)
+- [ ] **C4** Decide Phase 10 default (default-on iff Δ ≥ 0 with no genome regressing > 0.01)
+- [ ] **C5** Update `benchmark/RESULTS.md` Phase 10 section with the verdict
 
-### CHECKPOINT 2 — phase-2 go/no-go
+## Phase D — mdF comparison
 
-- [ ] `./gradlew test` green
-- [ ] Dark-matter F-max Δ ≥ +0.01
-- [ ] All-protein F-max Δ ≥ 0
-- [ ] User sign-off
+- [ ] **D1** Install metagenomic-deepFRI (BSD-3, Tomasz-Lab/metagenomic-deepFRI v1.1.8)
+- [ ] **D2** Choose comparison panel (13-genome PGAP)
+- [ ] **D3** Run mdF on the 13 panel genomes
+- [ ] **D4** Adapter `benchmark/parse_mdf_predictions.py` (with `--self-test`)
+- [ ] **D5** Compute F-max micro + CAFA with bootstrap CIs
+- [ ] **D6** (Optional) Ensemble: GSPA + mdF substituting for DeepFRI
+- [ ] **D7** Add "v1.5.0 — comparison with metagenomic-deepFRI" section to `RESULTS.md`
+- [ ] **D8** Cite Bezshapkin et al. 2026 in `README.md`
 
-→ GO: phase 3. NO-GO: keep phase 2 as permanent, drop phase 3, stop.
+## Phase E — CHANGELOG and CI
 
-## Phase 3 — `BF(O, P)` augmentation (gated on Checkpoint 2)
+- [ ] **E1** Compile `CHANGELOG.md` from `benchmark/RESULTS.md` history + v1.5.0 entry
+- [ ] **E2** Add `.github/workflows/test.yml` (JDK 21, Gradle cache)
+- [ ] **E3** (Optional) `.github/workflows/release.yml` (build shadowJar on tag, attach to release)
+- [ ] **E4** (Optional) `.github/workflows/docker.yml` (push `leechuck/gspa:1.5.0`)
 
-- [ ] **3.A** `benchmark/glm/phase3/build_pathway_operon_corpus.py` — known-pathway operon centroids (MetaCyc-curated)
-- [ ] **3.B** Plumb corpus into `IntegrationState` and `DarkMatterSuggester`
-- [ ] **3.C** Augment `computeRefinedBayesFactor` with embedding-distance term (opt-in flag)
-- [ ] **3.D** Dark-matter ablation on 5 gapseq genomes (precision/recall delta)
-- [ ] **3.E** Phase-3 closeout (sensitivity sweep, default flag recommendation)
+## Phase F — Merge and tag
 
-### CHECKPOINT 3 — phase-3 closeout
-
-- [ ] `./gradlew test` green
-- [ ] Dark-matter precision Δ ≥ 0 on 5 gapseq genomes
-- [ ] Default flag decision recorded in `RESULTS.md`
-- [ ] User sign-off
-
-## Resolved decisions (2026-05-05)
-
-- [x] Gating bars accepted as written for now (revisit if numbers are ambiguous).
-- [x] **Catalog reference for 2.A**: 500-genome KAUST panel.
-- [x] **Branch + folder layout**: stay on `phase11-crossgenome`; phase-2 work under `benchmark/glm/phase2/`, phase-3 work under `benchmark/glm/phase3/`. ORIX outputs under `/mnt/data/u/hohndor/gspa-glm/phase{1,2,3}/`.
-
-## Still open (do not block — decide when they arise)
-
-- [ ] Stratify glm-centroid calibration by GO aspect (BP / MF / CC) — decide in 2.D from raw-score distribution.
-- [ ] Track gLM2 (TattaBio) as an upgrade path — revisit before 3.E.
-
-## Out of scope for this plan
-
-- Fine-tuning gLM on KAUST data
-- Migrating to gLM2 (mixed-modality)
-- Empty-Quarter MAGs run (consumer of phase 2 / phase 3 output, not part of the gating)
-- Methods paper write-up (separate workstream once phases land)
+- [ ] **F1** Pre-merge check: clean test green, shadowJar builds, smoke test passes, RESULTS.md updated
+- [ ] **F2** Bump `1.5.0-SNAPSHOT` → `1.5.0`
+- [ ] **F3** Open PR `phase11-crossgenome → main`
+- [ ] **F4** Tag `v1.5.0` on `main` (annotated)
+- [ ] **F5** Branch hygiene (delete `phase11-crossgenome`; preserve `parking/phase11-glm`)
