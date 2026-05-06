@@ -15,6 +15,14 @@ dependencies {
     runtimeOnly("ch.qos.logback:logback-classic:${property("logbackVersion")}")
 }
 
+tasks.named<ProcessResources>("processResources") {
+    val v = project.version.toString()
+    inputs.property("version", v)
+    filesMatching("version.properties") {
+        filter(org.apache.tools.ant.filters.ReplaceTokens::class, "tokens" to mapOf("version" to v))
+    }
+}
+
 tasks.named<JavaExec>("run") {
     standardInput = System.`in`
 }

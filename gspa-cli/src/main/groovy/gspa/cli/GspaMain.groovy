@@ -15,7 +15,7 @@ import picocli.CommandLine.Command
 @Command(
     name = 'gspa',
     description = 'Genome-Scale Protein Annotation pipeline',
-    version = 'gspa 0.1.0-SNAPSHOT',
+    versionProvider = VersionProvider,
     mixinStandardHelpOptions = true,
     subcommands = [
         AnnotateCommand,
