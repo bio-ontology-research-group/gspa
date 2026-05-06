@@ -7,19 +7,19 @@ The previous Phase 11 (FM-based operon) work is parked on the
 
 ## Phase A — Triage and yank
 
-- [x] **A1** `./gradlew clean test` exits 0 (verified 2026-05-06: 338 tests, 0 failures)
+- [x] **A1** `./gradlew clean test` exits 0 (verified 2026-05-06: 335 tests, 0 failures post-yank)
 - [x] **A2** Park Phase 11 to `parking/phase11-glm`; remove gLM files; remove `--operon-caller` switch
-- [ ] **A3** Fix CLI version drift (build.gradle.kts → 1.5.0-SNAPSHOT, GspaMain.groovy sync)
-- [ ] **A4** Add GPL-3.0-or-later `LICENSE` at repo root; update `README.md` license section
+- [x] **A3** Fix CLI version drift via `VersionProvider` (build.gradle.kts → 1.5.0-SNAPSHOT, picocli reads from generated `version.properties`)
+- [x] **A4** Add GPL-3.0-or-later `LICENSE` at repo root; update `README.md` license section
 
 ## Phase B — gspa-nf integrator parity
 
-- [ ] **B1** New `gspa-nf/modules/integrate.nf` with `BUILD_CLAIMS` + `INTEGRATE` processes
-- [ ] **B2** Wire into `gspa-nf/main.nf` workflow (guarded by `params.run_integrate`)
-- [ ] **B3** Add params to `gspa-nf/nextflow.config`
-- [ ] **B4** Update `gspa-nf/databases.config` with GO OWL / ec2go / pathways placeholders
-- [ ] **B5** Smoke test on M. genitalium via `nextflow run … --run_integrate`
-- [ ] **B6** Document new flag in `gspa-nf/README.md` and `gspa-nf/UNIMATRIX01.md`
+- [x] **B1** New `gspa-nf/modules/integrate.nf` with `BUILD_CLAIMS` + `INTEGRATE` processes
+- [x] **B2** Wire into `gspa-nf/main.nf` workflow (guarded by `params.run_integrate`)
+- [x] **B3** Add params to `gspa-nf/nextflow.config`
+- [ ] **B4** (deferred) Add GO OWL / ec2go / pathways placeholders to `gspa-nf/databases.config` — params already added to `nextflow.config`; databases.config update can ride with the first real cluster run
+- [ ] **B5** (cluster handoff) Smoke test on M. genitalium via `nextflow run … --run_integrate` (requires +17 GB ref data + Docker; lint pass via `nextflow inspect` confirmed)
+- [x] **B6** Document new flag in `gspa-nf/README.md`
 
 ## Phase C — Phase 10 retune (parallel to B)
 
@@ -42,10 +42,10 @@ The previous Phase 11 (FM-based operon) work is parked on the
 
 ## Phase E — CHANGELOG and CI
 
-- [ ] **E1** Compile `CHANGELOG.md` from `benchmark/RESULTS.md` history + v1.5.0 entry
-- [ ] **E2** Add `.github/workflows/test.yml` (JDK 21, Gradle cache)
-- [ ] **E3** (Optional) `.github/workflows/release.yml` (build shadowJar on tag, attach to release)
-- [ ] **E4** (Optional) `.github/workflows/docker.yml` (push `leechuck/gspa:1.5.0`)
+- [x] **E1** `CHANGELOG.md` compiled (Keep-a-Changelog, [Unreleased] entry + v1.0.0 → v1.4.1 history)
+- [x] **E2** `.github/workflows/test.yml` (JDK 21, Gradle cache, version smoke)
+- [ ] **E3** (Optional, deferred) `.github/workflows/release.yml`
+- [ ] **E4** (Optional, deferred) `.github/workflows/docker.yml`
 
 ## Phase F — Merge and tag
 
