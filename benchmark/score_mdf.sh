@@ -17,8 +17,9 @@ truth_for() {
       /data/hohndor/gspa/proteomes/bench9/${tag}_truth_all.tsv \
       /data/hohndor/gspa/proteomes/bench9/truth_dual/${tag}_truth_all.tsv \
       /data/hohndor/gspa/proteomes/bench9/truth/${tag}_truth_all.tsv; do
-    if [ -s "$cand" ]; then echo "$cand"; return; fi
+    if [ -s "$cand" ]; then echo "$cand"; return 0; fi
   done
+  return 0
 }
 
 mkdir -p ${RUN}/scoring
