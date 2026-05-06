@@ -14,9 +14,9 @@ truth_for() {
   local tag=$1
   for cand in \
       /data/hohndor/gspa/proteomes/bench10/truth/${tag}_truth_all.tsv \
-      /data/hohndor/gspa/proteomes/bench9/${tag}_truth_all.tsv \
-      /data/hohndor/gspa/proteomes/bench9/truth_dual/${tag}_truth_all.tsv \
-      /data/hohndor/gspa/proteomes/bench9/truth/${tag}_truth_all.tsv; do
+      /data/hohndor/gspa/proteomes/truth_dual/${tag}_truth_all.tsv \
+      /data/hohndor/gspa/proteomes/truth/${tag}_truth.tsv \
+      /data/hohndor/gspa/proteomes/bench_gtdb30/truth/${tag}_truth_all.tsv; do
     if [ -s "$cand" ]; then echo "$cand"; return 0; fi
   done
   return 0
