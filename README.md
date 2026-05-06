@@ -316,6 +316,19 @@ DeepEC) are invoked via Python subprocess sidecars without static or
 dynamic linking; AGPL §13 also grants explicit GPLv3 combination
 compatibility.
 
+## Related work
+
+[metagenomic-deepFRI](https://github.com/Tomasz-Lab/metagenomic-deepFRI)
+(Bezshapkin et al., bioRxiv 2026-04-29) is a structure-informed GO
+predictor that scales DeepFRI to metagenomic datasets via FoldComp
+database retrieval. It is *complementary* to GSPA: a single
+structural-evidence channel that GSPA's Bayesian integrator can
+consume alongside DIAMOND, Pfam, InterProScan, and the existing
+DeepFRI / FoldSeek wrappers. v1.5.0 ships a head-to-head comparison
+on the 13-genome PGAP panel (`benchmark/RESULTS.md` "v1.5.0 —
+comparison with metagenomic-deepFRI"); native `MdFPredictor.groovy`
+integration is a v1.6 task.
+
 ## Citation
 
 Paper in preparation. If you use GSPA, please cite this repository

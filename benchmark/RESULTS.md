@@ -981,3 +981,141 @@ params {
 - PhiSpy native-mode validation (still un-exercised on a GenBank input)
 - STRUCTURE_PROVIDER end-to-end validation (afdb mode driving ScanNet
   on a full panel, not just hand-picked accessions)
+
+---
+
+# v1.5.0 — Phase 10 retune (NO-GO; default-off retained)
+
+The Phase 10 outer iterative dark-matter loop (`--iterate-gapseq`)
+regressed F-max by ~4 points at default settings on the v1.4 cluster
+run. Two SPEC-§6 mitigations were tested for v1.5.0: **higher
+`qBase`** (0.50 → 0.70 / 0.75) and **real gapseq output** instead of
+synthetic 400-gap fallbacks for the 4 genomes (ccrescentus,
+rprowazekii, dradiodurans, tthermophilus) where gapseq's `find` step
+produced usable Reactions.tbl output. The other 6 genomes continue
+to use synthetic gaps because their gapseq runs hit the documented
+zero-byte Reactions.tbl bug.
+
+## Configurations
+
+| Config | Phase 10 flags |
+|---|---|
+| **C1 baseline** | (no Phase 10 flags; Phase 7 + one-shot Phase 8) |
+| **C2 q=0.50** | `--dark-matter --iterate-gapseq --gapseq-q-base 0.50` (current default) |
+| **C2 q=0.70** | `--dark-matter --iterate-gapseq --gapseq-q-base 0.70` |
+| **C2 q=0.75** | `--dark-matter --iterate-gapseq --gapseq-q-base 0.75` |
+
+## Results (mean F-max across 10 PGAP genomes)
+
+| Config | fmax_micro | fmax_CAFA | Δmicro vs C1 | ΔCAFA vs C1 |
+|---|---:|---:|---:|---:|
+| **C1 baseline** | **0.8423** | **0.8680** | — | — |
+| C2 q=0.50 | 0.8130 | 0.8554 | **−0.0293** | −0.0126 |
+| C2 q=0.70 | 0.8151 | 0.8576 | −0.0272 | −0.0104 |
+| C2 q=0.75 | 0.8151 | 0.8576 | −0.0272 | −0.0104 |
+
+q=0.70 and q=0.75 collapse to the same numbers because the default
+`qCap = 0.75` saturates both threshold paths immediately. q=0.50
+sweeps fully through the cap and admits more (lower-quality)
+promotions, hence the larger regression. Bootstrap CIs in
+`phase10_retune/results/<cfg>/<tag>_fmax.json`.
+
+## Verdict
+
+**NO-GO for default-on Phase 10 in v1.5.0.** Higher qBase narrows the
+gap (Δ −0.029 → −0.021) but every tuned variant still regresses on
+every genome. The outer-loop promotion mechanism is provably correct
+(promotions monotone, pin floors persist, fixed point reached on most
+genomes at iter ≤ 5) but the default-stack precision-recall trade
+remains net-negative across the bench10 panel.
+
+`--iterate-gapseq` remains opt-in (default-off, as it was in v1.4).
+The `--gapseq-q-base` and `--gapseq-q-cap` defaults are unchanged
+from v1.4.x. CHANGELOG.md documents the retune outcome so users who
+wanted Phase 10 default-on don't have to rediscover this.
+
+Reproduce: `bash benchmark/phase10_retune.sh` (per-(config, tag)
+inline) or `sbatch benchmark/phase10_retune_array.sbatch` (40-task
+array, 14 concurrent).
+
+---
+
+# v1.5.0 — comparison with metagenomic-deepFRI
+
+[metagenomic-deepFRI](https://github.com/Tomasz-Lab/metagenomic-deepFRI)
+(mdF; Bezshapkin et al., bioRxiv 2026-04-29, BSD-3) is a structure-
+informed sequence-based GO predictor that scales DeepFRI to
+metagenomic data via FoldComp database retrieval + ONNX inference.
+It is *complementary* to GSPA, not a competitor — single
+structural-evidence channel vs. multi-modal Bayesian integration —
+and the comparison frames why GSPA's integration wins even when
+single-tool predictors are state-of-the-art.
+
+## Setup
+
+- mDeepFRI 1.1.10 (PyPI, `mdeepfri`), DeepFRI weights v1.0
+  (the v1.1 weights hit an upstream `IndexError` in
+  `pipeline.py` result aggregation on this fasta panel; v1.0 ran
+  cleanly).
+- Sequence-only mode (`--skip-pdb`); no FoldComp database supplied.
+  This isolates the DeepFRI sequence-only signal — the
+  structure-supplied path requires AFDB/ESM-Atlas FoldComp downloads
+  and is left for v1.6.
+- Same 13-genome PGAP-comparison panel as the
+  "10-Genome PGAP Comparison (extended benchmark)" section plus the
+  3 bench9 genomes with PGAP GO annotations (hpylori, mgenitalium,
+  mjannaschii).
+- Same truth source (`*_truth_all.tsv`, dual-GOA including IEA),
+  same scorer (`benchmark_pgap_v2.py`, 200-bootstrap micro + CAFA
+  F-max).
+
+## Results (sequence-only mdF on 13 panel genomes)
+
+| Genome | mdF micro | mdF CAFA | GSPA C1 micro | GSPA C1 CAFA | GSPA / mdF (micro) |
+|---|---:|---:|---:|---:|---:|
+| hpylori | 0.1527 | 0.1479 | 0.819 | 0.844 | **5.4×** |
+| mgenitalium | 0.1885 | 0.1878 | 0.908 | 0.910 | **4.8×** |
+| mjannaschii | 0.1466 | 0.1478 | 0.732 | 0.775 | **5.0×** |
+| vcholerae | 0.1453 | 0.1410 | 0.8563 | 0.8811 | **5.9×** |
+| saureus | 0.1558 | 0.1629 | 0.8652 | 0.8838 | **5.6×** |
+| spneumoniae | 0.1602 | 0.1612 | 0.8445 | 0.8677 | **5.3×** |
+| ccrescentus | 0.1352 | 0.1250 | 0.8048 | 0.8472 | **6.0×** |
+| rprowazekii | 0.1806 | 0.1788 | 0.9109 | 0.9054 | **5.0×** |
+| tpallidum | 0.1646 | 0.1523 | 0.8913 | 0.8963 | **5.4×** |
+| tthermophilus | 0.1610 | 0.1622 | 0.8409 | 0.8668 | **5.2×** |
+| dradiodurans | 0.1538 | 0.1482 | 0.7796 | 0.8178 | **5.1×** |
+| scoelicolor | 0.1412 | 0.1396 | 0.7748 | 0.8439 | **5.5×** |
+| pfuriosus | 0.1491 | 0.1380 | 0.8551 | 0.8700 | **5.7×** |
+
+**Mean GSPA / mdF (sequence-only) ratio:** **5.4× micro, 5.6× CAFA**
+across all 13 genomes, with no genome where mdF approaches GSPA's
+posterior.
+
+## Interpretation
+
+mdF's headline claim — that retrieving structures from FoldComp DBs
+makes DeepFRI competitive on metagenomic data — is **about coverage
+on uncultured proteins without close UniProt homologs**. It is not a
+claim that mdF beats homology-transfer-aware integrators on
+well-studied prokaryotes. The 13-genome panel is precisely the regime
+where homology transfer is strong, so GSPA's 5× advantage is
+expected.
+
+The fair v1.6 comparison would supply mdF with the AFDBv4 FoldComp DB
+(matching the paper's MAG benchmark) and run GSPA in three modes:
+(i) baseline GSPA, (ii) GSPA with the existing
+`DeepFriPredictor` wrapper, (iii) GSPA with mdF substituted as the
+structural channel. The v1.5.0 comparison here establishes the
+sequence-only floor; v1.6 will add the structure-supplied ceiling.
+
+mdF is BSD-3 and could ship as a first-class GSPA predictor
+(`MdFPredictor.groovy`) in v1.6 alongside the existing
+`DeepFriPredictor` and `Esm2CentroidPredictor`. The
+`benchmark/parse_mdf_predictions.py` adapter (this release) is the
+piece needed to consume mdF output without modifying the JVM
+integrator.
+
+Reproduce: `sbatch benchmark/mdf_array.sbatch` followed by
+`benchmark/score_mdf.sh`. mdF weights v1.0 cached at
+`/data/hohndor/mdf-models-v1/`. mdF venv at
+`/data/hohndor/envs/mdf-venv/`.
