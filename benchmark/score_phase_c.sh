@@ -30,8 +30,8 @@ for cfg in "${CONFIGS[@]}"; do
       > ${json} 2> ${res_dir}/${tag}_fmax.err || true
 
     log=${out_dir}/${tag}.log
-    outer_iters=$(grep -oE 'iter=[0-9]+' ${log} | head -1 | sed 's/iter=//')
-    promoted=$(grep -oE 'promoted_per_iter=\[[^]]*\]' ${log} | head -1)
+    outer_iters=$(grep -oE 'iter=[0-9]+' ${log} 2>/dev/null | head -1 | sed 's/iter=//' || true)
+    promoted=$(grep -oE 'promoted_per_iter=\[[^]]*\]' ${log} 2>/dev/null | head -1 || true)
     gap_src='none'
     [[ -s gaps/${tag}_real.jsonl ]] && gap_src='real' || { [[ -s gaps/${tag}_gaps.jsonl ]] && gap_src='synthetic'; }
 
