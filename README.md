@@ -306,8 +306,15 @@ Requires Java 21+ (Gradle wrapper included).
 
 ## License
 
-See `LICENSE` once added. Uses OWL API (LGPL), ELK (Apache), SAT4J
-(LGPL/EPL), picocli (Apache), Jackson (Apache), Spock (Apache).
+GSPA is licensed under the GNU General Public License, version 3 or
+later (GPL-3.0-or-later). See [`LICENSE`](LICENSE) for the full text.
+
+Dependencies: OWL API (LGPL), ELK (Apache-2.0), SAT4J (LGPL/EPL —
+LGPL leg used here), picocli (Apache-2.0), Jackson (Apache-2.0), Spock
+(Apache-2.0). All are GPLv3-compatible. AGPL-3.0 tools (currently
+DeepEC) are invoked via Python subprocess sidecars without static or
+dynamic linking; AGPL §13 also grants explicit GPLv3 combination
+compatibility.
 
 ## Citation
 
