@@ -150,17 +150,33 @@ def gold_pairs(cds, operons_tagged, tag2pid):
     return gold, in_known_op
 
 
-def candidate_pairs(cds, in_known_op):
-    """Adjacent same-contig same-strand pairs where BOTH genes appear in
-    at least one ODB4 known operon. Restricting candidates to known-op
-    members avoids penalising a caller for predicting co-operonic on a
-    pair ODB4 simply hasn't surveyed."""
+def candidate_pairs(cds, in_known_op, mode="all"):
+    """Adjacent same-contig same-strand pairs.
+
+    mode='all'        — every adjacent same-strand pair on the same contig.
+                        Standard eval. ODB4's incomplete coverage means
+                        some "negatives" are unsurveyed positives — this
+                        symmetrically affects ALL callers, not just the
+                        permissive ones.
+    mode='restricted' — both genes must appear in *some* ODB4 known
+                        operon. Heavily biased toward gold positives
+                        (92-99% positive rate in our genomes); produces
+                        inflated F1 for any permissive caller. The first
+                        version of this eval used this mode and the
+                        ~0.97 F1 numbers it produced are an artifact —
+                        they reflect the biased candidate sampling, not
+                        operon-detection skill. Reported here for
+                        transparency.
+    """
     cand = set()
     for i in range(len(cds) - 1):
         a, b = cds[i], cds[i + 1]
         if a[1] != b[1] or a[4] != b[4]:
             continue
-        if a[0] in in_known_op and b[0] in in_known_op:
+        if mode == "restricted":
+            if a[0] in in_known_op and b[0] in in_known_op:
+                cand.add(frozenset({a[0], b[0]}))
+        else:
             cand.add(frozenset({a[0], b[0]}))
     return cand
 
@@ -188,20 +204,22 @@ def prf(pred, gold, candidates):
     return tp, fp, fn, tn, prec, rec, f1
 
 
-def main():
+def run_eval(mode):
+    print(f"\n{'#' * 78}\n# CANDIDATE SET = '{mode}'\n{'#' * 78}")
     print(f"{'genome':<13} {'caller':<12} {'TP':>5} {'FP':>5} {'FN':>5} "
-          f"{'TN':>5} {'prec':>6} {'rec':>6} {'F1':>6}")
-    print("-" * 78)
+          f"{'TN':>5} {'prec':>6} {'rec':>6} {'F1':>6}  pos_rate")
+    print("-" * 90)
     aggregate = {"heuristic": [], "gLM": [], "gLM2": []}
     for tag, info in GENOMES.items():
         cds, tag2pid = load_genome(info["gff"])
         odb_ops = load_odb4_operons(ODB4, info["taxid"])
         gold, in_known = gold_pairs(cds, odb_ops, tag2pid)
-        cand = candidate_pairs(cds, in_known)
+        cand = candidate_pairs(cds, in_known, mode=mode)
         if not cand:
             print(f"{tag:<13} (no candidate pairs — skip)")
             continue
-        # Resolve heuristic source from local rsync if needed.
+        gold_in_cand = gold & cand
+        pos_rate = 100 * len(gold_in_cand) / len(cand)
         for name, tmpl in [("heuristic", HEUR_TEMPLATE),
                            ("gLM", GLM_LOCAL),
                            ("gLM2", GLM2_LOCAL)]:
@@ -215,13 +233,12 @@ def main():
                 print(f"{tag:<13} {name:<12} SKIP (file missing: {path})")
                 continue
             tp, fp, fn, tn, p, r, f1 = prf(pred, gold, cand)
-            aggregate[name].append((tag, tp, fp, fn, tn, p, r, f1, len(cand), len(gold)))
+            aggregate[name].append((tag, tp, fp, fn, tn, p, r, f1))
             print(f"{tag:<13} {name:<12} {tp:>5} {fp:>5} {fn:>5} {tn:>5} "
-                  f"{p:>6.3f} {r:>6.3f} {f1:>6.3f}")
+                  f"{p:>6.3f} {r:>6.3f} {f1:>6.3f}  {pos_rate:>5.1f}%")
         print()
 
-    # Macro-averages.
-    print("\n=== macro mean across genomes ===")
+    print("=== macro mean across genomes ===")
     print(f"{'caller':<12} {'<P>':>7} {'<R>':>7} {'<F1>':>7}  N_genomes")
     for name, rows in aggregate.items():
         if not rows:
@@ -231,6 +248,11 @@ def main():
         mR = sum(r[6] for r in rows) / n
         mF = sum(r[7] for r in rows) / n
         print(f"{name:<12} {mP:>7.3f} {mR:>7.3f} {mF:>7.3f}  {n}")
+
+
+def main():
+    run_eval("all")
+    run_eval("restricted")
 
 
 if __name__ == "__main__":

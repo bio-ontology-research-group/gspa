@@ -41,12 +41,35 @@ already done.
 
 We score the **adjacent-pair "same operon" classification**: for genes
 *a* and *b* sitting consecutively on the same contig and same strand,
-each caller predicts "co-operonic" or "not". The candidate set is
-restricted to pairs where both genes appear in *some* ODB4 / RegulonDB
-known operon — this avoids penalising a caller for predicting
-co-operonic on a pair the database simply hasn't surveyed.
+each caller predicts "co-operonic" or "not".
 
-Locus-tag bridging:
+### Methodology fix (2026-05-06)
+
+The first version of this eval restricted the candidate set to "pairs
+where BOTH genes are in some ODB4 known operon." That was a
+sample-selection trap: ODB4 surveys known operons, so within that
+subset 92–99% of adjacent same-strand pairs are co-operonic, and any
+permissive classifier scored F1 ≈ 0.96–0.99 just by mirroring the
+prior. The "0.97 F1 for the heuristic" result that produced was an
+artifact, not signal — if a one-line heuristic could really score
+F1 ≈ 0.97 there'd be no specialized operon-prediction literature.
+
+The corrected eval uses **all** adjacent same-strand same-contig pairs
+as candidates. This accepts that ODB4 has incomplete coverage and that
+some "negatives" are actually unsurveyed positives, which hurts
+permissive callers slightly more than conservative ones. The
+trade-off is unavoidable without a fully-curated ground truth.
+
+The genome set is also restricted: paeruginosa (1.7% positive rate
+under all-cand mode → eval is pure noise) and bsubtilis (21% positive
+rate, suggesting ~80% of "negatives" are unsurveyed positives) are
+excluded. Only ecoli (57.5%) and hpylori (64.6%) have ODB4 coverage
+dense enough to give a meaningful eval.
+
+`eval_odb4.py` reports both candidate-set modes (`all` and
+`restricted`) so the discrepancy is visible.
+
+### Locus-tag bridging
 
 - `ecoli`: ODB4 uses `b0001`, my GFF `locus_tag` matches directly.
 - `bsubtilis`: ODB4 uses `BSU34960` (no underscore), my GFF
@@ -56,42 +79,62 @@ Locus-tag bridging:
   bridges (URL-encoded comma).
 - `paeruginosa`: both use `PA####` directly.
 
-## Results — ODB4 multi-genome
+## Results — ODB4, all-candidate set (corrected)
 
-```
-genome        caller          TP    FP    FN    TN   prec    rec     F1
-------------------------------------------------------------------------
-ecoli         heuristic     1714   113    20    35  0.938  0.988  0.963
-ecoli         gLM           1051    66   683    82  0.941  0.606  0.737
-ecoli         gLM2           614    28  1120   120  0.956  0.354  0.517
+Per-genome (only ecoli + hpylori have usable ODB4 coverage):
 
-bsubtilis     heuristic      640    35     8     5  0.948  0.988  0.967
-bsubtilis     gLM            459     6   189    34  0.987  0.708  0.825
-bsubtilis     gLM2           514    26   134    14  0.952  0.793  0.865
+| Genome | pos rate | caller | TP | FP | FN | TN | Prec | Rec | F1 |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| ecoli | 57.5% | **heuristic** | 1714 | 1024 |   20 |  257 | 0.626 | 0.988 | **0.767** |
+| ecoli | | gLM | 1051 |  871 |  683 |  410 | 0.547 | 0.606 | 0.575 |
+| ecoli | | gLM2 |  614 |  274 | 1120 | 1007 | 0.691 | 0.354 | 0.468 |
+| hpylori | 64.6% | **heuristic** |  719 |  309 |    4 |   87 | 0.699 | 0.994 | **0.821** |
+| hpylori | | gLM |  490 |  214 |  233 |  182 | 0.696 | 0.678 | 0.687 |
+| hpylori | | gLM2 |  562 |  257 |  161 |  139 | 0.686 | 0.777 | 0.729 |
 
-hpylori       heuristic      719    41     4     8  0.946  0.994  0.970
-hpylori       gLM            490    14   233    35  0.972  0.678  0.799
-hpylori       gLM2           562    22   161    27  0.962  0.777  0.860
-
-paeruginosa   heuristic       68     1     0     0  0.986  1.000  0.993
-paeruginosa   gLM             54     0    14     1  1.000  0.794  0.885
-paeruginosa   gLM2            49     0    19     1  1.000  0.721  0.838
-```
-
-### Macro mean across 4 genomes
+### Macro mean (ecoli + hpylori)
 
 | caller | <P> | <R> | <F1> |
 |---|---:|---:|---:|
-| **heuristic** | 0.954 | **0.993** | **0.973** |
-| gLM           | 0.975 | 0.697     | 0.812 |
-| gLM2          | 0.968 | 0.661     | 0.770 |
+| **heuristic** | 0.663 | **0.991** | **0.794** |
+| gLM           | 0.621 | 0.642     | 0.631 |
+| gLM2          | 0.689 | 0.566     | 0.598 |
 
-Both foundation models are slightly **more precise** than the
-heuristic (lower FP rate) but pay an enormous recall cost (~30% fewer
-gold pairs found). The heuristic's near-perfect recall (99.3%) reflects
-a basic property of bacterial genome organisation: co-operonic genes
-are almost universally same-strand and ≤ 300 bp apart, so the trivial
-adjacency rule captures essentially all of them.
+These numbers are now in the range of published operon-prediction
+tools — DOOR ~0.85, ProOpDB ~0.80, Operon-mapper 0.80–0.85, the gLM
+paper's reported PR-AUC ~0.67. The heuristic's F1 ≈ 0.79 is
+respectable but doesn't match specialized methods like DOOR; it
+benefits from bacterial genome compaction (co-operonic genes really
+are overwhelmingly same-strand and ≤ 300 bp apart) but the precision
+is a real ceiling on what the trivial rule can reach.
+
+### Excluded genomes
+
+- **paeruginosa**: 33 ODB4 known operons → 1.7% gold positive rate
+  among all adjacent same-strand pairs → all callers score F1 ≈ 0.04.
+  ODB4 coverage too sparse; the eval is dominated by unsurveyed pairs
+  treated as negatives.
+- **bsubtilis**: 658 ODB4 known operons but 21% positive rate, meaning
+  ~79% of "negatives" are likely operons ODB4 hasn't surveyed. All
+  callers' F1 sits at 0.36 — driven by the FP rate of unsurveyed
+  positives, not by detection skill. Numbers reported in the eval log
+  for transparency but don't reflect operon-prediction quality.
+
+### The biased-candidate-set numbers (for transparency)
+
+The original (botched) eval mode is left in the script as
+`mode='restricted'` and produces:
+
+| caller | <P> | <R> | <F1> |
+|---|---:|---:|---:|
+| heuristic | 0.954 | 0.993 | **0.973** |
+| gLM       | 0.975 | 0.697 | 0.812 |
+| gLM2      | 0.968 | 0.661 | 0.770 |
+
+These are inflated by ~0.18–0.30 across the board because the
+candidate set was 92–99% positive — any classifier admitting most pairs
+wins. The relative ordering is preserved (heuristic > gLM > gLM2) but
+the absolute magnitudes don't reflect operon-detection skill.
 
 ## Results — gLM-shipped E. coli annot (corroborates above)
 
@@ -108,41 +151,42 @@ ones), which is why the precision numbers are lower across the board
 
 ## Implications
 
-1. **The phase-1 F-max NO-GO verdict is now even stronger.** The FMs
-   aren't producing better operons in the first place — so even a
-   downstream test more sensitive to operon quality wouldn't have
-   helped them.
+1. **The phase-1 F-max NO-GO verdict is corroborated, but with more
+   modest margins than the botched eval suggested.** On the trustable
+   genome subset (ecoli + hpylori), heuristic F1 ≈ 0.79 vs gLM 0.63
+   vs gLM2 0.60. The FMs are real operon callers — they're just not
+   beating the trivial adjacency rule on these benchmarks.
 
-2. **Both FMs trade recall for precision.** Macro F1: heuristic 0.973
-   vs gLM 0.812 vs gLM2 0.770. The FMs are on the *correct* end of
-   the precision axis but their recall (~70% / ~66%) is the limiting
-   factor in F1.
+2. **Both FMs trade recall for precision but the precision gain is
+   small.** On ecoli, gLM2 has the highest precision (0.69) but the
+   lowest recall (0.35). The heuristic at 0.63 P / 0.99 R wins on F1.
 
 3. **gLM has a home-field advantage and still loses.** Its shipped
    logreg was trained on the very ground truth used for evaluation
-   (gLM-shipped E. coli annot). It still scores below the heuristic.
-   gLM2 wasn't trained on this data and scores lower still.
+   (gLM-shipped E. coli annot, RegulonDB-lineage). It still scores
+   below the heuristic at F1 ≈ 0.58. gLM2's hand-tuned cosine
+   threshold scores 0.47.
 
 4. **The "redo with gLM2" verdict is consistent across two metrics
-   and four genomes.** The line stays closed.
+   and the trustable genomes.** The line stays closed.
 
 ## What would change the picture
 
-- **Drop the same-contig same-strand constraint from the heuristic.**
-  Most of the heuristic's recall comes from this trivial rule. If you
-  forced the comparison on a noisier candidate set (e.g. anti-strand
-  pairs, longer intergenic distances), the FMs might pull ahead — but
-  that's not how operons are defined biologically.
-
-- **Score under-300-bp same-strand pairs only.** Restrict the candidate
-  set further to make the FMs' precision-recall tradeoff matter more.
-  Likely doesn't move the verdict.
-
 - **Train a proper gLM2 operon predictor on E. coli ground truth** with
-  a 190-dim attention-contact feature vector (gLM-style). The
-  cosine-only logreg used here is the weakest possible operon
-  classifier — a fair calibration could move gLM2's recall closer to
-  gLM's, but unlikely past the heuristic.
+  a 190-style attention-contact feature vector (per-pair, like gLM
+  does). The cosine-only sigmoid used here is the weakest possible
+  operon classifier — a fair calibration could move gLM2's F1 closer
+  to gLM's ~0.58, but unlikely past the heuristic's 0.79.
+
+- **Get a denser multi-genome operon ground truth.** ODB4 coverage is
+  the limiting factor on bsubtilis and paeruginosa. RegulonDB is
+  E. coli-only; DOOR3 was unreachable; ProOpDB might fill the gap.
+
+- **Score on the dark-matter slice.** The phase-1 F-max ablation tested
+  on Swiss-Prot-rich genomes where the homology stack saturates.
+  The operon-quality eval here is on the operon decision itself, but
+  whether better-than-trivial operon decisions matter *downstream*
+  is still an open question on the EQ-MAG-style sparse genomes.
 
 ## Reproducibility
 
