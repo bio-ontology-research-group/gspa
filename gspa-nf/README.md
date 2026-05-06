@@ -77,6 +77,7 @@ that motivated it).
 | `modules/domains.nf` | `HMMSEARCH`, `INTERPROSCAN`, `EGGNOG_MAPPER`, `DBCAN` | `--run_hmmer` (default), `--run_interproscan`, `--run_eggnog`, `--run_dbcan`. |
 | `modules/specialized.nf` | `BARRNAP`, `MINCED`, `AMRFINDER`, `ANTISMASH`, `SIGNALP`, `CHECKM2`, `GTDBTK` | Flags and DB paths per tool. |
 | `modules/quality.nf` | `MERGE_ANNOTATIONS` | Always — emits the merged per-sample TSV. |
+| `modules/integrate.nf` | `BUILD_CLAIMS`, `INTEGRATE` | `--run_integrate` — runs Phase 7 evidence integrator end-to-end (claims.jsonl + integrated posteriors with priors). |
 | `modules/neural.nf` | `ESM2_DEEPGOPLUS`, `ESM2_CENTROID`, `CLEAN`, `PROTEINFER` | `--run_esm2_deepgoplus`, `--run_esm2_centroid`, `--run_clean`, `--run_proteinfer`. |
 | `modules/ensemble.nf` | `ENSEMBLE_PREDS` | `--run_ensemble` — fuses all enabled neural outputs (`max\|mean\|rank`). |
 | `modules/eval.nf` | `EVAL_PGAP` | `--run_eval` + `--truth_dir` — F-max, Smin, EC F-max per predictor. |
@@ -290,13 +291,45 @@ Existing JVM wrappers for SignalP 6 and DeepTMHMM remain in the
 codebase from v1.1.0 for users who have those licenses, but are NOT
 wired into Nextflow. Use the FOSS replacements above by default.
 
-## Relationship to the JVM side
+## End-to-end with Phase 7 integration (`--run_integrate`)
 
 `MERGE_ANNOTATIONS` writes a merged TSV that is **not** the same as the
-GSPA integrated TSV. The JVM pipeline's integration layer
-(`gspa.integration.EvidenceCombiner` + `IterativeRefiner`) has no
-counterpart here — for the final posteriors + quality metrics, pipe the
-Nextflow outputs into `gspa-cli integrate`.
+GSPA integrated TSV — it's a thin per-tool union without the Bayesian
+combiner. To run the full Phase 7 integrator inside Nextflow, set
+`--run_integrate` and supply the reference data:
+
+```bash
+./gradlew :gspa-cli:shadowJar    # one-time, produces gspa-1.5.0.jar
+
+nextflow run gspa-nf/main.nf \
+    -profile docker \
+    --input genome.fna \
+    --diamond_db /refs/uniprot_sprot.dmnd \
+    --pfam_db    /refs/Pfam-A.hmm \
+    --run_integrate \
+    --gspa_jar   $PWD/gspa-cli/build/libs/gspa-1.5.0.jar \
+    --goa        /refs/goa_uniprot_all.gaf.gz \
+    --go_owl     /refs/go.owl \
+    --ec2go      /refs/ec2go \
+    --pathways   /refs/kegg_pathways.tsv
+```
+
+This adds two processes after `MERGE_ANNOTATIONS`:
+- `BUILD_CLAIMS` — wraps `benchmark/02b_parse_predictors_to_claims.py`,
+  emits `${sample_id}_claims.jsonl`.
+- `INTEGRATE` — invokes `gspa-cli integrate` on that claims.jsonl with
+  the full prior stack, emits `${sample_id}_integrated.tsv`
+  (per-(protein, function) posterior probabilities with provenance).
+
+Optional flags: `--pfam2go`, `--theta_file`, `--essential_profile`
+(default `bacteria`), `--enable_priors` (comma-separated; default
+`essentiality,coherence,gap_filling,genomic_context`).
+
+`--run_integrate` is opt-in. Without it, the pipeline behaves exactly
+as before — produces raw per-tool outputs + the merged TSV, leaving
+integration to a manual `gspa-cli integrate` invocation.
+
+## Relationship to the JVM side
 
 If you change the JVM predictor wrappers in a way that changes expected
 output columns, update the matching Nextflow module under

@@ -28,6 +28,7 @@ include { HMMSEARCH; INTERPROSCAN; EGGNOG_MAPPER; DBCAN } from './modules/domain
 include { BARRNAP; MINCED; AMRFINDER; ANTISMASH;
           SIGNALP; CHECKM2; GTDBTK }                    from './modules/specialized'
 include { MERGE_ANNOTATIONS }                            from './modules/quality'
+include { BUILD_CLAIMS; INTEGRATE }                      from './modules/integrate'
 include { ESM2_DEEPGOPLUS; ESM2_CENTROID;
           CLEAN; PROTEINFER }                            from './modules/neural'
 include { ENSEMBLE_PREDS; ENSEMBLE_GENOMIC }              from './modules/ensemble'
@@ -101,8 +102,10 @@ workflow {
         INTERPROSCAN(PYRODIGAL.out.proteins, file(params.interproscan_dir))
         ch_interproscan = INTERPROSCAN.out.results
     }
+    ch_eggnog = Channel.empty()
     if (params.run_eggnog && params.eggnog_db) {
         EGGNOG_MAPPER(PYRODIGAL.out.proteins, file(params.eggnog_db))
+        ch_eggnog = EGGNOG_MAPPER.out.results
     }
     if (params.run_dbcan && params.dbcan_db) {
         DBCAN(PYRODIGAL.out.proteins, file(params.dbcan_db))
@@ -365,6 +368,42 @@ workflow {
         .join(ch_crispr_or_empty)
 
     MERGE_ANNOTATIONS(ch_merge)
+
+    // ===== Step 8: Optional Phase 7 integration =====
+    // Lifts per-tool TSVs into a single claims.jsonl, then runs the
+    // JVM `gspa-cli integrate` to produce per-(protein, function)
+    // posterior probabilities with the full prior stack.
+    if (params.run_integrate) {
+        if (!params.gspa_jar) error 'run_integrate=true requires --gspa_jar (path to gspa-cli shadowJar)'
+        if (!params.goa)      error 'run_integrate=true requires --goa (Swiss-Prot/GOA annotation file, .gaf or .gaf.gz)'
+        if (!params.go_owl)   error 'run_integrate=true requires --go_owl (GO ontology OWL file)'
+        if (!params.ec2go)    error 'run_integrate=true requires --ec2go (EC -> GO mapping file)'
+        if (!params.pathways) error 'run_integrate=true requires --pathways (KEGG pathway TSV)'
+
+        ch_eggnog_or_empty = params.run_eggnog && params.eggnog_db ?
+            ch_eggnog :
+            PYRODIGAL.out.proteins.map { id, f -> tuple(id, empty_file("empty_eggnog_${id}.tsv")) }
+
+        ch_claims_in = ch_diamond_or_empty
+            .join(ch_pfam_or_empty)
+            .join(ch_interproscan_or_empty)
+            .join(ch_eggnog_or_empty)
+
+        BUILD_CLAIMS(
+            ch_claims_in,
+            file("${projectDir}/../benchmark/02b_parse_predictors_to_claims.py"),
+            file(params.goa),
+            params.pfam2go ? file(params.pfam2go) : file('NO_PFAM2GO')
+        )
+
+        INTEGRATE(
+            BUILD_CLAIMS.out.claims,
+            file(params.gspa_jar),
+            file(params.go_owl),
+            file(params.ec2go),
+            file(params.pathways)
+        )
+    }
 }
 
 workflow.onComplete {
