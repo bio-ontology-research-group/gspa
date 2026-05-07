@@ -36,7 +36,7 @@ include { EVAL_PGAP }                                    from './modules/eval'
 include { MAKE_REPORT }                                  from './modules/report'
 include { METAPREDICT; DEEPSIG; TMBED; TPPRED3 }         from './modules/region'
 include { PSORTB }                                       from './modules/loc'
-include { DEEPFRI; DEEPEC; DEEPARG }                     from './modules/term_extras'
+include { DEEPFRI; DEEPEC; DEEPARG; MDF }                from './modules/term_extras'
 include { MUSITEDEEP; SCANNET }                          from './modules/sites'
 include { STRUCTURE_PROVIDER }                           from './modules/structure'
 include { GENOMAD; CHECKV; PHISPY; VIRSORTER2; VIBRANT; FLATTEN_PROPHAGE_CDS } from './modules/viral'
@@ -203,6 +203,10 @@ workflow {
     if (params.run_deeparg && params.deeparg_model_dir) {
         DEEPARG(PYRODIGAL.out.proteins, file(params.deeparg_model_dir))
         ch_neural = ch_neural.mix(DEEPARG.out.results.map { id, f -> tuple(id, 'deeparg', f) })
+    }
+    if (params.run_mdf && params.mdf_weights) {
+        MDF(PYRODIGAL.out.proteins, file(params.mdf_weights))
+        ch_neural = ch_neural.mix(MDF.out.results.map { id, f -> tuple(id, 'mdf', f) })
     }
 
     // ===== Step 6.8: Optional structure provisioning + site predictors =====

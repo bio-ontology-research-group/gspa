@@ -384,6 +384,90 @@ def run_deeparg(rows: list[ManifestRow], args: argparse.Namespace) -> None:
         LOG.info("%s deeparg: %d AMR rows -> %s", row.tag, n, out)
 
 
+# ---------- mDeepFRI ------------------------------------------------------
+
+_MDF_ASPECT = {
+    "GO Biological Process": "GO",
+    "GO Molecular Function": "GO",
+    "GO Cellular Component": "GO",
+    "Enzyme Commission": "EC",
+}
+
+
+def run_mdf(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+    """Run metagenomic-deepFRI (Bezshapkin et al. 2026, BSD-3-Clause).
+
+    CLI: ``mDeepFRI predict-function -i FASTA -o OUTDIR -w WEIGHTS [-d FOLDCOMP_DB] [--skip-pdb]``
+
+    Native output is ``OUTDIR/results.tsv`` with columns
+    ``protein, network_type, prediction_mode, go_term, score, ...``.
+    Each row is a single (protein, term, aspect) prediction. We rewrite
+    GO and EC rows into the canonical 4-column TSV; the prediction_mode
+    column tells us BP/MF/CC vs. EC. Scores below ``--min-score`` are
+    dropped.
+
+    Required: ``--mdf-weights`` (path to mDeepFRI weights dir from
+    ``mDeepFRI get-models --version 1.0``). Use ``--mdf-skip-pdb`` for
+    sequence-only mode (no FoldComp DB needed). For the structure path,
+    pass ``--mdf-foldcomp-db /path/to/db`` (FoldComp-format).
+    """
+    if not args.mdf_weights:
+        raise SystemExit("mdf requires --mdf-weights (mDeepFRI weights dir)")
+
+    mdf_bin = args.mdf_executable or "mDeepFRI"
+
+    for row in rows:
+        out = output_path(row, "mdf")
+        with tempfile.TemporaryDirectory() as tmp:
+            cmd = [mdf_bin, "predict-function",
+                   "-i", str(row.fasta_path),
+                   "-o", tmp,
+                   "-w", args.mdf_weights,
+                   "-t", str(args.mdf_threads)]
+            if args.mdf_skip_pdb:
+                cmd.append("--skip-pdb")
+            if args.mdf_foldcomp_db:
+                cmd.extend(["-d", args.mdf_foldcomp_db])
+            subprocess.run(cmd, check=True)
+
+            results_tsv = Path(tmp) / "results.tsv"
+            if not results_tsv.exists():
+                LOG.error("%s mdf: no results.tsv at %s", row.tag, results_tsv)
+                continue
+
+            fh, w = open_output(out)
+            n = 0
+            seen: dict[tuple[str, str], float] = {}
+            with results_tsv.open() as fin:
+                reader = csv.DictReader(fin, delimiter="\t")
+                for r in reader:
+                    pid = (r.get("protein") or "").split()[0]
+                    term = r.get("go_term") or ""
+                    mode = r.get("prediction_mode") or ""
+                    ann_type = _MDF_ASPECT.get(mode)
+                    if not (pid and term and ann_type):
+                        continue
+                    try:
+                        score = float(r.get("score", 0))
+                    except (ValueError, TypeError):
+                        continue
+                    if score < args.min_score:
+                        continue
+                    # Dedup (protein, term) keeping the highest score.
+                    key = (pid, term)
+                    prev = seen.get(key)
+                    if prev is None or score > prev:
+                        seen[key] = score
+            for (pid, term), score in seen.items():
+                # Annotation type follows the term namespace: GO:* → GO,
+                # EC:* → EC. Recovers the type from the term itself.
+                ann_type = "EC" if term.startswith("EC:") else "GO"
+                w.writerow([pid, term, f"{score:.4f}", ann_type])
+                n += 1
+            fh.close()
+        LOG.info("%s mdf: %d term rows -> %s", row.tag, n, out)
+
+
 # ---------- registry + CLI ------------------------------------------------
 
 RUNNERS: dict[str, Callable] = {
@@ -391,6 +475,7 @@ RUNNERS: dict[str, Callable] = {
     "deepfri": run_deepfri,
     "deepec":  run_deepec,
     "deeparg": run_deeparg,
+    "mdf":     run_mdf,
 }
 
 
@@ -409,6 +494,19 @@ def parse_args() -> argparse.Namespace:
                     help="DeepARG input type: prot | nucl")
     ap.add_argument("--deeparg-sif",
                     help="Path to deeparg Singularity SIF (optional)")
+    ap.add_argument("--mdf-weights",
+                    help="mDeepFRI: directory with model weights (from "
+                         "`mDeepFRI get-models --version 1.0 --output ...`)")
+    ap.add_argument("--mdf-executable", default=None,
+                    help="mDeepFRI: path to the mDeepFRI binary (default: "
+                         "first on PATH; use this when running from a venv)")
+    ap.add_argument("--mdf-skip-pdb", action="store_true",
+                    help="mDeepFRI: skip PDB100 search (sequence-only path)")
+    ap.add_argument("--mdf-foldcomp-db", default=None,
+                    help="mDeepFRI: FoldComp structures database path "
+                         "(structure-supplied path; AFDB / ESM-Atlas)")
+    ap.add_argument("--mdf-threads", type=int, default=4,
+                    help="mDeepFRI: thread count")
     return ap.parse_args()
 
 

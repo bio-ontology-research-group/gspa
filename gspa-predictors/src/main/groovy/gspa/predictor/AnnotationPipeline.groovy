@@ -294,6 +294,18 @@ class AnnotationPipeline {
                 minScore: foss.deepFri.minScore,
             )
         }
+        if (foss.mdf.enabled) {
+            predictors << new gspa.predictor.structure.MdFPredictor(
+                sidecarScript: foss.termSidecar,
+                pythonExecutable: foss.pythonExecutable,
+                weightsDir: foss.mdf.weightsDir,
+                mdfExecutable: foss.mdf.mdfExecutable,
+                skipPdb: foss.mdf.skipPdb,
+                foldcompDb: foss.mdf.foldcompDb,
+                threads: foss.mdf.threads,
+                minScore: foss.mdf.minScore,
+            )
+        }
         if (foss.deepEc.enabled) {
             if (!foss.deepEc.acknowledgeAgpl) {
                 log.warn("DeepEC is AGPL-3.0; if running as a service you must " +

@@ -213,6 +213,7 @@ class GspaConfig {
         DeepArgConfig    deepArg    = new DeepArgConfig()
         MusiteDeepConfig musiteDeep = new MusiteDeepConfig()
         ScanNetConfig    scanNet    = new ScanNetConfig()
+        MdFConfig        mdf        = new MdFConfig()
     }
 
     static class DeepFriConfig {
@@ -222,6 +223,27 @@ class GspaConfig {
         /** Mode: 'seq' (default) or 'struct'. */
         String mode = 'seq'
         double minScore = 0.5
+    }
+
+    /**
+     * metagenomic-deepFRI (Bezshapkin et al. 2026, BSD-3-Clause).
+     * Successor to {@link DeepFriConfig} with FoldComp-database
+     * structure retrieval + ONNX inference. Wired through the term
+     * sidecar {@code run_term_predictors.py --predictor mdf}.
+     */
+    static class MdFConfig {
+        boolean enabled = false
+        /** Path to mDeepFRI weights directory (from
+         *  {@code mDeepFRI get-models --version 1.0 --output ...}). */
+        String weightsDir
+        /** Path to the {@code mDeepFRI} binary; null = first on PATH. */
+        String mdfExecutable
+        /** Sequence-only path (default). False to use structure path; requires {@code foldcompDb}. */
+        boolean skipPdb = true
+        /** FoldComp-format structure DB (AFDBv4, ESM Atlas, etc.). */
+        String foldcompDb
+        int threads = 4
+        double minScore = 0.1
     }
 
     static class DeepEcConfig {

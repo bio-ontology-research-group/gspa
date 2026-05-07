@@ -254,6 +254,7 @@ PSORTb output is whole-protein (4-col TSV), so it auto-joins
 | `--run_deepfri` | Sequence-only GO (MF/BP/CC) | BSD-3-Clause | `gspa-tf-stack` |
 | `--run_deepec` | EC numbers | **AGPL-3.0** ⚠ | `gspa-tf-stack` |
 | `--run_deeparg` | Antimicrobial-resistance gene calls | MIT | `gspa-tf-stack` |
+| `--run_mdf` | Structure-aware GO + EC (FoldComp DB optional via `--mdf_foldcomp_db`; sequence-only by default via `--mdf_skip_pdb true`); successor to DeepFRI | BSD-3-Clause | `python:3.12-slim` (mdF binary on PATH) |
 
 ⚠ **DeepEC AGPL clause:** fine to bundle and run locally / on HPC. If
 you ever expose GSPA as a hosted web service, the AGPL network-clause

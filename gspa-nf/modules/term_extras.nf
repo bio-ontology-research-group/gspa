@@ -88,3 +88,33 @@ EOF
         --min-score ${params.deeparg_min_score}
     """
 }
+
+process MDF {
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/term_extras/mdf", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(proteins)
+    path mdf_weights
+
+    output:
+    tuple val(sample_id), path("${sample_id}.mdf.tsv"), emit: results
+
+    script:
+    def manifest_text = write_manifest(sample_id, proteins)
+    def skip_pdb = params.mdf_skip_pdb ? '--mdf-skip-pdb' : ''
+    def foldcomp = params.mdf_foldcomp_db ? "--mdf-foldcomp-db ${params.mdf_foldcomp_db}" : ''
+    """
+    cat > manifest.tsv <<'EOF'
+${manifest_text}
+EOF
+    python3 /opt/gspa/run_term_predictors.py \\
+        --predictor mdf \\
+        --manifest manifest.tsv \\
+        --mdf-weights ${mdf_weights} \\
+        --mdf-threads ${task.cpus} \\
+        ${skip_pdb} \\
+        ${foldcomp} \\
+        --min-score ${params.mdf_min_score}
+    """
+}
