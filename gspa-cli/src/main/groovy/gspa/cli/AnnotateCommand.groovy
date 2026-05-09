@@ -5,6 +5,7 @@ import gspa.config.GspaConfig
 import gspa.metrics.QualityPipeline
 import gspa.metrics.QualityReportWriter
 import gspa.predictor.AnnotationPipeline
+import gspa.predictor.context.OperonPredictor
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 
@@ -113,6 +114,15 @@ class AnnotateCommand implements Runnable {
         // Write output
         pipeline.writeOutput(genome, outputDir)
 
+        // Always persist operon detection alongside the annotations so
+        // downstream `gspa integrate --operons` and `gspa visualize` find it
+        // without manual prep. Cheap to re-detect (O(n log n) over CDS).
+        try {
+            writeOperonFiles(genome, outputDir, config)
+        } catch (Exception e) {
+            System.err.println "  [warn] Failed to write operon TSVs: ${e.message}"
+        }
+
         // Run quality evaluation if GO ontology provided
         if (goOwl && genome.allGoTerms().size() > 0) {
             println ""
@@ -132,6 +142,63 @@ class AnnotateCommand implements Runnable {
 
         println ""
         println "Done. Output in: ${outputDir}"
+    }
+
+    /**
+     * Detect operons on the annotated genome and persist three TSVs alongside
+     * the other annotation outputs:
+     *
+     *   operons.tsv               human / viz-friendly: id, contig, start, end,
+     *                             strand, n_members, members
+     *   protein_to_operon.tsv     reverse index: protein_id, operon_id, position,
+     *                             operon_size
+     *   operons_for_integrate.tsv flat format that {@code gspa integrate
+     *                             --operons} expects (one operon per line, tab-
+     *                             separated protein IDs)
+     *
+     * Operon parameters come from the same config block that the inline
+     * OperonPredictor uses inside AnnotationPipeline (so the persisted file
+     * always matches whatever predictor calls happened during annotate).
+     */
+    private void writeOperonFiles(gspa.model.Genome genome, File outputDir, GspaConfig config) {
+        if (genome == null || genome.proteins == null || genome.proteins.isEmpty()) return
+        // Skip if no contig coordinates — operon detection is positional.
+        if (!genome.proteins.any { it.start != null && it.end != null }) return
+        def detector = new OperonPredictor(
+            maxIntergenicDistance: config.predictors.operons.maxIntergenicDistance,
+            requireSameStrand:     config.predictors.operons.requireSameStrand,
+        )
+        def operons = detector.detectOperons(genome)
+        if (operons.isEmpty()) return
+        outputDir.mkdirs()
+        // 1. operons.tsv (verbose)
+        new File(outputDir, "operons.tsv").withWriter { w ->
+            w.writeLine(['operon_id','contig','start','end','strand','n_members','members'].join('\t'))
+            operons.eachWithIndex { op, i ->
+                String opId = String.format(Locale.ROOT, 'op_%05d', i + 1)
+                w.writeLine([
+                    opId, op.contigId, op.start.toString(), op.end.toString(), op.strand.symbol,
+                    op.size.toString(), op.genes*.id.join(','),
+                ].join('\t'))
+            }
+        }
+        // 2. protein_to_operon.tsv
+        new File(outputDir, "protein_to_operon.tsv").withWriter { w ->
+            w.writeLine(['protein_id','operon_id','position','operon_size'].join('\t'))
+            operons.eachWithIndex { op, i ->
+                String opId = String.format(Locale.ROOT, 'op_%05d', i + 1)
+                op.genes.eachWithIndex { gene, j ->
+                    w.writeLine([gene.id, opId, (j + 1).toString(), op.size.toString()].join('\t'))
+                }
+            }
+        }
+        // 3. operons_for_integrate.tsv (the format `gspa integrate --operons` expects)
+        new File(outputDir, "operons_for_integrate.tsv").withWriter { w ->
+            operons.each { op ->
+                w.writeLine(op.genes*.id.join('\t'))
+            }
+        }
+        println "Operons: ${operons.size()} (written to operons.tsv, protein_to_operon.tsv, operons_for_integrate.tsv)"
     }
 
     private void applyPredictorFlags(GspaConfig config) {

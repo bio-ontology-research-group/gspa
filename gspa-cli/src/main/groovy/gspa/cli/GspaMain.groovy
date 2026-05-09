@@ -23,6 +23,7 @@ import picocli.CommandLine.Command
         CompareCommand,
         ReportCommand,
         IntegrateCommand,
+        VisualizeCommand,
     ]
 )
 class GspaMain implements Runnable {
