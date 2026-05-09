@@ -194,10 +194,26 @@ class OperonPredictor implements GenomePredictor {
 
 /**
  * Represents a predicted operon: a set of co-transcribed genes.
+ *
+ * When the operon comes from {@link OperonPredictor} (single rule-based call)
+ * the ensemble fields are unset. When it comes from {@link OperonEnsemble},
+ * {@code supportSet} lists which sub-predictors voted for the constituent
+ * pairs and {@code minPairPosterior} / {@code meanPairPosterior} carry the
+ * Noisy-OR confidence so callers can rank operons by support.
  */
 class Operon {
     String contigId
     List<Protein> genes = []
+
+    /** Set of predictor names that voted for at least one edge in the operon. */
+    Set<String> supportSet = []
+
+    /** Lowest co-operonic-pair posterior across the edges that built this
+     *  operon. The "weakest link"; useful as the operon's confidence floor. */
+    double minPairPosterior = 0.0d
+
+    /** Average pair posterior across the operon's edges. */
+    double meanPairPosterior = 0.0d
 
     int getStart() { genes.first().start }
     int getEnd() { genes.last().end }
