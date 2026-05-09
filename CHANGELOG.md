@@ -8,6 +8,98 @@ Per-version benchmark numbers, ablation tables, and the F-max protocol
 notes live in `benchmark/RESULTS.md`. This file summarises the
 user-visible deltas; for measured impact, follow the cross-references.
 
+## [Unreleased] — 1.5.x debug-surface fixes
+
+Discovered while building an interactive HTML browser for the MR59-6
+*Pontibacter* tutorial: the visualisation surfaced a real product bug
+in the integrator (only 5 of 10 tools contributing to posteriors)
+plus several reporting gaps. All fixed end-to-end. The bug fix alone
+shifts MR59-6 GAF coverage from 53.8% → 94.0% (15,938 → 75,130 GAF
+rows; integrated annotations 84,215 → 311,440).
+
+### Fixed
+- `ClaimExtractor.SOURCE_TO_TYPE` was missing entries for `mdf`,
+  `mdeepfri`, `proteinfer`, `clean`. Claims with these source names
+  silently dropped at extract time (line 158: `if (type == null)
+  return // unresolved claim; skip`), so 261k claims from those 3 tools
+  never reached the Bayesian integrator. Added entries mapping all four
+  to `EvidenceType.SEQUENCE_DEEPLEARNING`. Regression test in
+  `ClaimExtractorSpec` loads a JSONL with each new source and asserts
+  the claims survive.
+
+### Added
+- **GAEF report detail** — `quality_gspa.json` now ships per-pathway
+  and per-process detail with human-readable names (not just bare GO
+  ids), so callers can ask which essentials are missing or which
+  pathway is incoherent without their own GO-ontology lookup.
+  - `QualityReport.incoherentProcessPairs` — list of unsatisfied
+    `(required, missing)` `has_part` pairs from the process-coherence
+    check.
+  - `QualityReport.incoherentPathways` — per-triggered-pathway
+    completeness with present/missing GO terms.
+  - `QualityReport.goLabels` — id → name lookup populated by
+    QualityScorer / QualityPipeline whenever a `GoOntology` is
+    available; consumed by `QualityReportWriter` so the JSON has both
+    ids and names.
+  - `Coherence.evaluate()` now wires the per-pair / per-pathway detail
+    through `CoherenceResult` to the report.
+  - `PathwayDatabase.computePathwayCoherenceDetailed()` returns the
+    per-pathway result object alongside the existing aggregate score
+    (backwards compatible).
+  - `QualityReportWriter.buildReportMap` emits two new sections:
+    `coherence.process_unsatisfied_pairs` and `coherence.pathway_detail`,
+    plus `*_named` variants of the essential-functions lists.
+
+- **Operon predictor ensemble + Noisy-OR** — `OperonEnsemble` runs three
+  independent predictors per adjacent gene-pair (distance ≤ 300 bp,
+  strict ≤ 50 bp, functional with shared GO BP terms ≤ 1000 bp) and
+  combines per-predictor sensitivity θ via Noisy-OR. `Operon` now
+  carries `supportSet`, `minPairPosterior`, `meanPairPosterior` so
+  callers can rank operons by confidence. The original
+  `OperonPredictor` (single rule) is unchanged.
+
+- **`gspa annotate` persists operons by default** — `AnnotateCommand`
+  re-detects operons after the predictor stack runs and writes
+  `operons.tsv` (verbose), `protein_to_operon.tsv` (reverse index),
+  and `operons_for_integrate.tsv` (the format `gspa integrate
+  --operons` consumes) to the output dir. Cheap O(n log n) re-run
+  that closes the gap between "operons were predicted" and "downstream
+  steps can find them on disk".
+
+- **`gspa visualize` subcommand** — emits a single self-contained HTML
+  browser (~25 MB with embedded FASTA) for any GSPA workspace. Tabs:
+  Proteins (virtualised search/filter table), Functions (confidence
+  histogram + aspect donut + top GO terms), Genome browser (igv.js
+  with CDS / operons / BGCs / AMR / localisation tracks), Operons
+  (with derived names + dominant pathway + ensemble support),
+  Pathways (per-KEGG-pathway coverage with per-reaction colouring +
+  cross-references to operons), Special features (AMR + BGC tables),
+  Quality (GAEF metrics + named missing essentials + incoherent
+  process pairs + per-pathway completeness), Pipeline. Uses the
+  bundled Python templater (`gspa-cli/src/main/resources/visualize/
+  make_viz.py`) extracted at runtime. No external deps beyond
+  `python3` and standard library.
+
+- **gspa-nf integrator pipeline upgrades** —
+  - `SIDECAR_CLAIMS` process: parses mDeepFRI / ProteInfer / CLEAN
+    sidecar TSVs into a parallel claims.jsonl. With this + the
+    ClaimExtractor fix, the Nextflow path now matches the JVM CLI's
+    8-source claim coverage.
+  - `MERGE_CLAIMS` process: concatenates builtin + sidecar claims.
+  - `OPERONS` process: wraps the bundled 3-predictor operon ensemble
+    so the Nextflow path produces the same `operons_for_integrate.tsv`
+    that `gspa annotate` writes locally.
+  - `INTEGRATE` process now consumes operons (not just claims) so
+    `GenomicContextPrior` fires.
+  - `VISUALIZE` process scaffold (gated on `params.run_visualize`,
+    auto-trigger pending until `gspa evaluate` is wired in).
+  - All processes documented inline in `gspa-nf/modules/integrate.nf`.
+
+### Changed
+- `Operon` model gains three optional fields (`supportSet`,
+  `minPairPosterior`, `meanPairPosterior`); existing callers that
+  construct `Operon` without them keep working (defaults are empty).
+
 ## [1.5.0] — 2026-05-07
 
 ### Added
