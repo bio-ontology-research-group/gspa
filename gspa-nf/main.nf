@@ -28,7 +28,8 @@ include { HMMSEARCH; INTERPROSCAN; EGGNOG_MAPPER; DBCAN } from './modules/domain
 include { BARRNAP; MINCED; AMRFINDER; ANTISMASH;
           SIGNALP; CHECKM2; GTDBTK }                    from './modules/specialized'
 include { MERGE_ANNOTATIONS }                            from './modules/quality'
-include { BUILD_CLAIMS; INTEGRATE }                      from './modules/integrate'
+include { BUILD_CLAIMS; SIDECAR_CLAIMS; MERGE_CLAIMS;
+          OPERONS; INTEGRATE; VISUALIZE }               from './modules/integrate'
 include { ESM2_DEEPGOPLUS; ESM2_CENTROID;
           CLEAN; PROTEINFER }                            from './modules/neural'
 include { ENSEMBLE_PREDS; ENSEMBLE_GENOMIC }              from './modules/ensemble'
@@ -400,13 +401,61 @@ workflow {
             params.pfam2go ? file(params.pfam2go) : file('NO_PFAM2GO')
         )
 
+        // Sidecar tools (mDeepFRI / ProteInfer / CLEAN). Each is optional —
+        // missing tools become zero-byte placeholders so the parser skips them.
+        ch_mdf_or_empty = params.run_mdf ?
+            ch_mdf :
+            PYRODIGAL.out.proteins.map { id, f -> tuple(id, empty_file("empty_mdf_${id}.tsv")) }
+        ch_proteinfer_or_empty = params.run_proteinfer ?
+            ch_proteinfer :
+            PYRODIGAL.out.proteins.map { id, f -> tuple(id, empty_file("empty_proteinfer_${id}.tsv")) }
+        ch_clean_or_empty = params.run_clean ?
+            ch_clean :
+            PYRODIGAL.out.proteins.map { id, f -> tuple(id, empty_file("empty_clean_${id}.tsv")) }
+        ch_sidecar_in = ch_mdf_or_empty
+            .join(ch_proteinfer_or_empty)
+            .join(ch_clean_or_empty)
+        SIDECAR_CLAIMS(
+            ch_sidecar_in,
+            file("${projectDir}/../gspa-cli/src/main/resources/visualize/sidecar_to_claims.py"),
+            params.go_obo ? file(params.go_obo) : file('NO_GO_OBO')
+        )
+
+        // Merge builtin + sidecar claims so the integrator sees every tool.
+        ch_merged_claims = BUILD_CLAIMS.out.claims.join(SIDECAR_CLAIMS.out.claims)
+        MERGE_CLAIMS(ch_merged_claims)
+
+        // Operons from the bundled 3-predictor ensemble.
+        OPERONS(
+            PYRODIGAL.out.gff,
+            file("${projectDir}/../gspa-cli/src/main/resources/visualize/predict_operons.py")
+        )
+
+        // Integrate with operons threaded in (so GenomicContextPrior fires).
+        ch_integrate_in = MERGE_CLAIMS.out.claims
+            .join(OPERONS.out.operons.map { id, ops, p2o, ops4int -> tuple(id, ops4int) })
         INTEGRATE(
-            BUILD_CLAIMS.out.claims,
+            ch_integrate_in,
             file(params.gspa_jar),
             file(params.go_owl),
             file(params.ec2go),
             file(params.pathways)
         )
+
+        // Optional self-contained HTML browser (always emitted when
+        // run_integrate=true; small marginal cost vs the integrate step).
+        if (params.run_visualize != false) {
+            // Stub: visualize needs a quality_gspa.json from a prior `gspa
+            // evaluate` step + the prokka workspace + the FASTA. The
+            // gspa-nf pipeline currently doesn't run `gspa evaluate` as
+            // part of run_integrate, so skip VISUALIZE if quality_gspa.json
+            // isn't available yet (left as a v1.6 wiring task — track #23
+            // follow-up). Operator can re-emit by running `gspa visualize`
+            // manually against the per-sample workspace.
+            log.info "INFO: VISUALIZE process is wired but not auto-triggered " +
+                     "yet — run `gspa visualize --workdir <outdir>/<sample>` after " +
+                     "the pipeline finishes."
+        }
     }
 }
 
