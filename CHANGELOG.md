@@ -71,14 +71,34 @@ rows; integrated annotations 84,215 → 311,440).
   Proteins (virtualised search/filter table), Functions (confidence
   histogram + aspect donut + top GO terms), Genome browser (igv.js
   with CDS / operons / BGCs / AMR / localisation tracks), Operons
-  (with derived names + dominant pathway + ensemble support),
-  Pathways (per-KEGG-pathway coverage with per-reaction colouring +
-  cross-references to operons), Special features (AMR + BGC tables),
-  Quality (GAEF metrics + named missing essentials + incoherent
-  process pairs + per-pathway completeness), Pipeline. Uses the
-  bundled Python templater (`gspa-cli/src/main/resources/visualize/
-  make_viz.py`) extracted at runtime. No external deps beyond
-  `python3` and standard library.
+  (enrichment-based names + ensemble support + dominant pathway when
+  significant), Pathways (per-KEGG-pathway coverage with per-reaction
+  colouring + cross-references to operons), Special features (AMR +
+  BGC tables), Quality (GAEF metrics + named missing essentials +
+  incoherent process pairs + per-pathway completeness), Pipeline.
+  Uses the bundled Python templater (`gspa-cli/src/main/resources/
+  visualize/make_viz.py`) extracted at runtime. No external deps
+  beyond `python3` and standard library.
+
+- **Operon naming + pathway tags via hypergeometric enrichment** — the
+  visualisation derives operon names by running a one-sided
+  hypergeometric test on every GO BP term carried by ≥2 operon
+  members (genome-wide BP-annotation frequency as the background).
+  The smallest p-value with k≥2 wins; ties broken by global rarity
+  (more specific first); name shown with `(k/M, p, fold)` qualifier.
+  Falls back to the dominant non-hypothetical Prokka product when no
+  term reaches p<0.05. On MR59-6 this recovers textbook bacterial
+  operons (trp, F-ATPase, NUO, ribosomal-protein cluster, thiamine
+  biosynthesis, …) at typical fold-enrichment 30–500×.
+
+  Pathway tags use the same hypergeometric over pathway-membership
+  in the genome background. Top-3 enriched pathways shown per operon;
+  a pathway is labelled "dominant" only when k≥2 AND coverage≥25%
+  AND p<0.05 — kills the noisy "1/M" tags that were misleading
+  (single-member pathway hits are statistically meaningless on a
+  large bacterial genome). Display caps coverage at 100% when the
+  same enzyme slot is hit by paralogous operon members
+  (e.g. NUO complex subunits all carrying GO:0008137).
 
 - **gspa-nf integrator pipeline upgrades** —
   - `SIDECAR_CLAIMS` process: parses mDeepFRI / ProteInfer / CLEAN
