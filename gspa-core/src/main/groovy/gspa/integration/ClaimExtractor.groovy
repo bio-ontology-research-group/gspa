@@ -38,10 +38,14 @@ class ClaimExtractor {
         'dbcan'          : EvidenceType.DOMAIN_SPECIFIC_CAZY,
         'antismash'      : EvidenceType.DOMAIN_SPECIFIC_BGC,
         'vfdb'           : EvidenceType.DOMAIN_SPECIFIC_VF,
-        // Phase 9 predictors — reserved
+        // Phase 9 predictors
         'deepgo-plus'    : EvidenceType.SEQUENCE_DEEPLEARNING,
         'deepgo'         : EvidenceType.SEQUENCE_DEEPLEARNING,
         'esm2-go'        : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'proteinfer'     : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'clean'          : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'mdf'            : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'mdeepfri'       : EvidenceType.SEQUENCE_DEEPLEARNING,
         'saprot'         : EvidenceType.PROTEIN_LM_EMBEDDING,
         'proteinbert'    : EvidenceType.PROTEIN_LM_EMBEDDING,
         'deepfri'        : EvidenceType.STRUCTURE_DEEPLEARNING,

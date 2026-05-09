@@ -44,6 +44,34 @@ class ClaimExtractorSpec extends Specification {
         'antismash'     | EvidenceType.DOMAIN_SPECIFIC_BGC
         'vfdb'          | EvidenceType.DOMAIN_SPECIFIC_VF
         'deepgo-plus'   | EvidenceType.SEQUENCE_DEEPLEARNING
+        // Sources emitted by the sidecar predictors. Without these, a 51 MB
+        // claims_sidecar.jsonl is silently dropped by readClaimsJsonl.
+        'mdf'           | EvidenceType.SEQUENCE_DEEPLEARNING
+        'mdeepfri'      | EvidenceType.SEQUENCE_DEEPLEARNING
+        'proteinfer'    | EvidenceType.SEQUENCE_DEEPLEARNING
+        'clean'         | EvidenceType.SEQUENCE_DEEPLEARNING
+    }
+
+    def "readClaimsJsonl keeps sidecar-predictor claims (regression: silent drop bug)"() {
+        given:
+        def tmp = File.createTempFile('claims', '.jsonl')
+        tmp.deleteOnExit()
+        tmp.text = [
+            '{"protein_id":"P1","function_type":"GO","function_id":"GO:0006412","go_aspect":"BP","source":"mdf","raw_score":0.9,"metadata":{}}',
+            '{"protein_id":"P2","function_type":"EC","function_id":"EC:2.8.1.-","go_aspect":"","source":"proteinfer","raw_score":0.86,"metadata":{}}',
+            '{"protein_id":"P3","function_type":"EC","function_id":"EC:1.1.1.1","go_aspect":"","source":"clean","raw_score":0.4,"metadata":{}}',
+            '{"protein_id":"P4","function_type":"GO","function_id":"GO:0008152","go_aspect":"BP","source":"diamond","raw_score":0.8,"metadata":{}}',
+        ].join('\n') + '\n'
+
+        when:
+        def claims = extractor.readClaimsJsonl(tmp)
+
+        then:
+        claims.size() == 4
+        claims.find { it.source == 'mdf' }?.evidenceType        == EvidenceType.SEQUENCE_DEEPLEARNING
+        claims.find { it.source == 'proteinfer' }?.evidenceType == EvidenceType.SEQUENCE_DEEPLEARNING
+        claims.find { it.source == 'clean' }?.evidenceType      == EvidenceType.SEQUENCE_DEEPLEARNING
+        claims.find { it.source == 'diamond' }?.evidenceType    == EvidenceType.SEQUENCE_SIMILARITY
     }
 
     def "explicit evidenceType on the annotation wins over the source lookup"() {
