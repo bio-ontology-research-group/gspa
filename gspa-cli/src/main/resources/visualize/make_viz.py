@@ -206,15 +206,46 @@ GO_BP_DENYLIST = {
     "GO:0019222",  # regulation of metabolic process
 }
 
+def _lcomb(n, k):
+    """log binomial coefficient. Returns -inf for invalid args."""
+    if k < 0 or k > n or n < 0: return float("-inf")
+    return math.lgamma(n + 1) - math.lgamma(k + 1) - math.lgamma(n - k + 1)
+
+def _hypergeom_sf(k, M, K, N):
+    """One-sided hypergeometric tail: P(X >= k | X ~ Hypergeom(N, K, M)).
+       N = population size; K = successes in pop; M = sample size; k = observed.
+       Returns 1.0 when k > min(M, K) (impossible) or k <= 0 (trivially true)."""
+    if k <= 0: return 1.0
+    if M <= 0 or K <= 0 or N <= 0 or M > N or K > N: return 1.0
+    upper = min(M, K)
+    if k > upper: return 1.0
+    log_denom = _lcomb(N, M)
+    p = 0.0
+    for j in range(int(k), int(upper) + 1):
+        log_pmf = _lcomb(K, j) + _lcomb(N - K, M - j) - log_denom
+        if log_pmf > -700: p += math.exp(log_pmf)
+    return min(1.0, p)
+
 def name_operons(operons, annos, go_dict, proteins_dict, pathway_detail):
-    """Annotate each operon dict in-place with `name`, `name_term`,
-    `pathways` (list of pathway ids hit), `dominant_pathway` (id or None),
-    `dominant_pathway_name`, and `n_in_pathway`. Mutates `operons`."""
+    """Annotate each operon dict in-place with `name`, `name_term`, `name_pvalue`,
+    `name_fold`, `pathways` (top-3 enriched, each with id/name/k/M/K/N/p/fold),
+    `dominant_pathway` / `dominant_pathway_name` / `n_in_pathway` (set only when
+    k >= 2 AND coverage >= 25% — otherwise None). Mutates `operons`.
+
+    Naming: hypergeometric enrichment of GO BP terms over the genome
+    background. The "name" is the term with the smallest one-sided p-value
+    (with k >= 2 to suppress single-vote noise; root/very-broad BP terms in
+    GO_BP_DENYLIST are excluded). Ties broken by global rarity (more specific
+    first). Falls back to the dominant non-hypothetical Prokka product when no
+    BP enrichment is significant.
+
+    Pathway membership: same hypergeometric test, this time treating
+    pathway-membership in the genome background as the reference set."""
     if not operons:
         return
-    # Build per-protein term sets once.
-    # BP for naming (operon name should be a process), all-aspect for pathway
-    # membership (KEGG pathway terms are typically MF — enzyme activities).
+    # Per-protein term sets. BP for naming (operon name = a process); all-aspect
+    # for pathway hits (pathway terms are MF / enzyme activity, plus we want the
+    # protein to count if any of its informative terms touches the pathway).
     by_protein_bp = defaultdict(set)
     by_protein_any = defaultdict(set)
     for a in annos:
@@ -223,13 +254,18 @@ def name_operons(operons, annos, go_dict, proteins_dict, pathway_detail):
         by_protein_any[a["protein_id"]].add(a["term"])
         if a["aspect"] == "P":
             by_protein_bp[a["protein_id"]].add(a["term"])
-    # Background frequency (count proteins per term, used as tiebreak).
-    term_freq = Counter()
-    for terms in by_protein_bp.values():
-        for t in terms: term_freq[t] += 1
-    # Pathway enrichment: invert pathway_detail to {pathway_id: set(go_terms)}.
+    # Genome backgrounds for hypergeometric (N = annotated proteins; K = proteins
+    # carrying each term).
+    n_proteins_with_bp = len(by_protein_bp)
+    bp_freq = Counter()
+    for pid, terms in by_protein_bp.items():
+        for t in terms: bp_freq[t] += 1
+    n_proteins_with_any = len(by_protein_any)
+
+    # Pathway tables (and per-pathway protein membership in the genome).
     pw_to_terms = {}
     pw_name = {}
+    pw_required_count = {}  # number of distinct GO terms required by the pathway
     for pw in pathway_detail or []:
         pw_id = pw.get("id")
         if not pw_id: continue
@@ -242,31 +278,59 @@ def name_operons(operons, annos, go_dict, proteins_dict, pathway_detail):
             tid = t.get("id") if isinstance(t, dict) else t
             if tid: terms.add(tid)
         pw_to_terms[pw_id] = terms
-    # term -> pathways it appears in
+        pw_required_count[pw_id] = pw.get("required") or len(terms)
     term_to_pw = defaultdict(set)
     for pw_id, terms in pw_to_terms.items():
         for t in terms: term_to_pw[t].add(pw_id)
+    # Genome-wide proteins-per-pathway (K_pw, used as the "successes in pop" for
+    # pathway enrichment).
+    pw_proteins_in_genome = defaultdict(set)
+    for pid, terms in by_protein_any.items():
+        for t in terms:
+            for pw_id in term_to_pw.get(t, ()):
+                pw_proteins_in_genome[pw_id].add(pid)
 
+    n_significant = 0
     for op in operons:
-        # Member BP terms (with multiplicity = how many members carry them).
-        member_terms = Counter()
+        # ---- BP-term enrichment for naming
+        member_term_count = Counter()
+        members_with_bp = 0
         for pid in op["members"]:
-            for t in by_protein_bp.get(pid, ()):
+            terms = by_protein_bp.get(pid, ())
+            if terms: members_with_bp += 1
+            for t in terms:
                 if t in GO_BP_DENYLIST: continue
-                member_terms[t] += 1
-        # Operon name = term shared by most members (specificity tiebreak).
-        op["name"] = None; op["name_term"] = None; op["name_count"] = 0
-        if member_terms:
-            best_n = max(member_terms.values())
-            candidates = [t for t, n in member_terms.items() if n == best_n]
-            # Prefer the rarer term globally (more specific).
-            candidates.sort(key=lambda t: (term_freq[t], t))
-            chosen = candidates[0]
-            label = (go_dict.get(chosen) or [chosen])[0]
-            op["name"] = label
-            op["name_term"] = chosen
-            op["name_count"] = best_n
-        # Fallback: use the dominant Prokka product if no BP terms.
+                member_term_count[t] += 1
+        op["name"] = None
+        op["name_term"] = None
+        op["name_count"] = 0
+        op["name_pvalue"] = None
+        op["name_fold"] = None
+        # Hypergeometric on terms with k >= 2 (single-member terms don't pass
+        # significance for any reasonable population).
+        if member_term_count and members_with_bp >= 2 and n_proteins_with_bp > 0:
+            best = None  # (p, -fold, term, k)
+            for t, k in member_term_count.items():
+                if k < 2: continue
+                K = bp_freq.get(t, 0)
+                if K == 0: continue
+                p = _hypergeom_sf(k, members_with_bp, K, n_proteins_with_bp)
+                fold = (k / members_with_bp) / (K / n_proteins_with_bp)
+                # Sort key: smaller p is better, then larger fold, then more specific.
+                key = (p, -fold, bp_freq.get(t, 0), t)
+                if best is None or key < best[0]:
+                    best = (key, t, k, p, fold)
+            if best:
+                _, t, k, p, fold = best
+                if p < 0.05:
+                    label = (go_dict.get(t) or [t])[0]
+                    op["name"] = label
+                    op["name_term"] = t
+                    op["name_count"] = k
+                    op["name_pvalue"] = p
+                    op["name_fold"] = fold
+                    n_significant += 1
+        # Fallback: most-frequent non-hypothetical Prokka product.
         if not op["name"]:
             prods = Counter()
             for pid in op["members"]:
@@ -274,37 +338,63 @@ def name_operons(operons, annos, go_dict, proteins_dict, pathway_detail):
                 if p and p.get("product") and not p["product"].lower().startswith("hypothetical"):
                     prods[p["product"]] += 1
             if prods:
-                op["name"] = prods.most_common(1)[0][0]
-        # Pathway enrichment: count members participating in each pathway.
-        # Use ALL-aspect terms (pathway terms are MF / enzyme activity).
-        pw_member_count = Counter()
+                lab, n = prods.most_common(1)[0]
+                op["name"] = lab
+                op["name_count"] = n
+
+        # ---- Pathway enrichment
+        members_with_any = sum(1 for pid in op["members"] if by_protein_any.get(pid))
+        pw_hits = defaultdict(set)  # pw_id -> set(operon members hitting it)
         for pid in op["members"]:
             terms = by_protein_any.get(pid, set())
-            hit_pws = set()
+            seen_pws = set()
             for t in terms:
-                hit_pws.update(term_to_pw.get(t, ()))
-            for pw_id in hit_pws: pw_member_count[pw_id] += 1
-        op["pathways"] = [
-            {"id": pw_id, "name": pw_name.get(pw_id, pw_id), "n_members": n}
-            for pw_id, n in pw_member_count.most_common(5)
-        ]
-        if pw_member_count:
-            top_pw, n = pw_member_count.most_common(1)[0]
-            # Single-member pathway hits are still shown (most operons have
-            # only 2-5 members; demanding >= 2 is too strict given the partial
-            # KEGG annotation depth on a novel genome).
-            if n >= 1:
-                op["dominant_pathway"] = top_pw
-                op["dominant_pathway_name"] = pw_name.get(top_pw, top_pw)
-                op["n_in_pathway"] = n
-            else:
-                op["dominant_pathway"] = None
-                op["dominant_pathway_name"] = None
-                op["n_in_pathway"] = 0
-        else:
-            op["dominant_pathway"] = None
-            op["dominant_pathway_name"] = None
-            op["n_in_pathway"] = 0
+                for pw_id in term_to_pw.get(t, ()):
+                    seen_pws.add(pw_id)
+            for pw_id in seen_pws:
+                pw_hits[pw_id].add(pid)
+        scored = []
+        for pw_id, mems in pw_hits.items():
+            k = len(mems)
+            K = len(pw_proteins_in_genome.get(pw_id, ()))
+            if K == 0 or members_with_any == 0: continue
+            p = _hypergeom_sf(k, members_with_any, K, n_proteins_with_any)
+            fold = (k / members_with_any) / (K / n_proteins_with_any) if K > 0 else 0
+            req = pw_required_count.get(pw_id) or 1
+            # Coverage: fraction of pathway enzymes the operon contributes.
+            coverage = k / req if req > 0 else 0
+            scored.append({
+                "id": pw_id,
+                "name": pw_name.get(pw_id, pw_id),
+                "n_members": k,
+                "members_in_op": members_with_any,
+                "n_in_genome": K,
+                "n_genome": n_proteins_with_any,
+                "p_value": p,
+                "fold": fold,
+                "coverage": coverage,
+                "required": req,
+            })
+        scored.sort(key=lambda d: (d["p_value"], -d["fold"]))
+        op["pathways"] = scored[:3]
+        # "Dominant" pathway only when at least 2 members vote AND the operon
+        # accounts for >= 25% of the pathway's enzymes (a real recovery), AND
+        # the enrichment is significant (p < 0.05). This kills the noisy "1/8"
+        # tags the user flagged.
+        op["dominant_pathway"] = None
+        op["dominant_pathway_name"] = None
+        op["n_in_pathway"] = 0
+        op["dominant_pathway_p"] = None
+        op["dominant_pathway_coverage"] = None
+        for s in scored:
+            if s["n_members"] >= 2 and s["coverage"] >= 0.25 and s["p_value"] < 0.05:
+                op["dominant_pathway"] = s["id"]
+                op["dominant_pathway_name"] = s["name"]
+                op["n_in_pathway"] = s["n_members"]
+                op["dominant_pathway_p"] = s["p_value"]
+                op["dominant_pathway_coverage"] = s["coverage"]
+                break
+    print(f"  enrichment: {n_significant}/{len(operons)} operons named at p<0.05", flush=True)
 
 def enrich_pathways_with_operons(pathway_detail, operons):
     """Cross-reference: for each pathway entry, attach a list of operons
@@ -331,7 +421,9 @@ def enrich_pathways_with_operons(pathway_detail, operons):
 # 4b. Operons (from predict_operons.py output)
 
 def load_operons(op_path: Path):
-    """Returns (operons_list, protein_to_operon_map)."""
+    """Returns (operons_list, protein_to_operon_map). Reads either the
+    plain distance-only operons.tsv or the ensemble version (which adds
+    support_set + min_pair_posterior + mean_pair_posterior columns)."""
     operons = []
     p2o = {}
     if not op_path.exists():
@@ -352,6 +444,15 @@ def load_operons(op_path: Path):
                 "n": int(r["n_members"]),
                 "members": members,
             }
+            # Ensemble extras (present only when produced by --ensemble).
+            if "support_set" in r and r["support_set"]:
+                op["support_set"] = r["support_set"].split(",")
+            if "min_pair_posterior" in r and r["min_pair_posterior"]:
+                try: op["min_pair_post"] = float(r["min_pair_posterior"])
+                except ValueError: pass
+            if "mean_pair_posterior" in r and r["mean_pair_posterior"]:
+                try: op["mean_pair_post"] = float(r["mean_pair_posterior"])
+                except ValueError: pass
             operons.append(op)
             for i, pid in enumerate(members):
                 p2o[pid] = (op["id"], i + 1, op["n"])
@@ -1033,10 +1134,18 @@ def main():
             "st": op["strand"], "n": op["n"], "m": op["members"],
             "name": op.get("name"), "name_term": op.get("name_term"),
             "name_count": op.get("name_count", 0),
+            "name_p": op.get("name_pvalue"),
+            "name_fold": op.get("name_fold"),
             "pathways": op.get("pathways", []),
             "dom_pw": op.get("dominant_pathway"),
             "dom_pw_name": op.get("dominant_pathway_name"),
             "n_in_pw": op.get("n_in_pathway", 0),
+            "dom_pw_p": op.get("dominant_pathway_p"),
+            "dom_pw_cov": op.get("dominant_pathway_coverage"),
+            # Ensemble extras (None if operons.tsv came from the distance-only predictor).
+            "support_set": op.get("support_set"),
+            "min_pair_post": op.get("min_pair_post"),
+            "mean_pair_post": op.get("mean_pair_post"),
         } for op in operons],
         "browser": build_browser_payload(proteins, operons, bgcs, amr,
                                          fasta_path=FASTA_PATH),
@@ -1507,8 +1616,8 @@ TEMPLATE = r"""<!doctype html>
         <span class="count" id="op-count"></span>
       </div>
       <div class="table-wrap" style="margin-top:8px">
-        <div class="table-head" style="grid-template-columns: 110px 50px 130px 1fr 200px 1fr;">
-          <div>operon</div><div>size</div><div>span (kb)</div><div>derived name</div><div>dominant pathway</div><div>members</div>
+        <div class="table-head" style="grid-template-columns: 110px 50px 100px 130px 1fr 180px 1fr;">
+          <div>operon</div><div>size</div><div>support</div><div>span (kb)</div><div>derived name</div><div>dominant pathway</div><div>members</div>
         </div>
         <div id="op-rows" style="max-height: calc(100vh - 380px); overflow-y: auto;"></div>
       </div>
@@ -1903,18 +2012,39 @@ function openDetail(pid, keepThresh) {
       const more = op.m.length - 1 > 8 ? ' <span class="small">+'+(op.m.length-1-8)+' more</span>' : "";
       const opName = op.name
         ? '<i>"'+escapeHtml(op.name)+'"</i>' +
-          (op.name_count > 1 ? ' <span class="small">('+op.name_count+'/'+op.n+' members share this term)</span>' : '')
+          (op.name_p != null
+            ? ' <span class="small">(GO BP enrichment: '+op.name_count+'/'+op.n+' members, p='+fmtP(op.name_p)+
+              (op.name_fold != null ? ', '+op.name_fold.toFixed(1)+'× over background' : '')+')</span>'
+            : (op.name_count > 1 ? ' <span class="small">(top Prokka product, '+op.name_count+'/'+op.n+' members)</span>' : ''))
         : '';
-      const opPw = op.dom_pw
-        ? '<div class="small" style="margin-top:3px;"><b>Pathway:</b> ' +
-          '<a href="#" onclick="goToPathway(\''+op.dom_pw+'\'); return false;">'+escapeHtml(op.dom_pw_name)+'</a> ' +
-          '('+op.n_in_pw+'/'+op.n+' enzymes)</div>'
+      // Top-3 enriched pathways (the dominant one shown promoted; the rest as
+      // small-text additional hits).
+      let opPw = '';
+      if (op.pathways && op.pathways.length) {
+        opPw = '<div class="small" style="margin-top:3px;"><b>Pathway enrichment:</b><ul style="margin:2px 0 0 18px; padding:0;">';
+        for (const pw of op.pathways) {
+          const cov = pw.coverage != null ? Math.min(100, Math.round(pw.coverage*100)) + '%' : '?';
+          const isDominant = (op.dom_pw === pw.id);
+          opPw += '<li>' +
+            '<a href="#" onclick="goToPathway(\''+pw.id+'\'); return false;">' +
+              (isDominant ? '<b>'+escapeHtml(pw.name)+'</b>' : escapeHtml(pw.name)) +
+            '</a> · '+pw.n_members+'/'+pw.members_in_op+' op members, '+cov+' cov, ' +
+            'p='+fmtP(pw.p_value)+', '+(pw.fold||0).toFixed(1)+'×' +
+            (isDominant ? ' <span title="passes coverage>=25% AND k>=2 AND p<0.05" style="color:var(--high)">(dominant)</span>' : '') +
+          '</li>';
+        }
+        opPw += '</ul></div>';
+      }
+      const opSupport = op.support_set && op.support_set.length
+        ? '<div class="small" style="margin-top:3px;"><b>Support:</b> ' + op.support_set.join(' + ') +
+          ' · pair-posterior min ' + (op.min_pair_post||0).toFixed(2) + ' / mean ' + (op.mean_pair_post||0).toFixed(2) + '</div>'
         : '';
       ctxBits.push(
         '<div style="margin-top:8px; padding:8px; background:#f1f7f7; border-left:3px solid var(--sigp); border-radius:3px;">' +
           '<div><b>Operon</b> <span class="mono">'+op.id+'</span> · '+op.n+' members · gene '+p.opi+' of '+p.opn+
             ' · <span class="mono small">'+op.s.toLocaleString()+"–"+op.e.toLocaleString()+'</span> ' + opName + '</div>' +
           opPw +
+          opSupport +
           '<div class="small" style="margin-top:4px;">co-operonic neighbours: '+siblings+more+'</div>' +
         '</div>'
       );
@@ -2165,16 +2295,36 @@ function renderOperons(sec) {
     const more = op.m.length > 6 ? ' <span class="small">+'+(op.m.length - 6)+' more</span>' : "";
     const nameHtml = op.name
       ? '<b>' + escapeHtml(op.name) + '</b>' +
-        (op.name_count > 1 ? ' <span class="small">('+op.name_count+'/'+op.n+' members)</span>' : '')
+        (op.name_p != null
+          ? ' <span class="small" title="hypergeometric enrichment p-value">' +
+            '(' + op.name_count + '/' + op.n + ', p=' + fmtP(op.name_p) +
+            (op.name_fold != null ? ', ' + op.name_fold.toFixed(1) + '×' : '') + ')</span>'
+          : (op.name_count > 1 ? ' <span class="small">('+op.name_count+'/'+op.n+' members)</span>' : ''))
       : '<span class="small">—</span>';
     const pwHtml = op.dom_pw
       ? '<a href="#" onclick="goToPathway(\''+op.dom_pw+'\'); return false;">' +
           '<b>'+escapeHtml(op.dom_pw_name)+'</b></a>' +
-        ' <span class="small">('+op.n_in_pw+'/'+op.n+' enzymes)</span>'
+        ' <span class="small" title="' + op.n_in_pw + ' members of operon hit this pathway · ' +
+          (op.dom_pw_cov != null ? Math.min(100, Math.round(op.dom_pw_cov*100)) + '% pathway coverage' : '') +
+          (op.dom_pw_p != null ? ' · p=' + fmtP(op.dom_pw_p) : '') + '">' +
+        '(' + op.n_in_pw + '/' + op.n + ' members, ' +
+          (op.dom_pw_cov != null ? Math.min(100, Math.round(op.dom_pw_cov*100)) + '% cov' : '?') + ')</span>'
       : '<span class="small">—</span>';
-    return '<div class="table-row" style="grid-template-columns: 110px 50px 130px 1fr 200px 1fr;">' +
+    // Ensemble support column (empty when not in ensemble mode).
+    let supportHtml = '<span class="small">—</span>';
+    if (op.support_set && op.support_set.length) {
+      const dots = ['distance','strict','functional'].map(k =>
+        '<span title="' + k + (op.support_set.includes(k)?' (vote)':' (no vote)') +
+          '" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 1px;background:' +
+          (op.support_set.includes(k) ? 'var(--high)' : '#dde0e6') + '"></span>'
+      ).join("");
+      const post = op.min_pair_post != null ? op.min_pair_post.toFixed(2) : '?';
+      supportHtml = dots + ' <span class="small">' + post + '</span>';
+    }
+    return '<div class="table-row" style="grid-template-columns: 110px 50px 100px 130px 1fr 180px 1fr;">' +
       '<div class="mono">'+op.id+' <span class="small">'+op.st+'</span></div>' +
       '<div>'+op.n+'</div>' +
+      '<div>'+supportHtml+'</div>' +
       '<div>'+op.s.toLocaleString()+"–"+op.e.toLocaleString()+' <span class="small">('+lenKb+' kb)</span></div>' +
       '<div>'+nameHtml+'</div>' +
       '<div>'+pwHtml+'</div>' +
@@ -2240,6 +2390,14 @@ function goToPathway(pwId) {
 }
 
 function cssId(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, "_"); }
+
+// Format a p-value compactly. < 1e-3 → exponent; otherwise 3 sig fig.
+function fmtP(p) {
+  if (p == null || isNaN(p)) return "?";
+  if (p < 1e-300) return "<1e-300";
+  if (p < 1e-3) return p.toExponential(1).replace("e", "·10");
+  return p.toPrecision(2);
+}
 
 // ----- Pathways tab
 function renderPathways(sec) {
