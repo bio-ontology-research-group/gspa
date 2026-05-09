@@ -224,17 +224,65 @@ class PathwayDatabase {
      * @return Average maximum completeness across triggered pathways
      */
     double computePathwayCoherence(Set<String> annotatedGoTerms) {
-        def triggeredPathways = pathways.values().findAll { pw ->
-            def required = pw.requiredGoTerms
-            required.any { annotatedGoTerms.contains(it) }
-        }
-
-        if (triggeredPathways.isEmpty()) return 1.0
-
-        double totalCompleteness = triggeredPathways.sum { PathwayGraph pw ->
-            pw.computeCompleteness(annotatedGoTerms)
-        } as double
-
-        totalCompleteness / triggeredPathways.size()
+        computePathwayCoherenceDetailed(annotatedGoTerms).overallScore
     }
+
+    /**
+     * Same as {@link #computePathwayCoherence} but also returns per-pathway
+     * detail: which pathways were triggered, what their completeness was,
+     * and which required GO terms were absent. Used by the GAEF report so
+     * the writer can name the incoherent pathways instead of just printing
+     * the aggregate score.
+     */
+    PathwayCoherenceResult computePathwayCoherenceDetailed(Set<String> annotatedGoTerms) {
+        def result = new PathwayCoherenceResult()
+        def triggered = pathways.values().findAll { pw ->
+            pw.requiredGoTerms.any { annotatedGoTerms.contains(it) }
+        }
+        if (triggered.isEmpty()) {
+            result.overallScore = 1.0
+            return result
+        }
+        double total = 0.0
+        triggered.each { PathwayGraph pw ->
+            def required = pw.requiredGoTerms
+            Set<String> present = required.findAll { annotatedGoTerms.contains(it) } as Set
+            Set<String> missing = (required - present) as Set
+            double completeness = pw.computeCompleteness(annotatedGoTerms)
+            total += completeness
+            result.perPathway << new PerPathwayResult(
+                pathwayId: pw.pathwayId,
+                pathwayName: pw.pathwayName,
+                pathwayGoTerm: pw.goTerm,
+                completeness: completeness,
+                requiredCount: required.size(),
+                presentTerms: present,
+                missingTerms: missing,
+            )
+        }
+        result.overallScore = total / triggered.size()
+        result.perPathway.sort { it.completeness }    // least-coherent first
+        result
+    }
+}
+
+/**
+ * Per-pathway detail returned by {@link PathwayDatabase#computePathwayCoherenceDetailed}.
+ */
+class PerPathwayResult {
+    String pathwayId
+    String pathwayName
+    String pathwayGoTerm
+    double completeness
+    int requiredCount
+    Set<String> presentTerms = []
+    Set<String> missingTerms = []
+}
+
+/**
+ * Aggregate pathway-coherence result with per-pathway breakdown.
+ */
+class PathwayCoherenceResult {
+    double overallScore = 1.0
+    List<PerPathwayResult> perPathway = []
 }

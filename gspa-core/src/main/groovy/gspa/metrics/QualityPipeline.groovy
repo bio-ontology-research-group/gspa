@@ -255,9 +255,24 @@ class QualityPipeline {
             report.processCoherence = cohr.processCoherence
             report.pathwayCoherence = cohr.pathwayCoherence
             report.complexCoherence = cohr.complexCoherence
+            // Per-pair / per-pathway detail for the GAEF report.
+            report.incoherentProcessPairs = cohr.processUnsatisfiedPairs ?: []
+            report.incoherentPathways = (cohr.pathwayPerPathway ?: []).collect { p ->
+                [
+                    id           : p.pathwayId,
+                    name         : p.pathwayName,
+                    pathway_term : p.pathwayGoTerm,
+                    completeness : p.completeness,
+                    required     : p.requiredCount,
+                    present      : p.presentTerms.toList(),
+                    missing      : p.missingTerms.toList(),
+                ] as Map<String, Object>
+            }
             log.info("  Process coherence: ${String.format('%.1f%%', cohr.processCoherence * 100)} " +
-                "(${cohr.processSatisfied}/${cohr.processTriggered} dependencies)")
-            log.info("  Pathway coherence: ${String.format('%.1f%%', cohr.pathwayCoherence * 100)}")
+                "(${cohr.processSatisfied}/${cohr.processTriggered} dependencies; " +
+                "${report.incoherentProcessPairs.size()} unsatisfied pair(s))")
+            log.info("  Pathway coherence: ${String.format('%.1f%%', cohr.pathwayCoherence * 100)} " +
+                "(${report.incoherentPathways.count { (it.completeness as Double) < 1.0 }}/${report.incoherentPathways.size()} triggered pathways incoherent)")
             log.info("  Complex coherence: ${String.format('%.1f%%', cohr.complexCoherence * 100)}")
         } else {
             report.processCoherence = -1.0
@@ -289,6 +304,32 @@ class QualityPipeline {
         }
 
         log.info("  Composite score: ${String.format('%.3f', report.compositeScore)}")
+
+        // Populate the GO ID → name lookup the writer uses to render
+        // human-readable GAEF detail. Covers every term referenced by the
+        // report (essentials, incoherent process pairs, incoherent pathways,
+        // consistency violations).
+        if (goOntology != null) {
+            Set<String> ids = new LinkedHashSet<>()
+            ids.addAll(report.presentEssentialFunctions)
+            ids.addAll(report.missingEssentialFunctions)
+            report.incoherentProcessPairs.each { p ->
+                if (p.key) ids << p.key
+                if (p.value) ids << p.value
+            }
+            report.incoherentPathways.each { pw ->
+                if (pw.pathway_term) ids << (pw.pathway_term as String)
+                (pw.present as List)?.each { ids << (it as String) }
+                (pw.missing as List)?.each { ids << (it as String) }
+            }
+            report.violations.each { v -> v.involvedGoTerms?.each { ids << it } }
+            ids.each { id ->
+                try {
+                    String label = goOntology.getLabel(id)
+                    if (label) report.goLabels[id] = label
+                } catch (ignored) { /* unknown id */ }
+            }
+        }
 
         genome.qualityReport = report
         report

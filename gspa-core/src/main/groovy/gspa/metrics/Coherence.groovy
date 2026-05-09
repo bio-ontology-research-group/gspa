@@ -4,6 +4,8 @@ import gspa.model.Genome
 import gspa.ontology.GoOntology
 import gspa.ontology.GoReasoner
 import gspa.ontology.PathwayDatabase
+import gspa.ontology.PathwayCoherenceResult
+import gspa.ontology.PerPathwayResult
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -50,14 +52,16 @@ class Coherence {
         Set<String> annotatedTerms = genome.allGoTerms()
 
         def processResult = evaluateProcessCoherence(annotatedTerms)
-        def pathwayResult = evaluatePathwayCoherence(annotatedTerms)
+        def pathwayDetail = evaluatePathwayCoherenceDetailed(annotatedTerms)
         def complexResult = evaluateComplexCoherence(genome)
 
         new CoherenceResult(
             processCoherence: processResult.score,
             processTriggered: processResult.triggered,
             processSatisfied: processResult.satisfied,
-            pathwayCoherence: pathwayResult,
+            processUnsatisfiedPairs: processResult.unsatisfied,
+            pathwayCoherence: pathwayDetail.overallScore,
+            pathwayPerPathway: pathwayDetail.perPathway,
             complexCoherence: complexResult.score,
             complexTotal: complexResult.total,
             complexCoherent: complexResult.coherent
@@ -86,11 +90,21 @@ class Coherence {
      * Pathway coherence: average max completeness across triggered pathways.
      */
     double evaluatePathwayCoherence(Set<String> annotatedTerms) {
+        evaluatePathwayCoherenceDetailed(annotatedTerms).overallScore
+    }
+
+    /**
+     * Same as {@link #evaluatePathwayCoherence} but returns per-pathway
+     * detail (which pathways were triggered, what was missing). Used by the
+     * GAEF report so the writer can name the incoherent pathways instead
+     * of just printing the aggregate score.
+     */
+    PathwayCoherenceResult evaluatePathwayCoherenceDetailed(Set<String> annotatedTerms) {
         if (pathwayDatabase == null) {
             log.warn("No pathway database loaded, skipping pathway coherence")
-            return 1.0
+            return new PathwayCoherenceResult(overallScore: 1.0)
         }
-        pathwayDatabase.computePathwayCoherence(annotatedTerms)
+        pathwayDatabase.computePathwayCoherenceDetailed(annotatedTerms)
     }
 
     /**
@@ -144,7 +158,11 @@ class CoherenceResult {
     double processCoherence
     int processTriggered
     int processSatisfied
+    /** Unsatisfied (C, F) has_part pairs (process detail). */
+    List<Map.Entry<String, String>> processUnsatisfiedPairs = []
     double pathwayCoherence
+    /** Per-triggered-pathway detail (sorted least-coherent first). */
+    List<PerPathwayResult> pathwayPerPathway = []
     double complexCoherence
     int complexTotal
     int complexCoherent

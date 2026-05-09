@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import gspa.model.QualityReport
 import gspa.model.ConsistencyViolation
+import gspa.ontology.GoOntology
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -19,9 +20,12 @@ class QualityReportWriter {
 
     /**
      * Write a quality report as JSON.
+     *
+     * Pass {@code goOntology} to enrich the JSON with human-readable GO term
+     * names alongside every ID. Without it, only IDs are emitted.
      */
-    static void writeJson(QualityReport report, File output) {
-        def reportMap = buildReportMap(report)
+    static void writeJson(QualityReport report, File output, GoOntology goOntology = null) {
+        def reportMap = buildReportMap(report, goOntology)
         mapper.writeValue(output, reportMap)
         log.info("Quality report written to: ${output}")
     }
@@ -29,8 +33,8 @@ class QualityReportWriter {
     /**
      * Write a quality report as JSON string.
      */
-    static String toJson(QualityReport report) {
-        mapper.writeValueAsString(buildReportMap(report))
+    static String toJson(QualityReport report, GoOntology goOntology = null) {
+        mapper.writeValueAsString(buildReportMap(report, goOntology))
     }
 
     /**
@@ -127,7 +131,15 @@ class QualityReportWriter {
         }
     }
 
-    private static Map buildReportMap(QualityReport report) {
+    private static Map buildReportMap(QualityReport report, GoOntology goOntology = null) {
+        // Helper: turn a GO ID into {id, name} (or just {id} if no name).
+        // Looks at the explicit goOntology first (for callers that want to
+        // override), then falls back to the labels QualityScorer attached
+        // to the report.
+        def named = { String id ->
+            String name = goOntology?.getLabel(id) ?: report.goLabels?.get(id)
+            name ? [id: id, name: name] : [id: id]
+        }
         [
             genome_id              : report.genomeId,
             assessment_date        : report.assessmentDate,
@@ -138,16 +150,38 @@ class QualityReportWriter {
                 composite_score     : report.compositeScore,
             ],
             completeness           : [
-                score               : report.completeness,
-                present_count       : report.presentEssentialFunctions.size(),
-                missing_count       : report.missingEssentialFunctions.size(),
-                present_functions   : report.presentEssentialFunctions.sort(),
-                missing_functions   : report.missingEssentialFunctions.sort(),
+                score                       : report.completeness,
+                present_count               : report.presentEssentialFunctions.size(),
+                missing_count               : report.missingEssentialFunctions.size(),
+                // Backwards-compat: bare-ID lists kept under their original keys.
+                present_functions           : report.presentEssentialFunctions.sort(),
+                missing_functions           : report.missingEssentialFunctions.sort(),
+                // New: ID + human-readable name.
+                present_functions_named     : report.presentEssentialFunctions.sort().collect(named),
+                missing_functions_named     : report.missingEssentialFunctions.sort().collect(named),
             ],
             coherence              : [
-                process_coherence   : report.processCoherence,
-                pathway_coherence   : report.pathwayCoherence,
-                complex_coherence   : report.complexCoherence,
+                process_coherence            : report.processCoherence,
+                pathway_coherence            : report.pathwayCoherence,
+                complex_coherence            : report.complexCoherence,
+                // Per-pair detail: required vs missing GO term, with names.
+                process_unsatisfied_pairs    : report.incoherentProcessPairs.collect { p ->
+                    [required: named(p.key), missing: named(p.value)]
+                },
+                // Per-pathway detail (sorted least-coherent first by the metric).
+                pathway_detail               : report.incoherentPathways.collect { pw ->
+                    [
+                        id            : pw.id,
+                        name          : pw.name,
+                        pathway_term  : pw.pathway_term ? named(pw.pathway_term as String) : null,
+                        completeness  : pw.completeness,
+                        required      : pw.required,
+                        n_present     : (pw.present as List).size(),
+                        n_missing     : (pw.missing as List).size(),
+                        present_terms : (pw.present as List).collect(named),
+                        missing_terms : (pw.missing as List).collect(named),
+                    ]
+                },
             ],
             consistency            : [
                 consistent          : report.consistent,
@@ -159,6 +193,7 @@ class QualityReportWriter {
                         description      : v.description,
                         involved_proteins: v.involvedProteins,
                         involved_go_terms: v.involvedGoTerms,
+                        involved_terms_named: (v.involvedGoTerms ?: []).collect(named),
                         suggested_action : v.suggestedAction,
                         justification    : v.justification,
                     ]

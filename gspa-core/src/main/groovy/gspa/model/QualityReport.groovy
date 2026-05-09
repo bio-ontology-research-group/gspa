@@ -37,6 +37,22 @@ class QualityReport {
     /** List of consistency violations with explanations */
     List<ConsistencyViolation> violations = []
 
+    /** Unsatisfied (C, F) has_part pairs from process-coherence — what's
+     * required but missing. Each entry: key = required (typically C term
+     * implied by the annotation), value = the F term that wasn't found. */
+    List<Map.Entry<String, String>> incoherentProcessPairs = []
+
+    /** Per-pathway coherence detail. Each entry: id, name, completeness,
+     * required_count, present_terms, missing_terms. Used by the GAEF
+     * report writer to name the under-covered pathways. */
+    List<Map<String, Object>> incoherentPathways = []
+
+    /** GO ID → human-readable name lookup. Populated by QualityScorer when
+     * a GoOntology is available, then read by QualityReportWriter so the
+     * JSON output names every essential / pathway / process pair instead
+     * of just printing bare IDs. Empty map if no ontology was provided. */
+    Map<String, String> goLabels = [:]
+
     /** Mean information content of annotations */
     double meanIC = 0.0
 
