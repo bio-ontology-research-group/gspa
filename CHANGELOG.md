@@ -120,6 +120,41 @@ rows; integrated annotations 84,215 → 311,440).
   `minPairPosterior`, `meanPairPosterior`); existing callers that
   construct `Operon` without them keep working (defaults are empty).
 
+- **Pathway database supports stacking multiple sources**. New
+  `PathwayLoader.loadPathwaysInto(db, file)` merges an additional
+  pathway TSV into an existing `PathwayDatabase` so KEGG main maps,
+  KEGG Modules, MetaCyc, BioCyc — and any future source in the same
+  schema — can be layered. `gspa integrate --modules` and
+  `gspa evaluate --modules` accept comma-separated TSV paths to stack.
+
+- **KEGG Modules ingest** — new `benchmark/fetch_kegg_modules.py`
+  fetches KEGG Modules from the public REST API (`/list/module` +
+  `/link/ec/module`) and joins to GO via `ec2go.txt` to emit
+  `kegg_modules.tsv` in the existing `kegg_pathways.tsv` schema. 520
+  modules / 2,822 (module, EC) rows. Modules are smaller, more focused
+  units (5–15 enzymes) than KEGG main pathways (50+), so per-genome
+  enrichment is meaningful — on MR59-6, switching to main + Modules
+  raised the count of operons with a significant dominant pathway
+  from **20 → 58** while keeping the strict bar (k≥2, coverage≥25%,
+  p<0.05) unchanged.
+
+  The Pathways tab in the visualisation now classifies each entry by
+  source (KEGG main / KEGG Module / other) with a per-source filter
+  and badge.
+
+### Fixed
+- `PathwayGraph.computeCompleteness` used path-based scoring that
+  collapsed to 1.0 whenever a pathway had no dependency edges (every
+  single-node "path" reported 0 or 1; max → 1 if any enzyme present).
+  KEGG Modules built from `link/ec/module` carry no reaction order,
+  so all 274 module entries reported 100% coverage on MR59-6 — the
+  metric was degenerate. Fixed: when the reaction graph has no edges,
+  fall back to fraction-of-required-terms-covered, the honest
+  aggregate. MR59-6 pathway coherence is now 95.7% → 55.8% with
+  modules in the mix (314 of 397 triggered pathways are genuinely
+  partial), and the per-pathway detail in the report finally calls
+  out which enzymes are missing.
+
 ## [1.5.0] — 2026-05-07
 
 ### Added

@@ -1637,6 +1637,14 @@ TEMPLATE = r"""<!doctype html>
             <option value="complete">complete only (100%)</option>
           </select>
         </label>
+        <label>source
+          <select id="pw-source-filter">
+            <option value="all">all sources</option>
+            <option value="kegg-pathway">KEGG main pathway</option>
+            <option value="kegg-module">KEGG Module</option>
+            <option value="other">other (MetaCyc, BioCyc, …)</option>
+          </select>
+        </label>
         <span class="count" id="pw-count"></span>
       </div>
       <div id="pw-rows" style="margin-top:8px"></div>
@@ -2406,13 +2414,34 @@ function renderPathways(sec) {
   paths.sort((a, b) => a.completeness - b.completeness);  // worst first
   const search = document.getElementById("pw-search");
   const filter = document.getElementById("pw-filter");
+  const sourceFilter = document.getElementById("pw-source-filter");
+  // Classify each pathway by source from its id prefix.
+  function pwSource(pw) {
+    const id = pw.id || "";
+    if (id.startsWith("KEGG:M")) return "kegg-module";
+    if (id.startsWith("KEGG:")) return "kegg-pathway";
+    return "other";
+  }
+  function pwSourceLabel(src) {
+    return src === "kegg-module" ? "KEGG Module"
+         : src === "kegg-pathway" ? "KEGG main"
+         : "other";
+  }
+  // Counts per source for the summary line.
+  const counts = paths.reduce((acc, pw) => {
+    const s = pwSource(pw); acc[s] = (acc[s] || 0) + 1; return acc;
+  }, {});
+  const partsSummary = Object.entries(counts)
+    .map(([s, n]) => '<b>'+n+'</b> '+pwSourceLabel(s))
+    .join(' · ');
   document.getElementById("pw-summary").innerHTML =
-    '<b>' + paths.length + '</b> triggered pathways. ' +
+    '<b>' + paths.length + '</b> triggered pathways (' + partsSummary + '). ' +
     '<b>' + paths.filter(p => p.completeness < 1.0).length + '</b> incoherent. ' +
     'Click a missing reaction to see the GO term it maps to; click an operon link to jump to its members.';
   function passes(pw) {
     if (filter.value === "incoherent" && pw.completeness >= 1.0) return false;
     if (filter.value === "complete" && pw.completeness < 1.0) return false;
+    if (sourceFilter.value !== "all" && pwSource(pw) !== sourceFilter.value) return false;
     if (search.value) {
       const q = search.value.toLowerCase();
       if (!(pw.name||"").toLowerCase().includes(q) && !(pw.id||"").toLowerCase().includes(q)) return false;
@@ -2438,9 +2467,15 @@ function renderPathways(sec) {
     const keggLink = pw.id && pw.id.startsWith("map") ?
       '<a href="https://www.kegg.jp/pathway/'+encodeURIComponent(pw.id)+'" target="_blank" title="open KEGG pathway">KEGG ↗</a>' :
       (pw.id ? '<a href="https://www.kegg.jp/entry/'+encodeURIComponent(pw.id)+'" target="_blank">KEGG ↗</a>' : '');
+    const src = pwSource(pw);
+    const srcBadge = '<span class="chip" title="pathway source" style="font-size:10px; padding:1px 6px; '+
+      (src === 'kegg-module'  ? 'background:#e1ecfa; color:#1f4e79;' :
+       src === 'kegg-pathway' ? 'background:#eef0f4; color:#475467;' :
+                                'background:#fff4e6; color:#a36500;') +
+      '">'+pwSourceLabel(src)+'</span>';
     return '<div class="pw-card" id="pw-'+cssId(pw.id)+'">' +
       '<div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">' +
-        '<div style="flex:1; min-width:0;"><b>'+escapeHtml(pw.name||pw.id)+'</b> <span class="small mono">'+pw.id+'</span> '+keggLink+'</div>' +
+        '<div style="flex:1; min-width:0;">'+srcBadge+' <b>'+escapeHtml(pw.name||pw.id)+'</b> <span class="small mono">'+pw.id+'</span> '+keggLink+'</div>' +
         '<div style="width:120px; text-align:right; color:'+colour+'; font-weight:600;">'+compl+'%</div>' +
         '<div class="small" style="width:130px; text-align:right;">'+pw.n_present+' / '+pw.required+' enzymes</div>' +
       '</div>' +
@@ -2457,6 +2492,7 @@ function renderPathways(sec) {
   }
   search.addEventListener("input", rerenderPaths);
   filter.addEventListener("change", rerenderPaths);
+  sourceFilter.addEventListener("change", rerenderPaths);
   rerenderPaths();
 }
 
