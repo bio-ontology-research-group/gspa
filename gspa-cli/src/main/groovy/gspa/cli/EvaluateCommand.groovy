@@ -33,6 +33,12 @@ class EvaluateCommand implements Runnable {
     @Option(names = ['--pathways'], description = 'Pathway definitions TSV')
     File pathways
 
+    @Option(names = ['--modules'],
+            description = 'Additional pathway TSV(s) to stack on top of --pathways ' +
+                          '(KEGG Modules, MetaCyc, BioCyc, …). Comma-separated list.',
+            split = ',')
+    List<File> moduleFiles = []
+
     @Option(names = ['--taxonomy'], description = 'Taxonomy hierarchy TSV (child\\tparent)')
     File taxonomy
 
@@ -97,7 +103,16 @@ class EvaluateCommand implements Runnable {
             pipeline.complexTermsFile(complexTerms)
         }
         if (ec2go?.exists() && pathways?.exists()) {
-            pipeline.pathwayFile(pathways, ec2go)
+            // Build the pathway DB ourselves so we can stack additional sources
+            // (KEGG Modules, MetaCyc, BioCyc) via --modules.
+            def ec2goMap = gspa.ontology.PathwayLoader.loadEc2Go(ec2go)
+            def pwDb = gspa.ontology.PathwayLoader.loadPathways(pathways, ec2goMap)
+            for (File mod : (moduleFiles ?: [])) {
+                if (mod != null && mod.exists()) {
+                    gspa.ontology.PathwayLoader.loadPathwaysInto(pwDb, mod)
+                }
+            }
+            pipeline.pathwayDatabase(pwDb)
         } else if (ec2go?.exists()) {
             pipeline.ec2goFile(ec2go)
         }

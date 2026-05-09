@@ -60,7 +60,20 @@ class PathwayLoader {
      */
     static PathwayDatabase loadPathways(File pathwayFile, Map<String, String> ec2go = [:]) {
         def db = new PathwayDatabase(ec2go: ec2go)
+        loadPathwaysInto(db, pathwayFile)
+        db
+    }
 
+    /**
+     * Merge an additional pathway TSV into an existing {@link PathwayDatabase}.
+     * Useful when stacking sources — for instance KEGG main maps + KEGG
+     * Modules + (eventually) MetaCyc / BioCyc — without rebuilding the EC →
+     * GO map each time. Pathway IDs from each source must be globally unique
+     * (the convention is to prefix the source: `KEGG:00010` for main maps,
+     * `KEGG:M00001` for modules, `MCYC:PWY-...` for MetaCyc).
+     */
+    static void loadPathwaysInto(PathwayDatabase db, File pathwayFile) {
+        int before = db.pathways.size()
         pathwayFile.eachLine { line ->
             if (line.startsWith('#') || line.startsWith('pathway_id') || line.trim().isEmpty()) return
 
@@ -81,7 +94,7 @@ class PathwayLoader {
                     pathwayId: pathwayId,
                     pathwayName: pathwayName,
                     goTerm: goTerm,
-                    ecToGo: ec2go
+                    ecToGo: db.ec2go
                 )
                 db.pathways[pathwayId] = pathway
             }
@@ -99,9 +112,7 @@ class PathwayLoader {
                 pathway.addDependency(dependsOn, reactionId)
             }
         }
-
-        log.info("Loaded ${db.pathways.size()} pathways")
-        db
+        log.info("Loaded ${db.pathways.size() - before} pathway(s) from ${pathwayFile.name}; total now ${db.pathways.size()}")
     }
 
     /**

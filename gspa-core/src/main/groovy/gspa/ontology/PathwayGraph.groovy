@@ -141,15 +141,21 @@ class PathwayGraph {
      *
      * Completeness of a path = fraction of reactions in the path whose
      * required GO terms are present in the annotation set.
+     *
+     * Special case: when the pathway has no dependency edges (e.g. KEGG
+     * Modules built from {@code link/ec/module} which don't carry reaction
+     * order), the path-based scorer degenerates — every single-reaction
+     * "path" reports 0 or 1 and {@code max} collapses to 1.0 if any one
+     * enzyme is present. We detect that and fall back to the fraction of
+     * required GO terms covered, which is the honest aggregate.
      */
     double computeCompleteness(Set<String> annotatedGoTerms) {
+        if (reactionGraph.edgeSet().isEmpty()) {
+            return _coverageOfRequired(annotatedGoTerms)
+        }
         def paths = getAllPaths()
         if (paths.isEmpty()) {
-            // Fallback: just check if all required GO terms are present
-            def required = requiredGoTerms
-            if (required.isEmpty()) return 1.0
-            int present = required.count { annotatedGoTerms.contains(it) }
-            return present / (double) required.size()
+            return _coverageOfRequired(annotatedGoTerms)
         }
 
         double maxCompleteness = 0.0
@@ -173,6 +179,14 @@ class PathwayGraph {
             }
         }
         maxCompleteness
+    }
+
+    /** Fraction of the pathway's required GO terms that are annotated. */
+    private double _coverageOfRequired(Set<String> annotatedGoTerms) {
+        def required = requiredGoTerms
+        if (required.isEmpty()) return 1.0
+        int present = required.count { annotatedGoTerms.contains(it) }
+        return present / (double) required.size()
     }
 }
 

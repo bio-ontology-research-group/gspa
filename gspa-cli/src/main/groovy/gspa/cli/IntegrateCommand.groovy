@@ -85,6 +85,14 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--pathways'], description = 'Pathway definitions TSV.')
     File pathwaysFile
 
+    @Option(names = ['--modules'],
+            description = 'Additional pathway TSV to stack on top of --pathways ' +
+                          '(same schema). Designed for KEGG Modules — narrower units ' +
+                          'than KEGG main pathways, so per-genome coverage is meaningful. ' +
+                          'Repeatable: pass several files separated by commas to layer ' +
+                          'KEGG modules + MetaCyc + BioCyc.', split = ',')
+    List<File> moduleFiles = []
+
     @Option(names = ['--taxonomy'],
             description = 'NCBI taxonomy hierarchy file (for ConsistencyPrior).')
     File taxonomyFile
@@ -465,14 +473,22 @@ class IntegrateCommand implements Runnable {
             }
         }
 
-        // Pathway database
+        // Pathway database — supports stacking multiple sources (KEGG main +
+        // KEGG Modules + MetaCyc + BioCyc) so a bacterial genome's operons
+        // get reasonable enrichment hits at each granularity.
         if (pathwaysFile != null && ec2goFile != null) {
             try {
                 state.pathwayDatabase = gspa.ontology.PathwayLoader.loadPathways(
                     pathwaysFile,
                     gspa.ontology.PathwayLoader.loadEc2Go(ec2goFile),
                 )
-                println "  Pathways: ${state.pathwayDatabase.pathways.size()} loaded"
+                println "  Pathways: ${state.pathwayDatabase.pathways.size()} loaded from ${pathwaysFile.name}"
+                for (File mod : (moduleFiles ?: [])) {
+                    if (mod != null && mod.exists()) {
+                        gspa.ontology.PathwayLoader.loadPathwaysInto(state.pathwayDatabase, mod)
+                        println "  Pathways: now ${state.pathwayDatabase.pathways.size()} (added ${mod.name})"
+                    }
+                }
             } catch (Exception e) {
                 System.err.println "  [warn] Failed to load pathway database: ${e.message}"
             }
