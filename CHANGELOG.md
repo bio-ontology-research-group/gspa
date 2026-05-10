@@ -8,7 +8,9 @@ Per-version benchmark numbers, ablation tables, and the F-max protocol
 notes live in `benchmark/RESULTS.md`. This file summarises the
 user-visible deltas; for measured impact, follow the cross-references.
 
-## [Unreleased] — 1.5.x debug-surface fixes
+## [Unreleased]
+
+## [1.5.1] — 2026-05-10 — debug-surface fixes
 
 Discovered while building an interactive HTML browser for the MR59-6
 *Pontibacter* tutorial: the visualisation surfaced a real product bug
