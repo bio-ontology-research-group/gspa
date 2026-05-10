@@ -155,6 +155,24 @@ rows; integrated annotations 84,215 → 311,440).
   partial), and the per-pathway detail in the report finally calls
   out which enzymes are missing.
 
+- `GoOntology.getLabel` and `buildLabelCache` rendered every GO label
+  as the literal string `"true"`. Root cause: in Groovy, the property
+  shorthand `((OWLLiteral) ann.value).literal` resolves to
+  `OWLAnnotationValue.isLiteral()` (returns the boolean `true`), not
+  `OWLLiteral.getLiteral()` (the lexical form). Coerced to `String`
+  on the way into the label cache, every entry became `"true"`. The
+  `goLabels` map shipped in `quality_gspa.json` therefore mapped every
+  id to `"true"`, so the visualisation rendered "missingtrue
+  GO:0090482" instead of "missing vitamin transmembrane transporter
+  activity GO:0090482" for every essential function, every
+  process-coherence pair, and every pathway term. Fix: explicit
+  `getLiteral()` calls; defence-in-depth `resolveGoName` helper in the
+  HTML viewer falls back to the top-level GO map when an inline name
+  is `"true"`/`"false"` so already-generated quality JSONs render
+  correctly without re-running `gspa evaluate`. Regression test in
+  `GoOntologySpec` loads the bundled `go-tiny.obo` and asserts
+  `getLabel('GO:0006259') == 'DNA metabolic process'`.
+
 ## [1.5.0] — 2026-05-07
 
 ### Added
