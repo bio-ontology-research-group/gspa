@@ -93,7 +93,10 @@ class GoOntology {
         def cls = getGoClass(goId)
         for (OWLAnnotation ann : EntitySearcher.getAnnotations(cls, ontology, factory.getRDFSLabel())) {
             if (ann.value instanceof OWLLiteral) {
-                String label = ((OWLLiteral) ann.value).literal
+                // Use getLiteral() explicitly: in Groovy, .literal resolves to
+                // OWLAnnotationValue.isLiteral() (boolean true) instead of
+                // OWLLiteral.getLiteral() (the lexical form).
+                String label = ((OWLLiteral) ann.value).getLiteral()
                 labelCache[goId] = label
                 return label
             }
@@ -235,7 +238,9 @@ class GoOntology {
             String goId = iriToGo(cls.getIRI())
             for (OWLAnnotation ann : EntitySearcher.getAnnotations(cls, ontology, factory.getRDFSLabel())) {
                 if (ann.value instanceof OWLLiteral) {
-                    labelCache[goId] = ((OWLLiteral) ann.value).literal
+                    // .literal would resolve to OWLAnnotationValue.isLiteral()
+                    // (boolean true) instead of OWLLiteral.getLiteral().
+                    labelCache[goId] = ((OWLLiteral) ann.value).getLiteral()
                     break
                 }
             }

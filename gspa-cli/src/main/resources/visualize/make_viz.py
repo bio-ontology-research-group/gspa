@@ -2399,6 +2399,16 @@ function goToPathway(pwId) {
 
 function cssId(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, "_"); }
 
+// Resolve a GO term's display name. Guards against the legacy bug where
+// every quality_gspa.json {id,name} pair had name="true" (Groovy
+// .literal -> isLiteral()): if the inline name looks like a sentinel,
+// fall back to the top-level go map (built from go.obo, always correct).
+function resolveGoName(id, inline) {
+  if (inline && inline !== 'true' && inline !== 'false' && inline !== id) return inline;
+  const m = DATA.go[id];
+  return (m && m[0]) ? m[0] : id;
+}
+
 // Format a p-value compactly. < 1e-3 → exponent; otherwise 3 sig fig.
 function fmtP(p) {
   if (p == null || isNaN(p)) return "?";
@@ -2452,14 +2462,18 @@ function renderPathways(sec) {
     const compl = (pw.completeness * 100).toFixed(0);
     const colour = pw.completeness >= 0.9 ? "var(--high)" : pw.completeness >= 0.5 ? "var(--med)" : "var(--low)";
     // Reactions strip — present (green) + missing (red).
-    const present = (pw.present_terms || []).map(t =>
-      '<span class="rxn present" title="'+escapeHtml(t.name||t.id)+' ('+t.id+')">' +
-        '<a href="https://www.ebi.ac.uk/QuickGO/term/'+t.id+'" target="_blank">'+escapeHtml(t.name||t.id)+'</a>' +
-      '</span>').join("");
-    const missing = (pw.missing_terms || []).map(t =>
-      '<span class="rxn missing" title="'+escapeHtml(t.name||t.id)+' ('+t.id+')">' +
-        '<a href="https://www.ebi.ac.uk/QuickGO/term/'+t.id+'" target="_blank">'+escapeHtml(t.name||t.id)+'</a>' +
-      '</span>').join("");
+    const present = (pw.present_terms || []).map(t => {
+      const nm = resolveGoName(t.id, t.name);
+      return '<span class="rxn present" title="'+escapeHtml(nm)+' ('+t.id+')">' +
+        '<a href="https://www.ebi.ac.uk/QuickGO/term/'+t.id+'" target="_blank">'+escapeHtml(nm)+'</a>' +
+      '</span>';
+    }).join("");
+    const missing = (pw.missing_terms || []).map(t => {
+      const nm = resolveGoName(t.id, t.name);
+      return '<span class="rxn missing" title="'+escapeHtml(nm)+' ('+t.id+')">' +
+        '<a href="https://www.ebi.ac.uk/QuickGO/term/'+t.id+'" target="_blank">'+escapeHtml(nm)+'</a>' +
+      '</span>';
+    }).join("");
     const opsHtml = (pw.operons || []).slice(0, 8).map(o =>
       '<a href="#" onclick="goToOperon(\''+o.id+'\'); return false;" class="mono">'+o.id+'</a>' +
       ' <span class="small">'+(o.name?escapeHtml(o.name):'')+' ('+o.n_members+'/'+o.size+')</span>').join(" · ");
@@ -2529,7 +2543,7 @@ function renderQuality(sec) {
     metric("Composite GAEF", q.composite) +
     '<div style="margin-top:10px;" class="small">Consistency (SAT4J): <b>'+(q.consistent?"consistent":"INCONSISTENT")+'</b>, '+q.violation_count+' taxon-constraint violations.</div>';
 
-  // Essentials, with names.
+  // Essentials, with names. Uses the top-level resolveGoName helper.
   const ess = document.getElementById("essential-body");
   const named = q.missing_essentials_named || (q.missing_essentials || []).map(id => ({id: id, name: (DATA.go[id]||[id])[0]}));
   if (named.length === 0) {
@@ -2539,7 +2553,7 @@ function renderQuality(sec) {
       named.map(t =>
         '<div style="margin-top:6px;display:flex;align-items:center;gap:8px;">' +
         '<span class="chip low">missing</span>' +
-        '<span><b>'+escapeHtml(t.name || t.id)+'</b> ' +
+        '<span><b>'+escapeHtml(resolveGoName(t.id, t.name))+'</b> ' +
         '<a class="term-id" href="https://www.ebi.ac.uk/QuickGO/term/'+t.id+'" target="_blank">'+t.id+'</a></span>' +
         '</div>').join("");
   }
@@ -2555,8 +2569,8 @@ function renderQuality(sec) {
       pairs.slice(0, SHOW).map(p => {
         const reqId = (p.required && p.required.id) || p.required || "";
         const misId = (p.missing && p.missing.id) || p.missing || "";
-        const reqName = (p.required && p.required.name) || (DATA.go[reqId]||[reqId])[0];
-        const misName = (p.missing && p.missing.name) || (DATA.go[misId]||[misId])[0];
+        const reqName = resolveGoName(reqId, p.required && p.required.name);
+        const misName = resolveGoName(misId, p.missing && p.missing.name);
         return '<div style="padding:6px 0; border-bottom:1px solid #f1f2f6;">' +
           '<div><span class="small" style="color:var(--muted);">required:</span> <b>'+escapeHtml(reqName)+'</b> ' +
           '<a class="term-id" href="https://www.ebi.ac.uk/QuickGO/term/'+reqId+'" target="_blank">'+reqId+'</a></div>' +
@@ -2580,7 +2594,7 @@ function renderQuality(sec) {
         const compl = (pw.completeness*100).toFixed(0);
         const colour = pw.completeness >= 0.9 ? "var(--high)" : pw.completeness >= 0.5 ? "var(--med)" : "var(--low)";
         const missingNames = (pw.missing_terms || []).slice(0, 6).map(t => {
-          const name = t.name || (DATA.go[t.id]||[t.id])[0];
+          const name = resolveGoName(t.id, t.name);
           return '<span class="chip low" title="'+t.id+'">'+escapeHtml(name)+'</span>';
         }).join(" ");
         const moreMissing = (pw.missing_terms || []).length > 6 ? ' <span class="small">+'+((pw.missing_terms||[]).length-6)+' more</span>' : '';
