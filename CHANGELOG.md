@@ -10,6 +10,31 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
+### Added
+- **AntiFam pseudogene scanner** (`AntiFamPredictor`). Runs
+  `hmmsearch --cut_ga` against the AntiFam HMM library (EBI/Pfam),
+  which is the same pseudogene / spurious-ORF filter that Bakta uses.
+  Hits become `Annotation` records with `type = PSEUDOGENE`,
+  `source = 'antifam'`, and the AntiFam accession as the value, so
+  downstream consumers (integrator, quality scorer, visualiser) can
+  drop or down-weight claims attached to flagged proteins.
+  Off by default — download the database from
+  `https://ftp.ebi.ac.uk/pub/databases/Pfam/AntiFam/current/AntiFam.tar.gz`
+  and enable via:
+  ```yaml
+  predictors:
+    antifam:
+      enabled: true
+      database: /refs/AntiFam.hmm
+  ```
+  New `AnnotationType.PSEUDOGENE` enum value; new `AntiFamConfig`
+  block in `GspaConfig`; wired into `AnnotationPipeline.createAllPredictors()`.
+  Spock spec covers domtblout parsing, duplicate-domain
+  de-duplication, the `--cut_ga` / `--domE` toggle, and the default
+  output type. Bakta-as-replacement-gene-caller (parsing Bakta's GFF
+  `pseudo=true` attributes) is a separate v1.6 task; this release adds
+  the AntiFam capability that Bakta's pseudogene step depends on.
+
 ## [1.5.2] — 2026-05-11 — container + documentation hygiene
 
 Closes the documentation / containerisation gaps surfaced after 1.5.1

@@ -42,6 +42,7 @@ class GspaConfig {
         SimilarityConfig similarity = new SimilarityConfig()
         StructureConfig structure = new StructureConfig()
         DomainConfig domains = new DomainConfig()
+        AntiFamConfig antifam = new AntiFamConfig()
         OperonConfig operons = new OperonConfig()
         PathwayConfig pathway = new PathwayConfig()
         LocalizationConfig localization = new LocalizationConfig()
@@ -94,6 +95,28 @@ class GspaConfig {
         List<String> applications = ['Pfam', 'TIGRFAM', 'CDD', 'SUPERFAMILY']
         /** Use InterProScan or direct HMMER */
         String tool = 'interproscan'
+    }
+
+    /**
+     * AntiFam HMM scanner for spurious / pseudogenic ORF detection
+     * (the same step Bakta uses as its pseudogene filter). When enabled,
+     * proteins matching an AntiFam HMM gain a {@code PSEUDOGENE}
+     * annotation that downstream consumers can use to drop or
+     * down-weight functional claims for the protein.
+     */
+    static class AntiFamConfig {
+        /** Off by default — the database is not bundled. */
+        boolean enabled = false
+        /**
+         * Path to the AntiFam HMM database. Download from
+         * {@code https://ftp.ebi.ac.uk/pub/databases/Pfam/AntiFam/current/AntiFam.tar.gz}
+         * then point at the concatenated {@code AntiFam.hmm}.
+         */
+        String database
+        /** Use the HMM-built gathering threshold (--cut_ga); recommended for AntiFam. */
+        boolean useCutGa = true
+        /** E-value threshold when {@link #useCutGa} is false. */
+        double evalue = 1e-5
     }
 
     static class OperonConfig {

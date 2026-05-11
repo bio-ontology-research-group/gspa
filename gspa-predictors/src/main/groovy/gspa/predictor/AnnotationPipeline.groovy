@@ -169,6 +169,16 @@ class AnnotationPipeline {
             }
         }
 
+        // AntiFam — spurious / pseudogene HMM scan (same step Bakta uses)
+        if (config.predictors.antifam.enabled) {
+            def antifamCfg = config.predictors.antifam
+            predictors << new gspa.predictor.domain.AntiFamPredictor(
+                hmmDatabase : antifamCfg.database,
+                useCutGa    : antifamCfg.useCutGa,
+                domainEvalue: antifamCfg.evalue,
+            )
+        }
+
         // Operon predictor (genome-level)
         if (config.predictors.operons.enabled) {
             def op = new OperonPredictor(
