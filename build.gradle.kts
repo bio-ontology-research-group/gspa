@@ -4,7 +4,7 @@ plugins {
 
 allprojects {
     group = "org.gspa"
-    version = "1.5.2"
+    version = "1.5.3"
 
     repositories {
         mavenCentral()

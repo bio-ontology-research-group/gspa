@@ -211,7 +211,7 @@ process INTEGRATE {
 process VISUALIZE {
     tag "$sample_id"
     publishDir "${params.outdir}/${sample_id}", mode: 'copy'
-    container 'leechuck/gspa-cli:1.5.2'  // java 21 + python3 + bundled visualize templater
+    container 'leechuck/gspa-cli:1.5.3'  // java 21 + python3 + bundled visualize templater
 
     input:
     tuple val(sample_id),

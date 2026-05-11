@@ -10,6 +10,8 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
+## [1.5.3] — 2026-05-11 — AntiFam pseudogene scanner
+
 ### Added
 - **AntiFam pseudogene scanner** (`AntiFamPredictor`). Runs
   `hmmsearch --cut_ga` against the AntiFam HMM library (EBI/Pfam),
@@ -31,9 +33,14 @@ user-visible deltas; for measured impact, follow the cross-references.
   block in `GspaConfig`; wired into `AnnotationPipeline.createAllPredictors()`.
   Spock spec covers domtblout parsing, duplicate-domain
   de-duplication, the `--cut_ga` / `--domE` toggle, and the default
-  output type. Bakta-as-replacement-gene-caller (parsing Bakta's GFF
-  `pseudo=true` attributes) is a separate v1.6 task; this release adds
-  the AntiFam capability that Bakta's pseudogene step depends on.
+  output type. Validated end-to-end through Singularity on unimatrix01
+  against the MR59-6 *Pontibacter* prokka FAA (4,372 proteins;
+  0 canonical hits, 11 sub-threshold AntiFam matches under loose
+  E-value gating). Bakta-as-replacement-gene-caller (parsing Bakta's
+  GFF `pseudo=true` attributes) is a separate v1.6 task; this release
+  adds the AntiFam capability that Bakta's pseudogene step depends on.
+- Docker image `leechuck/gspa-cli:1.5.3` published; bundles the new
+  predictor. `gspa-nf/modules/integrate.nf` pinned to the new tag.
 
 ## [1.5.2] — 2026-05-11 — container + documentation hygiene
 
