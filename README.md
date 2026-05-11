@@ -164,6 +164,38 @@ java -jar gspa.jar evaluate \
   -k bacteria -o quality.json
 ```
 
+### Step 9 — Self-contained HTML browser (~30 s)
+
+```bash
+java -jar gspa.jar visualize \
+  --workspace . \
+  --genome-id bsubtilis \
+  --output bsubtilis_browser.html
+```
+
+Produces a single self-contained HTML file (~25 MB with embedded FASTA)
+with tabs for Proteins, Functions, Genome (igv.js), Operons (named by
+hypergeometric GO BP enrichment), Pathways (per-KEGG-map coverage with
+per-reaction colouring + KEGG Modules), Special features (AMR + BGC),
+Quality (GAEF metrics + named missing essentials + incoherent process
+pairs), and Pipeline provenance. Bundles a Python templater extracted
+at runtime; needs `python3` on PATH but no other external deps.
+
+### Optional — KEGG Modules (per-genome focused enrichment)
+
+Smaller, focused units (5–15 enzymes vs 50+ in main KEGG maps) make
+per-genome dominant-pathway tagging meaningful. Layer them in:
+
+```bash
+python3 benchmark/fetch_kegg_modules.py --out kegg_modules.tsv  # 520 modules
+
+# Stack onto KEGG main in integrate / evaluate / visualize:
+java -jar gspa.jar integrate ... --pathways kegg_pathways.tsv \
+  --modules kegg_modules.tsv
+java -jar gspa.jar evaluate ... --pathways kegg_pathways.tsv \
+  --modules kegg_modules.tsv
+```
+
 ### Estimated total time
 
 | Step | Wall clock | Notes |

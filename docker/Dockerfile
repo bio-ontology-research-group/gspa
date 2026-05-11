@@ -32,14 +32,17 @@ FROM eclipse-temurin:21-jre
 LABEL maintainer="Robert Hoehndorf <robert.hoehndorf@kaust.edu.sa>"
 LABEL description="GSPA - Genome-Scale Protein Annotation pipeline"
 
-# Install bioinformatics tools
+# Install bioinformatics tools.
+# Note: minced is intentionally not bundled — it was removed from
+# Ubuntu 24.04 (Noble) repos. CRISPR detection is wired through the
+# dedicated biocontainer in gspa-nf (`quay.io/biocontainers/minced`),
+# so this orchestration image doesn't need it baked in.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget curl git \
     python3 python3-pip \
     prodigal \
     hmmer \
     ncbi-blast+ \
-    minced \
     barrnap \
     && rm -rf /var/lib/apt/lists/*
 

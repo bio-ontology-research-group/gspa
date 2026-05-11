@@ -10,7 +10,45 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
-## [1.5.1] — 2026-05-10 — debug-surface fixes
+## [1.5.2] — 2026-05-11 — container + documentation hygiene
+
+Closes the documentation / containerisation gaps surfaced after 1.5.1
+shipped (none of the new 1.5.x features were end-to-end-validated under
+Docker, and the top-level README didn't mention any of them).
+
+### Added
+- **`leechuck/gspa-cli:1.5.2`** Docker image, built from
+  `docker/Dockerfile` and published on Docker Hub. java 21 + python3 +
+  DIAMOND + HMMER + BLAST+ + prodigal + barrnap + pyrodigal + cobra +
+  embedded `gapsmith` (Rust). Sized for orchestrating `gspa annotate /
+  integrate / visualize` end-to-end without depending on the heavier
+  predictor-stack images. Replaces the unpublished `gspa/gspa:latest`
+  placeholder previously referenced by `gspa-nf/modules/integrate.nf`.
+- README v1.5.x section walks through `gspa visualize`,
+  `benchmark/fetch_kegg_modules.py`, and pathway-source stacking via
+  `--modules`. `gspa-nf/README.md` documents the six integrate-path
+  processes (`BUILD_CLAIMS`, `SIDECAR_CLAIMS`, `MERGE_CLAIMS`,
+  `OPERONS`, `INTEGRATE`, `VISUALIZE`) and the orchestration image.
+- CI `docker-build` job (`.github/workflows/test.yml`): runs after
+  `gradle-test`, builds `docker/Dockerfile` end-to-end, smoke-tests
+  `gspa --version` and `gspa --help | grep visualize` inside the
+  resulting image. Future Dockerfile drift now fails CI rather than
+  being caught only at release time.
+
+### Fixed
+- `docker/Dockerfile` — `minced` package no longer in Ubuntu 24.04
+  (Noble) repos; image was failing to build at the apt-install step.
+  Dropped from the orchestration image; CRISPR detection remains
+  available through the dedicated `quay.io/biocontainers/minced`
+  container that `gspa-nf` already wires for the `MINCED` process.
+- `gspa-nf/modules/integrate.nf` — `VISUALIZE` referenced
+  `container 'gspa/gspa:latest'` which had never been published, so
+  `--run_visualize` would have failed at the image-pull step. Now
+  pinned to `leechuck/gspa-cli:1.5.2`. `MERGE_CLAIMS` was missing an
+  explicit `container` directive (relied on the default); pinned to
+  `python:3.12-slim` for parity with the other Python-only steps.
+
+
 
 Discovered while building an interactive HTML browser for the MR59-6
 *Pontibacter* tutorial: the visualisation surfaced a real product bug

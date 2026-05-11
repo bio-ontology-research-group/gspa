@@ -116,6 +116,7 @@ process SIDECAR_CLAIMS {
 process MERGE_CLAIMS {
     tag "$sample_id"
     publishDir "${params.outdir}/${sample_id}", mode: 'copy'
+    container 'python:3.12-slim'
 
     input:
     tuple val(sample_id), path(builtin_claims), path(sidecar_claims)
@@ -210,7 +211,7 @@ process INTEGRATE {
 process VISUALIZE {
     tag "$sample_id"
     publishDir "${params.outdir}/${sample_id}", mode: 'copy'
-    container 'gspa/gspa:latest'  // base image has both java + python3
+    container 'leechuck/gspa-cli:1.5.2'  // java 21 + python3 + bundled visualize templater
 
     input:
     tuple val(sample_id),
