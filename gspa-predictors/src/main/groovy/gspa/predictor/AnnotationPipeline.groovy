@@ -263,6 +263,17 @@ class AnnotationPipeline {
                 minScore: neural.esm2Centroid.minScore,
             )
         }
+        if (neural.cafaBaseline.enabled) {
+            predictors << new gspa.predictor.neural.CafaBaselinePredictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                integrator: neural.cafaBaseline.integrator,
+                componentsDir: neural.cafaBaseline.componentsDir,
+                dag: neural.cafaBaseline.dag,
+                batchSize: neural.cafaBaseline.batchSize,
+                minScore: neural.cafaBaseline.minScore,
+            )
+        }
 
         // FOSS region predictors (use run_region_predictors.py sidecar)
         def loc = config.predictors.localization
