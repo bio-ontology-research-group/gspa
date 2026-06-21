@@ -549,7 +549,13 @@ def run_cafa_baseline(rows: list[ManifestRow], args: argparse.Namespace) -> None
                         for i, c in enumerate(components):
                             x = comp[c].get(prot, {}).get(t, 0.0)
                             z += coef[i] * (x - mean[i]) / (scale[i] if scale[i] else 1.0)
-                        s = 1.0 / (1.0 + math.exp(-z))
+                        # numerically stable logistic sigmoid (avoids exp overflow
+                        # when |z| is large for extreme component combinations)
+                        if z >= 0:
+                            s = 1.0 / (1.0 + math.exp(-z))
+                        else:
+                            ez = math.exp(z)
+                            s = ez / (1.0 + ez)
                         if s >= args.min_score:
                             writer.writerow([prot, t, f"{s:.4f}", "GO"])
         finally:

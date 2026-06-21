@@ -22,11 +22,53 @@ components directory. The shipped model uses six:
 | `interpro` | `InterProScanPredictor` | domain → GO |
 | `mlp`      | ESM2 MLP head           | sequence-PLM |
 | `prostt5`  | ProstT5 MLP head        | **structure-aware PLM** (the complementary lever) |
+| `net`      | Net-KNN over STRING PPI | **guilt-by-association** (the network signal — *recommended*) |
+| `lit`      | BM25 text-kNN           | literature/text (optional; see caveat) |
 
-Per-component no-knowledge f_w: mlp 0.447, prostt5 0.435 (best single-component
-**MF** 0.466), diam 0.389, foldseek 0.364, interpro 0.165, clean ~0. ProstT5 is
-the only PLM that *complements* the MLP rather than cannibalising it; adding
-ESM2-3B on top regresses (correlated-PLM collinearity).
+Per-component no-knowledge f_w: net 0.475 (**best single-component MF 0.803**),
+mlp 0.447, lit 0.445 (MF 0.539), prostt5 0.435 (MF 0.466), diam 0.389,
+foldseek 0.364, interpro 0.165, clean ~0. ProstT5 is the only PLM that
+*complements* the MLP rather than cannibalising it (ESM2-3B regresses —
+correlated-PLM collinearity).
+
+### Network + literature components (added; see §3 for the build)
+
+Two extra signals reproduce the rest of GOAlpha's heterogeneous panel:
+
+* **`net` — Net-KNN over STRING.** For each query protein, vote its STRING v12
+  neighbours' pre-t0 GO labels, weighted by the STRING combined score.
+  **Leak-free**: STRING v12 (2023) edges and `train_terms` labels are both
+  before t0 = 2026-02-02, and the query's own annotations are never used. The
+  very high no-knowledge MF (0.803) is genuine guilt-by-association — novel
+  proteins that are members of already-characterised complexes — and is
+  concentrated in well-studied organisms with dense PPI (the test set is ~half
+  human).
+* **`lit` — BM25 text-kNN.** Transfer GO from textually-similar training
+  proteins (GORetriever in spirit). **Caveat:** the query text is restricted to
+  identification fields (protein name + gene name), never the post-t0
+  `CC FUNCTION`, but a novel protein's *name* in the current SwissProt dump may
+  still have been updated post-t0 — so its no-knowledge MF gain (0.539) carries
+  a residual leakage risk. Treat `lit` as an optional no-knowledge booster, not
+  a default.
+
+### Results — adding net and lit (IA-weighted f_w; baseline = the 6-comp above)
+
+| model | no-knowledge | limited | partial | **official 3-class mean** |
+|---|---|---|---|---|
+| 6-comp (baseline)        | 0.489 | 0.630 | 0.768 | 0.629 |
+| **6-comp + net** *(ship)*| 0.538 | 0.654 | 0.748 | **0.647** (+0.018) |
+| 6-comp + lit + net       | 0.553 | 0.646 | 0.715 | 0.638 |
+| 6-comp + lit             | 0.507 | 0.631 | 0.720 | 0.620 |
+
+**`net` is the clean win**: +0.018 official, gains on novel/limited proteins,
+tiny partial dip, no leakage — shipped as
+`models/cafa_baseline_integrator_net.json`. Adding `lit` pushes no-knowledge
+higher (the real-LB proxy) but *drags* the 3-class mean by hurting
+partial-knowledge proteins (the integrator is frozen on no-knowledge weights),
+so the 8-comp model is offered separately as
+`models/cafa_baseline_integrator_lit_net.json` for no-knowledge-focused use.
+The partial-knowledge dip is the frozen-on-no-knowledge weighting artifact;
+per-knowledge-class / pre-t0-population training (deferred) would remove it.
 
 ## 1. Train + freeze the integrator (once)
 
@@ -78,9 +120,48 @@ consistent with the 0.483 OOF), confirming the artifact is faithful.
 in YAML). The sidecar propagates each component to GO ancestors (max), forms
 per-(protein, term) candidates per aspect, and emits `sigmoid(w·x + b)`.
 
+## 3. Building the `net` and `lit` components
+
+Both derive from one streaming pass over the SwissProt flat file, which yields
+per-accession identification text, the `DR STRING` xref, and the `OX` taxon:
+
+```bash
+# one parse -> text_string_index.tsv (accession\ttaxon\tstring_id\tname\tchar_text)
+python build_text_string_index.py uniprot_sprot.dat.gz text_string_index.tsv
+```
+
+**Literature** (`lit`) — BM25 text-kNN, CPU-only, `--shard i/N` for parallelism:
+```bash
+python build_lit_component.py --index text_string_index.tsv \
+  --train-terms train_terms.tsv --queries test_proteins.txt \
+  --out lit.tsv --topk 30          # corpus uses full text; query uses NAME only
+```
+
+**Net-KNN** (`net`) — needs STRING per-species link files. The test set spans
+only ~68 species (97 % of proteins have a STRING id), so download per species,
+not the full dump. `run_net_ws.sh` does the download (with gzip integrity +
+retry, corrupt files dropped) and the build in one step:
+```bash
+# slim 3-column index is enough for net (no text):
+cut -f1-3 text_string_index.tsv > net_index.tsv
+python build_net_component.py --index net_index.tsv \
+  --train-terms train_terms.tsv --queries test_proteins.txt \
+  --string-dir <dir of {taxid}.protein.links.v12.0.txt.gz> \
+  --out net.tsv --min-conf 400 --topk 50
+```
+
+Gzip the outputs into the components dir (`components/{net,lit}.tsv.gz`) and add
+`net` (and optionally `lit`) to `--component-list`. The Groovy
+`CafaBaselinePredictor` needs **no change** — it reads the component list from
+the integrator JSON, so swapping in `cafa_baseline_integrator_net.json` is
+enough.
+
 ## Remaining gap to GOAlpha (0.524)
 
-Not models — component-hunting has hit diminishing returns. The two open levers:
-(1) train the integrator on the **pre-t0 population** (re-run components on the
-pre-t0 train FASTA) so XGBoost + IA/freq can help leak-free; (2) add the
-missing **Net-KNN (STRING PPI)** and a down-weighted literature channel.
+Not models. The open lever is **per-knowledge-class / pre-t0-population
+training**: the integrator is currently frozen on no-knowledge weights, which is
+why `net`/`lit` shave a little off the easy partial-knowledge proteins. Training
+on the pre-t0 population (re-run components on the pre-t0 train FASTA, IBEX work)
+would let the weights generalise across knowledge classes and let XGBoost +
+IA/freq help leak-free — removing the partial dip and likely closing more of the
+gap. STRING Net-KNN and a (leakage-clean) literature channel are now done.

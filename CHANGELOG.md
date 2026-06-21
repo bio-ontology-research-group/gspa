@@ -38,6 +38,31 @@ user-visible deltas; for measured impact, follow the cross-references.
   `benchmark/neural/models/cafa_baseline_integrator.json`; recipe and verified
   numbers in `benchmark/neural/CAFA_BASELINE.md`. Off by default.
 
+- **`cafa-baseline` network + literature signals (Net-KNN, BM25 text-kNN).**
+  Two more components for the stacker, reproducing the rest of GOAlpha's
+  heterogeneous panel. **Net-KNN** (`net`) votes a query protein's STRING-v12
+  PPI neighbours' pre-t0 GO labels (guilt-by-association); it is leak-free
+  (STRING 2023 edges + `train_terms` labels both pre-t0) and the clear win —
+  adding it lifts the official 3-class IA-weighted f_w on the CAFA6
+  reconstruction **0.629 → 0.647** (no-knowledge 0.489 → 0.538), with gains
+  across novel/limited proteins and only a small partial-knowledge dip.
+  **Literature** (`lit`, BM25 text-kNN over SwissProt names) pushes
+  no-knowledge higher (→ 0.553 combined) but lowers the 3-class mean by hurting
+  partial-knowledge proteins and carries a name-leakage caveat, so it ships as
+  an optional no-knowledge booster, not a default. New shipped models
+  `cafa_baseline_integrator_net.json` (recommended) and
+  `cafa_baseline_integrator_lit_net.json`; builders
+  `build_text_string_index.py`, `build_net_component.py`,
+  `build_lit_component.py`, `run_net_ws.sh`. The Groovy predictor is unchanged
+  (component list lives in the integrator JSON).
+
+### Fixed
+- **`cafa-baseline` sidecar: numerically stable logistic sigmoid.** The apply
+  path computed `1/(1+exp(-z))` directly, which raised `OverflowError` for
+  extreme component combinations (large negative `z`); switched to the
+  branchless-by-sign stable form. The 6-component model was unaffected; the
+  fix is required for the larger net/lit models.
+
 ## [1.5.3] — 2026-05-11 — AntiFam pseudogene scanner
 
 ### Added
