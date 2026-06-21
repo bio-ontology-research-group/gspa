@@ -177,6 +177,23 @@ class GspaConfig {
         ProteInferConfig proteinfer = new ProteInferConfig()
         CleanNeuralConfig clean = new CleanNeuralConfig()
         Esm2CentroidConfig esm2Centroid = new Esm2CentroidConfig()
+        CafaBaselineConfig cafaBaseline = new CafaBaselineConfig()
+    }
+
+    /**
+     * CAFA6 {@code cafa-baseline} learned stacker: applies a frozen per-aspect
+     * logistic-regression integrator over precomputed per-component GO scores.
+     */
+    static class CafaBaselineConfig {
+        boolean enabled = false
+        /** Frozen integrator JSON (train_ltr_integrator.py --save-model). Required when enabled. */
+        String integrator
+        /** Directory of per-component score TSVs (&lt;component&gt;.tsv[.gz]). Required when enabled. */
+        String componentsDir
+        /** GO DAG file (child\\tancestor) for true-path propagation. Required when enabled. */
+        String dag
+        int batchSize = 16
+        double minScore = 0.1
     }
 
     static class Esm2DeepGoPlusConfig {

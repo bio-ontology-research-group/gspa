@@ -423,6 +423,139 @@ def run_esm2_centroid(rows: list[ManifestRow], args: argparse.Namespace) -> None
                 fh.close()
 
 
+# -------- runner: cafa-baseline (learned LTR integrator) ---------------
+
+
+_GO_ROOTS = {"GO:0003674": "MF", "GO:0008150": "BP", "GO:0005575": "CC"}
+
+
+def _open_maybe_gz(path: Path):
+    import gzip
+    if str(path).endswith(".gz"):
+        return gzip.open(path, "rt")
+    return open(path)
+
+
+def _load_dag(path: Path) -> dict[str, set[str]]:
+    """child -> set of ancestors (inclusive of itself). DAG file is
+    ``child\\tancestor`` (the same `go-dag.tsv` the integrator trains on)."""
+    anc: dict[str, set[str]] = {}
+    with open(path) as fh:
+        for line in fh:
+            if line.startswith("#"):
+                continue
+            c, _, a = line.rstrip("\n").partition("\t")
+            if c and a:
+                anc.setdefault(c, set()).add(a)
+    for c in list(anc):
+        anc[c].add(c)
+    return anc
+
+
+def _aspect_of_terms(anc: dict[str, set[str]]) -> dict[str, str]:
+    asp: dict[str, str] = {}
+    for t, ancestors in anc.items():
+        for root, ns in _GO_ROOTS.items():
+            if root in ancestors:
+                asp[t] = ns
+                break
+    return asp
+
+
+def _load_component_propagated(path: Path, keep: set[str], anc: dict[str, set[str]],
+                               aspect_of: dict[str, str]) -> dict[str, dict[str, float]]:
+    """protein -> {term -> score}, each component score propagated to ancestors
+    by max (mirrors train_ltr_integrator.load_component)."""
+    out: dict[str, dict[str, float]] = {}
+    with _open_maybe_gz(path) as fh:
+        for line in fh:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 3:
+                continue
+            prot, term, s = parts[0], parts[1], parts[2]
+            if keep and prot not in keep:
+                continue
+            try:
+                sv = float(s)
+            except ValueError:
+                continue
+            d = out.setdefault(prot, {})
+            for a in anc.get(term, (term,)):
+                if a in aspect_of and (a not in d or sv > d[a]):
+                    d[a] = sv
+    return out
+
+
+def run_cafa_baseline(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+    """Apply a frozen learned LTR integrator (``--integrator`` JSON from
+    ``train_ltr_integrator.py --save-model``) over precomputed component
+    score files in ``--components-dir`` to produce calibrated combined GO
+    scores. This is GSPA's CAFA6 ``cafa-baseline``: the components
+    (DIAMOND/FoldSeek/CLEAN/InterPro/ESM2-MLP/ProstT5) are produced upstream;
+    this stage replaces naive max-merge with the per-aspect logistic stacker
+    that recovered novel-protein f_w 0.359 -> 0.483 on the CAFA6 reconstruction."""
+    import math
+
+    if not args.integrator:
+        raise SystemExit("cafa-baseline requires --integrator (frozen model JSON)")
+    if not args.components_dir:
+        raise SystemExit("cafa-baseline requires --components-dir")
+    if not args.dag:
+        raise SystemExit("cafa-baseline requires --dag (go-dag.tsv child\\tancestor)")
+
+    with open(args.integrator) as fh:
+        model = json.load(fh)
+    components: list[str] = model["components"]
+    aspect_models: dict[str, dict] = model["aspects"]
+    LOG.info("cafa-baseline: %d components, aspects %s",
+             len(components), sorted(aspect_models))
+
+    anc = _load_dag(Path(args.dag))
+    aspect_of = _aspect_of_terms(anc)
+
+    cdir = Path(args.components_dir)
+    for row in rows:
+        out_path = output_path(row, "cafa-baseline")
+        LOG.info("  %s -> %s", row.tag, out_path)
+        # restrict to the query proteins in this manifest row's FASTA
+        keep = {pid for pid, _seq in iter_fasta(row.fasta_path)}
+
+        comp: dict[str, dict[str, dict[str, float]]] = {}
+        for c in components:
+            p = cdir / f"{c}.tsv.gz"
+            if not p.exists():
+                p = cdir / f"{c}.tsv"
+            if not p.exists():
+                LOG.warning("    component %s absent under %s -> treated as zero", c, cdir)
+                comp[c] = {}
+                continue
+            comp[c] = _load_component_propagated(p, keep, anc, aspect_of)
+
+        fh, writer = open_output(out_path)
+        try:
+            for prot in sorted(keep):
+                for aspect, am in aspect_models.items():
+                    coef = am["coef"]
+                    mean = am["mean"]
+                    scale = am["scale"]
+                    b = am["intercept"]
+                    cand: set[str] = set()
+                    for c in components:
+                        for t in comp[c].get(prot, ()):  # propagated terms
+                            if aspect_of.get(t) == aspect:
+                                cand.add(t)
+                    for t in cand:
+                        z = b
+                        for i, c in enumerate(components):
+                            x = comp[c].get(prot, {}).get(t, 0.0)
+                            z += coef[i] * (x - mean[i]) / (scale[i] if scale[i] else 1.0)
+                        s = 1.0 / (1.0 + math.exp(-z))
+                        if s >= args.min_score:
+                            writer.writerow([prot, t, f"{s:.4f}", "GO"])
+        finally:
+            fh.close()
+
+
 # -------- main --------------------------------------------------------
 
 
@@ -431,6 +564,7 @@ RUNNERS: dict[str, Callable[[list[ManifestRow], argparse.Namespace], None]] = {
     "proteinfer": run_proteinfer,
     "clean": run_clean,
     "esm2-centroid": run_esm2_centroid,
+    "cafa-baseline": run_cafa_baseline,
 }
 
 
@@ -461,6 +595,16 @@ def parse_args() -> argparse.Namespace:
                     help="esm2-centroid: NPZ with centroids/terms/annotation_types arrays")
     ap.add_argument("--top-k", type=int, default=5,
                     help="esm2-centroid: keep the k nearest centroids per protein (default 5)")
+
+    # cafa-baseline (learned LTR integrator)
+    ap.add_argument("--integrator", type=Path,
+                    help="cafa-baseline: frozen integrator JSON "
+                         "(train_ltr_integrator.py --save-model)")
+    ap.add_argument("--components-dir", type=Path,
+                    help="cafa-baseline: directory of per-component score TSVs "
+                         "(<component>.tsv[.gz]: protein\\tterm\\tscore)")
+    ap.add_argument("--dag", type=Path,
+                    help="cafa-baseline: go-dag.tsv (child\\tancestor) for true-path propagation")
 
     return ap.parse_args()
 

@@ -87,6 +87,22 @@ class AnnotateCommand implements Runnable {
             description = 'CLEAN checkpoint directory; overrides config')
     String cleanModelDir
 
+    @Option(names = ['--cafa-baseline'],
+            description = 'Enable the CAFA6 cafa-baseline learned stacker over precomputed component scores')
+    boolean cafaBaselineEnabled
+
+    @Option(names = ['--cafa-baseline-integrator'],
+            description = 'Frozen integrator JSON (train_ltr_integrator.py --save-model); overrides config')
+    String cafaBaselineIntegrator
+
+    @Option(names = ['--cafa-baseline-components-dir'],
+            description = 'Directory of per-component score TSVs (<component>.tsv[.gz]); overrides config')
+    String cafaBaselineComponentsDir
+
+    @Option(names = ['--cafa-baseline-dag'],
+            description = 'GO DAG file (child\\tancestor) for true-path propagation; overrides config')
+    String cafaBaselineDag
+
     @Override
     void run() {
         println "GSPA annotate: ${input}"
@@ -247,6 +263,19 @@ class AnnotateCommand implements Runnable {
         }
         if (cleanModelDir) {
             config.predictors.neural.clean.modelDir = cleanModelDir
+        }
+
+        if (cafaBaselineEnabled) {
+            config.predictors.neural.cafaBaseline.enabled = true
+        }
+        if (cafaBaselineIntegrator) {
+            config.predictors.neural.cafaBaseline.integrator = cafaBaselineIntegrator
+        }
+        if (cafaBaselineComponentsDir) {
+            config.predictors.neural.cafaBaseline.componentsDir = cafaBaselineComponentsDir
+        }
+        if (cafaBaselineDag) {
+            config.predictors.neural.cafaBaseline.dag = cafaBaselineDag
         }
     }
 }

@@ -10,6 +10,34 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
+### Added
+- **`cafa-baseline` learned-stacker GO predictor** (`CafaBaselinePredictor`).
+  A CAFA6-competitive predictor built with no new model architecture: it
+  replaces naive max-merge of GSPA's component predictors
+  (DIAMOND/BLAST-KNN, FoldSeek-KNN, CLEAN, InterPro, an ESM2 MLP head and a
+  structure-aware ProstT5 head) with a **frozen per-aspect logistic-regression
+  stacker**. On a faithful CAFA6 reconstruction (GOA snapshot,
+  t0 = 2026-02-02, official `cafaeval` + `IA.tsv`) this recovers
+  **novel-protein IA-weighted f_w from 0.359 → 0.483** (vs the 0.524
+  first-place GOAlpha entry; our original entry was 0.377, rank 263/2177) —
+  the gain is integration done right, not bigger models. ProstT5 is the one
+  PLM that complements rather than cannibalises the MLP head; ESM2-3B and
+  LR-InterPro proved redundant.
+
+  At inference there is no ground truth, so the integrator is trained once and
+  **frozen** to a 2 KB JSON
+  (`benchmark/neural/train_ltr_integrator.py --save-model`); an apply-only
+  sidecar runner (`run_neural_predictors.py --predictor cafa-baseline`)
+  combines precomputed per-component score TSVs, propagates each to GO
+  ancestors (max) and emits `sigmoid(w·x + b)`. Applying the frozen model to
+  the no-knowledge set scores 0.489, confirming the deployable artifact is
+  faithful. New `CafaBaselineConfig` block in `GspaConfig`; wired into
+  `AnnotationPipeline.createAllPredictors()`; `--cafa-baseline*` CLI flags;
+  Spock coverage for flag serialisation, 4-column output parsing and
+  fail-fast on missing config. Shipped model
+  `benchmark/neural/models/cafa_baseline_integrator.json`; recipe and verified
+  numbers in `benchmark/neural/CAFA_BASELINE.md`. Off by default.
+
 ## [1.5.3] — 2026-05-11 — AntiFam pseudogene scanner
 
 ### Added

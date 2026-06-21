@@ -1,0 +1,22 @@
+# CAFA6 reconstruction is a local data+scratch workspace — do NOT commit the
+# multi-GB component scores, ground truth, embeddings, venv, or cafaeval runs.
+# The reusable code lives in ../ (train_ltr_integrator.py, run_neural_predictors.py)
+# and the shipped frozen model in ../models/cafa_baseline_integrator.json.
+components/
+gt/
+interpro/
+results_*/
+ltr_*/
+pt5_*/
+.venv/
+*.tsv
+*.tsv.gz
+*.fasta
+*.gaf.gz
+part_*
+goa_uniprot_all.gaf.gz
+*.obo
+testsuperset_ids.txt
+# keep: small driver scripts + the frozen integrator JSON snapshot
+!score_prostt5.sh
+!integrator_6comp.json
