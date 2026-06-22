@@ -30,7 +30,8 @@ deepgo-plusplus/
 │   ├── deepgo_plusplus_integrator.json          (6-comp, default)
 │   ├── deepgo_plusplus_integrator_net.json      (+net, recommended)
 │   ├── deepgo_plusplus_integrator_lit_net.json  (+lit+net)
-│   ├── deepgo_plusplus_light.json               (no-GPU: diam+foldseek+interpro+net)
+│   ├── deepgo_plusplus_light_cpu.json           (strictly no-GPU + DIAMOND-bridged net)
+│   ├── deepgo_plusplus_light.json               (no-GPU given AFDB structures)
 │   └── deepgo_plusplus_light_cnn.json           (no-GPU + CPU 1D-CNN, coverage)
 ├── ablation_no_results.tsv  ← committed ablation numbers (pipeline/ablation.py)
 ├── pipeline/            ← the retraining + apply scripts
@@ -39,6 +40,7 @@ deepgo-plusplus/
 │   ├── build_net_component.py       Net-KNN over STRING PPI
 │   ├── build_lit_component.py       BM25 literature text-kNN
 │   ├── build_cnn_component.py       CPU 1D-CNN over sequence (DG++-Light)
+│   ├── build_net_bridge.py          DIAMOND-bridged Net-KNN for non-STRING proteins
 │   ├── extract_sprot_fasta.py       SwissProt .dat → FASTA for given accessions
 │   ├── train_integrator.py          train + freeze the per-aspect logreg
 │   ├── train_head_oof.py            (GPU) k-fold OOF PLM heads for blind model
@@ -115,21 +117,31 @@ predictor reads its component list from the integrator JSON:
   --deepgo-plusplus-dag ~/Public/software/cafa6/go-dag.tsv"
 ```
 
-Two shipped Light models (CAFA6 no-knowledge IA-weighted f_w):
+Shipped Light models (CAFA6 no-knowledge IA-weighted f_w; all beat the full GPU
+model, 0.532, on novel proteins):
 
 | model | components | f_w | use |
 |---|---|---|---|
-| `deepgo_plusplus_light.json` | `diam,foldseek,interpro,net` | **0.550** | **recommended** — *beats the full GPU model (0.532) on novel proteins* |
-| `deepgo_plusplus_light_cnn.json` | `cnn,diam,foldseek,interpro,net` | 0.516 | coverage-first: the CPU 1D-CNN covers orphan proteins (no homolog/structure/PPI) |
+| `deepgo_plusplus_light_cpu.json` | `diam,interpro,net_union` | **0.564** | **recommended** — strictly no-GPU (no structures) *and* works for proteins not in STRING |
+| `deepgo_plusplus_light.json` | `diam,foldseek,interpro,net` | 0.550 | no-GPU *given AFDB structures* for foldseek |
+| `deepgo_plusplus_light_cnn.json` | `cnn,diam,foldseek,interpro,net` | 0.516 | coverage-first: CPU 1D-CNN covers orphan proteins |
 
-**Two findings worth knowing** (full tables in `RESULTS.md`): (1) on *novel*
-proteins the no-GPU panel **beats** the full GPU model — the PLM heads are
-redundant with `net`; (2) the **1D-CNN does not improve novel-protein f_w**
-(standalone 0.206; it slightly lowers the panel) — a sequence model trained on
-pre-t0 data hits the same generalisation wall. Its value is **coverage** (it
-predicts for every protein), so it ships as the separate `_cnn` variant rather
-than in the default. Re-pick the best panel at a new release with
-`pipeline/eval_light.py`.
+**Findings worth knowing** (full tables in `RESULTS.md`):
+1. On *novel* proteins the no-GPU panels **beat** the full GPU model — the PLM
+   heads are redundant with `net`.
+2. **`foldseek` isn't unconditionally GPU-free**: FoldSeek search is CPU but needs
+   a query *structure*; that's a CPU lookup for AFDB-covered proteins, but folding
+   a brand-new sequence (ESMFold/ProstT5) needs a GPU. The strictly-no-GPU panel
+   drops it (`diam+interpro+net`, 0.544 — costs only 0.006).
+3. **`net` only fires for STRING members.** `net_union` (`build_net_bridge.py`)
+   bridges via DIAMOND — query → pre-t0 STRING-member homolog → its neighbours'
+   labels — taking the 356 no-STRING proteins from f_w 0 → **0.42** and lifting the
+   structure-free panel to **0.564** (the recommended `_cpu` model). Leak-safe: the
+   homolog DB is pre-t0 and novel queries can't self-match.
+4. The **1D-CNN does not improve novel-protein f_w** (standalone 0.206) — same
+   generalisation wall; it ships only as the coverage-first `_cnn` variant.
+
+Re-pick / rebuild at a new release with `pipeline/eval_light.py`.
 
 ## Reproducible retrain
 

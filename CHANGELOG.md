@@ -24,7 +24,8 @@ user-visible deltas; for measured impact, follow the cross-references.
   bottleneck is signal diversity/generalisation, not aggregator capacity. This is
   why DG++ ships the linear, scores-only integrator.
 - **DeepGO-PlusPlus-Light — no-GPU variant** (`eval_light.py` + `build_cnn_component.py`
-  + `extract_sprot_fasta.py`; models `deepgo_plusplus_light.json` and
+  + `build_net_bridge.py` + `extract_sprot_fasta.py`; models
+  `deepgo_plusplus_light_cpu.json`, `deepgo_plusplus_light.json`,
   `deepgo_plusplus_light_cnn.json`). Drops the GPU PLM heads (`mlp`/`prostt5`/
   `esm2_3b`) and uses only CPU components (DIAMOND, FoldSeek over AlphaFold-DB
   structures, InterProScan/-LR, STRING Net-KNN, optional BM25 `lit`) plus a CPU
@@ -37,8 +38,17 @@ user-visible deltas; for measured impact, follow the cross-references.
   **(2) the 1D-CNN does not improve novel-protein f_w** (standalone 0.206; −0.012
   in panel) — a sequence model trained on pre-t0 data hits the same generalisation
   wall, so it ships as the separate coverage-first `_cnn` model (0.516, predicts for
-  every protein incl. orphans) rather than in the default. `deepgo_plusplus_light.json`
-  is the recommended no-GPU model.
+  every protein incl. orphans) rather than in the default.
+  **(3) `foldseek` is not unconditionally GPU-free** (it needs a query structure —
+  a CPU AFDB lookup, but folding a novel sequence needs a GPU); the strictly-no-GPU
+  panel drops it (`diam+interpro+net`, 0.544, −0.006). **(4) `net` only fires for
+  STRING members**, so `build_net_bridge.py` adds a DIAMOND homology bridge (query →
+  pre-t0 STRING-member homolog → neighbour labels) that takes the 356 no-STRING
+  no-knowledge proteins from f_w 0 → 0.42 and lifts the structure-free panel to
+  **0.564** — shipped as **`deepgo_plusplus_light_cpu.json`** (`diam,interpro,net_union`),
+  the **recommended strictly-no-GPU model** (works for any sequence, incl. proteins
+  not in STRING). Bridge is leak-safe (pre-t0 homolog DB; novel queries can't
+  self-match).
 - **`deepgo-plusplus` module + reproducible retraining pipeline**
   (`deepgo-plusplus/`). The learned-stacker predictor is consolidated into a
   self-contained module — the predictor was renamed **`cafa-baseline` →

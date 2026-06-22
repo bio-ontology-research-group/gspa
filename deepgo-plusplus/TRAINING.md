@@ -177,9 +177,18 @@ components (DIAMOND, FoldSeek, InterProScan/-LR, STRING Net-KNN, optional BM25
 `pipeline/build_cnn_component.py`). Two CAFA6 findings (no-knowledge f_w; tables
 in `RESULTS.md`):
 
-* **The best no-GPU panel (`diam+foldseek+interpro+net`, 0.550) beats the full GPU
-  model (0.532) on novel proteins** — the PLM heads are redundant with `net`.
-  Shipped as `models/deepgo_plusplus_light.json` (**recommended**).
+* **No-GPU panels beat the full GPU model (0.532) on novel proteins** — the PLM
+  heads are redundant with `net`. But `foldseek` needs a query *structure* (CPU
+  lookup if in AlphaFold DB, else GPU folding), and `net` only fires for STRING
+  members. The **strictly no-GPU, any-sequence** model is
+  `models/deepgo_plusplus_light_cpu.json` = `diam,interpro,net_union` (**0.564**,
+  **recommended**); `models/deepgo_plusplus_light.json` = `diam,foldseek,interpro,net`
+  (0.550) is for when AFDB structures are available.
+* **`net_union` extends `net` to proteins not in STRING** via a DIAMOND homology
+  bridge (`build_net_bridge.py`): query → pre-t0 STRING-member homolog → its
+  neighbours' pre-t0 labels. Leak-safe (pre-t0 homolog DB; novel queries have no
+  pre-t0 labels so can't self-match). Takes the 356 no-STRING no-knowledge proteins
+  from f_w 0 → 0.42 and lifts the structure-free panel 0.544 → 0.564.
 * **The 1D-CNN does not improve novel-protein f_w** (standalone 0.206; −0.012 in
   panel) — a sequence model trained on pre-t0 data hits the same generalisation
   wall. Its value is *coverage* (it predicts for every protein, incl. orphans), so

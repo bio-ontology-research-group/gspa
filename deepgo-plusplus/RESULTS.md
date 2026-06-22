@@ -255,14 +255,83 @@ true orphans (no homolog, no structure, no PPI, no domain) it is the *only* sign
 
 | model | components | no-knowledge mean f_w | use |
 |---|---|---|---|
-| `deepgo_plusplus_light.json` | `diam,foldseek,interpro,net` | **0.550** | **recommended** no-GPU model — beats the full GPU model on novel proteins |
-| `deepgo_plusplus_light_cnn.json` | `cnn,diam,foldseek,interpro,net` | 0.516 | coverage-first: includes the CPU 1D-CNN for orphan proteins (lower mean, full coverage) |
+| **`deepgo_plusplus_light_cpu.json`** | `diam,interpro,net_union` | **0.564** | **recommended** — strictly no-GPU (no structures needed) *and* works for proteins not in STRING (DIAMOND-bridged `net`) |
+| `deepgo_plusplus_light.json` | `diam,foldseek,interpro,net` | 0.550 | no-GPU *given AFDB structures* for foldseek |
+| `deepgo_plusplus_light_cnn.json` | `cnn,diam,foldseek,interpro,net` | 0.516 | coverage-first: adds the CPU 1D-CNN for orphan proteins (lower mean, full coverage) |
+
+All three beat the full GPU model (0.532) on novel proteins.
 
 Both run through the unchanged `DeepGoPlusPlusPredictor` (component list read from
 the JSON). The `cnn` component is rebuilt at each release with
 `pipeline/build_cnn_component.py` (train, or `--save-model`/`--load-model` to apply
 a saved checkpoint without retraining); the other CPU components come from GSPA's
 DIAMOND/FoldSeek/InterProScan wrappers and `make net`.
+
+### How "no-GPU" really is each component (FoldSeek + STRING caveats)
+
+Two components carry a hidden dependency worth stating plainly:
+
+* **`foldseek` is CPU only if you already have query structures.** FoldSeek
+  *search* is CPU, but you must give it a structure per query. With a precomputed
+  structure (AlphaFold DB now covers ~all of UniProt, incl. the SwissProt CAFA6
+  test set) it is a CPU lookup — no GPU. For a genuinely novel sequence **not in
+  AFDB**, you must fold it first (ESMFold or FoldSeek's ProstT5 3Di) — that needs
+  a **GPU**. So `foldseek` is GPU-free *given structures*, not unconditionally.
+* **`net` only fires for proteins that are STRING nodes** (see the bridge below).
+
+So there are two GPU-free tiers (no-knowledge mean f_w):
+
+| tier | panel | f_w | GPU-free for… |
+|---|---|---|---|
+| with structures | `diam+foldseek+interpro+net` | **0.550** | any UniProt/AFDB-covered protein |
+| **structure-free** | `diam+interpro+net` | **0.544** | **any sequence** (no folding at all) |
+
+Dropping `foldseek` costs only **0.006** — the **structure-free** panel still
+**beats the full GPU model (0.532)** on novel proteins. So a strictly-no-GPU,
+any-input DG++-Light is `diam+interpro+net` (+ the CPU `cnn`/bridge below).
+
+### Homology-bridged `net` — guilt-by-association for proteins not in STRING
+
+Plain `net` is 0 for a query that is not itself a STRING node — exactly the novel
+case. **356 of the 2,694** no-knowledge proteins have no STRING id. The bridge
+(`pipeline/build_net_bridge.py`): DIAMOND the query against the **pre-t0 train**
+proteins → take its STRING-member homolog(s) `h` → vote `h`'s STRING neighbours'
+**pre-t0** GO labels, weighted by homology strength × STRING confidence.
+
+**Leak-safe by construction** (the train/test split that matters here): targets
+are pre-t0 train proteins (STRING v12 = 2023; labels = pre-t0 `train_terms`);
+no-knowledge queries have *no* pre-t0 labels so they are **absent from the train
+DB → DIAMOND can never self-match**; and `h ≠ q`, neighbour `≠ q`, q's own
+(post-t0) truth is never read. The query is purely on the test side; everything
+voted is training/pre-t0 side.
+
+Result on the **356 no-STRING proteins** (isolated; this is the realistic
+"novel, not in STRING" test):
+
+| component on the 356 | MF | BP | CC | mean |
+|---|---|---|---|---|
+| plain `net` | 0.000 | 0.000 | 0.000 | **0.000** (no STRING node → nothing) |
+| **`net_bridge`** | 0.684 | 0.176 | 0.405 | **0.422** |
+
+The DIAMOND→STRING hop recovers strong guilt-by-association (MF 0.68) for proteins
+plain STRING `net` cannot touch at all — covering **259 of the 356**. As a drop-in
+`net` replacement (`net_union` = direct where the protein is a STRING node, bridge
+otherwise), in the full structure-free panel (no-knowledge mean f_w):
+
+| structure-free panel | MF | BP | CC | **mean** |
+|---|---|---|---|---|
+| `diam+interpro+net`        | 0.784 | 0.352 | 0.495 | **0.544** |
+| `diam+interpro+net_bridge` (pure homolog-hop) | 0.766 | 0.331 | 0.506 | **0.534** |
+| **`diam+interpro+net_union`** (direct + bridge) | 0.838 | 0.358 | 0.496 | **0.564** |
+
+**The bridge lifts the whole structure-free panel +0.020 (0.544 → 0.564)** — by
+giving the 356 no-STRING proteins net's strong MF signal (panel MF 0.784 → 0.838),
+it beats *both* the foldseek panel (0.550) and the full GPU model (0.532). Shipped
+as **`deepgo_plusplus_light_cpu.json`** (`diam,interpro,net_union`) — the strictly
+no-GPU, any-sequence model. `net_union` is rebuilt with `build_net_bridge.py`
+(DIAMOND vs the pre-t0 train DB) + plain `net`. (`net_bridge` alone is below direct
+`net` because the homology hop adds noise for proteins that *are* STRING nodes —
+hence the union, not the pure bridge.)
 
 ## 1. Train + freeze the integrator (once)
 
