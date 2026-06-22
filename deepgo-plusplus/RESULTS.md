@@ -321,20 +321,27 @@ genuinely-no-STRING proteins) is small and biased toward orphans. The clean test
 is to take proteins that *are* in STRING, **delete their STRING node**, and see how
 much of the direct-`net` signal the DIAMOND bridge recovers. `net_bridge` already
 routes every query `q → homolog h → N(h)` and never uses `q`'s own edges; we
-verified **0 of 2,014** set-B queries have a homolog mapping to `q`'s own STRING id
-(0.0% contamination), so it *is* a clean node-removal simulation. On all **2,348
-in-STRING no-knowledge proteins**:
+verified **0 of 2,014** no-knowledge set-B queries have a homolog mapping to `q`'s
+own STRING id (0.0% contamination), so it *is* a clean node-removal simulation.
 
-| 2,348 in-STRING proteins | MF | BP | CC | mean |
+**Swept across all three knowledge classes** (every in-STRING test protein, node
+held out; mean IA-weighted f_w; `cafaeval` run on the office box):
+
+| knowledge class (in-STRING, node held out) | n | `net` direct (**oracle**) | `net_bridge` (node **removed**) | recovery |
 |---|---|---|---|---|
-| `net` direct (**oracle** — real STRING node) | 0.866 | 0.266 | 0.432 | **0.5213** |
-| `net_bridge` (node **removed**, via DIAMOND homolog) | 0.809 | 0.295 | 0.459 | **0.5210** |
+| no-knowledge | 2,348  | 0.5213 | 0.5210 | **~100 %** |
+| limited      | 7,319  | 0.5227 | 0.5217 | **~100 %** |
+| partial      | 16,083 | 0.4490 | 0.4320 | **~96 %** |
 
-**The bridge recovers essentially 100% of the direct-STRING signal with the
-protein's own node deleted** (0.5210 vs 0.5213; MF dips 0.866→0.809 from the
-homology hop but BP/CC rise, netting to parity). So a protein absent from STRING
-loses almost nothing provided it has a homolog that is present — the bridge is a
-near-perfect substitute for STRING membership, not just a fallback.
+**The DIAMOND bridge recovers essentially all of the direct-STRING signal with the
+protein's own node deleted** — ~100 % for novel and limited proteins, ~96 % for
+partial-knowledge (where the real STRING neighbourhood is more informative, so the
+homology hop costs a little more: 0.449 → 0.432). Per-aspect, the hop trades a
+small MF/CC loss for a BP gain. So a protein absent from STRING loses almost
+nothing provided it has a present homolog — across the whole test set the bridge is
+a near-perfect *substitute* for STRING membership, not just a fallback. (Caveat: it
+still needs *some* STRING-member homolog; true no-homolog orphans remain the
+`cnn`/coverage case.)
 
 As a drop-in `net` replacement (`net_union` = direct where the protein is a STRING node, bridge
 otherwise), in the full structure-free panel (no-knowledge mean f_w):

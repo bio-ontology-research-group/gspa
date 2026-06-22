@@ -48,7 +48,12 @@ user-visible deltas; for measured impact, follow the cross-references.
   **0.564** — shipped as **`deepgo_plusplus_light_cpu.json`** (`diam,interpro,net_union`),
   the **recommended strictly-no-GPU model** (works for any sequence, incl. proteins
   not in STRING). Bridge is leak-safe (pre-t0 homolog DB; novel queries can't
-  self-match).
+  self-match). **Validated by a hold-out-from-STRING sweep** across all three
+  knowledge classes (delete each in-STRING protein's STRING node, recover via the
+  bridge; 0 % node-self contamination): the bridge recovers **~100 %** of the
+  direct-STRING f_w for no-knowledge (0.5210 vs 0.5213) and limited (0.5217 vs
+  0.5227) proteins and **~96 %** for partial (0.432 vs 0.449) — a near-perfect
+  substitute for STRING membership, not just a fallback.
 - **`deepgo-plusplus` module + reproducible retraining pipeline**
   (`deepgo-plusplus/`). The learned-stacker predictor is consolidated into a
   self-contained module — the predictor was renamed **`cafa-baseline` →
