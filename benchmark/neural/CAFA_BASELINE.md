@@ -156,12 +156,33 @@ Gzip the outputs into the components dir (`components/{net,lit}.tsv.gz`) and add
 the integrator JSON, so swapping in `cafa_baseline_integrator_net.json` is
 enough.
 
+## Temporal integrity — blind pre-t0-validation check
+
+The integrator's frozen weights are normally fit (GroupKFold) on the
+no-knowledge **test** labels, which you would not have at submission time. To
+quantify that optimism we trained a `{prostt5, esm2_3b, net}` integrator two
+ways and applied both to the test set:
+
+| integrator training population | no-know | limited | partial | **official 3-class** |
+|---|---|---|---|---|
+| **blind** — pre-t0 validation set (25k train proteins, never sees test) | 0.508 | 0.584 | 0.591 | **0.561** |
+| test-trained — on no-knowledge test labels | 0.527 | 0.585 | 0.585 | 0.566 |
+
+**Training the integrator blind costs only 0.005 on the official metric** (and
+is +0.006 *better* on partial-knowledge). And `net`'s learned weight *increases*
+under blind training (MF/BP/CC 0.81/0.78/0.92 blind vs 0.58/0.34/0.37
+test-trained) — confirming it is a genuine pre-t0 signal, not a tuning artifact.
+So the cafa-baseline result is essentially CAFA-faithful; the only non-faithful
+element is `lit` (query-name leakage), which is why it is optional. The blind
+PLM head scores come from k-fold OOF on the train embeddings
+(`train_head_oof.py`, ORIX); the blind model is `cafa6_recon/integrator_pret0.json`.
+
 ## Remaining gap to GOAlpha (0.524)
 
-Not models. The open lever is **per-knowledge-class / pre-t0-population
-training**: the integrator is currently frozen on no-knowledge weights, which is
-why `net`/`lit` shave a little off the easy partial-knowledge proteins. Training
-on the pre-t0 population (re-run components on the pre-t0 train FASTA, IBEX work)
-would let the weights generalise across knowledge classes and let XGBoost +
-IA/freq help leak-free — removing the partial dip and likely closing more of the
-gap. STRING Net-KNN and a (leakage-clean) literature channel are now done.
+Not models, and not the integrator training population (shown negligible above).
+The open lever is a **full-component** blind/pre-t0 integrator: the check above
+used the 3 components reproducible for arbitrary train proteins
+(`prostt5/esm2_3b/net`); reproducing `diam/foldseek/clean/interpro` for a
+validation set (IBEX work) would let the *full* model train on the pre-t0
+population and let XGBoost + IA/freq help leak-free. STRING Net-KNN and a
+(leakage-clean) literature channel are now done.
