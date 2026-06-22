@@ -263,15 +263,15 @@ class AnnotationPipeline {
                 minScore: neural.esm2Centroid.minScore,
             )
         }
-        if (neural.cafaBaseline.enabled) {
-            predictors << new gspa.predictor.neural.CafaBaselinePredictor(
+        if (neural.deepGoPlusPlus.enabled) {
+            predictors << new gspa.predictor.neural.DeepGoPlusPlusPredictor(
                 sidecarScript: neural.sidecarScript,
                 pythonExecutable: neural.pythonExecutable,
-                integrator: neural.cafaBaseline.integrator,
-                componentsDir: neural.cafaBaseline.componentsDir,
-                dag: neural.cafaBaseline.dag,
-                batchSize: neural.cafaBaseline.batchSize,
-                minScore: neural.cafaBaseline.minScore,
+                integrator: neural.deepGoPlusPlus.integrator,
+                componentsDir: neural.deepGoPlusPlus.componentsDir,
+                dag: neural.deepGoPlusPlus.dag,
+                batchSize: neural.deepGoPlusPlus.batchSize,
+                minScore: neural.deepGoPlusPlus.minScore,
             )
         }
 

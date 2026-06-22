@@ -177,14 +177,16 @@ class GspaConfig {
         ProteInferConfig proteinfer = new ProteInferConfig()
         CleanNeuralConfig clean = new CleanNeuralConfig()
         Esm2CentroidConfig esm2Centroid = new Esm2CentroidConfig()
-        CafaBaselineConfig cafaBaseline = new CafaBaselineConfig()
+        DeepGoPlusPlusConfig deepGoPlusPlus = new DeepGoPlusPlusConfig()
     }
 
     /**
-     * CAFA6 {@code cafa-baseline} learned stacker: applies a frozen per-aspect
-     * logistic-regression integrator over precomputed per-component GO scores.
+     * DeepGO-PlusPlus learned stacker (sidecar id {@code deepgo-plusplus}):
+     * applies a frozen per-aspect logistic-regression integrator over
+     * precomputed per-component GO scores. Retrainable per UniProt/STRING
+     * release via the {@code deepgo-plusplus/} pipeline.
      */
-    static class CafaBaselineConfig {
+    static class DeepGoPlusPlusConfig {
         boolean enabled = false
         /** Frozen integrator JSON (train_ltr_integrator.py --save-model). Required when enabled. */
         String integrator

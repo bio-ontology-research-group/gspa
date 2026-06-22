@@ -22,6 +22,7 @@ Also in the repo but NOT part of the Gradle build:
 
 - **gspa-nf/** — Nextflow sibling pipeline (`main.nf` + 5 `modules/*.nf`), runs the same external tools as the JVM CLI but via Singularity / Docker on HPC. Run with `nextflow run gspa-nf/main.nf`. Convenience Gradle tasks: `./gradlew nfHelp` (no-Nextflow quickstart) and `./gradlew nfLint` (parse check, skipped when Nextflow isn't on PATH). See `gspa-nf/README.md` for the full story and `gspa-nf/UNIMATRIX01.md` for the worked cluster example.
 - **benchmark/** — Python evaluation harness + neural-predictor sidecar (`benchmark/neural/run_neural_predictors.py`). See `benchmark/README.md` for script layout.
+- **deepgo-plusplus/** — Self-contained, reproducible retraining pipeline for the `deepgo-plusplus` predictor (the learned-stacker CAFA6 baseline; legacy sidecar/CLI alias `cafa-baseline`). `Makefile` rebuilds the frozen integrator from a UniProt/STRING/CAFA release; deps pinned via `uv` (`pyproject.toml`); regression suite in `deepgo-plusplus/tests/` (`uv run make test`). Inference still runs through the shared neural sidecar. See `deepgo-plusplus/README.md`.
 
 The exclusions are recorded in `settings.gradle.kts` so they aren't mistaken for "forgotten" subprojects.
 

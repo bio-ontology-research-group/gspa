@@ -423,7 +423,8 @@ def run_esm2_centroid(rows: list[ManifestRow], args: argparse.Namespace) -> None
                 fh.close()
 
 
-# -------- runner: cafa-baseline (learned LTR integrator) ---------------
+# -------- runner: deepgo-plusplus (learned LTR integrator) -------------
+# (legacy alias: cafa-baseline)
 
 
 _GO_ROOTS = {"GO:0003674": "MF", "GO:0008150": "BP", "GO:0005575": "CC"}
@@ -486,36 +487,39 @@ def _load_component_propagated(path: Path, keep: set[str], anc: dict[str, set[st
     return out
 
 
-def run_cafa_baseline(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+def run_deepgo_plusplus(rows: list[ManifestRow], args: argparse.Namespace) -> None:
     """Apply a frozen learned LTR integrator (``--integrator`` JSON from
-    ``train_ltr_integrator.py --save-model``) over precomputed component
-    score files in ``--components-dir`` to produce calibrated combined GO
-    scores. This is GSPA's CAFA6 ``cafa-baseline``: the components
-    (DIAMOND/FoldSeek/CLEAN/InterPro/ESM2-MLP/ProstT5) are produced upstream;
-    this stage replaces naive max-merge with the per-aspect logistic stacker
-    that recovered novel-protein f_w 0.359 -> 0.483 on the CAFA6 reconstruction."""
+    ``deepgo-plusplus/pipeline/train_integrator.py --save-model``) over
+    precomputed component score files in ``--components-dir`` to produce
+    calibrated combined GO scores. This is GSPA's **DeepGO-PlusPlus** predictor
+    (legacy id ``cafa-baseline``): the components
+    (DIAMOND/FoldSeek/CLEAN/InterPro/ESM2-MLP/ProstT5/Net-KNN/literature) are
+    produced upstream; this stage replaces naive max-merge with the per-aspect
+    logistic stacker that recovered novel-protein f_w 0.359 -> 0.483 on the
+    CAFA6 reconstruction."""
     import math
 
+    name = getattr(args, "predictor", "deepgo-plusplus")
     if not args.integrator:
-        raise SystemExit("cafa-baseline requires --integrator (frozen model JSON)")
+        raise SystemExit(f"{name} requires --integrator (frozen model JSON)")
     if not args.components_dir:
-        raise SystemExit("cafa-baseline requires --components-dir")
+        raise SystemExit(f"{name} requires --components-dir")
     if not args.dag:
-        raise SystemExit("cafa-baseline requires --dag (go-dag.tsv child\\tancestor)")
+        raise SystemExit(f"{name} requires --dag (go-dag.tsv child\\tancestor)")
 
     with open(args.integrator) as fh:
         model = json.load(fh)
     components: list[str] = model["components"]
     aspect_models: dict[str, dict] = model["aspects"]
-    LOG.info("cafa-baseline: %d components, aspects %s",
-             len(components), sorted(aspect_models))
+    LOG.info("%s: %d components, aspects %s",
+             name, len(components), sorted(aspect_models))
 
     anc = _load_dag(Path(args.dag))
     aspect_of = _aspect_of_terms(anc)
 
     cdir = Path(args.components_dir)
     for row in rows:
-        out_path = output_path(row, "cafa-baseline")
+        out_path = output_path(row, name)
         LOG.info("  %s -> %s", row.tag, out_path)
         # restrict to the query proteins in this manifest row's FASTA
         keep = {pid for pid, _seq in iter_fasta(row.fasta_path)}
@@ -565,12 +569,18 @@ def run_cafa_baseline(rows: list[ManifestRow], args: argparse.Namespace) -> None
 # -------- main --------------------------------------------------------
 
 
+# Backwards-compatible alias: the predictor was originally shipped as
+# ``cafa-baseline``; ``deepgo-plusplus`` is the canonical name. Both keys map
+# to the same runner so existing pipelines and models keep working.
+run_cafa_baseline = run_deepgo_plusplus
+
 RUNNERS: dict[str, Callable[[list[ManifestRow], argparse.Namespace], None]] = {
     "esm2-deepgoplus": run_esm2_deepgoplus,
     "proteinfer": run_proteinfer,
     "clean": run_clean,
     "esm2-centroid": run_esm2_centroid,
-    "cafa-baseline": run_cafa_baseline,
+    "deepgo-plusplus": run_deepgo_plusplus,
+    "cafa-baseline": run_deepgo_plusplus,
 }
 
 
@@ -602,15 +612,15 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--top-k", type=int, default=5,
                     help="esm2-centroid: keep the k nearest centroids per protein (default 5)")
 
-    # cafa-baseline (learned LTR integrator)
+    # deepgo-plusplus (learned LTR integrator; legacy alias cafa-baseline)
     ap.add_argument("--integrator", type=Path,
-                    help="cafa-baseline: frozen integrator JSON "
-                         "(train_ltr_integrator.py --save-model)")
+                    help="deepgo-plusplus: frozen integrator JSON "
+                         "(deepgo-plusplus/pipeline/train_integrator.py --save-model)")
     ap.add_argument("--components-dir", type=Path,
-                    help="cafa-baseline: directory of per-component score TSVs "
+                    help="deepgo-plusplus: directory of per-component score TSVs "
                          "(<component>.tsv[.gz]: protein\\tterm\\tscore)")
     ap.add_argument("--dag", type=Path,
-                    help="cafa-baseline: go-dag.tsv (child\\tancestor) for true-path propagation")
+                    help="deepgo-plusplus: go-dag.tsv (child\\tancestor) for true-path propagation")
 
     return ap.parse_args()
 

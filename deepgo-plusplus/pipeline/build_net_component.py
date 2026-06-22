@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Net-KNN component for the CAFA6 cafa-baseline: guilt-by-association GO
+"""Net-KNN component for the DeepGO-PlusPlus: guilt-by-association GO
 transfer over the STRING PPI network (GOAlpha's Net-KNN). For each query
 protein, vote its STRING neighbours' pre-t0 GO labels, weighted by the
 STRING combined-confidence score.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Literature component for the CAFA6 cafa-baseline: a BM25 text-kNN that
+"""Literature component for the DeepGO-PlusPlus: a BM25 text-kNN that
 transfers GO terms from textually-similar *training* proteins to query
 proteins (the spirit of GOAlpha's GORetriever: retrieve-and-transfer over
 text, minus the cross-encoder rerank).

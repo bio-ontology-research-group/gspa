@@ -87,21 +87,22 @@ class AnnotateCommand implements Runnable {
             description = 'CLEAN checkpoint directory; overrides config')
     String cleanModelDir
 
-    @Option(names = ['--cafa-baseline'],
-            description = 'Enable the CAFA6 cafa-baseline learned stacker over precomputed component scores')
-    boolean cafaBaselineEnabled
+    @Option(names = ['--deepgo-plusplus', '--cafa-baseline'],
+            description = 'Enable the DeepGO-PlusPlus learned stacker over precomputed component scores '
+                    + '(legacy alias: --cafa-baseline)')
+    boolean deepGoPlusPlusEnabled
 
-    @Option(names = ['--cafa-baseline-integrator'],
-            description = 'Frozen integrator JSON (train_ltr_integrator.py --save-model); overrides config')
-    String cafaBaselineIntegrator
+    @Option(names = ['--deepgo-plusplus-integrator', '--cafa-baseline-integrator'],
+            description = 'Frozen integrator JSON (deepgo-plusplus/pipeline/train_integrator.py --save-model); overrides config')
+    String deepGoPlusPlusIntegrator
 
-    @Option(names = ['--cafa-baseline-components-dir'],
+    @Option(names = ['--deepgo-plusplus-components-dir', '--cafa-baseline-components-dir'],
             description = 'Directory of per-component score TSVs (<component>.tsv[.gz]); overrides config')
-    String cafaBaselineComponentsDir
+    String deepGoPlusPlusComponentsDir
 
-    @Option(names = ['--cafa-baseline-dag'],
+    @Option(names = ['--deepgo-plusplus-dag', '--cafa-baseline-dag'],
             description = 'GO DAG file (child\\tancestor) for true-path propagation; overrides config')
-    String cafaBaselineDag
+    String deepGoPlusPlusDag
 
     @Override
     void run() {
@@ -265,17 +266,17 @@ class AnnotateCommand implements Runnable {
             config.predictors.neural.clean.modelDir = cleanModelDir
         }
 
-        if (cafaBaselineEnabled) {
-            config.predictors.neural.cafaBaseline.enabled = true
+        if (deepGoPlusPlusEnabled) {
+            config.predictors.neural.deepGoPlusPlus.enabled = true
         }
-        if (cafaBaselineIntegrator) {
-            config.predictors.neural.cafaBaseline.integrator = cafaBaselineIntegrator
+        if (deepGoPlusPlusIntegrator) {
+            config.predictors.neural.deepGoPlusPlus.integrator = deepGoPlusPlusIntegrator
         }
-        if (cafaBaselineComponentsDir) {
-            config.predictors.neural.cafaBaseline.componentsDir = cafaBaselineComponentsDir
+        if (deepGoPlusPlusComponentsDir) {
+            config.predictors.neural.deepGoPlusPlus.componentsDir = deepGoPlusPlusComponentsDir
         }
-        if (cafaBaselineDag) {
-            config.predictors.neural.cafaBaseline.dag = cafaBaselineDag
+        if (deepGoPlusPlusDag) {
+            config.predictors.neural.deepGoPlusPlus.dag = deepGoPlusPlusDag
         }
     }
 }

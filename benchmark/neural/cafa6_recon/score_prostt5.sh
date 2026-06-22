@@ -16,7 +16,7 @@ GT=gt/gt_no.tsv
 PY=.venv/bin/python
 
 echo "=== integrator: $COMPS -> $OUT ==="
-$PY ../train_ltr_integrator.py \
+$PY ../../../deepgo-plusplus/pipeline/train_integrator.py \
   --components components --gt "$GT" \
   --dag "$DAG" --ia "$IA" --train-terms "$TRAIN_TERMS" --taxon "$TAXON" \
   --model logreg --features scores \

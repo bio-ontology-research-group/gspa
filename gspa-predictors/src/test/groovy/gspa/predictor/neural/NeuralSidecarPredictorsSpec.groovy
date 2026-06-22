@@ -168,9 +168,9 @@ p1\tEC:1.1.1.1\t0.65\tEC
         results['p1'].any { it.type == AnnotationType.EC && it.value == 'EC:1.1.1.1' }
     }
 
-    def "CafaBaselinePredictor: buildCommand serialises integrator + components-dir + dag"() {
+    def "DeepGoPlusPlusPredictor: buildCommand serialises integrator + components-dir + dag"() {
         given:
-        def predictor = new CafaBaselinePredictor(
+        def predictor = new DeepGoPlusPlusPredictor(
             sidecarScript: writeSidecarStub().absolutePath,
             integrator: '/tmp/integrator.json',
             componentsDir: '/tmp/components',
@@ -185,24 +185,26 @@ p1\tEC:1.1.1.1\t0.65\tEC
         def cmd = predictor.buildCommand(fasta, outDir)
 
         then:
-        cmd[cmd.indexOf('--predictor') + 1] == 'cafa-baseline'
+        cmd[cmd.indexOf('--predictor') + 1] == 'deepgo-plusplus'
         cmd.contains('--integrator')
         cmd[cmd.indexOf('--integrator') + 1] == '/tmp/integrator.json'
         cmd.contains('--components-dir')
         cmd[cmd.indexOf('--components-dir') + 1] == '/tmp/components'
         cmd.contains('--dag')
         cmd[cmd.indexOf('--dag') + 1] == '/tmp/go-dag.tsv'
+        predictor.name == 'deepgo-plusplus'
+        predictor.predictorName == 'deepgo-plusplus'
         predictor.outputTypes == ([AnnotationType.GO] as Set)
     }
 
-    def "CafaBaselinePredictor: parseOutput reads the 4-column TSV"() {
+    def "DeepGoPlusPlusPredictor: parseOutput reads the 4-column TSV"() {
         given:
-        def predictor = new CafaBaselinePredictor(
+        def predictor = new DeepGoPlusPlusPredictor(
             sidecarScript: writeSidecarStub().absolutePath,
             integrator: '/tmp/i.json', componentsDir: '/tmp/c', dag: '/tmp/d',
         )
         def outDir = tmp.toFile()
-        writeOutputTsv('query.cafa-baseline.tsv', '''\
+        writeOutputTsv('query.deepgo-plusplus.tsv', '''\
 protein_id\tterm\tscore\tannotation_type
 p1\tGO:0003824\t0.512\tGO
 p1\tGO:0008150\t0.331\tGO
@@ -216,12 +218,12 @@ p1\tGO:0008150\t0.331\tGO
         results['p1'][0].type == AnnotationType.GO
         results['p1'][0].value == 'GO:0003824'
         results['p1'][0].score == 0.512
-        results['p1'][0].source == 'cafa-baseline'
+        results['p1'][0].source == 'deepgo-plusplus'
     }
 
-    def "CafaBaselinePredictor: buildCommand fails fast without integrator/components/dag"() {
+    def "DeepGoPlusPlusPredictor: buildCommand fails fast without integrator/components/dag"() {
         given:
-        def predictor = new CafaBaselinePredictor(
+        def predictor = new DeepGoPlusPlusPredictor(
             sidecarScript: writeSidecarStub().absolutePath,
         )  // missing integrator + componentsDir + dag
         def fasta = tmp.resolve('q.faa').toFile()
