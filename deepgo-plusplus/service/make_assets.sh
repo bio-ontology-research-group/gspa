@@ -14,10 +14,11 @@
 #       --index text_string_index.tsv --train-terms train_terms.tsv \
 #       --string-dir <STRING per-species dir> --out train_net_index.tsv
 #
-# Usage: make_assets.sh <OUT_DIR> <TRAIN_FASTA> <TRAIN_NET_INDEX> <TRAIN_TERMS> <GO_DAG> [GO_OBO]
+# Usage: make_assets.sh <OUT_DIR> <TRAIN_FASTA> <TRAIN_NET_INDEX> <TRAIN_TERMS> <GO_DAG> [GO_OBO] [CNN_MODEL.pt]
+#   CNN_MODEL.pt (optional) enables the ?cnn=true path (build_cnn_component.py --save-model).
 set -euo pipefail
 OUT="${1:?out dir}"; TRAIN_FASTA="${2:?train fasta}"; IDX="${3:?train_net_index.tsv}"
-TT="${4:?train_terms.tsv}"; DAG="${5:?go-dag.tsv}"; OBO="${6:-}"
+TT="${4:?train_terms.tsv}"; DAG="${5:?go-dag.tsv}"; OBO="${6:-}"; CNN="${7:-}"
 mkdir -p "$OUT"
 echo "[make_assets] DIAMOND DB from $TRAIN_FASTA"
 diamond makedb --in "$TRAIN_FASTA" -d "$OUT/train_db" --quiet
@@ -26,5 +27,6 @@ cp "$IDX" "$OUT/train_net_index.tsv"
 cp "$TT"  "$OUT/train_terms.tsv"
 cp "$DAG" "$OUT/go-dag.tsv"
 [ -n "$OBO" ] && cp "$OBO" "$OUT/go.obo" || echo "[make_assets] (no go.obo — term names disabled)"
+[ -n "$CNN" ] && cp "$CNN" "$OUT/cnn_model.pt" || echo "[make_assets] (no cnn_model.pt — ?cnn=true disabled)"
 echo "[make_assets] done -> $OUT"
 ls -la "$OUT"

@@ -30,10 +30,12 @@ deepgo-plusplus/
 │   ├── deepgo_plusplus_integrator.json          (6-comp, default)
 │   ├── deepgo_plusplus_integrator_net.json      (+net, recommended)
 │   ├── deepgo_plusplus_integrator_lit_net.json  (+lit+net)
-│   ├── deepgo_plusplus_light_cpu.json           (strictly no-GPU + DIAMOND-bridged net)
 │   ├── deepgo_plusplus_light_fast.json          (diam+net_union — webservice default)
+│   ├── deepgo_plusplus_light_fast_cnn.json      (+cnn — orphan coverage)
+│   ├── deepgo_plusplus_light_cpu.json           (+interpro — strictly no-GPU best)
+│   ├── deepgo_plusplus_light_full.json          (+interpro+cnn)
 │   ├── deepgo_plusplus_light.json               (no-GPU given AFDB structures)
-│   └── deepgo_plusplus_light_cnn.json           (no-GPU + CPU 1D-CNN, coverage)
+│   └── deepgo_plusplus_light_cnn.json           (offline 6-comp + cnn, coverage)
 ├── ablation_no_results.tsv  ← committed ablation numbers (pipeline/ablation.py)
 ├── pipeline/            ← the retraining + apply scripts
 │   ├── build_text_string_index.py   one UniProt pass → text + STRING + taxon
@@ -153,8 +155,9 @@ with a FASTA → JSON GO predictions, ~5 s/protein, no GPU. One DIAMOND search p
 `diam` + the bridged `net`; the 6.1 GB STRING scan is **precomputed once** into
 `train_net_index.tsv` so each request is a DIAMOND search + index lookup
 (`pipeline/apply_net_bridge.py` — 8 s vs ~13 min, recovering ~99 % of the slow
-bridge's f_w). Default model `diam+net_union`; `?interpro=true` opts into the
-3-component model (needs InterProScan). See `service/README.md`.
+bridge's f_w). Default model `diam+net_union`; **`?interpro=true`** and **`?cnn=true`**
+each opt in an extra component (4 frozen models cover the combinations) — `cnn`
+gives a signal to orphan proteins with no homolog. See `service/README.md`.
 
 ## Reproducible retrain
 

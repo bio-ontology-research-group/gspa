@@ -15,12 +15,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 WORKDIR /app
 COPY service/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
+# CPU PyTorch — only needed for the optional ?cnn=true component (lazy-imported)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 # code + frozen models (small, shipped in the repo)
-COPY pipeline/apply_net_bridge.py /app/pipeline/apply_net_bridge.py
+COPY pipeline/apply_net_bridge.py pipeline/build_cnn_component.py /app/pipeline/
 COPY service/predict.py service/app.py /app/service/
 COPY models/deepgo_plusplus_light_fast.json \
-     models/deepgo_plusplus_light_cpu.json /app/models/
+     models/deepgo_plusplus_light_fast_cnn.json \
+     models/deepgo_plusplus_light_cpu.json \
+     models/deepgo_plusplus_light_full.json /app/models/
 
 ENV DGPP_ASSETS=/assets \
     DGPP_MODELS=/app/models \

@@ -100,20 +100,23 @@ def read_fasta(text):
 
 
 class DGppLight:
-    def __init__(self, *, model_fast, model_full, train_net_index, train_terms,
+    def __init__(self, *, models, train_net_index, train_terms,
                  dag, diamond_db, obo=None, diamond_bin='diamond',
-                 interproscan=None, threads=8):
+                 interproscan=None, cnn_model=None, threads=8):
+        """models: dict {(interpro: bool, cnn: bool) -> path to frozen JSON}.
+        Only the combinations whose model file exists are served."""
         import json
         self.anc = load_dag(dag)
         self.aspect_of = aspect_of_terms(self.anc)
         self.train_net = load_train_net(train_net_index)
         self.train_terms = load_grouped(train_terms)
-        self.model_fast = json.load(open(model_fast))
-        self.model_full = json.load(open(model_full)) if model_full else None
+        self.models = {k: json.load(open(p)) for k, p in models.items()
+                       if p and os.path.exists(p)}
         self.names = load_obo_names(obo)
         self.diamond_db = diamond_db
         self.diamond_bin = diamond_bin
         self.interproscan = interproscan
+        self.cnn_model = cnn_model if cnn_model and os.path.exists(cnn_model) else None
         self.threads = threads
 
     # ---- components (all from one DIAMOND search) ----
@@ -182,6 +185,29 @@ class DGppLight:
         os.unlink(out)
         return comp
 
+    def _cnn_component(self, fasta_path, min_score=0.01):
+        """Optional: the CPU 1D-CNN (build_cnn_component) loaded from saved weights.
+        Provides sequence-based predictions for orphan proteins with no homolog."""
+        if not self.cnn_model:
+            raise RuntimeError('cnn=true but no CNN weights configured (DGPP_CNN_MODEL)')
+        import torch  # heavy; imported only when the CNN path is used
+        import build_cnn_component as bcc
+        ckpt = torch.load(self.cnn_model, map_location='cpu', weights_only=False)
+        vocab, max_len = ckpt['vocab'], ckpt['max_len']
+        model = bcc.build_cnn(len(vocab))
+        model.load_state_dict(ckpt['state_dict'])
+        model.eval()
+        out = fasta_path + '.cnn.tsv'
+        bcc.predict(model, vocab, max_len, fasta_path, out, min_score, torch)
+        comp = defaultdict(dict)
+        with open(out) as fh:
+            for line in fh:
+                p = line.rstrip('\n').split('\t')
+                if len(p) >= 3:
+                    comp[p[0]][p[1]] = float(p[2])
+        os.unlink(out)
+        return comp
+
     def _propagate(self, comp):
         """protein -> {term -> score} propagated to ancestors (max)."""
         out = {}
@@ -225,7 +251,16 @@ class DGppLight:
             results[q] = preds
         return results
 
-    def predict(self, fasta_text, *, interpro=False, topk=5, min_score=0.1):
+    def available(self):
+        """Sorted list of served (interpro, cnn) combinations."""
+        return sorted(self.models)
+
+    def predict(self, fasta_text, *, interpro=False, cnn=False, topk=5, min_score=0.1):
+        key = (interpro, cnn)
+        if key not in self.models:
+            raise RuntimeError(f'no model for interpro={interpro}, cnn={cnn} '
+                               f'(available: {self.available()})')
+        model = self.models[key]
         with tempfile.NamedTemporaryFile('w', suffix='.faa', delete=False) as fh:
             fh.write(fasta_text)
             path = fh.name
@@ -233,10 +268,10 @@ class DGppLight:
             hom = self._diamond(path)
             comps = {'diam': self._propagate(self._diam_component(hom, topk)),
                      'net_union': self._propagate(self._net_component(hom, topk))}
-            model = self.model_fast
             if interpro:
                 comps['interpro'] = self._propagate(self._interpro_component(path))
-                model = self.model_full
+            if cnn:
+                comps['cnn'] = self._propagate(self._cnn_component(path))
             return self._apply(model, comps, min_score)
         finally:
             os.unlink(path)

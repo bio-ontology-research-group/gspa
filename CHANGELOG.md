@@ -22,7 +22,12 @@ user-visible deltas; for measured impact, follow the cross-references.
   default with an opt-in `?interpro=true` (3-component, needs InterProScan). One
   DIAMOND search powers both `diam` (BLAST-KNN) and the bridged `net`; novel
   proteins not in STRING are handled via the bridge. Verified end-to-end (image
-  builds, `/health` + `/predict` serve real predictions).
+  builds, `/health` + `/predict` serve real predictions). **Optional composable
+  components**: `?cnn=true` adds the CPU 1D-CNN (orphan coverage — a signal for
+  proteins with no homolog, where `diam`/`net` are blind; bundles CPU PyTorch,
+  needs `cnn_model.pt`), `?interpro=true` adds InterProScan domains (not bundled).
+  Four frozen models cover the combinations (`deepgo_plusplus_light_{fast,fast_cnn,cpu,full}.json`);
+  each optional path 400s if its asset is absent.
 - **DeepGO-PlusPlus full ablation + aggregator study** (`deepgo-plusplus/pipeline/ablation.py`;
   raw numbers `deepgo-plusplus/ablation_no_results.tsv`, deep dive in
   `RESULTS.md`). One reproducible pass (loads each component once, scores all
