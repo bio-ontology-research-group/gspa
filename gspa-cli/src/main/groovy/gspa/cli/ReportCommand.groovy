@@ -5,7 +5,7 @@ import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 import picocli.CommandLine.Parameters
 
-@Command(name = 'report', description = 'Generate HTML quality report from existing JSON reports')
+@Command(name = 'report', description = 'Generate HTML quality report from existing JSON reports', mixinStandardHelpOptions = true)
 class ReportCommand implements Runnable {
 
     @Option(names = ['-o', '--output'], description = 'Output HTML file', defaultValue = 'quality_report.html')

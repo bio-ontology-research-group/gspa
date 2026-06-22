@@ -10,7 +10,7 @@ import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 import picocli.CommandLine.Parameters
 
-@Command(name = 'compare', description = 'Compare quality of multiple annotation sets for the same genome')
+@Command(name = 'compare', description = 'Compare quality of multiple annotation sets for the same genome', mixinStandardHelpOptions = true)
 class CompareCommand implements Runnable {
 
     @Option(names = ['-i', '--input'], required = true, description = 'Input GFF3 file (genome structure)')

@@ -9,7 +9,7 @@ import gspa.predictor.context.OperonPredictor
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 
-@Command(name = 'annotate', description = 'Annotate a genome or set of genomes')
+@Command(name = 'annotate', description = 'Annotate a genome or set of genomes', mixinStandardHelpOptions = true)
 class AnnotateCommand implements Runnable {
 
     @Option(names = ['-i', '--input'], required = true, description = 'Input FASTA/GenBank file')
