@@ -11,6 +11,18 @@ user-visible deltas; for measured impact, follow the cross-references.
 ## [Unreleased]
 
 ### Added
+- **DeepGO-PlusPlus-Light webservice + bridge optimization** (`deepgo-plusplus/service/`,
+  `pipeline/apply_net_bridge.py`, model `deepgo_plusplus_light_fast.json`). The
+  homology-bridged `net` is made request-fast by precomputing each train node's
+  STRING-neighbour vote once (`build_net_component.py` over the train nodes →
+  `train_net_index.tsv`); at inference the bridge is a DIAMOND search + index lookup
+  (**8 s vs ~13 min**, recovering ~99 % of the slow bridge's f_w: 0.517 vs 0.521 on
+  the set-B hold-out). A FastAPI service (`POST /predict` FASTA → JSON GO terms,
+  ~5 s/protein, CPU-only) + Dockerfile serve the fast `diam+net_union` model by
+  default with an opt-in `?interpro=true` (3-component, needs InterProScan). One
+  DIAMOND search powers both `diam` (BLAST-KNN) and the bridged `net`; novel
+  proteins not in STRING are handled via the bridge. Verified end-to-end (image
+  builds, `/health` + `/predict` serve real predictions).
 - **DeepGO-PlusPlus full ablation + aggregator study** (`deepgo-plusplus/pipeline/ablation.py`;
   raw numbers `deepgo-plusplus/ablation_no_results.tsv`, deep dive in
   `RESULTS.md`). One reproducible pass (loads each component once, scores all

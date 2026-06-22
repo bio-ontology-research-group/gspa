@@ -31,6 +31,7 @@ deepgo-plusplus/
 │   ├── deepgo_plusplus_integrator_net.json      (+net, recommended)
 │   ├── deepgo_plusplus_integrator_lit_net.json  (+lit+net)
 │   ├── deepgo_plusplus_light_cpu.json           (strictly no-GPU + DIAMOND-bridged net)
+│   ├── deepgo_plusplus_light_fast.json          (diam+net_union — webservice default)
 │   ├── deepgo_plusplus_light.json               (no-GPU given AFDB structures)
 │   └── deepgo_plusplus_light_cnn.json           (no-GPU + CPU 1D-CNN, coverage)
 ├── ablation_no_results.tsv  ← committed ablation numbers (pipeline/ablation.py)
@@ -45,8 +46,10 @@ deepgo-plusplus/
 │   ├── train_integrator.py          train + freeze the per-aspect logreg
 │   ├── train_head_oof.py            (GPU) k-fold OOF PLM heads for blind model
 │   ├── apply_integrator.py          apply a frozen model to a FASTA
+│   ├── apply_net_bridge.py          fast bridge at inference (index lookup, no STRING scan)
 │   ├── ablation.py                  LOO / cumulative / GBT-vs-LR ablation
 │   └── eval_light.py                pick the best no-GPU panel (DG++-Light)
+├── service/             ← CPU webservice (FastAPI + Docker; POST /predict)
 └── tests/               ← pytest regression suite (no GPU, no network)
 ```
 
@@ -142,6 +145,16 @@ model, 0.532, on novel proteins):
    generalisation wall; it ships only as the coverage-first `_cnn` variant.
 
 Re-pick / rebuild at a new release with `pipeline/eval_light.py`.
+
+### Webservice (`service/`)
+
+DG++-Light runs as a CPU REST API (`service/`, FastAPI + Docker): `POST /predict`
+with a FASTA → JSON GO predictions, ~5 s/protein, no GPU. One DIAMOND search powers
+`diam` + the bridged `net`; the 6.1 GB STRING scan is **precomputed once** into
+`train_net_index.tsv` so each request is a DIAMOND search + index lookup
+(`pipeline/apply_net_bridge.py` — 8 s vs ~13 min, recovering ~99 % of the slow
+bridge's f_w). Default model `diam+net_union`; `?interpro=true` opts into the
+3-component model (needs InterProScan). See `service/README.md`.
 
 ## Reproducible retrain
 
