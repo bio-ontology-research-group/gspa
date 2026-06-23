@@ -39,8 +39,55 @@ the numbers track the real leaderboard rather than a leaky internal split:
   protein's *complete* experimental set in that aspect (full-evaluation mode;
   `cafaeval` propagates ancestors).
 - Scoring is the **official `cafaeval`** (BioComputingUP) with the provided
-  `IA.tsv`: IA-weighted max-F (`f_w`), `-norm cafa -prop max`. The headline
-  metric is the mean over MF/BP/CC, then over the three knowledge classes.
+  `IA.tsv`: IA-weighted max-F (`f_w`), `-norm cafa -prop max`. **The CAFA6
+  leaderboard headline is the `no-knowledge` class f_w** (verified: our
+  submission's no-knowledge recon 0.359 matches our real LB 0.37749; the 3-class
+  mean 0.575 does not). Report and compare on **no-knowledge**, not the 3-class
+  mean.
+
+### 1.0a ⚠️ Known bug — GAF last-modified dates contaminate the no-knowledge GT
+
+**Symptom (found 2026-06-23).** 91% of the reconstruction's "no-knowledge"
+proteins, and **95% of its "no-knowledge MF" targets (2658 → 143)**, already have
+that protein's MF term in the pre-t0 `train_terms.tsv`. So the "novel" targets are
+largely *not novel* — their function was already in the training labels. IA-weighted,
+**61% of the no-knowledge MF truth is pre-known** (BP 8%, CC 5% — MF-specific).
+
+**Root cause.** `build_groundtruth.py` decides "is this a novel post-t0 target?"
+from the GOA `date` column (col 14). That column is the annotation's
+**last-modified** date, **not** its creation date. An annotation that existed
+before t0 but was touched after t0 (re-curated, re-validated, format-migrated) gets
+a post-t0 date and is wrongly counted as a brand-new discovery. Example: `GO:0005515`
+on `P76092`/`Q5SQS8`, evidence IPI, date `20260613` (post-t0) — yet the same term
+is in the pre-t0 `train_terms`.
+
+**Effect.** Homology/PPI methods that vote pre-t0 labels *retrieve the pre-known
+answer*. The `net` (STRING Net-KNN) component is hit hardest: no-knowledge MF
+**0.803 → 0.441**, mean **0.475 → 0.347**, once the contamination is removed.
+(Consistency check: GOAlpha report their Net-KNN *drops* on the genuinely-novel
+private set, 0.29→0.26 — the opposite of our contaminated rise.) The *integrator*
+is largely robust (0.532 → 0.521) because it blends `net` with non-leaking signal,
+but every standalone no-knowledge-MF and `net` number on the dirty GT is inflated.
+
+**Fix.** Don't trust GAF dates; use the canonical pre-t0 label set instead. A
+(protein, aspect) is genuinely no-knowledge iff the protein has **no `train_terms`
+entry in that aspect**. `pipeline/build_clean_gt.py` builds the leak-free GT:
+
+```bash
+python pipeline/build_clean_gt.py \
+  --gt-no gt/gt_no.tsv --train-terms <train_terms.tsv> --obo <go.obo> \
+  --out gt/gt_no_clean.tsv --novel-proteins-out gt/gt_no_novelprot.tsv
+```
+(Aspect comes from the OBO `namespace`, the authoritative source cafaeval uses —
+**not** from a go-dag closure, which is order-dependent for terms with cross-aspect
+`part_of` ancestors.)
+
+Corrected, leak-free numbers are in [`RESULTS.md` → Corrected results](RESULTS.md#corrected-results-2026-06-23).
+**A proper re-freeze should retrain the integrator on the clean GT** (current clean
+numbers score a model still *trained* on dirty labels — robust, but not the final
+word). A deeper fix would re-derive `testsuperset_exp_annots.tsv` from a *dated GOA
+diff* (annotations present in the post-t0 snapshot but absent from a ≤t0 snapshot)
+rather than the per-annotation last-modified date.
 
 ### 1.1 Components (the evidence, produced upstream)
 
@@ -116,41 +163,54 @@ optional. Full detail in `RESULTS.md` §"Temporal integrity".
 
 Faithful reconstruction, official `cafaeval` + `IA.tsv`, t0 = 2026-02-02.
 
-**Headline.** Our real CAFA6 entry (team *HoehndorfLab*) scored **0.37749, rank
-263/2177**; the winner (GOAlpha) **0.524**. With *zero* new models, learned
-integration of the same components recovers **novel-protein (no-knowledge)
-IA-weighted f_w 0.359 → 0.483** — a would-be top-10 result — and adding the
-network signal lifts the official 3-class mean to **0.647**.
+> **⚠️ Corrected 2026-06-23.** Two earlier reporting errors are fixed here; see
+> the [Correction banner in `RESULTS.md`](RESULTS.md#-correction-2026-06-23--read-this-before-trusting-any-number-below)
+> for the full audit. In short: (1) the CAFA6 headline is the **no-knowledge**
+> f_w, *not* the 3-class mean — comparing our 3-class mean (0.647) to GOAlpha's
+> no-knowledge 0.524 was apples-to-oranges; (2) the no-knowledge MF GT was
+> contaminated by the **GAF last-modified-date bug** (see §1.0a), which inflated
+> the `net` component (MF 0.803 → 0.441 on a leak-free GT). The integrator is
+> robust to it (0.532 → 0.521 clean), so the honest headline is **level with
+> GOAlpha, not ahead**.
 
-**Per-component, no-knowledge f_w** (why integration, not a single model, wins):
+**Headline (corrected).** Our real CAFA6 entry (team *HoehndorfLab*) scored
+**0.37749, rank 263/2177**; the winner (GOAlpha) **0.524**. With *zero* new
+models, learned integration of the same components reaches **no-knowledge
+IA-weighted f_w ≈ 0.52** (0.532 on the contaminated GT, **0.521 on the leak-free
+GT**) — **level with GOAlpha, not ahead.** (Do not quote the 3-class mean,
+~0.63–0.65, against GOAlpha: it is inflated by easy partial-knowledge proteins.)
 
-| component | f_w | note |
-|---|---|---|
-| `net`      | 0.475 | **best single-component MF 0.803** (guilt-by-association) |
-| `mlp`      | 0.447 | strongest PLM head |
-| `lit`      | 0.445 | MF 0.539 (name-leak caveat) |
-| `prostt5`  | 0.435 | **MF 0.466** — best PLM MF, complementary to `mlp` |
-| `diam`     | 0.389 | BLAST-KNN |
-| `foldseek` | 0.364 | structure-KNN |
-| `interpro` | 0.165 | weak; redundant with PLM/homology |
-| `clean`    | ~0    | EC→GO, niche |
-| our 2025 submission (max-merge) | 0.359 | **below `mlp` alone** — max-merge destroyed MF |
+**Per-component, no-knowledge f_w** (corrected; `clean` = leak-free per-aspect GT):
 
-**Ablation** (IA-weighted f_w by knowledge class; the 6-comp model =
-`diam,foldseek,clean,interpro,mlp,prostt5`):
+| component | dirty f_w | **clean f_w** | note |
+|---|---|---|---|
+| `net`      | 0.475 | **0.347** | MF **0.803 → 0.441**: ~half was retrieving pre-known labels (the GAF-date leak) |
+| `mlp`      | 0.449 | **0.472** | strongest PLM head; *rises* on clean (doesn't leak) |
+| `prostt5`  | 0.435 | — | structure-aware PLM, complementary to `mlp` |
+| `diam`     | 0.389 | — | BLAST-KNN |
+| `foldseek` | 0.364 | — | structure-KNN |
+| `interpro` | 0.165 | — | weak; redundant with PLM/homology |
+| `clean`    | ~0    | — | EC→GO, niche |
+| our 2025 submission (max-merge) | 0.359 | 0.454 | max-merge destroyed MF; *rises* on clean |
+| **integrator (6+net)** | **0.532** | **0.521** | robust to the leak — blends `net` with non-leaking signal |
 
-| model | no-knowledge | limited | partial | **official 3-class** |
+**Ablation by knowledge class** (the 6-comp model =
+`diam,foldseek,clean,interpro,mlp,prostt5`). **These per-class numbers are on the
+contaminated GT** (esp. no-knowledge MF) and the **3-class mean must not be
+compared to GOAlpha** — kept for the relative component story only:
+
+| model | no-knowledge | limited | partial | 3-class mean *(not LB-comparable)* |
 |---|---|---|---|---|
 | 6-comp (baseline)         | 0.489 | 0.630 | 0.768 | 0.629 |
-| **6-comp + net** *(ship)* | 0.538 | 0.654 | 0.748 | **0.647** (+0.018) |
+| **6-comp + net** *(ship)* | 0.538 | 0.654 | 0.748 | 0.647 (+0.018) |
 | 6-comp + lit + net        | 0.553 | 0.646 | 0.715 | 0.638 |
 | 6-comp + lit              | 0.507 | 0.631 | 0.720 | 0.620 |
 
-`net` is the clean, leak-free win (ship `deepgo_plusplus_integrator_net.json`).
-`lit` raises no-knowledge but drags the 3-class mean (and carries a name-leak
-caveat), so it ships as an optional no-knowledge booster
-(`deepgo_plusplus_integrator_lit_net.json`). See `RESULTS.md` for the full story,
-per-aspect MF/BP/CC splits, and the remaining gap to GOAlpha.
+`net`'s apparent no-knowledge win is **substantially the GAF-date leak** (see the
+corrected per-component table above and §1.0a); on a leak-free GT its standalone
+mean is 0.345, and its value in the *integrator* is much smaller than the dirty
++0.018/+0.049 figures suggest. `lit` additionally carries a name-leak caveat. See
+`RESULTS.md` for the corrected results and the full audit.
 
 **Full leave-one-out / cumulative / aggregator ablation** (reproduce with
 `pipeline/ablation.py`; raw numbers in `ablation_no_results.tsv`, deep dive in
@@ -169,35 +229,95 @@ per-aspect MF/BP/CC splits, and the remaining gap to GOAlpha.
   This is why DG++ ships the **linear, scores-only** integrator. The bottleneck is
   signal diversity + generalisation, not aggregator sophistication.
 
-### DeepGO-PlusPlus-Light (no GPU)
+### DeepGO-PlusPlus-Light (no GPU) — corrected 2026-06-23
 
 DG++-Light drops the GPU PLM heads (`mlp`, `prostt5`, `esm2_3b`) and uses CPU
 components (DIAMOND, FoldSeek, InterProScan/-LR, STRING Net-KNN, optional BM25
-`lit`, and a CPU 1D-CNN `cnn` that replaces the PLM heads —
-`pipeline/build_cnn_component.py`). Two CAFA6 findings (no-knowledge f_w; tables
-in `RESULTS.md`):
+`lit`, and a CPU 1D-CNN `cnn` —`pipeline/build_cnn_component.py`).
 
-* **No-GPU panels beat the full GPU model (0.532) on novel proteins** — the PLM
-  heads are redundant with `net`. But `foldseek` needs a query *structure* (CPU
-  lookup if in AlphaFold DB, else GPU folding), and `net` only fires for STRING
-  members. The **strictly no-GPU, any-sequence** model is
-  `models/deepgo_plusplus_light_cpu.json` = `diam,interpro,net_union` (**0.564**,
-  **recommended**); `models/deepgo_plusplus_light.json` = `diam,foldseek,interpro,net`
-  (0.550) is for when AFDB structures are available.
-* **`net_union` extends `net` to proteins not in STRING** via a DIAMOND homology
-  bridge (`build_net_bridge.py`): query → pre-t0 STRING-member homolog → its
-  neighbours' pre-t0 labels. Leak-safe (pre-t0 homolog DB; novel queries have no
-  pre-t0 labels so can't self-match). Takes the 356 no-STRING no-knowledge proteins
-  from f_w 0 → 0.42 and lifts the structure-free panel 0.544 → 0.564.
-* **The 1D-CNN does not improve novel-protein f_w** (standalone 0.206; −0.012 in
-  panel) — a sequence model trained on pre-t0 data hits the same generalisation
-  wall. Its value is *coverage* (it predicts for every protein, incl. orphans), so
-  it ships as the separate `models/deepgo_plusplus_light_cnn.json` (0.516).
+> **⚠️ The old DG++-Light claims were leak-driven and are RETRACTED.** They were
+> computed on the GAF-date-contaminated no-knowledge GT (§1.0a), and the Light
+> panels are exactly the `net`/`net_union`-centric models the leak inflates most.
+> On the leak-free GT (full table in
+> [`RESULTS.md`](RESULTS.md#corrected-deepgo-plusplus-light-no-gpu--the-beats-gpu-claim-reverses)):
 
-Re-pick / re-freeze at each release with `pipeline/eval_light.py` +
-`train_integrator.py --save-model`; the `cnn` component is rebuilt with
-`build_cnn_component.py` (`--save-model`/`--load-model` to apply without
-retraining). No predictor code changes — the component list is read from the JSON.
+**Panels** (no-knowledge f_w):
+
+| model | dirty mean | **clean mean** | note |
+|---|---|---|---|
+| full GPU integrator (6+net) | 0.532 | **0.521** | robust to the leak — **wins on novel proteins** |
+| `light.json` (diam,foldseek,interpro,net) | 0.550 | **0.488** | best Light panel on clean |
+| `light_cnn.json` (cnn,diam,foldseek,interpro,net) | 0.516 | **0.470** | — |
+| `light_cpu.json` (diam,interpro,net_union) *(was "recommended")* | 0.564 | **0.464** | most leak-inflated |
+| `light_fast.json` (diam,net_union) *(webservice default)* | 0.562 | **0.451** | weakest; net_union-only |
+
+**Full standalone-component ablation** (every component incl. the CNN, scored
+directly; dirty → clean; full table + GPU refs in [`RESULTS.md`](RESULTS.md#corrected-deepgo-plusplus-light-no-gpu--the-beats-gpu-claim-reverses)):
+
+| component | dirty | **clean** | | component | dirty | **clean** |
+|---|---|---|---|---|---|---|
+| `lit` (CPU)        | 0.445 | **0.459** | | `cnn` (CPU)        | 0.209 | 0.268 |
+| `diam` (CPU)       | 0.388 | **0.451** | | `interpro` (CPU)   | 0.164 | 0.215 |
+| `foldseek` (GPU-gated†)| 0.363 | **0.428** | | `net_bridge` (CPU bridge) | 0.504 | **0.358** ↓ |
+| `interpro_lr` (CPU)| 0.233 | 0.325 | | `net_union` (CPU bridge) | 0.506 | **0.353** ↓ |
+| `clean` (CPU)      | 0.007 | 0.116 | | `net` (CPU, STRING‡)| 0.475 | **0.347** ↓ |
+
+**Two query-input gates that fail exactly on novel proteins** (so a component being
+"CPU" on a benchmark ≠ usable on a fresh sequence):
+- **† `foldseek` is not unconditionally CPU.** FoldSeek search is CPU but needs a
+  **structure or ProstT5-derived 3Di** per query — a CPU lookup only for AFDB-covered
+  proteins; folding/encoding a novel sequence (ESMFold/ProstT5 3Di) needs a **GPU**.
+- **‡ plain `net` needs the query to be a STRING node.** Novel proteins are *not* in
+  STRING, so plain `net` = 0 for them; the deployable net signal is the **DIAMOND
+  homology bridge** `net_union`/`net_bridge` (query → STRING-member homolog → its
+  neighbours' labels — CPU). The CAFA6 no-knowledge set is ~87 % STRING members, which
+  is why plain `net` still scores 0.347 here.
+
+* **The `net` family is the only group that *drops* on clean** (the leak); every
+  other component *rises*.
+* **On genuinely-novel proteins the strongest signals are `lit` (0.459), `diam`
+  (0.451), `foldseek` (0.428†) — NOT `net` (0.347).**
+* **The full GPU model BEATS DG++-Light** (0.521 vs 0.45–0.49); the PLM heads are
+  not redundant. DG++-Light trades ~0.03–0.07 f_w for no-GPU deployment.
+* The CPU **1D-CNN** is the weakest sequence signal (clean 0.268) but doesn't leak;
+  its value stays *coverage* of true orphans, not accuracy.
+
+**Leak-free net-bridge accuracy** (clean-B = proteins ∉ `train_terms` → bridge cannot
+self-match; 0/251 in train_terms verified). Split by STRING membership:
+
+| component | all clean-B (251) | STRING-member (214) | non-STRING (37) |
+|---|---|---|---|
+| `net` (direct) | 0.339 | 0.380 | **0.000** |
+| `net_union` | 0.351 | 0.379 | **0.252** |
+| `net_bridge` | 0.353 | 0.377 | **0.252** |
+| `diam` (ref) | 0.442 | 0.414 | **0.598** |
+
+The bridge's *actual* leak-free accuracy is ~0.35 (0.252 on non-STRING, where direct
+`net`=0 — so it genuinely fires). **But `diam` dominates it everywhere, including on
+non-STRING proteins (0.598 vs 0.252)** — the one case the bridge exists for. The bridge
+just transfers a DIAMOND homolog's *neighbours'* labels; transferring the homolog's
+*own* labels (`diam`) is far better. So **the net/PPI family is redundant with `diam`
+and a candidate to drop entirely** (n=37 non-STRING small but the gap is large).
+
+**At the next clean re-freeze, redesign DG++-Light around `diam` + `lit`** (strictly-CPU,
+any novel sequence) + `cnn` for orphan coverage, `foldseek` only in a
+*no-GPU-given-structures/3Di* tier, and **drop the net/PPI family** (dominated by
+`diam`). Re-pick the default (`light.json` currently leads, not `light_cpu`/`light_fast`).
+Re-pick/re-freeze with `pipeline/build_clean_gt.py` + `pipeline/eval_light.py` +
+`train_integrator.py --save-model` (clean set small, n≈282, ±0.02). No predictor code
+changes — the component list is in the JSON.
+
+**DONE (2026-06-23) — net-free, leak-free retrain.** Re-trained the Light integrator
+without the net family on the clean GT: best net-free panel **0.508**
+(`deepgo_plusplus_light_clean.json` = diam,foldseek,interpro,lit), strictly-CPU
+**0.500** (`deepgo_plusplus_light_cpu_clean.json` = diam,interpro,lit,cnn) — both
+**beat the old net-based Light models (0.464–0.488)** and nearly match the full GPU
+model (0.521). Frozen on n≈282 (interim; retrain on a large pre-t0 set for production).
+For the **roadmap to a genuinely better CPU predictor** (embedding-kNN third channel,
+small-PLM/light-attention head, ProteInfer dilated CNN, PLM distillation, loss
+upgrades — with citations), see `RESULTS.md` → "Better CPU predictor — literature-driven
+roadmap". GSPA already ships `Esm2CentroidPredictor` (embedding-kNN) and
+`ProteInferPredictor` to build the top two on.
 
 ---
 

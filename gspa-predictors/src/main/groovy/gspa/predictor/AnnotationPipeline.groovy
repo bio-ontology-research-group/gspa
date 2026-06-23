@@ -274,6 +274,23 @@ class AnnotationPipeline {
                 minScore: neural.deepGoPlusPlus.minScore,
             )
         }
+        if (neural.deepGoPlusPlusLight.enabled) {
+            predictors << new gspa.predictor.neural.DeepGoPlusPlusLightPredictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                assets: neural.deepGoPlusPlusLight.assets,
+                modelsDir: neural.deepGoPlusPlusLight.modelsDir,
+                diamond: neural.deepGoPlusPlusLight.diamond,
+                interpro: neural.deepGoPlusPlusLight.interpro,
+                cnn: neural.deepGoPlusPlusLight.cnn,
+                interproscan: neural.deepGoPlusPlusLight.interproscan,
+                cnnModel: neural.deepGoPlusPlusLight.cnnModel,
+                threads: neural.deepGoPlusPlusLight.threads,
+                topK: neural.deepGoPlusPlusLight.topK,
+                batchSize: neural.deepGoPlusPlusLight.batchSize,
+                minScore: neural.deepGoPlusPlusLight.minScore,
+            )
+        }
 
         // FOSS region predictors (use run_region_predictors.py sidecar)
         def loc = config.predictors.localization

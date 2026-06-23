@@ -237,6 +237,108 @@ p1\tGO:0008150\t0.331\tGO
         thrown(IllegalStateException)
     }
 
+    def "DeepGoPlusPlusLightPredictor: buildCommand serialises assets + fast-path flags"() {
+        given:
+        def predictor = new DeepGoPlusPlusLightPredictor(
+            sidecarScript: writeSidecarStub().absolutePath,
+            assets: '/tmp/dgpp-assets',
+            modelsDir: '/tmp/dgpp-models',
+            threads: 4,
+            topK: 7,
+        )
+        def fasta = tmp.resolve('q.faa').toFile()
+        fasta.text = '>p1\nMKTAY\n'
+        def outDir = tmp.resolve('outlight').toFile()
+        outDir.mkdirs()
+
+        when:
+        def cmd = predictor.buildCommand(fasta, outDir)
+
+        then:
+        cmd[cmd.indexOf('--predictor') + 1] == 'deepgo-plusplus-light'
+        cmd.contains('--dgpp-light-assets')
+        cmd[cmd.indexOf('--dgpp-light-assets') + 1] == '/tmp/dgpp-assets'
+        cmd.contains('--dgpp-light-models')
+        cmd[cmd.indexOf('--dgpp-light-models') + 1] == '/tmp/dgpp-models'
+        cmd.contains('--dgpp-light-threads')
+        cmd[cmd.indexOf('--dgpp-light-threads') + 1] == '4'
+        cmd.contains('--top-k')
+        cmd[cmd.indexOf('--top-k') + 1] == '7'
+        // fast path: neither heavy component is requested by default
+        !cmd.contains('--dgpp-light-interpro')
+        !cmd.contains('--dgpp-light-cnn')
+        predictor.name == 'deepgo-plusplus-light'
+        predictor.predictorName == 'deepgo-plusplus-light'
+        predictor.outputTypes == ([AnnotationType.GO] as Set)
+    }
+
+    def "DeepGoPlusPlusLightPredictor: opt-in cnn/interpro flags are passed through"() {
+        given:
+        def predictor = new DeepGoPlusPlusLightPredictor(
+            sidecarScript: writeSidecarStub().absolutePath,
+            assets: '/tmp/a',
+            interpro: true,
+            cnn: true,
+            interproscan: '/opt/interproscan/interproscan.sh',
+            cnnModel: '/tmp/cnn_model.pt',
+        )
+        def fasta = tmp.resolve('q2.faa').toFile()
+        fasta.text = '>p1\nM\n'
+        def outDir = tmp.resolve('outlight2').toFile()
+        outDir.mkdirs()
+
+        when:
+        def cmd = predictor.buildCommand(fasta, outDir)
+
+        then:
+        cmd.contains('--dgpp-light-interpro')
+        cmd.contains('--dgpp-light-cnn')
+        cmd.contains('--dgpp-light-interproscan')
+        cmd[cmd.indexOf('--dgpp-light-interproscan') + 1] == '/opt/interproscan/interproscan.sh'
+        cmd.contains('--dgpp-light-cnn-model')
+        cmd[cmd.indexOf('--dgpp-light-cnn-model') + 1] == '/tmp/cnn_model.pt'
+    }
+
+    def "DeepGoPlusPlusLightPredictor: parseOutput reads the 4-column TSV"() {
+        given:
+        def predictor = new DeepGoPlusPlusLightPredictor(
+            sidecarScript: writeSidecarStub().absolutePath,
+            assets: '/tmp/a',
+        )
+        def outDir = tmp.toFile()
+        writeOutputTsv('query.deepgo-plusplus-light.tsv', '''\
+protein_id\tterm\tscore\tannotation_type
+p1\tGO:0016787\t0.999\tGO
+p1\tGO:0003824\t0.640\tGO
+'''.stripIndent())
+
+        when:
+        def results = predictor.parseOutput(outDir)
+
+        then:
+        results['p1'].size() == 2
+        results['p1'][0].type == AnnotationType.GO
+        results['p1'][0].value == 'GO:0016787'
+        results['p1'][0].score == 0.999
+        results['p1'][0].source == 'deepgo-plusplus-light'
+    }
+
+    def "DeepGoPlusPlusLightPredictor: buildCommand fails fast without assets"() {
+        given:
+        def predictor = new DeepGoPlusPlusLightPredictor(
+            sidecarScript: writeSidecarStub().absolutePath,
+        )  // missing assets
+        def fasta = tmp.resolve('q.faa').toFile()
+        fasta.text = '>p1\nM\n'
+        def outDir = tmp.toFile()
+
+        when:
+        predictor.buildCommand(fasta, outDir)
+
+        then:
+        thrown(IllegalStateException)
+    }
+
     def "buildCommand fails fast when required config is missing"() {
         given:
         def sidecarOk = new DeepGoPlusEsm2Predictor(

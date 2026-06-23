@@ -566,6 +566,98 @@ def run_deepgo_plusplus(rows: list[ManifestRow], args: argparse.Namespace) -> No
             fh.close()
 
 
+# -------- runner: deepgo-plusplus-light (self-contained, CPU-only) ----
+
+
+def run_deepgo_plusplus_light(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+    """GSPA's **DeepGO-PlusPlus-Light** predictor: self-contained, CPU-only.
+
+    Unlike ``deepgo-plusplus`` (which stacks *precomputed* component scores),
+    this runner runs DIAMOND + the homology-bridged STRING Net-KNN **itself**
+    from the query FASTA, then applies the frozen per-aspect logistic
+    integrator — the same model the standalone webservice serves. The fast
+    path needs only the ``diamond`` binary and the Python standard library
+    (no numpy / torch); ``--dgpp-light-cnn`` and ``--dgpp-light-interpro`` are
+    optional, heavier components.
+
+    The inference core (``DGppLight``) is **reused verbatim** from
+    ``deepgo-plusplus/service/predict.py`` so there is a single source of
+    truth for the model math; only the asset wiring lives here."""
+    if not args.dgpp_light_assets:
+        raise SystemExit(
+            "deepgo-plusplus-light requires --dgpp-light-assets "
+            "(make_assets.sh bundle: train_db.dmnd, train_net_index.tsv, "
+            "train_terms.tsv, go-dag.tsv [, go.obo, cnn_model.pt])")
+
+    # Locate the canonical DGppLight implementation. Default to the repo-relative
+    # service dir; allow an override for non-standard deployments.
+    service_dir = args.dgpp_light_service or str(
+        Path(__file__).resolve().parents[2] / "deepgo-plusplus" / "service")
+    if service_dir not in sys.path:
+        sys.path.insert(0, service_dir)
+    try:
+        from predict import DGppLight  # noqa: E402  (canonical inference core)
+    except ImportError as exc:
+        raise SystemExit(
+            f"deepgo-plusplus-light: cannot import DGppLight from {service_dir}: {exc}")
+
+    assets = Path(args.dgpp_light_assets)
+    models_dir = Path(args.dgpp_light_models) if args.dgpp_light_models \
+        else Path(service_dir).parent / "models"
+
+    def _a(name: str) -> str:
+        return str(assets / name)
+
+    def _m(name: str) -> str:
+        return str(models_dir / name)
+
+    # (interpro, cnn) -> frozen model; identical mapping to the webservice
+    # (deepgo-plusplus/service/app.py). Only present files are served.
+    model_map = {
+        (False, False): _m("deepgo_plusplus_light_fast.json"),       # diam+net_union
+        (False, True):  _m("deepgo_plusplus_light_fast_cnn.json"),   # +cnn
+        (True,  False): _m("deepgo_plusplus_light_cpu.json"),        # +interpro
+        (True,  True):  _m("deepgo_plusplus_light_full.json"),       # +interpro+cnn
+    }
+
+    obo = _a("go.obo")
+    cnn_model = args.dgpp_light_cnn_model or _a("cnn_model.pt")
+    pred = DGppLight(
+        models=model_map,
+        train_net_index=_a("train_net_index.tsv"),
+        train_terms=_a("train_terms.tsv"),
+        dag=_a("go-dag.tsv"),
+        diamond_db=_a("train_db"),
+        obo=obo if os.path.exists(obo) else None,
+        diamond_bin=args.dgpp_light_diamond or "diamond",
+        interproscan=args.dgpp_light_interproscan,
+        cnn_model=cnn_model,
+        threads=args.dgpp_light_threads,
+    )
+
+    interpro = bool(args.dgpp_light_interpro)
+    cnn = bool(args.dgpp_light_cnn)
+    if (interpro, cnn) not in pred.models:
+        raise SystemExit(
+            f"deepgo-plusplus-light: no model for interpro={interpro}, cnn={cnn} "
+            f"(available combinations: {pred.available()}); check --dgpp-light-models")
+
+    name = getattr(args, "predictor", "deepgo-plusplus-light")
+    for row in rows:
+        out_path = output_path(row, name)
+        LOG.info("  %s -> %s", row.tag, out_path)
+        fasta_text = Path(row.fasta_path).read_text()
+        results = pred.predict(fasta_text, interpro=interpro, cnn=cnn,
+                               topk=args.top_k, min_score=args.min_score)
+        fh, writer = open_output(out_path)
+        try:
+            for prot in sorted(results):
+                for p in results[prot]:
+                    writer.writerow([prot, p["term"], f"{p['score']:.4f}", "GO"])
+        finally:
+            fh.close()
+
+
 # -------- main --------------------------------------------------------
 
 
@@ -581,6 +673,7 @@ RUNNERS: dict[str, Callable[[list[ManifestRow], argparse.Namespace], None]] = {
     "esm2-centroid": run_esm2_centroid,
     "deepgo-plusplus": run_deepgo_plusplus,
     "cafa-baseline": run_deepgo_plusplus,
+    "deepgo-plusplus-light": run_deepgo_plusplus_light,
 }
 
 
@@ -621,6 +714,33 @@ def parse_args() -> argparse.Namespace:
                          "(<component>.tsv[.gz]: protein\\tterm\\tscore)")
     ap.add_argument("--dag", type=Path,
                     help="deepgo-plusplus: go-dag.tsv (child\\tancestor) for true-path propagation")
+
+    # deepgo-plusplus-light (self-contained: runs DIAMOND + net bridge itself)
+    ap.add_argument("--dgpp-light-assets",
+                    help="deepgo-plusplus-light: make_assets.sh bundle dir "
+                         "(train_db.dmnd, train_net_index.tsv, train_terms.tsv, "
+                         "go-dag.tsv [, go.obo, cnn_model.pt])")
+    ap.add_argument("--dgpp-light-models",
+                    help="deepgo-plusplus-light: dir of frozen integrator JSONs "
+                         "(default: deepgo-plusplus/models)")
+    ap.add_argument("--dgpp-light-service",
+                    help="deepgo-plusplus-light: dir containing the canonical "
+                         "predict.py (default: deepgo-plusplus/service)")
+    ap.add_argument("--dgpp-light-diamond", default="diamond",
+                    help="deepgo-plusplus-light: DIAMOND binary (default: diamond)")
+    ap.add_argument("--dgpp-light-threads", type=int, default=8,
+                    help="deepgo-plusplus-light: DIAMOND threads (default: 8)")
+    ap.add_argument("--dgpp-light-interpro", action="store_true",
+                    help="deepgo-plusplus-light: add the InterProScan component "
+                         "(needs --dgpp-light-interproscan)")
+    ap.add_argument("--dgpp-light-cnn", action="store_true",
+                    help="deepgo-plusplus-light: add the CPU 1D-CNN component "
+                         "(orphan coverage; needs torch + cnn_model.pt)")
+    ap.add_argument("--dgpp-light-interproscan",
+                    help="deepgo-plusplus-light: interproscan.sh launcher path")
+    ap.add_argument("--dgpp-light-cnn-model",
+                    help="deepgo-plusplus-light: CNN weights override "
+                         "(default: <assets>/cnn_model.pt)")
 
     return ap.parse_args()
 

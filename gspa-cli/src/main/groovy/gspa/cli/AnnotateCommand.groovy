@@ -104,6 +104,32 @@ class AnnotateCommand implements Runnable {
             description = 'GO DAG file (child\\tancestor) for true-path propagation; overrides config')
     String deepGoPlusPlusDag
 
+    @Option(names = ['--deepgo-plusplus-light'],
+            description = 'Enable DeepGO-PlusPlus-Light: self-contained CPU GO predictor '
+                    + '(runs DIAMOND BLAST-KNN + homology-bridged STRING Net-KNN itself)')
+    boolean deepGoPlusPlusLightEnabled
+
+    @Option(names = ['--deepgo-plusplus-light-assets'],
+            description = 'make_assets.sh bundle dir (train_db.dmnd, train_net_index.tsv, '
+                    + 'train_terms.tsv, go-dag.tsv [, go.obo, cnn_model.pt]); overrides config')
+    String deepGoPlusPlusLightAssets
+
+    @Option(names = ['--deepgo-plusplus-light-models'],
+            description = 'Dir of frozen integrator JSONs (default: deepgo-plusplus/models); overrides config')
+    String deepGoPlusPlusLightModels
+
+    @Option(names = ['--deepgo-plusplus-light-interpro'],
+            description = 'Add the InterProScan domain component (needs --deepgo-plusplus-light-interproscan)')
+    boolean deepGoPlusPlusLightInterpro
+
+    @Option(names = ['--deepgo-plusplus-light-cnn'],
+            description = 'Add the CPU 1D-CNN component (orphan coverage; needs torch + cnn_model.pt)')
+    boolean deepGoPlusPlusLightCnn
+
+    @Option(names = ['--deepgo-plusplus-light-interproscan'],
+            description = 'InterProScan launcher path (enables the interpro component); overrides config')
+    String deepGoPlusPlusLightInterproscan
+
     @Override
     void run() {
         println "GSPA annotate: ${input}"
@@ -277,6 +303,25 @@ class AnnotateCommand implements Runnable {
         }
         if (deepGoPlusPlusDag) {
             config.predictors.neural.deepGoPlusPlus.dag = deepGoPlusPlusDag
+        }
+
+        if (deepGoPlusPlusLightEnabled) {
+            config.predictors.neural.deepGoPlusPlusLight.enabled = true
+        }
+        if (deepGoPlusPlusLightAssets) {
+            config.predictors.neural.deepGoPlusPlusLight.assets = deepGoPlusPlusLightAssets
+        }
+        if (deepGoPlusPlusLightModels) {
+            config.predictors.neural.deepGoPlusPlusLight.modelsDir = deepGoPlusPlusLightModels
+        }
+        if (deepGoPlusPlusLightInterpro) {
+            config.predictors.neural.deepGoPlusPlusLight.interpro = true
+        }
+        if (deepGoPlusPlusLightCnn) {
+            config.predictors.neural.deepGoPlusPlusLight.cnn = true
+        }
+        if (deepGoPlusPlusLightInterproscan) {
+            config.predictors.neural.deepGoPlusPlusLight.interproscan = deepGoPlusPlusLightInterproscan
         }
     }
 }

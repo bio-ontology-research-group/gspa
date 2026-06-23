@@ -4,9 +4,17 @@ GSPA's CAFA6-competitive GO predictor — a **learned per-aspect stacker** over
 the heterogeneous evidence GSPA already produces, plus a network (STRING PPI)
 and literature channel. It is the productionised result of the CAFA6 post-mortem
 (see `RESULTS.md`): replacing naive max-merge with a frozen logistic integrator
-recovered novel-protein IA-weighted f_w from **0.359 → 0.483** (vs the 0.524
-first-place entry), and adding Net-KNN lifts the official 3-class mean to
-**0.647**.
+brings novel-protein (no-knowledge) IA-weighted f_w to **≈ 0.52** — **level with
+the 0.524 first-place entry (GOAlpha), not ahead of it.**
+
+> **⚠️ Corrected 2026-06-23.** Earlier versions of this README claimed "0.359 →
+> 0.483 … 3-class mean 0.647." Both were misleading: the CAFA6 headline is the
+> **no-knowledge** f_w (the 0.647 3-class mean is *not* comparable to GOAlpha's
+> 0.524), and the no-knowledge MF ground truth was contaminated by a GAF
+> last-modified-date bug that inflated the `net` component. See the
+> [correction banner in `RESULTS.md`](RESULTS.md#-correction-2026-06-23--read-this-before-trusting-any-number-below)
+> and [`TRAINING.md` §1.0a](TRAINING.md). Honest result: **no-knowledge ≈ 0.52,
+> level with GOAlpha**; leak-free GT builder: `pipeline/build_clean_gt.py`.
 
 This folder is **self-contained and re-runnable at every UniProt / STRING
 release**. The frozen model under `models/` is an artifact; the recipe that
@@ -32,7 +40,7 @@ deepgo-plusplus/
 │   ├── deepgo_plusplus_integrator_lit_net.json  (+lit+net)
 │   ├── deepgo_plusplus_light_fast.json          (diam+net_union — webservice default)
 │   ├── deepgo_plusplus_light_fast_cnn.json      (+cnn — orphan coverage)
-│   ├── deepgo_plusplus_light_cpu.json           (+interpro — strictly no-GPU best)
+│   ├── deepgo_plusplus_light_cpu.json           (+interpro — strictly no-GPU, any sequence)
 │   ├── deepgo_plusplus_light_full.json          (+interpro+cnn)
 │   ├── deepgo_plusplus_light.json               (no-GPU given AFDB structures)
 │   └── deepgo_plusplus_light_cnn.json           (offline 6-comp + cnn, coverage)
@@ -122,31 +130,37 @@ predictor reads its component list from the integrator JSON:
   --deepgo-plusplus-dag ~/Public/software/cafa6/go-dag.tsv"
 ```
 
-Shipped Light models (CAFA6 no-knowledge IA-weighted f_w; all beat the full GPU
-model, 0.532, on novel proteins):
+> **⚠️ Corrected 2026-06-23.** The earlier DG++-Light numbers ("0.564 / 0.550 /
+> 0.516; all beat the full GPU model") were **leak-driven** — computed on the
+> GAF-date-contaminated GT (see [`TRAINING.md` §1.0a](TRAINING.md)), and the Light
+> panels are the most `net`/`net_union`-centric, so the leak hit them hardest. On
+> the leak-free GT the claim **reverses**:
 
-| model | components | f_w | use |
-|---|---|---|---|
-| `deepgo_plusplus_light_cpu.json` | `diam,interpro,net_union` | **0.564** | **recommended** — strictly no-GPU (no structures) *and* works for proteins not in STRING |
-| `deepgo_plusplus_light.json` | `diam,foldseek,interpro,net` | 0.550 | no-GPU *given AFDB structures* for foldseek |
-| `deepgo_plusplus_light_cnn.json` | `cnn,diam,foldseek,interpro,net` | 0.516 | coverage-first: CPU 1D-CNN covers orphan proteins |
+Shipped Light models, CAFA6 no-knowledge IA-weighted f_w — **dirty (contaminated)
+vs clean (leak-free)**; full GPU integrator = 0.532 → **0.521**:
 
-**Findings worth knowing** (full tables in `RESULTS.md`):
-1. On *novel* proteins the no-GPU panels **beat** the full GPU model — the PLM
-   heads are redundant with `net`.
-2. **`foldseek` isn't unconditionally GPU-free**: FoldSeek search is CPU but needs
-   a query *structure*; that's a CPU lookup for AFDB-covered proteins, but folding
-   a brand-new sequence (ESMFold/ProstT5) needs a GPU. The strictly-no-GPU panel
-   drops it (`diam+interpro+net`, 0.544 — costs only 0.006).
-3. **`net` only fires for STRING members.** `net_union` (`build_net_bridge.py`)
-   bridges via DIAMOND — query → pre-t0 STRING-member homolog → its neighbours'
-   labels — taking the 356 no-STRING proteins from f_w 0 → **0.42** and lifting the
-   structure-free panel to **0.564** (the recommended `_cpu` model). Leak-safe: the
-   homolog DB is pre-t0 and novel queries can't self-match.
-4. The **1D-CNN does not improve novel-protein f_w** (standalone 0.206) — same
-   generalisation wall; it ships only as the coverage-first `_cnn` variant.
+| model | components | dirty | **clean** | use |
+|---|---|---|---|---|
+| `deepgo_plusplus_light.json` | `diam,foldseek,interpro,net` | 0.550 | **0.488** | best Light panel on clean (needs AFDB structures for foldseek) |
+| `deepgo_plusplus_light_cnn.json` | `cnn,diam,foldseek,interpro,net` | 0.516 | **0.470** | coverage-first: CPU 1D-CNN covers orphan proteins |
+| `deepgo_plusplus_light_cpu.json` | `diam,interpro,net_union` | 0.564 | **0.464** | strictly no-GPU / any-sequence — but most leak-inflated, weakest on clean |
 
-Re-pick / rebuild at a new release with `pipeline/eval_light.py`.
+**Corrected findings** (full tables in [`RESULTS.md`](RESULTS.md#corrected-deepgo-plusplus-light-no-gpu--the-beats-gpu-claim-reverses)):
+1. **The full GPU model BEATS DG++-Light on genuinely-novel proteins** (0.521 vs
+   0.46–0.49) — the opposite of the old claim. The PLM heads are *not* redundant on
+   novel proteins; DG++-Light trades ~0.03–0.06 accuracy for no-GPU deployment.
+2. **`net_union` (the DIAMOND bridge) adds nothing on novel proteins** — clean mean
+   0.353 ≈ plain `net` 0.347. The "356-protein 0 → 0.42 / panel 0.544 → 0.564" lift
+   was the GAF-date leak (retrieving pre-known MF labels). Still useful for *coverage*
+   of no-STRING proteins, but not the accuracy win it appeared to be.
+3. `foldseek` still isn't unconditionally GPU-free (CPU lookup only if a query
+   *structure* exists, e.g. AFDB; folding a novel sequence needs a GPU).
+4. The 1D-CNN still doesn't improve accuracy on novel proteins; it ships for coverage.
+
+**The default Light model should be re-picked** (`light.json` now leads, not
+`light_cpu.json`) after a leak-free re-freeze: `pipeline/build_clean_gt.py` +
+`pipeline/eval_light.py`. (Clean set is small, n≈282 — values are ±0.02 noisy, but
+the GPU-beats-Light direction is robust.)
 
 ### Webservice (`service/`)
 
@@ -158,6 +172,40 @@ with a FASTA → JSON GO predictions, ~5 s/protein, no GPU. One DIAMOND search p
 bridge's f_w). Default model `diam+net_union`; **`?interpro=true`** and **`?cnn=true`**
 each opt in an extra component (4 frozen models cover the combinations) — `cnn`
 gives a signal to orphan proteins with no homolog. See `service/README.md`.
+
+### Self-contained CLI (`--deepgo-plusplus-light`)
+
+The same self-contained engine is also wired into the **standard GSPA CLI** as a
+distinct predictor, `deepgo-plusplus-light` — so you can run DG++-Light directly
+on a proteome FASTA with **no precomputed component scores**. Unlike
+`--deepgo-plusplus` (which stacks component TSVs you produced upstream), this
+runs the DIAMOND search + homology-bridged Net-KNN itself, then applies the
+frozen integrator. The fast path needs only the `diamond` binary and the Python
+standard library — no numpy, no torch.
+
+```bash
+# one-time: build the asset bundle (same assets the webservice mounts)
+deepgo-plusplus/service/make_assets.sh /path/to/assets \
+    train.fasta train_net_index.tsv train_terms.tsv go-dag.tsv go.obo \
+    [cnn_model.pt]            # optional, enables --deepgo-plusplus-light-cnn
+
+./gradlew :gspa-cli:run --args="annotate --input proteome.faa --output out \
+  --neural-sidecar $PWD/benchmark/neural/run_neural_predictors.py \
+  --deepgo-plusplus-light \
+  --deepgo-plusplus-light-assets /path/to/assets"
+  # --deepgo-plusplus-light-models defaults to deepgo-plusplus/models/
+  # opt-in: --deepgo-plusplus-light-interpro (+ --deepgo-plusplus-light-interproscan PATH),
+  #         --deepgo-plusplus-light-cnn
+```
+
+The `(interpro, cnn)` flag pair selects the frozen JSON
+(`deepgo_plusplus_light_{fast,fast_cnn,cpu,full}.json`), exactly as the webservice
+does. The inference core (`DGppLight`) is **reused verbatim** from
+`service/predict.py`, so the CLI, the webservice, and the DeepGOWeb embed share
+one model implementation — retraining a model (below) updates all three.
+Config: `GspaConfig.NeuralConfig.deepGoPlusPlusLight`; predictor
+`gspa-predictors/.../neural/DeepGoPlusPlusLightPredictor`; sidecar runner
+`run_neural_predictors.py --predictor deepgo-plusplus-light`.
 
 ## Reproducible retrain
 

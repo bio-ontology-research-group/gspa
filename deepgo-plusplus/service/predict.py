@@ -102,9 +102,17 @@ def read_fasta(text):
 class DGppLight:
     def __init__(self, *, models, train_net_index, train_terms,
                  dag, diamond_db, obo=None, diamond_bin='diamond',
-                 interproscan=None, cnn_model=None, threads=8):
+                 interproscan=None, cnn_model=None, threads=8,
+                 tier_models=None, emb_store=None, esm2_name='esm2_t12_35M_UR50D',
+                 esm2_layer=12):
         """models: dict {(interpro: bool, cnn: bool) -> path to frozen JSON}.
-        Only the combinations whose model file exists are served."""
+        Only the combinations whose model file exists are served.
+
+        For the genome cascade (homology-gated tiering, see CASCADE.md):
+          tier_models: {'A': pathA, 'B': pathB} — Integrator-A (homology tier:
+            diam+net_union+interpro) and Integrator-B (orphan tier:
+            esm2_knn+cnn+interpro). emb_store: .npz {ids, emb} of pre-t0 ESM2-35M
+            train embeddings = the CPU-inference kNN reference for orphans."""
         import json
         self.anc = load_dag(dag)
         self.aspect_of = aspect_of_terms(self.anc)
@@ -118,6 +126,17 @@ class DGppLight:
         self.interproscan = interproscan
         self.cnn_model = cnn_model if cnn_model and os.path.exists(cnn_model) else None
         self.threads = threads
+        # cascade assets (all optional; only needed for cascade())
+        tier_models = tier_models or {}
+        self.model_tierA = (json.load(open(tier_models['A']))
+                            if tier_models.get('A') and os.path.exists(tier_models['A']) else None)
+        self.model_tierB = (json.load(open(tier_models['B']))
+                            if tier_models.get('B') and os.path.exists(tier_models['B']) else None)
+        self.emb_store = emb_store if emb_store and os.path.exists(emb_store) else None
+        self.esm2_name = esm2_name
+        self.esm2_layer = esm2_layer
+        self._esm2 = None          # lazy (model, batch_converter)
+        self._store = None         # lazy (ids, l2-normalized emb)
 
     # ---- components (all from one DIAMOND search) ----
     def _diamond(self, fasta_path):
@@ -165,14 +184,21 @@ class DGppLight:
             comp[q][t] = s
         return comp
 
-    def _interpro_component(self, fasta_path):
-        """Optional: InterProScan --goterms -> per-protein GO set (score 1.0)."""
+    def _interpro_component(self, fasta_path, pfam_only=False):
+        """Optional: InterProScan --goterms -> per-protein GO set (score 1.0).
+
+        pfam_only=True restricts to the Pfam member DB (`-appl Pfam`): the fast-mode
+        domain engine. Full InterProScan (PANTHER/Gene3D HMMs) is ~hours even on the
+        orphan subset and cannot meet the 5-10min genome budget; Pfam-only is minutes
+        and organism-agnostic. See CASCADE.md."""
         if not self.interproscan:
             raise RuntimeError('interpro=true but no InterProScan configured')
         out = fasta_path + '.ipr.tsv'
-        subprocess.run([self.interproscan, '-i', fasta_path, '-f', 'tsv',
-                        '--goterms', '-o', out, '-cpu', str(self.threads)],
-                       check=True)
+        cmd = [self.interproscan, '-i', fasta_path, '-f', 'tsv',
+               '--goterms', '-o', out, '-cpu', str(self.threads)]
+        if pfam_only:
+            cmd += ['-appl', 'Pfam']
+        subprocess.run(cmd, check=True)
         comp = defaultdict(dict)
         with open(out) as fh:
             for line in fh:
@@ -250,6 +276,95 @@ class DGppLight:
             preds.sort(key=lambda p: -p['score'])
             results[q] = preds
         return results
+
+    def _esm2_knn_component(self, fasta_path, topk=10, min_score=0.01):
+        """goPredSim-style embedding-kNN over the pre-t0 ESM2-35M train store.
+        CPU-only at inference: embed query seqs (small ESM2-35M), cosine-kNN vs the
+        precomputed train store, vote neighbours' pre-t0 GO labels (sim-weighted).
+        The orphan-tier workhorse — fires where DIAMOND finds no homolog."""
+        if not self.emb_store:
+            raise RuntimeError('esm2_knn requested but no emb_store configured')
+        import numpy as np
+        if self._store is None:                       # lazy-load + l2-normalize store
+            d = np.load(self.emb_store, allow_pickle=True)
+            emb = d['emb'].astype('float32')
+            emb /= (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-8)
+            self._store = (list(d['ids']), emb)
+        ids, store = self._store
+        if self._esm2 is None:                        # lazy-load ESM2-35M (CPU)
+            import torch, esm
+            model, alphabet = getattr(esm.pretrained, self.esm2_name)()
+            torch.set_num_threads(self.threads)
+            self._esm2 = (model.eval(), alphabet.get_batch_converter(), torch)
+        model, bc, torch = self._esm2
+        seqs = [(n, s) for n, s in read_fasta(open(fasta_path).read())]
+        seqs.sort(key=lambda x: len(x[1]))            # length-sorted batching
+        comp = defaultdict(dict)
+        for i in range(0, len(seqs), 16):
+            batch = [(n, s[:1022]) for n, s in seqs[i:i + 16]]
+            _, _, toks = bc(batch)
+            with torch.no_grad():
+                rep = model(toks, repr_layers=[self.esm2_layer])['representations'][self.esm2_layer]
+            for j, (n, s) in enumerate(batch):
+                L = min(len(s), 1022)
+                q = rep[j, 1:L + 1].mean(0).numpy()
+                q /= (np.linalg.norm(q) + 1e-8)
+                sims = store @ q
+                nn = np.argpartition(-sims, min(topk, len(ids) - 1))[:topk]
+                vote, wsum = defaultdict(float), 0.0
+                for k in nn:
+                    w = float(sims[k])
+                    if w <= 0:
+                        continue
+                    wsum += w
+                    for t in self.train_terms.get(ids[k], ()):
+                        vote[t] += w
+                if wsum <= 0:
+                    continue
+                for t, v in vote.items():
+                    sc = v / wsum
+                    if sc >= min_score:
+                        comp[n][t] = sc
+        return comp
+
+    def cascade(self, fasta_text, *, topk=5, min_score=0.1,
+                pfam=False, cnn=True, esm2_knn=True):
+        """Homology-gated genome annotation (CASCADE.md). ONE DIAMOND search triages:
+          Tier A — has a homolog  -> diam + net_union               -> Integrator-A;
+          Tier B — orphan (no hit) -> esm2_knn + cnn + pfam (orphans only) -> Integrator-B.
+        Expensive features run ONLY on the orphan minority => 5-10min bacterial budget."""
+        if not self.model_tierA:
+            raise RuntimeError('cascade requires tier_models={"A": ...}')
+        records = [(n, s) for n, s in read_fasta(fasta_text)]
+        all_ids = [n for n, _ in records]
+        with tempfile.NamedTemporaryFile('w', suffix='.faa', delete=False) as fh:
+            fh.write(fasta_text); path = fh.name
+        try:
+            hom = self._diamond(path)                  # the single universal pass
+            orphan = set(n for n in all_ids if n not in hom)
+            # cheap components (whole proteome, from the one search); only hom proteins appear
+            comps = {'diam': self._propagate(self._diam_component(hom, topk)),
+                     'net_union': self._propagate(self._net_component(hom, topk))}
+            results = self._apply(self.model_tierA, comps, min_score)   # Tier A
+            # Tier B: expensive features on the orphan subset ONLY
+            if orphan and self.model_tierB:
+                otext = '\n'.join(f'>{n}\n{s}' for n, s in records if n in orphan)
+                with tempfile.NamedTemporaryFile('w', suffix='.faa', delete=False) as fh:
+                    fh.write(otext); opath = fh.name
+                try:
+                    bcomps = {}
+                    if esm2_knn and self.emb_store:
+                        bcomps['esm2_knn'] = self._propagate(self._esm2_knn_component(opath))
+                    if cnn and self.cnn_model:
+                        bcomps['cnn'] = self._propagate(self._cnn_component(opath))
+                    if pfam and self.interproscan:
+                        bcomps['interpro'] = self._propagate(self._interpro_component(opath, pfam_only=True))
+                    results.update(self._apply(self.model_tierB, bcomps, min_score))
+                finally:
+                    os.unlink(opath)
+            return results
+        finally:
+            os.unlink(path)
 
     def available(self):
         """Sorted list of served (interpro, cnn) combinations."""

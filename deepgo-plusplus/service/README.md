@@ -95,4 +95,16 @@ docker run -d -p 8000:8000 -v /data/dgpp-assets:/assets:ro dgpp-light
   homolog. For true no-homolog **orphans**, use `?cnn=true` — the CPU 1D-CNN gives a
   sequence-based signal where `diam`/`net` are blind (it lowers mean f_w on the
   homolog-rich benchmark but is the only signal for orphans).
+- **Accuracy caveat (2026-06-23 audit).** This service's serving code and models are
+  unchanged and correct — but earlier *claims* about how good DG++-Light is were
+  leak-inflated. On a leak-free CAFA6 evaluation the `net`/`net_union` components
+  (which power this service) lose much of their apparent novel-protein MF, and
+  **DG++-Light does *not* beat the full GPU model** (it is a no-GPU/fast-deploy
+  option that trades ~0.03–0.06 f_w). The `~100 %` bridge-recovery figure above is a
+  *separate, leak-safe* node-removal hold-out (it measures bridge-vs-direct-STRING,
+  not absolute accuracy) and still stands. See `../RESULTS.md` (Corrected results)
+  and `../TRAINING.md` §1.0a for the full story.
 - Rebuild assets when the UniProt/STRING/CAFA release changes (`../TRAINING.md`).
+  At a re-freeze, **re-pick the default model on the leak-free GT**
+  (`../pipeline/build_clean_gt.py`); `deepgo_plusplus_light_cpu.json` is no longer
+  the accuracy-best Light panel.

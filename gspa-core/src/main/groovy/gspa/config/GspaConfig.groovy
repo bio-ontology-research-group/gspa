@@ -178,6 +178,38 @@ class GspaConfig {
         CleanNeuralConfig clean = new CleanNeuralConfig()
         Esm2CentroidConfig esm2Centroid = new Esm2CentroidConfig()
         DeepGoPlusPlusConfig deepGoPlusPlus = new DeepGoPlusPlusConfig()
+        DeepGoPlusPlusLightConfig deepGoPlusPlusLight = new DeepGoPlusPlusLightConfig()
+    }
+
+    /**
+     * DeepGO-PlusPlus-Light (sidecar id {@code deepgo-plusplus-light}): the
+     * self-contained, CPU-only sibling of {@code deepgo-plusplus}. Runs DIAMOND
+     * BLAST-KNN + the homology-bridged STRING Net-KNN itself from the query FASTA
+     * (no precomputed components needed) and applies the same frozen integrator.
+     * Assets come from {@code deepgo-plusplus/service/make_assets.sh}.
+     */
+    static class DeepGoPlusPlusLightConfig {
+        boolean enabled = false
+        /** make_assets.sh bundle dir (train_db.dmnd, train_net_index.tsv, train_terms.tsv, go-dag.tsv). Required when enabled. */
+        String assets
+        /** Dir of frozen integrator JSONs (default: {@code deepgo-plusplus/models}). */
+        String modelsDir
+        /** DIAMOND binary. */
+        String diamond = 'diamond'
+        /** Add the InterProScan domain component (needs {@code interproscan}). */
+        boolean interpro = false
+        /** Add the CPU 1D-CNN component (orphan coverage; needs torch + a cnn_model.pt). */
+        boolean cnn = false
+        /** InterProScan launcher path (enables the interpro component). */
+        String interproscan
+        /** Override CNN weights path (default {@code <assets>/cnn_model.pt}). */
+        String cnnModel
+        /** DIAMOND threads. */
+        int threads = 8
+        /** Homologs voted per query. */
+        int topK = 5
+        int batchSize = 16
+        double minScore = 0.1
     }
 
     /**
