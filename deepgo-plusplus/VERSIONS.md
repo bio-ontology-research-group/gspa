@@ -23,6 +23,38 @@ reproducible and auditable. Append a new row whenever you re-freeze.
 | **`deepgo_plusplus_light_cpu_clean.json`** *(net-free, strictly-CPU)* | diam,interpro,lit,cnn | — | go-basic 2025-10-10 | 2026-02-02 | **0.500** (clean OOF; any sequence) |
 | **`deepgo_plusplus_integrator_tierA.json`** *(genome cascade, homology tier)* | diam,net_union,interpro | v12.0 (2023) | go-basic 2025-10-10 | 2026-02-02 | **0.509** (clean, Tier-A homology proteins) |
 | **`deepgo_plusplus_integrator_tierB.json`** *(genome cascade, orphan tier)* | esm2_knn (ESM2-35M kNN) | — | go-basic 2025-10-10 | 2026-02-02 | **0.508** (clean, orphan/no-homolog proteins) |
+| **`deepgo_plusplus_integrator_full_aux.json`** *(full + aux components)* | diam,foldseek,clean,interpro,mlp,prostt5,net,lit,**proteinfer,eggnog,deepfri** | v12.0 (2023) | go-basic 2025-10-10 | 2026-02-02 | **0.541** (clean-A; aux add only +0.001 over the lit-full base 0.540) |
+| **`deepgo_plusplus_integrator_cpu_aux.json`** *(CPU-only + aux, novel-computable)* | diam,interpro,cnn,net_union,esm2_knn,**proteinfer,eggnog,deepfri** | v12.0 (2023) | go-basic 2025-10-10 | 2026-02-02 | **0.530** (clean-A; CPU base 0.517 → +0.013, ≈ all from proteinfer; beats old full GPU 0.521) |
+| **`deepgo_plusplus_integrator_cpu_lean_mcm.json`** *(hierarchy-aware CPU)* | diam,interpro,**cnn(MCM)**,net_union,esm2_knn,proteinfer | v12.0 (2023) | go-basic 2025-10-10 | 2026-02-02 | **0.524** (clean-A; cnn head retrained with C-HMCNN over is_a∪part_of; bce baseline 0.519) |
+| **`deepgo_plusplus_integrator_full_aux_mcm.json`** *(hierarchy-aware FULL)* | diam,foldseek,clean,interpro,**mlp(650M,MCM)**,**prostt5(MCM)**,net,lit,proteinfer,eggnog,deepfri | v12.0 (2023) | go-basic 2025-10-10 | 2026-02-02 | **0.545** (clean-A; all trainable PLM heads retrained with C-HMCNN; matched bce baseline 0.539) |
+
+### Hierarchy-aware heads (C-HMCNN, is_a ∪ part_of) — 2026-06-24
+
+The `_mcm` integrators use components whose **trainable heads were retrained with a
+hierarchy-aware loss**: the C-HMCNN Max-Constraint Module (Giunchiglia & Lukasiewicz,
+NeurIPS 2020) over the GO **is_a ∪ part_of** DAG, replacing flat BCE. Implementation:
+`pipeline/train_head_hmcnn.py` (`--loss mcm`, scalable `scatter_reduce(amax)` MCM — no
+(B,n,n) blow-up) for the PLM heads; `pipeline/build_cnn_component.py --loss mcm` for the
+CPU 1D-CNN. **Standalone f_w gain (clean-A / clean-B):** prostt5 +0.006/+0.008, esm2_3b
++0.008/+0.008, ESM2-650M +0.008/+0.015, **cnn +0.037/+0.041** (the weakest head gains most
+— it leans hardest on the DAG prior). **Integrated:** FULL +0.005 (prostt5 swap) to +0.009
+(all heads); CPU +0.005 (cnn swap). The hard max-constraint beat a soft true-path penalty
+(`--loss softreg`). Gains concentrate in BP/CC (deep DAG); MF ≈ flat. **Deployment weights**
+(gitignored, `models/weights/`, rebuild at release): `cnn_mcm.pt` (DG++-Light cnn component,
+loaded by `service/predict.py`), `head_prostt5_mcm.pt` + `head_650m_mcm.pt` (FULL PLM heads,
+applied via the `dgpp-head` sidecar runner → `extract_embeddings.py` then
+`train_head_hmcnn.py --load-model`). **Pending the existing IBEX dependency:** re-freezing
+the genome-cascade *tier* integrators (tierA/tierB) on the pre-t0 orphan population with the
+MCM components (same blocker as the production tier re-freeze).
+
+The `_aux` integrators fold in the benchmarked auxiliary components (see
+[`CASCADE.md`](CASCADE.md) "Auxiliary components"). **Honest attribution (integrator-
+inclusion ablation):** `proteinfer` is the only meaningful lift (+0.013 in the CPU model);
+`eggnog`+`deepfri` add +0.002 together (redundant with diam/esm2_knn and cnn); in the FULL
+model the aux add only +0.001 (PLM heads already capture it). `deepfri` here is **seq-mode
+(CPU, no structure)** — the structural GCN (GPU) is untested. `psortb` excluded
+(bacterial-only → kingdom-gate). The CPU-only model still exceeds the previous full GPU
+integrator — driven by `esm2_knn` + `proteinfer`, not eggnog/deepfri.
 
 The genome-cascade tier models (see [`CASCADE.md`](CASCADE.md)) are applied per-protein
 by `service/predict.py::cascade()`: one DIAMOND search triages the proteome — homolog →

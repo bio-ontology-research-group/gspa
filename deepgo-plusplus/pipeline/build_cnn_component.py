@@ -126,6 +126,10 @@ def main():
     ap.add_argument('--lr', type=float, default=1e-3)
     ap.add_argument('--threads', type=int, default=0)
     ap.add_argument('--min-score', type=float, default=0.01)
+    ap.add_argument('--loss', choices=['bce', 'mcm', 'softreg'], default='bce',
+                    help='bce=flat; mcm=C-HMCNN max-constraint over is_a+part_of; '
+                         'softreg=bce + lam*relu(child-parent)')
+    ap.add_argument('--lam', type=float, default=1.0, help='softreg penalty weight')
     ap.add_argument('--val-frac', type=float, default=0.02)
     ap.add_argument('--patience', type=int, default=4,
                     help='early-stop after N epochs without val improvement (0 = off)')
@@ -211,9 +215,43 @@ def main():
     dev = torch.device('cpu')
     model = build_cnn(V).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
-    lossf = nn.BCEWithLogitsLoss(pos_weight=torch.from_numpy(pos_weight).to(dev))
     Xt = torch.from_numpy(Xtr)
     Yt = torch.from_numpy(Y)
+
+    # loss: flat BCE, or hierarchy-aware over the is_a+part_of DAG (restricted to vocab).
+    # MCM = C-HMCNN max-constraint (scatter_reduce amax, ancestor bucket <- descendant).
+    posw_t = torch.from_numpy(pos_weight).to(dev)
+    if args.loss == 'bce':
+        bcef = nn.BCEWithLogitsLoss(pos_weight=posw_t)
+        def compute_loss(logits, yb): return bcef(logits, yb)
+    else:
+        par_l, chi_l = [], []
+        for jt in vocab:
+            j = tidx[jt]
+            tgt = {a for a in anc.get(jt, (jt,)) if a in tidx}; tgt.add(jt)
+            for t in tgt:
+                par_l.append(tidx[t]); chi_l.append(j)
+        par = torch.tensor(par_l, device=dev); chi = torch.tensor(chi_l, device=dev)
+        nonself = par != chi; par_d, chi_d = par[nonself], chi[nonself]
+        log(f'{args.loss}: {par.numel():,} hierarchy edges over {V} vocab terms')
+
+        def _mcm(h):
+            out = torch.zeros_like(h)
+            out.scatter_reduce_(1, par.unsqueeze(0).expand(h.shape[0], -1),
+                                h[:, chi], reduce='amax', include_self=True)
+            return out
+        if args.loss == 'mcm':
+            def compute_loss(logits, yb, eps=1e-7):
+                h = torch.sigmoid(logits)
+                mneg = _mcm(h); mpos = _mcm(h * yb)
+                lp = -(yb * torch.log(mpos.clamp_min(eps))) * posw_t
+                ln = -((1 - yb) * torch.log((1 - mneg).clamp_min(eps)))
+                return (lp + ln).mean()
+        else:  # softreg
+            bcef = nn.BCEWithLogitsLoss(pos_weight=posw_t)
+            def compute_loss(logits, yb):
+                h = torch.sigmoid(logits)
+                return bcef(logits, yb) + args.lam * torch.relu(h[:, chi_d] - h[:, par_d]).mean()
 
     log(f'training: n={len(tr_idx):,} val={len(val_idx):,} V={V} epochs={args.epochs}')
     import copy
@@ -229,13 +267,13 @@ def main():
             b = tr_idx[i:i + args.batch]
             xb = Xt[b].to(dev); yb = Yt[b].to(dev)
             opt.zero_grad()
-            loss = lossf(model(xb), yb)
+            loss = compute_loss(model(xb), yb)
             loss.backward(); opt.step()
             tot += float(loss.detach()) * len(b)
         model.eval()
         with torch.no_grad():
             vlogit = model(Xt[val_idx].to(dev))
-            vloss = float(lossf(vlogit, Yt[val_idx].to(dev)))
+            vloss = float(compute_loss(vlogit, Yt[val_idx].to(dev)))
         flag = ''
         if vloss < best_val - 1e-4:
             best_val, best_ep = vloss, ep + 1

@@ -666,6 +666,51 @@ def run_deepgo_plusplus_light(rows: list[ManifestRow], args: argparse.Namespace)
 # to the same runner so existing pipelines and models keep working.
 run_cafa_baseline = run_deepgo_plusplus
 
+
+# -------- runner: dgpp-head (hierarchy-aware PLM head apply) -----------
+
+
+def run_dgpp_head(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+    """Apply a saved **hierarchy-aware (C-HMCNN) PLM head** to precomputed
+    embeddings, emitting GO component scores for the DeepGO-PlusPlus integrator.
+
+    The head ``.pt`` is produced by ``deepgo-plusplus/pipeline/train_head_hmcnn.py
+    --save-model`` (per-aspect MLP trained with the Max-Constraint Module over the
+    GO is_a+part_of DAG); the embeddings ``.npz`` (ids, emb) come from
+    ``extract_embeddings.py`` (GPU — esm2_650m / prostt5 / esm2_3b). Inference here
+    is a plain MLP forward (CPU or GPU). To keep a single source of truth this
+    shells out to the head script's validated ``--load-model`` apply path, then
+    rewrites the 3-column output to the sidecar's 4-column schema.
+
+    Use ``--apply-emb`` for the embedding npz (one per run). The resulting
+    component TSV feeds ``deepgo-plusplus`` (``--integrator
+    deepgo_plusplus_integrator_full_aux_mcm.json``)."""
+    if not args.head_checkpoint:
+        raise SystemExit("dgpp-head requires --head-checkpoint (train_head_hmcnn.py --save-model .pt)")
+    if not args.apply_emb:
+        raise SystemExit("dgpp-head requires --apply-emb (embedding .npz from extract_embeddings.py)")
+    head_script = Path(__file__).resolve().parents[2] / "deepgo-plusplus" / "pipeline" / "train_head_hmcnn.py"
+    if not head_script.exists():
+        raise SystemExit(f"dgpp-head: cannot find {head_script}")
+    for row in rows:
+        out_path = output_path(row, "dgpp-head")
+        raw = out_path.with_suffix(".raw.tsv")
+        LOG.info("  %s: apply %s over %s", row.tag, args.head_checkpoint, args.apply_emb)
+        subprocess.run([sys.executable, str(head_script), "--load-model", str(args.head_checkpoint),
+                        "--apply-emb", str(args.apply_emb), "--out", str(raw)], check=True)
+        fh, writer = open_output(out_path)
+        try:
+            with raw.open() as rf:
+                for line in rf:
+                    c = line.rstrip("\n").split("\t")
+                    if len(c) >= 3 and float(c[2]) >= args.min_score:
+                        writer.writerow([c[0], c[1], c[2], "GO"])
+        finally:
+            fh.close()
+            raw.unlink(missing_ok=True)
+        LOG.info("  %s -> %s", row.tag, out_path)
+
+
 RUNNERS: dict[str, Callable[[list[ManifestRow], argparse.Namespace], None]] = {
     "esm2-deepgoplus": run_esm2_deepgoplus,
     "proteinfer": run_proteinfer,
@@ -674,6 +719,7 @@ RUNNERS: dict[str, Callable[[list[ManifestRow], argparse.Namespace], None]] = {
     "deepgo-plusplus": run_deepgo_plusplus,
     "cafa-baseline": run_deepgo_plusplus,
     "deepgo-plusplus-light": run_deepgo_plusplus_light,
+    "dgpp-head": run_dgpp_head,
 }
 
 
@@ -714,6 +760,12 @@ def parse_args() -> argparse.Namespace:
                          "(<component>.tsv[.gz]: protein\\tterm\\tscore)")
     ap.add_argument("--dag", type=Path,
                     help="deepgo-plusplus: go-dag.tsv (child\\tancestor) for true-path propagation")
+
+    # dgpp-head (hierarchy-aware PLM head apply)
+    ap.add_argument("--head-checkpoint", type=Path,
+                    help="dgpp-head: saved C-HMCNN PLM head (.pt from train_head_hmcnn.py --save-model)")
+    ap.add_argument("--apply-emb", type=Path,
+                    help="dgpp-head: precomputed embedding .npz (ids, emb) from extract_embeddings.py")
 
     # deepgo-plusplus-light (self-contained: runs DIAMOND + net bridge itself)
     ap.add_argument("--dgpp-light-assets",

@@ -138,6 +138,143 @@ same f_w (cafaeval max-F is invariant to monotonic transforms).
       `cascade()` wall-clock benchmark on a real bacterial proteome (assets: ship the 79 MB
       ESM2-35M store + tier models). Production re-freeze on a larger pre-t0 population (IBEX).
 
+## Auxiliary components (eggNOG, ProteInfer, localization, DeepFRI)
+
+Four GO-emitting GSPA predictors that DG++ did not originally stack over, added as
+components for complementary evidence. All are computable for a **novel protein from
+sequence alone**, and split cleanly by inference hardware:
+
+| component | GSPA wrapper | modality | inference | novel-protein | full DG++ | DG++-Light |
+|---|---|---|---|---|---|---|
+| `eggnog` | `EggNogMapperPredictor` | orthology (eggNOG OGs) | **CPU** | ✅ OG homolog from FASTA | ✅ | ✅ |
+| `proteinfer` | `ProteInferPredictor` | shallow seq-CNN (~50 ms/prot) | **CPU** | ✅ sequence-only | ✅ | ✅ |
+| `psortb` | `PSORTbPredictor` | subcellular localization → GO:CC | **CPU** | ✅ sequence-only (bacterial) | ✅ | ✅ |
+| `deepfri` | `DeepFriPredictor` | learned-structure GCN | **GPU**¹ | ✅ if structure predicted | ✅ | ✗ |
+
+¹ DeepFRI's GCN runs on CPU *if a structure is supplied*; a novel protein needs a
+predicted structure first (ESMFold/AlphaFold = GPU) — the same gate as `foldseek`. Its
+`seq` mode is CPU but collapses to a sequence-LM that overlaps `cnn`/`mlp`, so only the
+structural (GPU) path is routed in, to the full model.
+
+**Why complementary** (not already in DG++): `eggnog` is *orthology* (curated OGs), distinct
+from `diam`'s raw BLAST-KNN — it catches function where similarity is ambiguous, and on
+orphans it fires where DIAMOND found no hit. `proteinfer` is a different ab-initio
+architecture than `cnn`. `psortb` serves the **CC aspect**, which the sequence/homology
+components underserve. `deepfri` is *learned* structure (fires on novel folds), vs
+`foldseek`'s structure-*homology* transfer.
+
+### How they slot in (computable for novel proteins)
+
+- **Offline component TSVs** (full DG++ + retraining): `pipeline/build_aux_components.py`
+  runs each tool on a query FASTA and emits `<component>.tsv` (`protein⇥GO⇥score`).
+  ProteInfer reuses the existing `run_neural_predictors.py --predictor proteinfer` runner.
+- **DG++-Light cascade** (CPU three only): `service/predict.py` gains
+  `_eggnog_component` / `_proteinfer_component` / `_psortb_component`, wired into
+  `cascade()`'s **orphan (Tier B)** block, each gated on its tool being configured
+  (constructor params `emapper`/`eggnog_data`, `proteinfer_dir`, `psortb`/`psortb_gram`).
+  They are additive: an integrator that doesn't list a component simply ignores it.
+
+### Retrain to weight them (the integrator is component-list-generic)
+
+No integrator code change is needed — only recompute components on the train/test
+populations and include their names in `--component-list`:
+
+```bash
+# 1. build the new component TSVs on a host with the tools + DBs (eggNOG DB, ProteInfer
+#    model, PSORTb, DeepFRI). For the leak-free clean test set and the pre-t0 train set:
+build_aux_components.py eggnog  --fasta train.faa --emapper emapper.py --data-dir <db> --out components/eggnog.tsv
+build_aux_components.py psortb  --fasta train.faa --gram neg --out components/psortb.tsv
+build_aux_components.py deepfri --fasta train.faa --deepfri-dir <repo> --structures <cmaps> --out components/deepfri.tsv
+run_neural_predictors.py --predictor proteinfer --model-dir <proteinfer> ... # -> components/proteinfer.tsv
+
+# 2. fold into the tier integrators (Light: + the CPU three; full: + all four incl deepfri)
+train_integrator.py --components components --gt gt/gt_no_cleanA_tierB.tsv \
+  --component-list esm2_knn,cnn,interpro,eggnog,proteinfer,psortb \
+  --save-model models/deepgo_plusplus_integrator_tierB.json ...
+```
+
+### Measured standalone ablation (2026-06-23, leak-free clean GT, cafaeval)
+
+Computed on the no-knowledge test set (eggNOG on IBEX KSL DB; DeepFRI seq-mode + PSORTb
+via the IBEX FOSS harness; ProteInfer in a TF1.15 container). IA-weighted f_w:
+
+| component (new) | clean-A (MF/BP/CC) | orphan-tier | strict-novel | coverage | note |
+|---|---|---|---|---|---|
+| **proteinfer** | **0.402** (0.44/0.28/0.48) | **0.368** | 0.393 | 2402/2704 | strongest new signal; beats the whole net family + cnn; CPU |
+| **eggnog** | 0.349 (0.43/0.24/0.37) | — | 0.342 | 1816/2704 | net-class; orthology overlaps `diam` (misses diam-orphans) |
+| **deepfri** (seq) | 0.287 (0.27/0.21/0.38) | 0.253 | 0.288 | 2704/2704 | modest, full coverage incl. orphans; CPU |
+| **psortb** | 0.061 (0.00/0.00/0.18) | 0.008 | 0.062 | 1697/2704 | weak on taxon-mixed set (bacterial-only) → kingdom-gate |
+
+Reference (same GT): PLM heads ~0.47, `lit` 0.459, `diam` 0.451, net family ~0.35,
+`cnn` 0.268; orphan tier `esm2_knn` 0.508. **Verdicts:** proteinfer + eggnog are worth
+folding into the integrator (proteinfer is the orphan-tier CPU runner-up to esm2_knn at
+0.368); deepfri-seq is a marginal full-coverage CPU add (its GPU struct-mode untested);
+psortb earns its place only on bacterial genomes. **DeepFRI seq-mode is CPU + full
+coverage**, so it is a legitimate Light candidate, not GPU-only as first routed.
+
+### Integrator-inclusion ablation (marginal lift on clean-A, 2026-06-23)
+
+| integrator | mean f_w | Δ vs its base |
+|---|---|---|
+| FULL base (no aux) | 0.540 | — |
+| FULL +aux (proteinfer+eggnog+deepfri) | 0.541 | **+0.001** |
+| CPU base (diam,interpro,cnn,net_union,esm2_knn) | 0.517 | — |
+| CPU +eggnog+deepfri (no proteinfer) | 0.519 | +0.002 |
+| CPU +aux (all 3) | 0.530 | **+0.013** |
+
+**Only `proteinfer` meaningfully helps, and only in the CPU model** (≈ the entire +0.013;
+eggnog+deepfri add +0.002 together). `eggnog` is redundant with `diam`/`esm2_knn`
+homology; `deepfri` here is **seq-mode (DeepCNN, CPU, no structure)** — another sequence
+CNN, redundant with `cnn`/`proteinfer`. In the FULL model the aux add +0.001 because the
+GPU PLM heads already capture the sequence signal. **DeepFRI's distinctive structural
+signal (GraphConv GCN) needs a predicted structure (GPU) and was NOT benchmarked** — the
+seq-mode number above is not the structural DeepFRI. Recommendation: fold `proteinfer`
+into the CPU integrator; keep eggnog/deepfri optional; psortb kingdom-gated.
+
+### Struct-mode DeepFRI (GraphConv GCN on ESMFold structures, 2026-06-23)
+
+Tested the *real* structural DeepFRI: ESMFold (ORIX GPU) folded 251 clean-A proteins →
+DeepFRI GraphConv GCN (IBEX) → ablate.
+
+| config | mean f_w | vs |
+|---|---|---|
+| struct-DeepFRI standalone | **0.333** (MF .358 CC .409) | seq-mode DeepCNN 0.287 → **+0.046** |
+| CPU base + struct | 0.526 | base 0.517 → **+0.009** |
+| FULL base + struct | 0.541 | base 0.540 → **+0.001** |
+
+**Structure is a real signal** (GCN 0.333 > seq-CNN 0.287), but it has no home: it's
+**GPU-gated** (novel proteins need a predicted structure → can't run in the CPU/genome
+pipeline where it'd add +0.009), and in the GPU FULL model where it *can* run it adds only
++0.001 because **`prostt5` (structure-aware PLM) already encodes the structural signal**.
+Efficient structural signal = one ProstT5 forward pass, not ESMFold-per-protein + GCN.
+
+**Status:** engine + builders wired; standalone + integrator-inclusion + struct-DeepFRI
+ablations done (clean-A, n=272/251 interim). Lean CPU integrator frozen
+(`deepgo_plusplus_integrator_cpu_lean.json`, 0.521 = base+proteinfer). GSPA CLI/sidecar
+exposure of the cascade aux components is the remaining plumbing.
+
+## Hierarchy-aware components (C-HMCNN, is_a ∪ part_of) — 2026-06-24
+
+Every **trainable** head is retrained with a hierarchy-aware loss instead of flat BCE:
+the **C-HMCNN Max-Constraint Module** (Giunchiglia & Lukasiewicz, NeurIPS 2020) over the
+GO **is_a ∪ part_of** DAG. (The kNN/homology and external-tool components — diam, foldseek,
+esm2_knn, net, eggnog, proteinfer, psortb, deepfri — are not trainable classifiers; their
+hierarchy-awareness is the input max-propagation.) The MCM is a differentiable output layer
+that enforces parent ≥ child and delegates each positive to its most-confident true
+descendant; implemented with `scatter_reduce(amax)` over the per-aspect descendant edge list
+so it scales to GO's thousands of terms (the reference (B,n,n) impl OOMs).
+
+- `pipeline/train_head_hmcnn.py` — PLM heads (`--loss bce|mcm|softreg`, `--save-model` /
+  `--load-model` apply). `pipeline/build_cnn_component.py --loss mcm` — the CPU 1D-CNN.
+- **Standalone f_w (clean-A):** prostt5 0.474→0.480, esm2_3b 0.475→0.483, ESM2-650M
+  0.466→0.474, **cnn 0.257→0.294 (+0.037)** — the weakest head gains most.
+- **Integrated (clean-A):** FULL 0.545→**0.550** (prostt5 swap) / all-heads **0.548**;
+  CPU `cpu_lean` 0.519→**0.524** (cnn swap). Hard max-constraint > soft penalty; gains in BP/CC.
+- **Deployed:** `models/deepgo_plusplus_integrator_{cpu_lean,full_aux}_mcm.json` (committed);
+  weights `models/weights/{cnn_mcm,head_prostt5_mcm,head_650m_mcm}.pt` (gitignored, rebuild at
+  release). cnn served by `service/predict.py`; PLM heads by the `dgpp-head` sidecar runner.
+- **Pending the existing IBEX dep:** tierA/tierB re-freeze on the pre-t0 orphan pop with MCM.
+
 ## Frozen assets
 
 - `models/deepgo_plusplus_integrator_tierA.json` — Tier-A (diam, net_union, interpro).
