@@ -194,6 +194,50 @@ to a pre-t0 STRING-member homolog and votes *its* neighbours' labels. So for nov
 proteins the net signal is always a DIAMOND-homology step (CPU), never the direct
 STRING lookup — and even then its accuracy here was leak-inflated (clean ≈ 0.35).
 
+### Full-STRING net re-test (+ UniProt-OX↔STRING-taxon bug fix) — 2026-06-25
+
+The earlier net numbers were built on a **subset** of STRING (only the query
+species' per-species files) **and** with a latent bug: the builders group/download
+STRING files by the **UniProt OX taxon**, but STRING names its files by **its own
+taxon — the prefix of the `string_id`** (`4932.YAL001C`). For the most PPI-rich
+organisms these differ (yeast OX 559292 → STRING **4932**; E. coli K-12 83333 →
+**511145**; M. tuberculosis 83332 → …), so those networks were **silently absent**
+(8.7 % of STRING rows, concentrated in the best-studied species). To settle whether
+"net underperforms" was a coverage artifact, we pulled **all of STRING** (the 138 GB
+aggregate + every needed per-species file by the *correct* STRING taxon) and rebuilt
+`net`/`net_bridge`/`net_union` keyed entirely on `string_id` (mismatch-free;
+`pipeline/build_net_from_agg.py`). IA-weighted f_w, no-knowledge:
+
+| component | cleanA | cleanB | cleanB **STRING-member** | cleanB **non-STRING (novel)** |
+|---|---|---|---|---|
+| `net` (direct) — old subset | 0.347 | 0.339 | 0.380 | 0.000 |
+| `net` (direct) — **full STRING** | 0.346 | 0.338 | 0.378 | 0.000 |
+| `net_bridge` — old subset | 0.358 | 0.353 | 0.377 | 0.252 |
+| `net_bridge` — **full STRING** | 0.352 | 0.347 | 0.373 | **0.260** |
+| `net_union` — old subset | 0.353 | 0.351 | 0.379 | 0.252 |
+| `net_union` — **full STRING** | **0.371** | **0.369** | **0.406** | **0.260** |
+| `diam` (reference) | 0.442 | 0.442 | 0.414 | **0.598** |
+
+Coverage is now complete (direct net 2,288 proteins vs the old 2,221). Findings:
+
+1. **Direct `net` is unchanged** (≈0.35) — it only needs the query's *own* species
+   file, and the no-knowledge set is 87 % well-studied organisms whose OX==STRING
+   taxon, so the subset already had them. Full STRING adds nothing here.
+2. **The bug fix helps `net_union` on STRING-members** (+0.018 cleanA, +0.027
+   STRING-member) — the yeast/E. coli/M. tb networks that were missing now vote.
+3. **On the case net was added for — novel, non-STRING proteins — full STRING moves
+   the bridge only 0.252 → 0.260.** `diam` (0.598) still crushes it by ~0.34.
+
+**Verdict: the "net is weak / `diam` dominates" conclusion was NOT a STRING-subset
+artifact.** With *all* of STRING and the taxon bug fixed, net tops out at ~0.37–0.41
+clean and ~0.26 on novel proteins — still far below `diam` and the PLM heads, and
+consistent with the external CAFA6 evidence (GOAlpha Fig 2/3: Net-KNN the weakest
+single component and the *only* one that drops public→private; 5th place uses PPI
+**BP-only**; see `cafa6_writeups/`). The real, deployable win is the **bug fix**:
+the served `train_net_index.tsv` should be regenerated with the STRING-taxon keying
+so the deployed bridge is at least *correct* (worth ~+0.02–0.03 where net is used),
+but net should stay a low-weight, BP-leaning component — not the centre of DG++-Light.
+
 ### Retrained DG++-Light (net-free, leak-free) — 2026-06-23
 
 Acting on the above: re-trained the Light integrator **without the net family**,
