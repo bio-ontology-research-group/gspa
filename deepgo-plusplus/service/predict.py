@@ -30,6 +30,15 @@ from apply_net_bridge import load_train_net, bridge  # noqa: E402
 
 NS_OF_ROOT = {'GO:0003674': 'MF', 'GO:0008150': 'BP', 'GO:0005575': 'CC'}
 
+# PSORTb final-localization -> GO cellular_component (prokaryote).
+PSORTB_LOC_TO_GO = {
+    'Cytoplasmic': 'GO:0005737', 'CytoplasmicMembrane': 'GO:0005886',
+    'Cytoplasmic Membrane': 'GO:0005886', 'Periplasmic': 'GO:0042597',
+    'OuterMembrane': 'GO:0019867', 'Outer Membrane': 'GO:0019867',
+    'Extracellular': 'GO:0005576', 'CellWall': 'GO:0005618',
+    'Cell Wall': 'GO:0005618', 'Fimbrium': 'GO:0009289',
+}
+
 
 def load_dag(path):
     anc = defaultdict(set)
@@ -104,7 +113,8 @@ class DGppLight:
                  dag, diamond_db, obo=None, diamond_bin='diamond',
                  interproscan=None, cnn_model=None, threads=8,
                  tier_models=None, emb_store=None, esm2_name='esm2_t12_35M_UR50D',
-                 esm2_layer=12):
+                 esm2_layer=12, emapper=None, eggnog_data=None,
+                 psortb=None, psortb_gram='neg', proteinfer_dir=None):
         """models: dict {(interpro: bool, cnn: bool) -> path to frozen JSON}.
         Only the combinations whose model file exists are served.
 
@@ -137,6 +147,12 @@ class DGppLight:
         self.esm2_layer = esm2_layer
         self._esm2 = None          # lazy (model, batch_converter)
         self._store = None         # lazy (ids, l2-normalized emb)
+        # optional CPU auxiliary components (orphan tier; all gated on tool presence)
+        self.emapper = emapper            # eggnog: emapper.py (orthology -> GO)
+        self.eggnog_data = eggnog_data    # eggNOG data_dir
+        self.psortb = psortb              # psortb binary (localization -> GO:CC)
+        self.psortb_gram = psortb_gram
+        self.proteinfer_dir = proteinfer_dir  # ProteInfer repo (seq-CNN -> GO)
 
     # ---- components (all from one DIAMOND search) ----
     def _diamond(self, fasta_path):
@@ -234,6 +250,89 @@ class DGppLight:
         os.unlink(out)
         return comp
 
+    # ---- optional CPU auxiliary components (orphan tier) ----
+    def _eggnog_component(self, fasta_path, score=0.9):
+        """Orthology: emapper.py -> eggNOG OGs -> transferred GO (constant score;
+        the integrator calibrates). CPU; fires on any protein with an OG homolog."""
+        if not self.emapper:
+            raise RuntimeError('eggnog requested but no emapper configured')
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            cmd = [self.emapper, '-i', fasta_path, '--itype', 'proteins',
+                   '--go_evidence', 'non-electronic', '--cpu', str(self.threads),
+                   '-o', 'eg', '--output_dir', td, '--override']
+            if self.eggnog_data:
+                cmd += ['--data_dir', self.eggnog_data]
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            comp = defaultdict(dict)
+            ann = os.path.join(td, 'eg.emapper.annotations')
+            with open(ann) as fh:
+                for line in fh:
+                    if line.startswith('#') or not line.strip():
+                        continue
+                    f = line.rstrip('\n').split('\t')
+                    if len(f) >= 10:
+                        for g in f[9].split(','):
+                            g = g.strip()
+                            if g.startswith('GO:'):
+                                comp[f[0]][g] = score
+            return comp
+
+    def _proteinfer_component(self, fasta_path, min_score=0.01):
+        """Sequence-CNN GO predictor (Sanderson et al. 2023). CPU, ab-initio —
+        fires on any sequence, including orphans with no homolog."""
+        if not self.proteinfer_dir:
+            raise RuntimeError('proteinfer requested but no proteinfer_dir configured')
+        driver = os.path.join(self.proteinfer_dir, 'proteinfer.py')
+        out = fasta_path + '.pinfer.tsv'
+        subprocess.run(['python3', driver, '-i', fasta_path, '-o', out],
+                       check=True, cwd=self.proteinfer_dir,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        comp = defaultdict(dict)
+        import csv as _csv
+        with open(out) as fh:
+            for r in _csv.DictReader(fh, delimiter='\t'):
+                lab = (r.get('predicted_label') or r.get('label') or '')
+                if not lab.startswith('GO:'):
+                    continue
+                try:
+                    s = float(r.get('confidence') or r.get('score') or 0.0)
+                except ValueError:
+                    continue
+                if s >= min_score:
+                    comp[r.get('sequence_name') or r.get('name')][lab] = s
+        os.unlink(out)
+        return comp
+
+    def _psortb_component(self, fasta_path):
+        """Subcellular localization (PSORTb, bacterial) -> GO:CC. CPU; serves the
+        cellular-component aspect, which the sequence/homology components underserve."""
+        if not self.psortb:
+            raise RuntimeError('psortb requested but no psortb configured')
+        gram = {'neg': '--negative', 'pos': '--positive', 'arch': '--archaea'}[self.psortb_gram]
+        res = subprocess.run([self.psortb, gram, '--seq', fasta_path, '--output', 'terse'],
+                             check=True, capture_output=True, text=True)
+        comp = defaultdict(dict)
+        import csv as _csv
+        rows = list(_csv.reader(res.stdout.splitlines(), delimiter='\t'))
+        if not rows:
+            return comp
+        cols = {c.strip(): i for i, c in enumerate(rows[0])}
+        li = cols.get('Final_Localization', cols.get('Localization', 1))
+        si = cols.get('Final_Localization_Score', cols.get('Score'))
+        for row in rows[1:]:
+            if len(row) <= li:
+                continue
+            go = PSORTB_LOC_TO_GO.get(row[li].strip())
+            if not go:
+                continue
+            try:
+                sc = float(row[si]) / 10.0 if si is not None and row[si] else 0.9
+            except (ValueError, IndexError):
+                sc = 0.9
+            comp[row[0].split()[0]][go] = min(sc, 1.0)
+        return comp
+
     def _propagate(self, comp):
         """protein -> {term -> score} propagated to ancestors (max)."""
         out = {}
@@ -328,11 +427,15 @@ class DGppLight:
         return comp
 
     def cascade(self, fasta_text, *, topk=5, min_score=0.1,
-                pfam=False, cnn=True, esm2_knn=True):
+                pfam=False, cnn=True, esm2_knn=True,
+                eggnog=True, proteinfer=True, psortb=True):
         """Homology-gated genome annotation (CASCADE.md). ONE DIAMOND search triages:
           Tier A — has a homolog  -> diam + net_union               -> Integrator-A;
-          Tier B — orphan (no hit) -> esm2_knn + cnn + pfam (orphans only) -> Integrator-B.
-        Expensive features run ONLY on the orphan minority => 5-10min bacterial budget."""
+          Tier B — orphan (no hit) -> esm2_knn + cnn + pfam + the CPU aux components
+                   (eggnog orthology, proteinfer seq-CNN, psortb localization->CC) -> Integrator-B.
+        Expensive features run ONLY on the orphan minority => 5-10min bacterial budget.
+        Each aux component is gated on its tool being configured; unused components are
+        simply ignored by an integrator that doesn't list them (retrain to weight them)."""
         if not self.model_tierA:
             raise RuntimeError('cascade requires tier_models={"A": ...}')
         records = [(n, s) for n, s in read_fasta(fasta_text)]
@@ -359,6 +462,12 @@ class DGppLight:
                         bcomps['cnn'] = self._propagate(self._cnn_component(opath))
                     if pfam and self.interproscan:
                         bcomps['interpro'] = self._propagate(self._interpro_component(opath, pfam_only=True))
+                    if eggnog and self.emapper:
+                        bcomps['eggnog'] = self._propagate(self._eggnog_component(opath))
+                    if proteinfer and self.proteinfer_dir:
+                        bcomps['proteinfer'] = self._propagate(self._proteinfer_component(opath))
+                    if psortb and self.psortb:
+                        bcomps['psortb'] = self._propagate(self._psortb_component(opath))
                     results.update(self._apply(self.model_tierB, bcomps, min_score))
                 finally:
                     os.unlink(opath)

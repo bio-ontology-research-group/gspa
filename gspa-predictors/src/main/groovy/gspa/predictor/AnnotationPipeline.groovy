@@ -223,6 +223,13 @@ class AnnotationPipeline {
 
         // Neural sidecar predictors
         def neural = config.predictors.neural
+        // Resolve the DeepGO-PlusPlus base-predictor selector (full | light | none)
+        // into the two enabled flags before registering them.
+        neural.resolveBasePredictor()
+        if (neural.deepGoPlusPlus.enabled && neural.deepGoPlusPlusLight.enabled) {
+            log.warn('Both DeepGO-PlusPlus (full) and DeepGO-PlusPlus-Light are enabled; ' +
+                     'set neural.basePredictor to full or light to run a single base predictor.')
+        }
         if (neural.esm2DeepGoPlus.enabled) {
             predictors << new gspa.predictor.neural.DeepGoPlusEsm2Predictor(
                 sidecarScript: neural.sidecarScript,

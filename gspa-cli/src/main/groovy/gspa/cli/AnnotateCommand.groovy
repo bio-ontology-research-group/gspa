@@ -87,6 +87,13 @@ class AnnotateCommand implements Runnable {
             description = 'CLEAN checkpoint directory; overrides config')
     String cleanModelDir
 
+    @Option(names = ['--base-predictor'],
+            description = 'Use DeepGO-PlusPlus as the base function predictor: '
+                    + 'full (GPU, precomputed components) or light (CPU, self-contained from FASTA). '
+                    + 'Mutually exclusive. Provide the matching asset flags '
+                    + '(full: --deepgo-plusplus-integrator/-components-dir/-dag; light: --deepgo-plusplus-light-assets).')
+    String basePredictor
+
     @Option(names = ['--deepgo-plusplus', '--cafa-baseline'],
             description = 'Enable the DeepGO-PlusPlus learned stacker over precomputed component scores '
                     + '(legacy alias: --cafa-baseline)')
@@ -292,6 +299,9 @@ class AnnotateCommand implements Runnable {
             config.predictors.neural.clean.modelDir = cleanModelDir
         }
 
+        if (basePredictor) {
+            config.predictors.neural.basePredictor = basePredictor
+        }
         if (deepGoPlusPlusEnabled) {
             config.predictors.neural.deepGoPlusPlus.enabled = true
         }

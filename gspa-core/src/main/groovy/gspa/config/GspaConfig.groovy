@@ -173,12 +173,55 @@ class GspaConfig {
         /** Python executable used to invoke the sidecar. */
         String pythonExecutable = 'python3'
 
+        /**
+         * Base function predictor for the workflow — selects DeepGO-PlusPlus as
+         * the learned backbone, choosing between the GPU and CPU variants:
+         * <ul>
+         *   <li>{@code none}  — no base selected; use the per-predictor
+         *       {@code enabled} flags directly (default).</li>
+         *   <li>{@code full}  — {@link DeepGoPlusPlusConfig} (GPU; precomputed
+         *       components applied through the frozen integrator).</li>
+         *   <li>{@code light} — {@link DeepGoPlusPlusLightConfig} (CPU-only;
+         *       self-contained from the query FASTA).</li>
+         * </ul>
+         * The two are mutually exclusive: {@link #resolveBasePredictor()}
+         * enables the chosen one and disables the other. Asset paths still come
+         * from the respective sub-config / CLI flags.
+         */
+        String basePredictor = 'none'
+
         Esm2DeepGoPlusConfig esm2DeepGoPlus = new Esm2DeepGoPlusConfig()
         ProteInferConfig proteinfer = new ProteInferConfig()
         CleanNeuralConfig clean = new CleanNeuralConfig()
         Esm2CentroidConfig esm2Centroid = new Esm2CentroidConfig()
         DeepGoPlusPlusConfig deepGoPlusPlus = new DeepGoPlusPlusConfig()
         DeepGoPlusPlusLightConfig deepGoPlusPlusLight = new DeepGoPlusPlusLightConfig()
+
+        /**
+         * Apply {@link #basePredictor} to the two DeepGO-PlusPlus enabled flags.
+         * Idempotent; call once before predictor registration. {@code full}/
+         * {@code light} are authoritative and mutually exclusive; {@code none}
+         * leaves the explicit flags untouched. Aliases accepted:
+         * {@code deepgo-plusplus}/{@code gpu} for full, {@code deepgo-plusplus-light}/
+         * {@code cpu} for light.
+         */
+        void resolveBasePredictor() {
+            switch ((basePredictor ?: 'none').toLowerCase().trim()) {
+                case ['none', '']:
+                    break
+                case ['full', 'deepgo-plusplus', 'deepgoplusplus', 'gpu']:
+                    deepGoPlusPlus.enabled = true
+                    deepGoPlusPlusLight.enabled = false
+                    break
+                case ['light', 'deepgo-plusplus-light', 'deepgopluspluslight', 'cpu']:
+                    deepGoPlusPlusLight.enabled = true
+                    deepGoPlusPlus.enabled = false
+                    break
+                default:
+                    throw new IllegalArgumentException(
+                        "Unknown neural.basePredictor '${basePredictor}' (use: none | full | light)")
+            }
+        }
     }
 
     /**

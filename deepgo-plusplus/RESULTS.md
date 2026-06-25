@@ -727,3 +727,33 @@ used the 3 components reproducible for arbitrary train proteins
 validation set (IBEX work) would let the *full* model train on the pre-t0
 population and let XGBoost + IA/freq help leak-free. STRING Net-KNN and a
 (leakage-clean) literature channel are now done.
+
+---
+
+## ESM2-35M hierarchy-aware head + MCM-vs-BCE sweep (2026-06-26)
+
+Official `cafaeval`, IA-weighted f_w, **no-knowledge** clean-A (272 proteins).
+Heads trained with `train_head_hmcnn.py` (`--loss {bce,mcm,softreg}`,
+C-HMCNN Max-Constraint Module over `is_a ∪ part_of`); leak-free OOF integrator.
+Drivers: `pipeline/eval_esm2head.py`, `pipeline/eval_full_panels.py`.
+
+**A new cpu_lean component — the ESM2-35M MCM head.** A parametric per-aspect
+head over the *same* ESM2-35M embedding the kNN uses (shared at inference). As a
+standalone component it is the strongest single CPU signal and beats the kNN
+outright:
+
+| component | mean | MF | BP | CC |
+|---|---|---|---|---|
+| esm2_35m **kNN** | 0.454 | 0.628 | 0.231 | 0.502 |
+| esm2_35m **MCM head** | **0.505** | 0.644 | 0.295 | 0.575 |
+
+Added to the integrator it is the top-weighted component in every aspect and
+lifts cpu_lean **0.521 → 0.536** (now shipped as the 7-component
+`models/deepgo_plusplus_integrator_cpu_lean_mcm.json`).
+
+**MCM vs BCE on the big PLM heads (clean A/B — only the loss differs):** MCM
+helps standalone — ESM2-3B 0.475→**0.483**, ProstT5 0.474→**0.485** (650M flat),
+`softreg ≈ bce`. But at the **full-ensemble** level the gain washes out: full
+DG++ **BCE 0.547 ≈ MCM 0.544**, and the full (GPU) model is only ~+0.01 over the
+CPU-only `cpu_lean + esm2_35m head` (0.536). On novel proteins, scale buys little;
+hierarchical training is a clear win for cpu_lean and a wash for the full model.

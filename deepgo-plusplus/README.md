@@ -89,6 +89,36 @@ The predictor is wired into GSPA as `deepgo-plusplus` (legacy alias
 The Groovy predictor reads the component list from the integrator JSON, so
 swapping a different frozen model (e.g. the `_net` variant) needs no code change.
 
+### Base predictor selector (full ↔ light)
+
+DeepGO-PlusPlus is GSPA's **base function predictor**, available in two variants —
+pick one with a single switch instead of toggling individual predictors:
+
+- **`--base-predictor full`** → `deepgo-plusplus` (GPU; precomputed components
+  applied through the frozen integrator — the section above).
+- **`--base-predictor light`** → `deepgo-plusplus-light` (CPU-only; self-contained
+  from the query FASTA — see [No-GPU variant](#no-gpu-variant--deepgo-plusplus-light)).
+
+The two are **mutually exclusive**: `NeuralConfig.resolveBasePredictor()` enables the
+chosen one and disables the other before registration. Equivalent YAML:
+
+```yaml
+predictors:
+  neural:
+    basePredictor: light   # none (default) | full | light
+```
+
+`none` (default) leaves the per-predictor `enabled` flags as-is. Asset paths still
+come from the variant's own flags (full: `--deepgo-plusplus-integrator/-components-dir/
+-dag`; light: `--deepgo-plusplus-light-assets`), e.g.:
+
+```bash
+# CPU genome run with Light as the base predictor
+./gradlew :gspa-cli:run --args="annotate --input proteome.faa --output out \
+  --neural-sidecar $PWD/benchmark/neural/run_neural_predictors.py \
+  --base-predictor light --deepgo-plusplus-light-assets <assets-dir>"
+```
+
 ## Components
 
 Each is a TSV `protein⇥term⇥score` named `<component>.tsv[.gz]` in the
@@ -144,6 +174,16 @@ vs clean (leak-free)**; full GPU integrator = 0.532 → **0.521**:
 | `deepgo_plusplus_light.json` | `diam,foldseek,interpro,net` | 0.550 | **0.488** | best Light panel on clean (needs AFDB structures for foldseek) |
 | `deepgo_plusplus_light_cnn.json` | `cnn,diam,foldseek,interpro,net` | 0.516 | **0.470** | coverage-first: CPU 1D-CNN covers orphan proteins |
 | `deepgo_plusplus_light_cpu.json` | `diam,interpro,net_union` | 0.564 | **0.464** | strictly no-GPU / any-sequence — but most leak-inflated, weakest on clean |
+| `deepgo_plusplus_integrator_cpu_lean_mcm.json` | `diam,interpro,cnn,net_union,esm2_knn,esm2_head,proteinfer` | — | **0.536** | the full CPU cascade served by DeepGOWeb; adds the ESM2-35M MCM head (see below) |
+
+The **ESM2-35M hierarchy-aware head** (`esm2_head`) is a parametric per-aspect MLP
+over the same ESM2-35M embedding the kNN uses (shared at inference), trained with
+the C-HMCNN Max-Constraint Module. Standalone it is the strongest single CPU
+component (clean f_w 0.505 vs kNN 0.454) and the top-weighted component in the
+7-way `cpu_lean` integrator, lifting it 0.521 → 0.536. On the big PLM heads,
+hierarchical (MCM) training helps standalone (ESM2-3B +0.008, ProstT5 +0.011) but
+washes out at the full-ensemble level (BCE ≈ MCM). Full tables:
+[`RESULTS.md`](RESULTS.md#esm2-35m-hierarchy-aware-head--mcm-vs-bce-sweep-2026-06-26).
 
 **Corrected findings** (full tables in [`RESULTS.md`](RESULTS.md#corrected-deepgo-plusplus-light-no-gpu--the-beats-gpu-claim-reverses)):
 1. **The full GPU model BEATS DG++-Light on genuinely-novel proteins** (0.521 vs
