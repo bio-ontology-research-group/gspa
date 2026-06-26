@@ -51,18 +51,45 @@ class BasePredictorSelectorSpec extends Specification {
         !neural.deepGoPlusPlusLight.enabled
     }
 
-    def 'default selector is none (no-op)'() {
+    def 'default selector is auto (no-op when no assets configured)'() {
         given:
         def neural = new GspaConfig.NeuralConfig()
 
         expect:
-        neural.basePredictor == 'none'
+        neural.basePredictor == 'auto'
+
+        when:
+        neural.resolveBasePredictor()
+
+        then: 'nothing to select — neither variant is configured'
+        !neural.deepGoPlusPlus.enabled
+        !neural.deepGoPlusPlusLight.enabled
+    }
+
+    def 'auto prefers Light when its assets are configured'() {
+        given:
+        def neural = new GspaConfig.NeuralConfig()
+        neural.deepGoPlusPlusLight.assets = '/some/assets'
 
         when:
         neural.resolveBasePredictor()
 
         then:
+        neural.deepGoPlusPlusLight.enabled
         !neural.deepGoPlusPlus.enabled
+    }
+
+    def 'auto falls back to full when only its components are configured'() {
+        given:
+        def neural = new GspaConfig.NeuralConfig()
+        neural.deepGoPlusPlus.integrator = '/m/integrator.json'
+        neural.deepGoPlusPlus.componentsDir = '/m/components'
+
+        when:
+        neural.resolveBasePredictor()
+
+        then:
+        neural.deepGoPlusPlus.enabled
         !neural.deepGoPlusPlusLight.enabled
     }
 

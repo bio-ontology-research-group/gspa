@@ -29,6 +29,17 @@ class Annotation {
     /** Evidence code (e.g., IEA, ISS, ISO for GO annotations) */
     String evidence
 
+    /**
+     * Provenance trail: how this annotation came to be assigned, in order.
+     * The first entry is normally the originating predictor (e.g.
+     * {@code "predictor:deepgo-plusplus-light@0.92"}); enforcement passes append
+     * entries such as {@code "completeness:promoted(essential GO:0006412; basis=diamond@0.31)"}
+     * or {@code "consistency:downranked(taxon NCBITaxon_2)"}. Populated only when
+     * provenance recording is enabled. Removed annotations are recorded
+     * separately in the enforcement-actions log.
+     */
+    List<String> provenance = []
+
     /** Free-form metadata */
     Map<String, Object> metadata = [:]
 

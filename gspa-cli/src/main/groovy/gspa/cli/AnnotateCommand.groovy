@@ -12,8 +12,27 @@ import picocli.CommandLine.Option
 @Command(name = 'annotate', description = 'Annotate a genome or set of genomes', mixinStandardHelpOptions = true)
 class AnnotateCommand implements Runnable {
 
-    @Option(names = ['-i', '--input'], required = true, description = 'Input FASTA/GenBank file')
+    @Option(names = ['-i', '--input'],
+            description = 'Primary input: nucleotide FASTA (genes called), or a GFF3 '
+                    + '(optionally with an embedded ##FASTA block). Alias of --genome for FASTA input.')
     File input
+
+    @Option(names = ['--genome'],
+            description = 'Genome / metagenome nucleotide FASTA (one contig per sequence). '
+                    + 'Pair with --gff3 to translate supplied CDS instead of calling genes.')
+    File genomeFasta
+
+    @Option(names = ['--gff3', '--gff'],
+            description = 'GFF3 annotation paired with --genome (or --proteins). CDS coordinates '
+                    + 'are reused: features are translated against the genome sequences and mapped '
+                    + 'to their contig, rather than re-calling genes.')
+    File gff3
+
+    @Option(names = ['--proteins'],
+            description = 'Pre-called protein FASTA. With --gff3, proteins are joined to contigs '
+                    + 'via the CDS attributes (protein_id/ID/locus_tag); alone, they are annotated '
+                    + 'on a single synthetic contig.')
+    File proteins
 
     @Option(names = ['-o', '--output'], description = 'Output directory', defaultValue = 'gspa_output')
     File outputDir
@@ -27,8 +46,58 @@ class AnnotateCommand implements Runnable {
     @Option(names = ['--mag'], description = 'Input is a MAG (adjust quality thresholds)')
     boolean mag
 
-    @Option(names = ['--go-owl'], description = 'Path to GO OWL file for quality assessment')
+    @Option(names = ['--go-owl'], description = 'Path to GO OWL file for quality assessment (enables genome-scale metrics)')
     String goOwl
+
+    @Option(names = ['--no-metrics'], description = 'Skip genome-scale metrics even when --go-owl is given')
+    boolean noMetrics
+
+    @Option(names = ['--metrics-scope'],
+            description = 'Granularity of genome-scale metrics: contig (default, per contig), genome (pooled), or both')
+    String metricsScope
+
+    @Option(names = ['--enforce-consistency'],
+            description = 'Run the SAT taxon-constraint enforcement post-pass on predicted GO annotations')
+    boolean enforceConsistency
+
+    @Option(names = ['--enforce-consistency-mode'],
+            description = 'Action for inconsistent annotations: remove (default), downrank, flag, or '
+                    + 'minimal-flip (joint weighted-MaxSAT min-cost demotion, resolves co-annotation conflicts)')
+    String enforceConsistencyMode
+
+    @Option(names = ['--enforce-completeness'],
+            description = 'Promote each missing essential function onto the best-evidenced candidate protein '
+                    + '(imputed annotation, evidence ISC). Provenance records the basis.')
+    boolean enforceCompleteness
+
+    @Option(names = ['--enforce-coherence'],
+            description = 'Fix obligate heteromeric-complex singletons (demote / promote partner) and promote '
+                    + 'missing has_part partners. Needs ELK (full init) and, for complexes, --complex-terms.')
+    boolean enforceCoherence
+
+    @Option(names = ['--complex-terms'],
+            description = 'TSV of complex GO terms (term<TAB>h|n|a) for complex-coherence enforcement')
+    String complexTermsFile
+
+    @Option(names = ['--no-provenance'],
+            description = 'Do not record enforcement provenance (omit the provenance column + enforcement_actions.tsv)')
+    boolean noProvenance
+
+    @Option(names = ['--taxon-constraints'],
+            description = 'Explicit taxon-constraint source for consistency: go-computed-taxon-constraints.obo '
+                    + '(.obo) or a TSV (GO-term<TAB>only_in|never_in<TAB>taxon). Needed when --go-owl is go-basic.')
+    String taxonConstraintsFile
+
+    @Option(names = ['--taxonomy'],
+            description = 'Taxon hierarchy + disjointness file (Term<TAB>is_a|disjoint_from|union_of<TAB>term); '
+                    + 'defaults to the bundled NCBI disjointness backbone')
+    String taxonomyFile
+
+    @Option(names = ['--taxon'],
+            description = 'Assert the organism NCBI taxon during consistency enforcement so terms that cannot occur '
+                    + 'in its lineage are flagged (e.g. eukaryote-only terms on a bacterium). Accepts NCBITaxon_2, 2, '
+                    + 'or a kingdom name (bacteria/archaea/eukaryote/virus). For single-organism inputs.')
+    String organismTaxon
 
     @Option(names = ['-t', '--threads'], description = 'Number of threads', defaultValue = '0')
     int threads
@@ -139,7 +208,30 @@ class AnnotateCommand implements Runnable {
 
     @Override
     void run() {
-        println "GSPA annotate: ${input}"
+        // Resolve the primary input across the supported forms:
+        //   --genome g.fna [--gff3 a.gff3] [--proteins p.faa]
+        //   -i annotated.gff3            (GFF3, possibly with ##FASTA)
+        //   --proteins p.faa --gff3 a.gff3
+        //   --proteins p.faa             (protein-only)
+        //   -i g.fna                     (nucleotide FASTA; genes called)
+        File primary = input ?: genomeFasta
+        boolean proteinsOnly = false
+        if (!primary) {
+            if (gff3) {
+                primary = gff3                 // GFF3 drives; proteins (if any) joined to contigs
+            } else if (proteins) {
+                primary = proteins             // bare protein FASTA
+                proteinsOnly = true
+            }
+        }
+        if (!primary) {
+            throw new IllegalArgumentException(
+                "No input given. Use --genome/-i (FASTA), --gff3 (GFF3), or --proteins (protein FASTA).")
+        }
+
+        println "GSPA annotate: ${primary}"
+        if (gff3) println "GFF3: ${gff3}"
+        if (proteins) println "Proteins: ${proteins}"
         println "Output: ${outputDir}"
         println "Kingdom: ${kingdom ?: 'auto'}"
         println "MAG mode: ${mag}"
@@ -151,6 +243,21 @@ class AnnotateCommand implements Runnable {
         if (database) overrides['database'] = database
         def config = ConfigLoader.buildConfig(configFile, kingdom, overrides)
         if (mag) config.input.type = 'mag'
+        if (gff3) config.input.gff3 = gff3.absolutePath
+        if (proteins) config.input.proteinFasta = proteins.absolutePath
+        config.input.proteinsOnly = proteinsOnly
+
+        // Genome-scale metrics + SAT enforcement toggles
+        if (noMetrics) config.quality.enabled = false
+        if (metricsScope) config.quality.scope = metricsScope
+        if (enforceConsistency) config.quality.consistency.enforce = true
+        if (enforceConsistencyMode) config.quality.consistency.enforceMode = enforceConsistencyMode
+        if (taxonConstraintsFile) config.quality.consistency.constraintsFile = taxonConstraintsFile
+        if (taxonomyFile) config.quality.consistency.taxonomyFile = taxonomyFile
+        if (organismTaxon) config.quality.consistency.organismTaxon = organismTaxon
+        if (enforceCompleteness) config.quality.completeness.enforce = true
+        if (enforceCoherence) config.quality.coherence.enforce = true
+        if (noProvenance) config.quality.provenance = false
 
         applyPredictorFlags(config)
 
@@ -159,7 +266,7 @@ class AnnotateCommand implements Runnable {
         pipeline.configure()
 
         // Run annotation
-        def genome = pipeline.annotate(input)
+        def genome = pipeline.annotate(primary)
 
         // Write output
         pipeline.writeOutput(genome, outputDir)
@@ -173,19 +280,54 @@ class AnnotateCommand implements Runnable {
             System.err.println "  [warn] Failed to write operon TSVs: ${e.message}"
         }
 
-        // Run quality evaluation if GO ontology provided
-        if (goOwl && genome.allGoTerms().size() > 0) {
+        // Genome-scale metrics (+ optional enforcement). Needs a GO OWL file;
+        // metrics run per contig by default ("not across").
+        boolean wantMetrics = config.quality.enabled && goOwl
+        boolean wantEnforce = (config.quality.consistency.enforce || config.quality.completeness.enforce
+                || config.quality.coherence.enforce) && goOwl
+        if ((wantMetrics || wantEnforce) && genome.allGoTerms().size() > 0) {
             println ""
-            println "Running quality evaluation..."
-            def qualityPipeline = new QualityPipeline(config)
+            def qp = new QualityPipeline(config)
                 .goOwlFile(goOwl)
                 .essentialFunctionsForDomain(config.resolveOrganismDomain())
-                .initializeLite()
+            if (complexTermsFile) qp.complexTermsFile(new File(complexTermsFile))
+            // Coherence enforcement (process has_part) needs the ELK reasoner.
+            def qualityPipeline = config.quality.coherence.enforce ? qp.initialize() : qp.initializeLite()
 
-            def report = qualityPipeline.evaluate(genome)
-            def reportFile = new File(outputDir, "${genome.id}_quality.json")
-            QualityReportWriter.writeJson(report, reportFile)
-            println "Quality report: ${reportFile}"
+            if (wantEnforce) {
+                println "Enforcing quality constraints (consistency=${config.quality.consistency.enforce}/" +
+                    "${config.quality.consistency.enforceMode}, completeness=${config.quality.completeness.enforce}, " +
+                    "coherence=${config.quality.coherence.enforce})..."
+                def report = qualityPipeline.enforceAll(genome)
+                if (report.provenance && report.count() > 0) {
+                    def actionsFile = new File(outputDir, "${genome.id}_enforcement_actions.tsv")
+                    report.writeTsv(actionsFile)
+                    println "  ${report.count()} enforcement action(s) ${report.countsByDimension()}: ${actionsFile}"
+                }
+                // Re-persist annotations so the written outputs reflect enforcement.
+                pipeline.writeOutput(genome, outputDir)
+            }
+
+            if (wantMetrics) {
+                String scope = config.quality.scope ?: 'contig'
+                println "Running genome-scale metrics (scope=${scope})..."
+                if (scope in ['contig', 'both']) {
+                    def reports = qualityPipeline.evaluatePerContig(genome)
+                    def tsv = new File(outputDir, "${genome.id}_quality_per_contig.tsv")
+                    QualityReportWriter.writeSummaryTsv(reports, tsv)
+                    println "  Per-contig metrics (${reports.size()} contigs): ${tsv}"
+                    reports.each { r ->
+                        def jf = new File(outputDir, "${r.genomeId.replaceAll('[:/]', '_')}_quality.json")
+                        QualityReportWriter.writeJson(r, jf)
+                    }
+                }
+                if (scope in ['genome', 'both']) {
+                    def report = qualityPipeline.evaluate(genome)
+                    def reportFile = new File(outputDir, "${genome.id}_quality.json")
+                    QualityReportWriter.writeJson(report, reportFile)
+                    println "  Whole-genome metrics: ${reportFile}"
+                }
+            }
 
             qualityPipeline.dispose()
         }

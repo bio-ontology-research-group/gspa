@@ -28,8 +28,10 @@ The exclusions are recorded in `settings.gradle.kts` so they aren't mistaken for
 
 ## Key Design Decisions
 
-- **Consistency checking uses SAT4J** (not ELK) — taxon constraints encoded as propositional SAT with sibling disjointness. UNSAT core for violation explanation.
+- **Consistency checking uses SAT4J** (not ELK) — taxon constraints encoded as propositional SAT with multi-parent `is_a`, explicit `disjoint_from` axioms (the Asaad / genome-scale-pfp-adjust model; bundled data in `gspa-core/src/main/resources/taxon-constraints/`), and an optional asserted organism taxon. UNSAT core for violation explanation.
 - **ELK** used only for completeness (subsumption) and coherence (has_part pair extraction).
+- **Quality enforcement (optional, off by default)** — beyond measuring, GSPA can repair predictions: consistency (`minimal-flip` = SAT4J weighted-MaxSAT min-cost demotion, plus remove/downrank/flag), completeness (promote missing essentials), coherence (Asaad Stage-2 complex + has_part promotion). All carry toggleable provenance. See `gspa.metrics.{ConsistencyEnforcer,CompletenessEnforcer,CoherenceEnforcer}` and `GENOME_GFF3_ANNOTATION.md`.
+- **Genome + GFF3 input** — `gspa annotate` translates supplied CDS (`gspa.io.CdsTranslator`) instead of re-calling genes; genome-scale metrics run **per contig** by default. See `GENOME_GFF3_ANNOTATION.md`.
 - Essential function profiles are **runtime-configurable** (add/remove GO terms per run).
 - All predictors implement `Predictor` interface; genome-level ones implement `GenomePredictor`.
 - External tools wrapped via `AbstractToolPredictor` (command + parse pattern).

@@ -29,6 +29,15 @@ subprojects {
 
     tasks.withType<Test> {
         useJUnitPlatform()
+        // OWL API + ontology + SAT work is memory-hungry; the 512m default
+        // thrashes on genome-scale inputs.
+        maxHeapSize = "4g"
+        // Forward -Dgspa.* properties from the Gradle invocation into the
+        // forked test JVM (used by opt-in demo/integration specs).
+        System.getProperties().forEach { key, value ->
+            val k = key.toString()
+            if (k.startsWith("gspa.")) systemProperty(k, value.toString())
+        }
     }
 }
 

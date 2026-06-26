@@ -2,6 +2,7 @@ package gspa.metrics
 
 import gspa.config.EssentialFunctions
 import gspa.config.GspaConfig
+import gspa.model.Contig
 import gspa.model.Genome
 import gspa.model.OrganismDomain
 import gspa.model.QualityReport
@@ -166,12 +167,11 @@ class QualityPipeline {
         // Default taxon constraints if not set
         if (taxonConstraints == null) {
             taxonConstraints = new TaxonConstraints()
-            if (config.quality.consistency.taxonConstraints) {
-                taxonConstraints.loadFromGoOntology(goOntology)
-            }
+            loadTaxonConstraints()
         }
         if (satChecker == null) {
             satChecker = new SatConsistencyChecker(taxonConstraints)
+            applyTaxonomyHierarchy()
         }
 
         // Build evaluators
@@ -205,9 +205,11 @@ class QualityPipeline {
         }
         if (taxonConstraints == null) {
             taxonConstraints = new TaxonConstraints()
+            loadTaxonConstraints()
         }
         if (satChecker == null) {
             satChecker = new SatConsistencyChecker(taxonConstraints)
+            applyTaxonomyHierarchy()
         }
 
         completenessEvaluator = new Completeness(goOntology, essentialFunctions)
@@ -343,10 +345,174 @@ class QualityPipeline {
     }
 
     /**
+     * Evaluate genome-scale metrics <b>per contig</b> rather than pooled
+     * across the whole assembly. Each contig is wrapped as a standalone
+     * single-contig {@link Genome} (id = {@code <genomeId>:<contigId>}) so
+     * completeness, coherence, consistency and IC are computed over only that
+     * contig's proteins. This is the right unit for a metagenome or a
+     * multi-replicon assembly, where pooling would mix organisms.
+     *
+     * Contigs with no annotated proteins are skipped. The shared Protein
+     * objects are referenced (not reparented), so the source genome is left
+     * untouched.
+     */
+    List<QualityReport> evaluatePerContig(Genome genome) {
+        genome.contigs.findAll { it.proteins }.collect { contig ->
+            def sub = new Genome(id: "${genome.id}:${contig.id}", mag: genome.mag,
+                taxonomy: genome.taxonomy)
+            def wrap = new Contig(id: contig.id, sequence: contig.sequence)
+            wrap.genome = sub
+            wrap.proteins.addAll(contig.proteins)   // reference, do not reparent
+            sub.contigs << wrap
+            evaluate(sub)
+        }
+    }
+
+    /**
+     * Run all enabled enforcement passes on the genome's predicted GO
+     * annotations, sharing one provenance {@link EnforcementReport}. Order:
+     * consistency (demote impossible terms) &rarr; coherence (fix complex
+     * singletons, promote missing has_part partners) &rarr; completeness
+     * (promote missing essentials). Promotions are consistency-gated. Returns
+     * the report (empty when nothing is enabled).
+     */
+    EnforcementReport enforceAll(Genome genome) {
+        if (!initialized) throw new IllegalStateException("Pipeline not initialized. Call initialize() first.")
+        def report = new EnforcementReport(provenance: config.quality.provenance)
+        def cc = config.quality.consistency
+        def cmp = config.quality.completeness
+        def coh = config.quality.coherence
+
+        if (cc.enforce) {
+            def r = new ConsistencyEnforcer(goOntology: goOntology, satChecker: satChecker,
+                mode: cc.enforceMode, downrankFactor: cc.downrankFactor, report: report).enforce(genome)
+            log.info("  consistency: ${r}")
+        }
+
+        if (coh.enforce) {
+            List<Map.Entry<String, String>> pairs = []
+            boolean canProcess = coh.enforceProcess && coherenceEvaluator != null && goReasoner != null
+            if (canProcess) {
+                def pr = coherenceEvaluator.evaluateProcessCoherence(
+                    goOntology.propagateAnnotations(genome.allGoTerms()))
+                pairs = (pr.unsatisfied ?: []) as List<Map.Entry<String, String>>
+            }
+            def r = new CoherenceEnforcer(goOntology: goOntology, satChecker: satChecker, report: report,
+                complexClassification: coherenceEvaluator?.complexClassification ?: [:],
+                promotePartner: coh.promotePartner, enforceProcess: canProcess,
+                promoteEvidence: coh.promoteEvidence, promoteMinScore: coh.promoteMinScore).enforce(genome, pairs)
+            log.info("  coherence: ${r}")
+        }
+
+        if (cmp.enforce) {
+            def compRes = genome.mag ?
+                completenessEvaluator.evaluateMAG(genome) : completenessEvaluator.evaluate(genome)
+            def r = new CompletenessEnforcer(goOntology: goOntology, satChecker: satChecker, report: report,
+                promoteEvidence: cmp.promoteEvidence, promoteMinScore: cmp.promoteMinScore)
+                .enforce(genome, compRes.missingFunctions)
+            log.info("  completeness: ${r}")
+        }
+        report
+    }
+
+    /** True if any enforcement pass is enabled in config. */
+    boolean anyEnforcementEnabled() {
+        config.quality.consistency.enforce || config.quality.completeness.enforce ||
+            config.quality.coherence.enforce
+    }
+
+    /**
      * Clean up resources (dispose ELK reasoner).
      */
     void dispose() {
         goReasoner?.dispose()
+    }
+
+    /** Bundled (vendored) taxon-constraint resources — see resources/taxon-constraints/PROVENANCE.md. */
+    private static final String BUNDLED_CONSTRAINTS = '/taxon-constraints/go-taxon-constraints.tsv'
+    private static final String BUNDLED_HIERARCHY = '/taxon-constraints/ncbi-taxon-hierarchy.tsv'
+
+    /**
+     * Populate {@link #taxonConstraints} for consistency checking / enforcement.
+     * Priority: explicit constraints file (.obo / .tsv) &rarr; the bundled GO
+     * taxon constraints (Asaad et al.) &rarr; only_in/never_in axioms from the
+     * loaded GO ontology (go-basic carries none, so the bundled file is the
+     * default that makes consistency actually act).
+     */
+    private void loadTaxonConstraints() {
+        boolean want = config.quality.consistency.taxonConstraints || config.quality.consistency.enforce
+        if (!want) return
+        String cf = config.quality.consistency.constraintsFile
+        if (cf) {
+            File f = new File(cf)
+            if (!f.exists()) {
+                log.warn("Taxon constraints file not found: ${cf}; falling back to bundled constraints")
+            } else if (cf.toLowerCase().endsWith('.obo')) {
+                taxonConstraints.loadFromObo(f); return
+            } else {
+                taxonConstraints.loadFromTsv(f); return
+            }
+        }
+        File bundled = resourceToTempFile(BUNDLED_CONSTRAINTS, 'go-taxon-constraints', '.tsv')
+        if (bundled) {
+            taxonConstraints.loadFromTsv(bundled)
+        } else if (goOntology != null) {
+            taxonConstraints.loadFromGoOntology(goOntology)
+        }
+    }
+
+    /**
+     * Load the taxon hierarchy + explicit disjointness into the SAT checker
+     * (configured file, else the bundled NCBI disjointness backbone), and
+     * assert the organism's taxon if one was configured.
+     */
+    private void applyTaxonomyHierarchy() {
+        String tf = config.quality.consistency.taxonomyFile
+        File hierarchy = tf ? new File(tf) : resourceToTempFile(BUNDLED_HIERARCHY, 'ncbi-taxon-hierarchy', '.tsv')
+        if (hierarchy?.exists()) {
+            satChecker.loadTaxonomyTsv(hierarchy)
+        } else if (tf) {
+            log.warn("Taxonomy hierarchy file not found: ${tf}")
+        }
+        String organism = resolveOrganismTaxon()
+        if (organism) {
+            satChecker.organismTaxon = organism
+            log.info("Asserting organism taxon for consistency: ${organism}")
+        }
+    }
+
+    /** Resolve the configured organism taxon to an {@code NCBITaxon_<id>} string. */
+    private String resolveOrganismTaxon() {
+        String raw = config.quality.consistency.organismTaxon
+        if (!raw) return null
+        raw = raw.trim()
+        switch (raw.toLowerCase()) {
+            case ['bacteria', 'bacterium', 'bacterial']: return 'NCBITaxon_2'
+            case ['archaea', 'archaeal']:                return 'NCBITaxon_2157'
+            case ['eukaryote', 'eukaryota', 'eukaryotic']: return 'NCBITaxon_2759'
+            case ['virus', 'viruses', 'viral']:          return 'NCBITaxon_10239'
+        }
+        if (raw.startsWith('NCBITaxon')) return raw.replace(':', '_')
+        if (raw ==~ /\d+/) return "NCBITaxon_${raw}"
+        log.warn("Unrecognized organism taxon '${raw}'; ignoring")
+        null
+    }
+
+    /** Copy a classpath resource to a temp file so File-based loaders can read it. */
+    private File resourceToTempFile(String resourcePath, String prefix, String suffix) {
+        def stream = getClass().getResourceAsStream(resourcePath)
+        if (stream == null) {
+            log.warn("Bundled resource not found on classpath: ${resourcePath}")
+            return null
+        }
+        try {
+            File tmp = File.createTempFile(prefix, suffix)
+            tmp.deleteOnExit()
+            tmp.withOutputStream { out -> stream.transferTo(out) }
+            return tmp
+        } finally {
+            stream.close()
+        }
     }
 
     private void ensureTaxonConstraintsInitialized() {
