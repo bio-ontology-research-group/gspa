@@ -47,7 +47,8 @@ import picocli.CommandLine.Option
  */
 @Command(
     name = 'integrate',
-    description = 'Run the Phase 7 evidence integrator on pre-parsed claims.'
+    description = 'Run the Phase 7 evidence integrator on pre-parsed claims.',
+    mixinStandardHelpOptions = true
 )
 class IntegrateCommand implements Runnable {
 

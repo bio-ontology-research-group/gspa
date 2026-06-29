@@ -3,11 +3,27 @@
 # The reusable code lives in ../ (train_ltr_integrator.py, run_neural_predictors.py)
 # and the shipped frozen model in ../models/cafa_baseline_integrator.json.
 components/
+components_orphan_train/
+components_orphan_test/
+emb/
+*.npz
+cnn_work/
+cleaneval_*/
+clean_*/
+tierA_train/
+tierB_train/
+integrator_7lit.json
+integrator_test3.json
+train_proteins.txt
+val_proteins.txt
 gt/
 interpro/
+string/
 results_*/
 ltr_*/
 pt5_*/
+run_*/
+apply_*/
 .venv/
 *.tsv
 *.tsv.gz
@@ -17,6 +33,10 @@ part_*
 goa_uniprot_all.gaf.gz
 *.obo
 testsuperset_ids.txt
-# keep: small driver scripts + the frozen integrator JSON snapshot
+# keep: small driver scripts + the frozen integrator JSON snapshots
 !score_prostt5.sh
+!eval_classes.sh
 !integrator_6comp.json
+!integrator_7comp_net.json
+!integrator_8comp_lit_net.json
+!integrator_pret0.json

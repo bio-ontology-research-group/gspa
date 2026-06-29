@@ -10,6 +10,7 @@ import gspa.integration.IntegrationWriter
 import gspa.integration.IterativeRefiner
 import gspa.integration.suggester.DarkMatterSuggester
 import gspa.integration.suggester.DarkMatterWriter
+import gspa.io.CdsTranslator
 import gspa.io.FastaReader
 import gspa.io.GffReader
 import gspa.io.GffWriter
@@ -223,6 +224,13 @@ class AnnotationPipeline {
 
         // Neural sidecar predictors
         def neural = config.predictors.neural
+        // Resolve the DeepGO-PlusPlus base-predictor selector (full | light | none)
+        // into the two enabled flags before registering them.
+        neural.resolveBasePredictor()
+        if (neural.deepGoPlusPlus.enabled && neural.deepGoPlusPlusLight.enabled) {
+            log.warn('Both DeepGO-PlusPlus (full) and DeepGO-PlusPlus-Light are enabled; ' +
+                     'set neural.basePredictor to full or light to run a single base predictor.')
+        }
         if (neural.esm2DeepGoPlus.enabled) {
             predictors << new gspa.predictor.neural.DeepGoPlusEsm2Predictor(
                 sidecarScript: neural.sidecarScript,
@@ -263,15 +271,32 @@ class AnnotationPipeline {
                 minScore: neural.esm2Centroid.minScore,
             )
         }
-        if (neural.cafaBaseline.enabled) {
-            predictors << new gspa.predictor.neural.CafaBaselinePredictor(
+        if (neural.deepGoPlusPlus.enabled) {
+            predictors << new gspa.predictor.neural.DeepGoPlusPlusPredictor(
                 sidecarScript: neural.sidecarScript,
                 pythonExecutable: neural.pythonExecutable,
-                integrator: neural.cafaBaseline.integrator,
-                componentsDir: neural.cafaBaseline.componentsDir,
-                dag: neural.cafaBaseline.dag,
-                batchSize: neural.cafaBaseline.batchSize,
-                minScore: neural.cafaBaseline.minScore,
+                integrator: neural.deepGoPlusPlus.integrator,
+                componentsDir: neural.deepGoPlusPlus.componentsDir,
+                dag: neural.deepGoPlusPlus.dag,
+                batchSize: neural.deepGoPlusPlus.batchSize,
+                minScore: neural.deepGoPlusPlus.minScore,
+            )
+        }
+        if (neural.deepGoPlusPlusLight.enabled) {
+            predictors << new gspa.predictor.neural.DeepGoPlusPlusLightPredictor(
+                sidecarScript: neural.sidecarScript,
+                pythonExecutable: neural.pythonExecutable,
+                assets: neural.deepGoPlusPlusLight.assets,
+                modelsDir: neural.deepGoPlusPlusLight.modelsDir,
+                diamond: neural.deepGoPlusPlusLight.diamond,
+                interpro: neural.deepGoPlusPlusLight.interpro,
+                cnn: neural.deepGoPlusPlusLight.cnn,
+                interproscan: neural.deepGoPlusPlusLight.interproscan,
+                cnnModel: neural.deepGoPlusPlusLight.cnnModel,
+                threads: neural.deepGoPlusPlusLight.threads,
+                topK: neural.deepGoPlusPlusLight.topK,
+                batchSize: neural.deepGoPlusPlusLight.batchSize,
+                minScore: neural.deepGoPlusPlusLight.minScore,
             )
         }
 
@@ -568,22 +593,68 @@ class AnnotationPipeline {
     }
 
     /**
-     * Load genome from various input formats.
+     * Load genome from various input forms. Supported combinations:
+     *
+     * <ul>
+     *   <li><b>nucleotide FASTA</b> (.fna/.fa/...) — contigs only; genes are
+     *       called later (Phase 2). Multi-sequence FASTA = one contig each
+     *       (metagenome).</li>
+     *   <li><b>genome FASTA + GFF3</b> (config.input.gff3) — CDS features from
+     *       the GFF3 are translated against the FASTA sequences, mapped to
+     *       their contig. No gene calling.</li>
+     *   <li><b>single GFF3 with embedded {@code ##FASTA}</b> — same, sequences
+     *       come from the GFF3 itself.</li>
+     *   <li><b>protein FASTA + GFF3</b> — supplied proteins are joined to
+     *       contigs via the CDS attributes (protein_id/ID/locus_tag).</li>
+     *   <li><b>protein FASTA only</b> — single synthetic contig (legacy).</li>
+     * </ul>
      */
     private Genome loadGenome(File inputFile) {
-        String name = inputFile.name.toLowerCase()
-
-        if (name.endsWith('.gff3') || name.endsWith('.gff')) {
-            return GffReader.readGff3(inputFile)
+        // Bare protein FASTA: no genome/GFF3, annotate on a single synthetic contig.
+        if (config.input.proteinsOnly && config.input.proteinFasta) {
+            File pf = new File(config.input.proteinFasta)
+            Genome g = new Genome(id: pf.name.replaceAll(/\.(faa|fasta|fa|fsa)(\.gz)?$/, ''))
+            Contig c = new Contig(id: 'proteins')
+            g.addContig(c)
+            FastaReader.readProteins(pf).each { c.addProtein(it) }
+            g.mag = config.input.type in ['mag', 'metagenome']
+            log.info("Loaded ${c.proteins.size()} proteins (protein-only input)")
+            return g
         }
 
-        // Default: treat as nucleotide FASTA
-        def genome = FastaReader.readGenome(inputFile)
-        genome.mag = config.input.type in ['mag', 'metagenome']
+        String name = inputFile.name.toLowerCase()
+        boolean primaryIsGff = name.endsWith('.gff3') || name.endsWith('.gff') ||
+            name.endsWith('.gff3.gz') || name.endsWith('.gff.gz')
 
-        // If protein FASTA provided separately
-        if (config.input.proteinFasta) {
-            def proteins = FastaReader.readProteins(new File(config.input.proteinFasta))
+        File gffFile = config.input.gff3 ? new File(config.input.gff3) : (primaryIsGff ? inputFile : null)
+        File seqFile = primaryIsGff ? null : inputFile
+        File proteinFile = config.input.proteinFasta ? new File(config.input.proteinFasta) : null
+        boolean isMeta = config.input.type in ['mag', 'metagenome']
+
+        // --- GFF3-driven path: reuse supplied CDS coordinates ---
+        if (gffFile) {
+            Genome genome = GffReader.readGff3(gffFile)
+            genome.mag = isMeta
+            // Attach contig sequences from a separate genome FASTA if given
+            // (a GFF3 with embedded ##FASTA already carries them).
+            if (seqFile) {
+                attachContigSequences(genome, seqFile)
+            }
+            if (proteinFile) {
+                mapProteinsToContigs(genome, FastaReader.readProteins(proteinFile))
+            } else {
+                int n = CdsTranslator.populateProteins(genome, config.input.translateAltStart)
+                log.info("Translated ${n} proteins from ${genome.features.count { it.type == FeatureType.CDS }} CDS features")
+            }
+            return genome
+        }
+
+        // --- nucleotide FASTA path: gene calling happens in Phase 2 ---
+        Genome genome = FastaReader.readGenome(seqFile)
+        genome.mag = isMeta
+
+        if (proteinFile) {
+            def proteins = FastaReader.readProteins(proteinFile)
             if (genome.contigs.isEmpty()) {
                 genome.addContig(new Contig(id: 'unknown'))
             }
@@ -593,6 +664,60 @@ class AnnotationPipeline {
         }
 
         genome
+    }
+
+    /**
+     * Attach nucleotide sequences from a genome FASTA to the contigs parsed
+     * from a GFF3 (matched by contig id == FASTA header first token). FASTA
+     * contigs with no GFF3 features are added too, so assembly statistics and
+     * per-contig metrics cover the whole assembly.
+     */
+    private void attachContigSequences(Genome genome, File seqFile) {
+        int attached = 0
+        FastaReader.parseFasta(seqFile).each { String id, String seq ->
+            def contig = genome.findContig(id)
+            if (contig) {
+                contig.sequence = seq
+                attached++
+            } else {
+                genome.addContig(new Contig(id: id, sequence: seq))
+            }
+        }
+        log.info("Attached sequences to ${attached} contig(s) from ${seqFile.name}")
+    }
+
+    /**
+     * Join pre-called proteins to contigs using the GFF3 CDS attributes
+     * (protein_id / ID / locus_tag). Proteins with no matching feature land on
+     * a synthetic 'unplaced' contig so they are still annotated.
+     */
+    private void mapProteinsToContigs(Genome genome, List<Protein> proteins) {
+        Map<String, Feature> featureById = [:]
+        genome.contigs.each { Contig c ->
+            c.cdsFeatures().each { Feature f ->
+                [f.attributes['protein_id']?.first(), f.id, f.locusTag].findAll { it }.each { String key ->
+                    featureById.putIfAbsent(key, f)
+                }
+            }
+        }
+        Contig unplaced = null
+        int placed = 0
+        proteins.each { Protein p ->
+            Feature f = featureById[p.id]
+            if (f) {
+                p.sourceFeature = f
+                genome.findContig(f.seqId)?.addProtein(p)
+                placed++
+            } else {
+                if (unplaced == null) {
+                    unplaced = new Contig(id: 'unplaced')
+                    genome.addContig(unplaced)
+                }
+                unplaced.addProtein(p)
+            }
+        }
+        log.info("Joined ${placed}/${proteins.size()} proteins to contigs via GFF3 attributes" +
+            (unplaced ? "; ${unplaced.proteins.size()} unplaced" : ''))
     }
 
     /**
@@ -615,18 +740,36 @@ class AnnotationPipeline {
     }
 
     private void writeAnnotationsTsv(Genome genome, File output) {
+        // The `source` column already records WHICH predictor produced each
+        // annotation. When provenance is enabled, an extra `provenance` column
+        // carries the trail (originating predictor + any enforcement actions),
+        // so it is clear how each function was assigned.
+        boolean prov = config.quality?.provenance
         output.withWriter { writer ->
-            writer.writeLine(['protein_id', 'type', 'value', 'score', 'source', 'evidence'].join('\t'))
+            // `label` is the human-readable term name; `aspect` the GO sub-ontology
+            // (MF/BP/CC) — both needed so a GO id is never shown bare, and for
+            // standard-format (GAF) export / per-aspect summaries.
+            def header = ['protein_id', 'type', 'value', 'label', 'score', 'source', 'evidence', 'aspect']
+            if (prov) header << 'provenance'
+            writer.writeLine(header.join('\t'))
             genome.proteins.each { protein ->
                 protein.annotations.annotations.each { ann ->
-                    writer.writeLine([
+                    def row = [
                         protein.id,
                         ann.type,
                         ann.value,
+                        ann.goLabel ?: '',
                         String.format('%.4f', ann.score),
                         ann.source ?: '',
                         ann.evidence ?: '',
-                    ].join('\t'))
+                        ann.goAspect ?: '',
+                    ]
+                    if (prov) {
+                        def trail = ann.provenance ? ann.provenance.join(' | ') :
+                            "predictor:${ann.source ?: 'unknown'}@${String.format('%.3f', ann.score)}"
+                        row << trail
+                    }
+                    writer.writeLine(row.join('\t'))
                 }
             }
         }

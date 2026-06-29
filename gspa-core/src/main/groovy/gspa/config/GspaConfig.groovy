@@ -34,8 +34,14 @@ class GspaConfig {
         String type = 'genome'
         /** Organism kingdom: bacteria, archaea, eukaryote, virus, auto */
         String kingdom = 'auto'
-        /** Path to protein FASTA (if pre-called) */
+        /** Path to protein FASTA (if pre-called); joined to contigs via --gff3 when present */
         String proteinFasta
+        /** Path to a GFF3 annotation paired with the genome FASTA (CDS are translated, not re-called) */
+        String gff3
+        /** Emit Methionine for alternative initiator codons (GTG/TTG/...) when translating CDS */
+        boolean translateAltStart = true
+        /** Annotate a bare protein FASTA on a single synthetic contig (no genome/GFF3) */
+        boolean proteinsOnly = false
     }
 
     static class PredictorConfig {
@@ -173,18 +179,111 @@ class GspaConfig {
         /** Python executable used to invoke the sidecar. */
         String pythonExecutable = 'python3'
 
+        /**
+         * Base function predictor for the workflow — selects DeepGO-PlusPlus as
+         * the learned backbone, choosing between the GPU and CPU variants:
+         * <ul>
+         *   <li>{@code auto}  — default. Prefer DeepGO-PlusPlus-Light when its
+         *       assets are configured; else DeepGO-PlusPlus (full) when its
+         *       components are configured; else neither. This makes DG++Light
+         *       the out-of-the-box function predictor whenever it can run.</li>
+         *   <li>{@code none}  — no base selected; use the per-predictor
+         *       {@code enabled} flags directly.</li>
+         *   <li>{@code full}  — {@link DeepGoPlusPlusConfig} (GPU; precomputed
+         *       components applied through the frozen integrator).</li>
+         *   <li>{@code light} — {@link DeepGoPlusPlusLightConfig} (CPU-only;
+         *       self-contained from the query FASTA).</li>
+         * </ul>
+         * The two are mutually exclusive: {@link #resolveBasePredictor()}
+         * enables the chosen one and disables the other. Asset paths still come
+         * from the respective sub-config / CLI flags.
+         */
+        String basePredictor = 'auto'
+
         Esm2DeepGoPlusConfig esm2DeepGoPlus = new Esm2DeepGoPlusConfig()
         ProteInferConfig proteinfer = new ProteInferConfig()
         CleanNeuralConfig clean = new CleanNeuralConfig()
         Esm2CentroidConfig esm2Centroid = new Esm2CentroidConfig()
-        CafaBaselineConfig cafaBaseline = new CafaBaselineConfig()
+        DeepGoPlusPlusConfig deepGoPlusPlus = new DeepGoPlusPlusConfig()
+        DeepGoPlusPlusLightConfig deepGoPlusPlusLight = new DeepGoPlusPlusLightConfig()
+
+        /**
+         * Apply {@link #basePredictor} to the two DeepGO-PlusPlus enabled flags.
+         * Idempotent; call once before predictor registration. {@code full}/
+         * {@code light} are authoritative and mutually exclusive; {@code none}
+         * leaves the explicit flags untouched. Aliases accepted:
+         * {@code deepgo-plusplus}/{@code gpu} for full, {@code deepgo-plusplus-light}/
+         * {@code cpu} for light.
+         */
+        void resolveBasePredictor() {
+            switch ((basePredictor ?: 'auto').toLowerCase().trim()) {
+                case 'auto':
+                    // Prefer the CPU-only Light variant when its assets are set;
+                    // otherwise the full variant when its components are set;
+                    // otherwise leave explicit flags untouched.
+                    if (deepGoPlusPlusLight.assets) {
+                        deepGoPlusPlusLight.enabled = true
+                        deepGoPlusPlus.enabled = false
+                    } else if (deepGoPlusPlus.integrator && deepGoPlusPlus.componentsDir) {
+                        deepGoPlusPlus.enabled = true
+                        deepGoPlusPlusLight.enabled = false
+                    }
+                    break
+                case ['none', '']:
+                    break
+                case ['full', 'deepgo-plusplus', 'deepgoplusplus', 'gpu']:
+                    deepGoPlusPlus.enabled = true
+                    deepGoPlusPlusLight.enabled = false
+                    break
+                case ['light', 'deepgo-plusplus-light', 'deepgopluspluslight', 'cpu']:
+                    deepGoPlusPlusLight.enabled = true
+                    deepGoPlusPlus.enabled = false
+                    break
+                default:
+                    throw new IllegalArgumentException(
+                        "Unknown neural.basePredictor '${basePredictor}' (use: none | full | light)")
+            }
+        }
     }
 
     /**
-     * CAFA6 {@code cafa-baseline} learned stacker: applies a frozen per-aspect
-     * logistic-regression integrator over precomputed per-component GO scores.
+     * DeepGO-PlusPlus-Light (sidecar id {@code deepgo-plusplus-light}): the
+     * self-contained, CPU-only sibling of {@code deepgo-plusplus}. Runs DIAMOND
+     * BLAST-KNN + the homology-bridged STRING Net-KNN itself from the query FASTA
+     * (no precomputed components needed) and applies the same frozen integrator.
+     * Assets come from {@code deepgo-plusplus/service/make_assets.sh}.
      */
-    static class CafaBaselineConfig {
+    static class DeepGoPlusPlusLightConfig {
+        boolean enabled = false
+        /** make_assets.sh bundle dir (train_db.dmnd, train_net_index.tsv, train_terms.tsv, go-dag.tsv). Required when enabled. */
+        String assets
+        /** Dir of frozen integrator JSONs (default: {@code deepgo-plusplus/models}). */
+        String modelsDir
+        /** DIAMOND binary. */
+        String diamond = 'diamond'
+        /** Add the InterProScan domain component (needs {@code interproscan}). */
+        boolean interpro = false
+        /** Add the CPU 1D-CNN component (orphan coverage; needs torch + a cnn_model.pt). */
+        boolean cnn = false
+        /** InterProScan launcher path (enables the interpro component). */
+        String interproscan
+        /** Override CNN weights path (default {@code <assets>/cnn_model.pt}). */
+        String cnnModel
+        /** DIAMOND threads. */
+        int threads = 8
+        /** Homologs voted per query. */
+        int topK = 5
+        int batchSize = 16
+        double minScore = 0.1
+    }
+
+    /**
+     * DeepGO-PlusPlus learned stacker (sidecar id {@code deepgo-plusplus}):
+     * applies a frozen per-aspect logistic-regression integrator over
+     * precomputed per-component GO scores. Retrainable per UniProt/STRING
+     * release via the {@code deepgo-plusplus/} pipeline.
+     */
+    static class DeepGoPlusPlusConfig {
         boolean enabled = false
         /** Frozen integrator JSON (train_ltr_integrator.py --save-model). Required when enabled. */
         String integrator
@@ -363,6 +462,17 @@ class GspaConfig {
         ConsistencyConfig consistency = new ConsistencyConfig()
         /** Path to GO OWL file */
         String goOwlFile
+        /** Run genome-scale metrics after annotation (needs a GO OWL file) */
+        boolean enabled = true
+        /** Metric scope: 'contig' (per contig, default), 'genome' (pooled), or 'both' */
+        String scope = 'contig'
+        /**
+         * Record provenance for enforcement actions: per-annotation trail lines
+         * (a {@code provenance} column) + an {@code enforcement_actions.tsv} log
+         * making clear how each function was assigned/removed and on what basis.
+         * On by default; turn off to keep outputs minimal.
+         */
+        boolean provenance = true
     }
 
     static class CompletenessConfig {
@@ -374,18 +484,77 @@ class GspaConfig {
         List<String> removeTerms = []
         /** Path to custom essential functions file (replaces profile) */
         String customFile
+        /**
+         * Enforce completeness: promote each missing essential function onto the
+         * protein with the strongest sub-threshold evidence for it (an imputed
+         * annotation, evidence code {@link #promoteEvidence}). Off by default.
+         */
+        boolean enforce = false
+        /** Evidence code stamped on promoted (imputed) essential annotations. */
+        String promoteEvidence = 'ISC'
+        /** Minimum sub-threshold predictor score required to promote a missing essential. */
+        double promoteMinScore = 0.05
     }
 
     static class CoherenceConfig {
         boolean process = true
         boolean pathway = true
         boolean complex = true
+        /**
+         * Enforce coherence: fix obligate heteromeric-complex singletons (demote
+         * the lone protein, or promote a plausible partner) and, when
+         * {@link #enforceProcess} is set, promote missing has_part partners.
+         * Off by default.
+         */
+        boolean enforce = false
+        /** Allow promoting a partner for a complex singleton (else demote-only). */
+        boolean promotePartner = true
+        /** Also enforce process coherence (promote missing has_part partner terms). */
+        boolean enforceProcess = true
+        /** Evidence code stamped on promoted (imputed) coherence annotations. */
+        String promoteEvidence = 'ISC'
+        /** Minimum sub-threshold predictor score required to promote a partner. */
+        double promoteMinScore = 0.05
     }
 
     static class ConsistencyConfig {
         boolean taxonConstraints = true
         /** Path to taxonomy hierarchy file */
         String taxonomyFile
+        /**
+         * Minimum prediction score a GO term must reach to inform taxon inference
+         * ({@link gspa.metrics.TaxonInference}). High by default: only confident
+         * predictions are organism-specific; the long tail of low-score calls is
+         * cross-domain noise that would bias the inferred taxon.
+         */
+        double inferTaxonMinScore = 0.9
+        /**
+         * Optional explicit taxon-constraint source (overrides extraction from
+         * the GO OWL): a {@code go-computed-taxon-constraints.obo} (.obo) or a
+         * TSV ({@code GO-term<TAB>only_in|never_in<TAB>taxon}). Useful when the
+         * supplied ontology is go-basic, which carries no constraint axioms.
+         */
+        String constraintsFile
+        /**
+         * Enforce taxon-constraint consistency as a post-annotation pass:
+         * detect SAT-inconsistent GO annotations and act on them. Off by
+         * default (detection-only). When on, {@link #enforceMode} decides
+         * what happens to a violating annotation.
+         */
+        boolean enforce = false
+        /** 'remove' (drop the annotation), 'downrank' (multiply score), or 'flag' (annotate only) */
+        String enforceMode = 'remove'
+        /** Score multiplier applied to violating annotations when enforceMode='downrank' */
+        double downrankFactor = 0.5
+        /**
+         * Assert the organism's own NCBI taxon during consistency checking
+         * (the {@code provide_taxon_id} mode): a term that cannot occur in this
+         * organism's lineage (e.g. a eukaryote-only term on a bacterium) is then
+         * flagged on its own. Accepts {@code NCBITaxon_2}, {@code 2}, or a
+         * kingdom name (bacteria/archaea/eukaryote/virus). Null = off
+         * (co-annotation satisfiability only).
+         */
+        String organismTaxon
     }
 
     static class OutputConfig {

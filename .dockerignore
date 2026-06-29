@@ -1,0 +1,39 @@
+# Keep the Docker build context (used by service/Dockerfile and docker/Dockerfile)
+# small. CRITICAL: benchmark/neural/cafa6_recon is tens of GB of gitignored scratch
+# and must never enter the build context or an image.
+benchmark/neural/cafa6_recon/
+**/cafa6_recon/
+
+# Version control + build outputs
+.git/
+.gradle/
+**/build/
+**/.gradle/
+build/
+
+# Heavy data / scratch under deepgo-plusplus we don't need in the service image
+# (the service only needs models/ and pipeline/). Re-include those explicitly.
+deepgo-plusplus/**
+!deepgo-plusplus/models/
+!deepgo-plusplus/models/**
+!deepgo-plusplus/pipeline/
+!deepgo-plusplus/pipeline/**
+# service/predict.py defines DGppLight, which the DG++Light sidecar imports.
+!deepgo-plusplus/service/
+!deepgo-plusplus/service/**
+
+# Benchmark data/scratch we don't need (the service only needs the neural sidecar).
+benchmark/**
+!benchmark/neural/
+!benchmark/neural/**
+benchmark/neural/cafa6_recon/
+
+# Misc local scratch
+*.faa
+*.fna
+*.m8
+*.tsv.gz
+*.pyc
+__pycache__/
+.venv/
+*.log

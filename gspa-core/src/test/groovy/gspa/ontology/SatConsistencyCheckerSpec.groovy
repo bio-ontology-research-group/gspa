@@ -1,8 +1,26 @@
 package gspa.ontology
 
 import spock.lang.Specification
+import spock.lang.TempDir
+
+import java.nio.file.Path
 
 class SatConsistencyCheckerSpec extends Specification {
+
+    @TempDir
+    Path tmp
+
+    private File hierarchyFile(String body) {
+        def f = tmp.resolve('hier.tsv').toFile()
+        f.text = "Term\tRelationship\tParent\n" + body
+        f
+    }
+
+    private File resource(String path) {
+        def f = tmp.resolve(path.replaceAll('/', '_')).toFile()
+        f.withOutputStream { out -> getClass().getResourceAsStream(path).withCloseable { it.transferTo(out) } }
+        f
+    }
 
     def "should detect consistent annotations"() {
         given: "A simple taxonomy: Bacteria -> Proteobacteria -> Gammaproteobacteria -> E.coli"
@@ -118,5 +136,75 @@ class SatConsistencyCheckerSpec extends Specification {
 
         then:
         result.consistent
+    }
+
+    // --- explicit disjointness + organism assertion (Asaad model) ------------
+
+    def 'explicit disjoint_from makes two only_in taxa conflict'() {
+        given:
+        def tc = new TaxonConstraints()
+        tc.onlyInTaxon['GO:0000010'] << 'NCBITaxon_2'      // Bacteria
+        tc.onlyInTaxon['GO:0000020'] << 'NCBITaxon_2759'   // Eukaryota
+        def checker = new SatConsistencyChecker(tc)
+        checker.loadTaxonomyTsv(hierarchyFile("NCBITaxon_2\tdisjoint_from\tNCBITaxon_2759\n"))
+
+        expect:
+        !checker.check(['GO:0000010', 'GO:0000020'] as Set).consistent
+        checker.check(['GO:0000010'] as Set).consistent
+    }
+
+    def 'asserting the organism taxon flags a lone term it cannot carry'() {
+        given: 'organism is a bacterium; one term is eukaryote-only, another bacteria-only'
+        def tc = new TaxonConstraints()
+        tc.onlyInTaxon['GO:euk'] << 'NCBITaxon_2759'
+        tc.onlyInTaxon['GO:bact'] << 'NCBITaxon_2'
+        def checker = new SatConsistencyChecker(tc)
+        checker.loadTaxonomyTsv(hierarchyFile("NCBITaxon_2\tdisjoint_from\tNCBITaxon_2759\n"))
+        checker.organismTaxon = 'NCBITaxon_2'
+
+        expect:
+        !checker.check(['GO:euk'] as Set).consistent
+        checker.check(['GO:bact'] as Set).consistent
+    }
+
+    def 'never_in the organism taxon is a violation'() {
+        given:
+        def tc = new TaxonConstraints()
+        tc.neverInTaxon['GO:nb'] << 'NCBITaxon_2'
+        def checker = new SatConsistencyChecker(tc)
+        checker.loadTaxonomyTsv(hierarchyFile("NCBITaxon_2\tis_a\tNCBITaxon_131567\n"))
+        checker.organismTaxon = 'NCBITaxon_2'
+
+        expect:
+        !checker.check(['GO:nb'] as Set).consistent
+    }
+
+    def 'union_of members are treated as pairwise disjoint'() {
+        given: 'a disjoint-union node groups Bacteria and Archaea'
+        def tc = new TaxonConstraints()
+        tc.onlyInTaxon['GO:b'] << 'NCBITaxon_2'
+        tc.onlyInTaxon['GO:a'] << 'NCBITaxon_2157'
+        def checker = new SatConsistencyChecker(tc)
+        checker.loadTaxonomyTsv(hierarchyFile(
+            "NCBITaxon_U\tunion_of\tNCBITaxon_2\n" +
+            "NCBITaxon_U\tunion_of\tNCBITaxon_2157\n"))
+
+        expect:
+        !checker.check(['GO:b', 'GO:a'] as Set).consistent
+    }
+
+    def 'bundled GO taxon constraints + backbone flag a eukaryote-only term on a bacterium'() {
+        given: 'the real vendored constraint + hierarchy data, organism = Bacteria'
+        def tc = new TaxonConstraints()
+        tc.loadFromTsv(resource('/taxon-constraints/go-taxon-constraints.tsv'))
+        def checker = new SatConsistencyChecker(tc)
+        checker.loadTaxonomyTsv(resource('/taxon-constraints/ncbi-taxon-hierarchy.tsv'))
+        checker.organismTaxon = 'NCBITaxon_2'
+
+        expect: 'GO:0000001 is only_in Eukaryota (2759) in the bundled data'
+        tc.onlyInTaxon['GO:0000001'].contains('NCBITaxon_2759')
+
+        and: 'so it is inconsistent on a bacterium, while a cellular-organism term is fine'
+        !checker.check(['GO:0000001'] as Set).consistent
     }
 }

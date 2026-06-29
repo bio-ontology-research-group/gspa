@@ -22,13 +22,16 @@ Also in the repo but NOT part of the Gradle build:
 
 - **gspa-nf/** — Nextflow sibling pipeline (`main.nf` + 5 `modules/*.nf`), runs the same external tools as the JVM CLI but via Singularity / Docker on HPC. Run with `nextflow run gspa-nf/main.nf`. Convenience Gradle tasks: `./gradlew nfHelp` (no-Nextflow quickstart) and `./gradlew nfLint` (parse check, skipped when Nextflow isn't on PATH). See `gspa-nf/README.md` for the full story and `gspa-nf/UNIMATRIX01.md` for the worked cluster example.
 - **benchmark/** — Python evaluation harness + neural-predictor sidecar (`benchmark/neural/run_neural_predictors.py`). See `benchmark/README.md` for script layout.
+- **deepgo-plusplus/** — Self-contained, reproducible retraining pipeline for the `deepgo-plusplus` predictor (the learned-stacker CAFA6 baseline; legacy sidecar/CLI alias `cafa-baseline`). `Makefile` rebuilds the frozen integrator from a UniProt/STRING/CAFA release; deps pinned via `uv` (`pyproject.toml`); regression suite in `deepgo-plusplus/tests/` (`uv run make test`). Inference still runs through the shared neural sidecar. See `deepgo-plusplus/README.md`.
 
 The exclusions are recorded in `settings.gradle.kts` so they aren't mistaken for "forgotten" subprojects.
 
 ## Key Design Decisions
 
-- **Consistency checking uses SAT4J** (not ELK) — taxon constraints encoded as propositional SAT with sibling disjointness. UNSAT core for violation explanation.
+- **Consistency checking uses SAT4J** (not ELK) — taxon constraints encoded as propositional SAT with multi-parent `is_a`, explicit `disjoint_from` axioms (the Asaad / genome-scale-pfp-adjust model; bundled data in `gspa-core/src/main/resources/taxon-constraints/`), and an optional asserted organism taxon. UNSAT core for violation explanation.
 - **ELK** used only for completeness (subsumption) and coherence (has_part pair extraction).
+- **Quality enforcement (optional, off by default)** — beyond measuring, GSPA can repair predictions: consistency (`minimal-flip` = SAT4J weighted-MaxSAT min-cost demotion, plus remove/downrank/flag), completeness (promote missing essentials), coherence (Asaad Stage-2 complex + has_part promotion). All carry toggleable provenance. See `gspa.metrics.{ConsistencyEnforcer,CompletenessEnforcer,CoherenceEnforcer}` and `GENOME_GFF3_ANNOTATION.md`.
+- **Genome + GFF3 input** — `gspa annotate` translates supplied CDS (`gspa.io.CdsTranslator`) instead of re-calling genes; genome-scale metrics run **per contig** by default. See `GENOME_GFF3_ANNOTATION.md`.
 - Essential function profiles are **runtime-configurable** (add/remove GO terms per run).
 - All predictors implement `Predictor` interface; genome-level ones implement `GenomePredictor`.
 - External tools wrapped via `AbstractToolPredictor` (command + parse pattern).

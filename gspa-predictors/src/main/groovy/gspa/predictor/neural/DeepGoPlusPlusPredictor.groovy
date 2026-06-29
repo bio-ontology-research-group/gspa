@@ -3,28 +3,34 @@ package gspa.predictor.neural
 import gspa.model.AnnotationType
 
 /**
- * GSPA's CAFA6 {@code cafa-baseline} predictor: a <b>learned stacker</b> over
- * the per-component GO scores already produced by the upstream GSPA
- * predictors (DIAMOND/BLAST-KNN, FoldSeek-KNN, CLEAN, InterPro, an ESM2 MLP
- * head and a structure-aware ProstT5 head).
+ * GSPA's <b>DeepGO-PlusPlus</b> predictor (sidecar id {@code deepgo-plusplus};
+ * the legacy id {@code cafa-baseline} remains a working alias): a <b>learned
+ * stacker</b> over the per-component GO scores already produced by the upstream
+ * GSPA predictors (DIAMOND/BLAST-KNN, FoldSeek-KNN, CLEAN, InterPro, an ESM2
+ * MLP head, a structure-aware ProstT5 head, plus optional Net-KNN over STRING
+ * PPI and a BM25 literature channel).
  *
  * <p>It does <em>not</em> re-run those tools. Instead it consumes a directory
  * of precomputed per-component score TSVs ({@code <component>.tsv[.gz]} with
  * rows {@code protein\\tterm\\tscore}) and applies a <b>frozen</b> per-aspect
- * logistic-regression integrator (trained once via
- * {@code benchmark/neural/train_ltr_integrator.py --save-model} and saved as
- * JSON). This replaces the naive max-merge that, on our original CAFA6 entry,
- * destroyed the molecular-function signal; the learned integration recovered
- * novel-protein IA-weighted f_w from 0.359 to 0.483 on the CAFA6
- * reconstruction (vs the 0.524 winner).
+ * logistic-regression integrator (retrained reproducibly via the
+ * {@code deepgo-plusplus/} pipeline — {@code pipeline/train_integrator.py
+ * --save-model} — and saved as JSON). This replaces the naive max-merge that,
+ * on our original CAFA6 entry, destroyed the molecular-function signal; the
+ * learned integration recovered novel-protein IA-weighted f_w from 0.359 to
+ * 0.483 on the CAFA6 reconstruction (vs the 0.524 winner).
  *
- * <p>The sidecar runner ({@code --predictor cafa-baseline}) propagates each
+ * <p>The frozen model is retrainable at every new UniProt / STRING release; the
+ * full reproducible recipe lives in {@code deepgo-plusplus/README.md} and
+ * {@code deepgo-plusplus/Makefile}.
+ *
+ * <p>The sidecar runner ({@code --predictor deepgo-plusplus}) propagates each
  * component to its GO ancestors (max), forms per-(protein, term) candidates
  * per aspect, and emits {@code sigmoid(w·x + b)} as the combined GO score.
  */
-class CafaBaselinePredictor extends AbstractNeuralSidecarPredictor {
+class DeepGoPlusPlusPredictor extends AbstractNeuralSidecarPredictor {
 
-    /** Frozen integrator model JSON (train_ltr_integrator.py --save-model). Required. */
+    /** Frozen integrator model JSON (train_integrator.py --save-model). Required. */
     String integrator
 
     /**
@@ -38,13 +44,13 @@ class CafaBaselinePredictor extends AbstractNeuralSidecarPredictor {
     String dag
 
     @Override
-    String getName() { 'cafa-baseline' }
+    String getName() { 'deepgo-plusplus' }
 
     @Override
     Set<AnnotationType> getOutputTypes() { [AnnotationType.GO] as Set }
 
     @Override
-    String getPredictorName() { 'cafa-baseline' }
+    String getPredictorName() { 'deepgo-plusplus' }
 
     @Override
     protected List<String> extraSidecarArgs() {

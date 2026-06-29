@@ -8,7 +8,7 @@ import gspa.model.OrganismDomain
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 
-@Command(name = 'evaluate', description = 'Evaluate quality of existing annotations')
+@Command(name = 'evaluate', description = 'Evaluate quality of existing annotations', mixinStandardHelpOptions = true)
 class EvaluateCommand implements Runnable {
 
     @Option(names = ['-i', '--input'], required = true, description = 'Input GFF3 file')

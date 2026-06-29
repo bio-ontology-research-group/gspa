@@ -1,0 +1,31 @@
+[project]
+name = "deepgo-plusplus"
+version = "1.0.0"
+description = "DeepGO-PlusPlus — reproducible retraining pipeline for GSPA's learned-stacker GO predictor"
+requires-python = ">=3.10"
+
+# Core (CPU-only) dependencies — everything needed to build the net/lit
+# components, train + freeze the integrator, score it, and run the tests.
+# Pin with compatible-release ranges; the committed uv.lock is the exact
+# reproducibility artifact (regenerate with `uv lock` after any bump).
+dependencies = [
+    "numpy>=1.26,<3",
+    "scikit-learn~=1.5",
+    "rank-bm25~=0.2.2",
+    "cafaeval>=1.2",
+]
+
+[project.optional-dependencies]
+# Only needed for the blind pre-t0 integrator (PLM head OOF) — runs on GPU
+# (ORIX). Not required for the CPU retrain path or the test suite.
+gpu = ["torch>=2.2"]
+dev = ["pytest>=8"]
+
+[tool.uv]
+# `uv sync` installs the locked environment; `uv run make all` then drives the
+# whole retrain in it. Keep uv.lock committed for byte-reproducible installs.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

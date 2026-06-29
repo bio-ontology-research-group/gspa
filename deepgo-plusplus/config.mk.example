@@ -1,0 +1,34 @@
+# DeepGO-PlusPlus retrain configuration — copy to config.mk and edit.
+# `make` reads config.mk automatically (it is .gitignored). Record the actual
+# release versions you used in VERSIONS.md for provenance.
+
+# --- UniProt release --------------------------------------------------------
+# SwissProt flat file for the text + STRING-xref + taxon index (net/lit).
+UNIPROT_SPROT_DAT   = $(HOME)/Public/software/cafa6/uniprot_sprot.dat.gz
+
+# --- CAFA6 ground-truth source ----------------------------------------------
+# Dated GOA filter restricted to test-superset proteins + experimental evidence,
+# columns: accession <tab> GO <tab> F|P|C <tab> evidence <tab> YYYYMMDD.
+# Produced on IBEX from goa_uniprot_all.gaf.gz (see README §"Ground truth").
+TESTSUPERSET_ANNOTS = testsuperset_exp_annots.tsv
+T0                  = 20260202
+
+# --- CAFA6 official artifacts (pre-t0; the training data we actually had) ----
+TRAIN_TERMS = $(HOME)/Public/software/cafa6/kaggle-official/train_terms.tsv
+IA          = $(HOME)/Public/software/cafa6/kaggle-official/IA.tsv
+DAG         = $(HOME)/Public/software/cafa6/go-dag.tsv
+OBO         = $(HOME)/Public/software/cafa6/go.obo
+TAXON       = $(HOME)/Public/software/cafa6/kaggle-official/testsuperset-taxon-list.tsv
+
+# --- STRING release ---------------------------------------------------------
+# Directory of per-species link files {taxid}.protein.links.v12.0.txt.gz.
+# Download with: pipeline/../../benchmark/neural/run_net_ws.sh  (integrity+retry)
+STRING_DIR = string
+
+# --- which components feed the integrator ------------------------------------
+# Default = the 6 shipped components. Recommended once net is built: append ,net
+# COMPONENT_LIST = diam,foldseek,clean,interpro,mlp,prostt5,net
+COMPONENT_LIST = diam,foldseek,clean,interpro,mlp,prostt5
+
+# Output of training:
+MODEL = models/deepgo_plusplus_integrator.json

@@ -1,0 +1,24 @@
+# Local retrain configuration + build artifacts (large, regenerated).
+config.mk
+build/
+string/
+string_dl/
+*.tsv
+*.tsv.gz
+*.fasta
+*.obo
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Trained head weights = large, regenerated deployment assets (rebuild at release):
+# cnn_mcm.pt, head_prostt5_mcm.pt, head_650m_mcm.pt (see VERSIONS.md).
+models/weights/
+*.pt
+
+# Keep: the pipeline code, the frozen integrator JSONs, the test fixtures,
+# and the committed ablation numbers.
+!models/*.json
+!tests/fixtures/**
+!ablation_no_results.tsv

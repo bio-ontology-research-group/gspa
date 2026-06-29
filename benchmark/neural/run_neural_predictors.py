@@ -423,7 +423,8 @@ def run_esm2_centroid(rows: list[ManifestRow], args: argparse.Namespace) -> None
                 fh.close()
 
 
-# -------- runner: cafa-baseline (learned LTR integrator) ---------------
+# -------- runner: deepgo-plusplus (learned LTR integrator) -------------
+# (legacy alias: cafa-baseline)
 
 
 _GO_ROOTS = {"GO:0003674": "MF", "GO:0008150": "BP", "GO:0005575": "CC"}
@@ -486,36 +487,39 @@ def _load_component_propagated(path: Path, keep: set[str], anc: dict[str, set[st
     return out
 
 
-def run_cafa_baseline(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+def run_deepgo_plusplus(rows: list[ManifestRow], args: argparse.Namespace) -> None:
     """Apply a frozen learned LTR integrator (``--integrator`` JSON from
-    ``train_ltr_integrator.py --save-model``) over precomputed component
-    score files in ``--components-dir`` to produce calibrated combined GO
-    scores. This is GSPA's CAFA6 ``cafa-baseline``: the components
-    (DIAMOND/FoldSeek/CLEAN/InterPro/ESM2-MLP/ProstT5) are produced upstream;
-    this stage replaces naive max-merge with the per-aspect logistic stacker
-    that recovered novel-protein f_w 0.359 -> 0.483 on the CAFA6 reconstruction."""
+    ``deepgo-plusplus/pipeline/train_integrator.py --save-model``) over
+    precomputed component score files in ``--components-dir`` to produce
+    calibrated combined GO scores. This is GSPA's **DeepGO-PlusPlus** predictor
+    (legacy id ``cafa-baseline``): the components
+    (DIAMOND/FoldSeek/CLEAN/InterPro/ESM2-MLP/ProstT5/Net-KNN/literature) are
+    produced upstream; this stage replaces naive max-merge with the per-aspect
+    logistic stacker that recovered novel-protein f_w 0.359 -> 0.483 on the
+    CAFA6 reconstruction."""
     import math
 
+    name = getattr(args, "predictor", "deepgo-plusplus")
     if not args.integrator:
-        raise SystemExit("cafa-baseline requires --integrator (frozen model JSON)")
+        raise SystemExit(f"{name} requires --integrator (frozen model JSON)")
     if not args.components_dir:
-        raise SystemExit("cafa-baseline requires --components-dir")
+        raise SystemExit(f"{name} requires --components-dir")
     if not args.dag:
-        raise SystemExit("cafa-baseline requires --dag (go-dag.tsv child\\tancestor)")
+        raise SystemExit(f"{name} requires --dag (go-dag.tsv child\\tancestor)")
 
     with open(args.integrator) as fh:
         model = json.load(fh)
     components: list[str] = model["components"]
     aspect_models: dict[str, dict] = model["aspects"]
-    LOG.info("cafa-baseline: %d components, aspects %s",
-             len(components), sorted(aspect_models))
+    LOG.info("%s: %d components, aspects %s",
+             name, len(components), sorted(aspect_models))
 
     anc = _load_dag(Path(args.dag))
     aspect_of = _aspect_of_terms(anc)
 
     cdir = Path(args.components_dir)
     for row in rows:
-        out_path = output_path(row, "cafa-baseline")
+        out_path = output_path(row, name)
         LOG.info("  %s -> %s", row.tag, out_path)
         # restrict to the query proteins in this manifest row's FASTA
         keep = {pid for pid, _seq in iter_fasta(row.fasta_path)}
@@ -549,9 +553,168 @@ def run_cafa_baseline(rows: list[ManifestRow], args: argparse.Namespace) -> None
                         for i, c in enumerate(components):
                             x = comp[c].get(prot, {}).get(t, 0.0)
                             z += coef[i] * (x - mean[i]) / (scale[i] if scale[i] else 1.0)
-                        s = 1.0 / (1.0 + math.exp(-z))
+                        # numerically stable logistic sigmoid (avoids exp overflow
+                        # when |z| is large for extreme component combinations)
+                        if z >= 0:
+                            s = 1.0 / (1.0 + math.exp(-z))
+                        else:
+                            ez = math.exp(z)
+                            s = ez / (1.0 + ez)
                         if s >= args.min_score:
                             writer.writerow([prot, t, f"{s:.4f}", "GO"])
+        finally:
+            fh.close()
+
+
+# -------- runner: deepgo-plusplus-light (self-contained, CPU-only) ----
+
+
+def _deepgo_plusplus_light_via_server(rows, args, server):
+    """Forward each manifest row to the warm dgpp_server.py over its Unix socket
+    and write the returned TSV — identical output to the in-process path, but the
+    205 MB model stays loaded in the server instead of being rebuilt per call."""
+    import socket as _socket
+    params = json.dumps({
+        'interpro': bool(args.dgpp_light_interpro),
+        'cnn': bool(args.dgpp_light_cnn),
+        'topk': args.top_k,
+        'min_score': args.min_score,
+        'threads': args.dgpp_light_threads,
+    }).encode()
+    name = getattr(args, 'predictor', 'deepgo-plusplus-light')
+    for row in rows:
+        out_path = output_path(row, name)
+        LOG.info("  %s -> %s (warm server)", row.tag, out_path)
+        fasta = Path(row.fasta_path).read_bytes()
+        sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+        sock.connect(server)
+        try:
+            sock.sendall(params + b'\n' + fasta)
+            sock.shutdown(_socket.SHUT_WR)
+            chunks = []
+            while True:
+                b = sock.recv(1 << 16)
+                if not b:
+                    break
+                chunks.append(b)
+        finally:
+            sock.close()
+        resp = b''.join(chunks).decode('utf-8', 'replace')
+        if resp.startswith('#ERR'):
+            raise SystemExit('deepgo-plusplus-light server error: ' + resp.strip())
+        fh, writer = open_output(out_path)
+        try:
+            for line in resp.splitlines():
+                if not line.strip():
+                    continue
+                c = line.split('\t')
+                if len(c) >= 4:
+                    writer.writerow([c[0], c[1], c[2], c[3]])
+        finally:
+            fh.close()
+
+
+def run_deepgo_plusplus_light(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+    """GSPA's **DeepGO-PlusPlus-Light** predictor: self-contained, CPU-only.
+
+    Unlike ``deepgo-plusplus`` (which stacks *precomputed* component scores),
+    this runner runs DIAMOND + the homology-bridged STRING Net-KNN **itself**
+    from the query FASTA, then applies the frozen per-aspect logistic
+    integrator — the same model the standalone webservice serves. The fast
+    path needs only the ``diamond`` binary and the Python standard library
+    (no numpy / torch); ``--dgpp-light-cnn`` and ``--dgpp-light-interpro`` are
+    optional, heavier components.
+
+    The inference core (``DGppLight``) is **reused verbatim** from
+    ``deepgo-plusplus/service/predict.py`` so there is a single source of
+    truth for the model math; only the asset wiring lives here.
+
+    If ``DGPP_LIGHT_SERVER`` names a live Unix socket (the warm
+    ``dgpp_server.py`` running in the container), forward to it instead of
+    constructing DGppLight here — that skips the ~10 s per-request reload of
+    the 205 MB STRING Net-KNN index. Falls back to in-process if the socket is
+    absent (server still warming up, or not deployed)."""
+    server = os.environ.get('DGPP_LIGHT_SERVER')
+    if server and os.path.exists(server):
+        try:
+            _deepgo_plusplus_light_via_server(rows, args, server)
+            return
+        except OSError as exc:
+            # Stale socket / server died mid-flight: fall back to in-process so a
+            # crashed warm server degrades gracefully (slower) instead of failing.
+            LOG.warning("warm dgpp_light server at %s unavailable (%s); "
+                        "falling back to in-process construction", server, exc)
+    if not args.dgpp_light_assets:
+        raise SystemExit(
+            "deepgo-plusplus-light requires --dgpp-light-assets "
+            "(make_assets.sh bundle: train_db.dmnd, train_net_index.tsv, "
+            "train_terms.tsv, go-dag.tsv [, go.obo, cnn_model.pt])")
+
+    # Locate the canonical DGppLight implementation. Default to the repo-relative
+    # service dir; allow an override for non-standard deployments.
+    service_dir = args.dgpp_light_service or str(
+        Path(__file__).resolve().parents[2] / "deepgo-plusplus" / "service")
+    if service_dir not in sys.path:
+        sys.path.insert(0, service_dir)
+    try:
+        from predict import DGppLight  # noqa: E402  (canonical inference core)
+    except ImportError as exc:
+        raise SystemExit(
+            f"deepgo-plusplus-light: cannot import DGppLight from {service_dir}: {exc}")
+
+    assets = Path(args.dgpp_light_assets)
+    models_dir = Path(args.dgpp_light_models) if args.dgpp_light_models \
+        else Path(service_dir).parent / "models"
+
+    def _a(name: str) -> str:
+        return str(assets / name)
+
+    def _m(name: str) -> str:
+        return str(models_dir / name)
+
+    # (interpro, cnn) -> frozen model; identical mapping to the webservice
+    # (deepgo-plusplus/service/app.py). Only present files are served.
+    model_map = {
+        (False, False): _m("deepgo_plusplus_light_fast.json"),       # diam+net_union
+        (False, True):  _m("deepgo_plusplus_light_fast_cnn.json"),   # +cnn
+        (True,  False): _m("deepgo_plusplus_light_cpu.json"),        # +interpro
+        (True,  True):  _m("deepgo_plusplus_light_full.json"),       # +interpro+cnn
+    }
+
+    obo = _a("go.obo")
+    cnn_model = args.dgpp_light_cnn_model or _a("cnn_model.pt")
+    pred = DGppLight(
+        models=model_map,
+        train_net_index=_a("train_net_index.tsv"),
+        train_terms=_a("train_terms.tsv"),
+        dag=_a("go-dag.tsv"),
+        diamond_db=_a("train_db"),
+        obo=obo if os.path.exists(obo) else None,
+        diamond_bin=args.dgpp_light_diamond or "diamond",
+        interproscan=args.dgpp_light_interproscan,
+        cnn_model=cnn_model,
+        threads=args.dgpp_light_threads,
+    )
+
+    interpro = bool(args.dgpp_light_interpro)
+    cnn = bool(args.dgpp_light_cnn)
+    if (interpro, cnn) not in pred.models:
+        raise SystemExit(
+            f"deepgo-plusplus-light: no model for interpro={interpro}, cnn={cnn} "
+            f"(available combinations: {pred.available()}); check --dgpp-light-models")
+
+    name = getattr(args, "predictor", "deepgo-plusplus-light")
+    for row in rows:
+        out_path = output_path(row, name)
+        LOG.info("  %s -> %s", row.tag, out_path)
+        fasta_text = Path(row.fasta_path).read_text()
+        results = pred.predict(fasta_text, interpro=interpro, cnn=cnn,
+                               topk=args.top_k, min_score=args.min_score)
+        fh, writer = open_output(out_path)
+        try:
+            for prot in sorted(results):
+                for p in results[prot]:
+                    writer.writerow([prot, p["term"], f"{p['score']:.4f}", "GO"])
         finally:
             fh.close()
 
@@ -559,12 +722,65 @@ def run_cafa_baseline(rows: list[ManifestRow], args: argparse.Namespace) -> None
 # -------- main --------------------------------------------------------
 
 
+# Backwards-compatible alias: the predictor was originally shipped as
+# ``cafa-baseline``; ``deepgo-plusplus`` is the canonical name. Both keys map
+# to the same runner so existing pipelines and models keep working.
+run_cafa_baseline = run_deepgo_plusplus
+
+
+# -------- runner: dgpp-head (hierarchy-aware PLM head apply) -----------
+
+
+def run_dgpp_head(rows: list[ManifestRow], args: argparse.Namespace) -> None:
+    """Apply a saved **hierarchy-aware (C-HMCNN) PLM head** to precomputed
+    embeddings, emitting GO component scores for the DeepGO-PlusPlus integrator.
+
+    The head ``.pt`` is produced by ``deepgo-plusplus/pipeline/train_head_hmcnn.py
+    --save-model`` (per-aspect MLP trained with the Max-Constraint Module over the
+    GO is_a+part_of DAG); the embeddings ``.npz`` (ids, emb) come from
+    ``extract_embeddings.py`` (GPU — esm2_650m / prostt5 / esm2_3b). Inference here
+    is a plain MLP forward (CPU or GPU). To keep a single source of truth this
+    shells out to the head script's validated ``--load-model`` apply path, then
+    rewrites the 3-column output to the sidecar's 4-column schema.
+
+    Use ``--apply-emb`` for the embedding npz (one per run). The resulting
+    component TSV feeds ``deepgo-plusplus`` (``--integrator
+    deepgo_plusplus_integrator_full_aux_mcm.json``)."""
+    if not args.head_checkpoint:
+        raise SystemExit("dgpp-head requires --head-checkpoint (train_head_hmcnn.py --save-model .pt)")
+    if not args.apply_emb:
+        raise SystemExit("dgpp-head requires --apply-emb (embedding .npz from extract_embeddings.py)")
+    head_script = Path(__file__).resolve().parents[2] / "deepgo-plusplus" / "pipeline" / "train_head_hmcnn.py"
+    if not head_script.exists():
+        raise SystemExit(f"dgpp-head: cannot find {head_script}")
+    for row in rows:
+        out_path = output_path(row, "dgpp-head")
+        raw = out_path.with_suffix(".raw.tsv")
+        LOG.info("  %s: apply %s over %s", row.tag, args.head_checkpoint, args.apply_emb)
+        subprocess.run([sys.executable, str(head_script), "--load-model", str(args.head_checkpoint),
+                        "--apply-emb", str(args.apply_emb), "--out", str(raw)], check=True)
+        fh, writer = open_output(out_path)
+        try:
+            with raw.open() as rf:
+                for line in rf:
+                    c = line.rstrip("\n").split("\t")
+                    if len(c) >= 3 and float(c[2]) >= args.min_score:
+                        writer.writerow([c[0], c[1], c[2], "GO"])
+        finally:
+            fh.close()
+            raw.unlink(missing_ok=True)
+        LOG.info("  %s -> %s", row.tag, out_path)
+
+
 RUNNERS: dict[str, Callable[[list[ManifestRow], argparse.Namespace], None]] = {
     "esm2-deepgoplus": run_esm2_deepgoplus,
     "proteinfer": run_proteinfer,
     "clean": run_clean,
     "esm2-centroid": run_esm2_centroid,
-    "cafa-baseline": run_cafa_baseline,
+    "deepgo-plusplus": run_deepgo_plusplus,
+    "cafa-baseline": run_deepgo_plusplus,
+    "deepgo-plusplus-light": run_deepgo_plusplus_light,
+    "dgpp-head": run_dgpp_head,
 }
 
 
@@ -596,15 +812,48 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--top-k", type=int, default=5,
                     help="esm2-centroid: keep the k nearest centroids per protein (default 5)")
 
-    # cafa-baseline (learned LTR integrator)
+    # deepgo-plusplus (learned LTR integrator; legacy alias cafa-baseline)
     ap.add_argument("--integrator", type=Path,
-                    help="cafa-baseline: frozen integrator JSON "
-                         "(train_ltr_integrator.py --save-model)")
+                    help="deepgo-plusplus: frozen integrator JSON "
+                         "(deepgo-plusplus/pipeline/train_integrator.py --save-model)")
     ap.add_argument("--components-dir", type=Path,
-                    help="cafa-baseline: directory of per-component score TSVs "
+                    help="deepgo-plusplus: directory of per-component score TSVs "
                          "(<component>.tsv[.gz]: protein\\tterm\\tscore)")
     ap.add_argument("--dag", type=Path,
-                    help="cafa-baseline: go-dag.tsv (child\\tancestor) for true-path propagation")
+                    help="deepgo-plusplus: go-dag.tsv (child\\tancestor) for true-path propagation")
+
+    # dgpp-head (hierarchy-aware PLM head apply)
+    ap.add_argument("--head-checkpoint", type=Path,
+                    help="dgpp-head: saved C-HMCNN PLM head (.pt from train_head_hmcnn.py --save-model)")
+    ap.add_argument("--apply-emb", type=Path,
+                    help="dgpp-head: precomputed embedding .npz (ids, emb) from extract_embeddings.py")
+
+    # deepgo-plusplus-light (self-contained: runs DIAMOND + net bridge itself)
+    ap.add_argument("--dgpp-light-assets",
+                    help="deepgo-plusplus-light: make_assets.sh bundle dir "
+                         "(train_db.dmnd, train_net_index.tsv, train_terms.tsv, "
+                         "go-dag.tsv [, go.obo, cnn_model.pt])")
+    ap.add_argument("--dgpp-light-models",
+                    help="deepgo-plusplus-light: dir of frozen integrator JSONs "
+                         "(default: deepgo-plusplus/models)")
+    ap.add_argument("--dgpp-light-service",
+                    help="deepgo-plusplus-light: dir containing the canonical "
+                         "predict.py (default: deepgo-plusplus/service)")
+    ap.add_argument("--dgpp-light-diamond", default="diamond",
+                    help="deepgo-plusplus-light: DIAMOND binary (default: diamond)")
+    ap.add_argument("--dgpp-light-threads", type=int, default=8,
+                    help="deepgo-plusplus-light: DIAMOND threads (default: 8)")
+    ap.add_argument("--dgpp-light-interpro", action="store_true",
+                    help="deepgo-plusplus-light: add the InterProScan component "
+                         "(needs --dgpp-light-interproscan)")
+    ap.add_argument("--dgpp-light-cnn", action="store_true",
+                    help="deepgo-plusplus-light: add the CPU 1D-CNN component "
+                         "(orphan coverage; needs torch + cnn_model.pt)")
+    ap.add_argument("--dgpp-light-interproscan",
+                    help="deepgo-plusplus-light: interproscan.sh launcher path")
+    ap.add_argument("--dgpp-light-cnn-model",
+                    help="deepgo-plusplus-light: CNN weights override "
+                         "(default: <assets>/cnn_model.pt)")
 
     return ap.parse_args()
 

@@ -41,7 +41,8 @@ import java.nio.file.StandardCopyOption
  */
 @Command(
     name = 'visualize',
-    description = 'Emit a single self-contained HTML browser for a GSPA workspace.'
+    description = 'Emit a single self-contained HTML browser for a GSPA workspace.',
+    mixinStandardHelpOptions = true
 )
 class VisualizeCommand implements Runnable {
 

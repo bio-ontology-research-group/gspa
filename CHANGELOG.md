@@ -11,9 +11,89 @@ user-visible deltas; for measured impact, follow the cross-references.
 ## [Unreleased]
 
 ### Added
-- **`cafa-baseline` learned-stacker GO predictor** (`CafaBaselinePredictor`).
-  A CAFA6-competitive predictor built with no new model architecture: it
-  replaces naive max-merge of GSPA's component predictors
+- **DeepGO-PlusPlus-Light webservice + bridge optimization** (`deepgo-plusplus/service/`,
+  `pipeline/apply_net_bridge.py`, model `deepgo_plusplus_light_fast.json`). The
+  homology-bridged `net` is made request-fast by precomputing each train node's
+  STRING-neighbour vote once (`build_net_component.py` over the train nodes →
+  `train_net_index.tsv`); at inference the bridge is a DIAMOND search + index lookup
+  (**8 s vs ~13 min**, recovering ~99 % of the slow bridge's f_w: 0.517 vs 0.521 on
+  the set-B hold-out). A FastAPI service (`POST /predict` FASTA → JSON GO terms,
+  ~5 s/protein, CPU-only) + Dockerfile serve the fast `diam+net_union` model by
+  default with an opt-in `?interpro=true` (3-component, needs InterProScan). One
+  DIAMOND search powers both `diam` (BLAST-KNN) and the bridged `net`; novel
+  proteins not in STRING are handled via the bridge. Verified end-to-end (image
+  builds, `/health` + `/predict` serve real predictions). **Optional composable
+  components**: `?cnn=true` adds the CPU 1D-CNN (orphan coverage — a signal for
+  proteins with no homolog, where `diam`/`net` are blind; bundles CPU PyTorch,
+  needs `cnn_model.pt`), `?interpro=true` adds InterProScan domains (not bundled).
+  Four frozen models cover the combinations (`deepgo_plusplus_light_{fast,fast_cnn,cpu,full}.json`);
+  each optional path 400s if its asset is absent.
+- **DeepGO-PlusPlus full ablation + aggregator study** (`deepgo-plusplus/pipeline/ablation.py`;
+  raw numbers `deepgo-plusplus/ablation_no_results.tsv`, deep dive in
+  `RESULTS.md`). One reproducible pass (loads each component once, scores all
+  configs in a single `cafaeval` call) reports per-component standalone,
+  leave-one-out, and cumulative-build-up f_w plus a **logistic-regression vs
+  gradient-boosted-trees** aggregator comparison. Findings: **`net` is the only
+  large marginal contributor** (+0.049 LOO); the PLM/homology/domain channels are
+  largely redundant for novel proteins and **`clean` *decreases* the score**;
+  **leak-free XGBoost does not beat the linear stacker** (0.478 vs 0.483) and
+  XGBoost + term-identity features **leaks** to a non-credible MF 0.963 — the
+  bottleneck is signal diversity/generalisation, not aggregator capacity. This is
+  why DG++ ships the linear, scores-only integrator.
+- **DeepGO-PlusPlus-Light — no-GPU variant** (`eval_light.py` + `build_cnn_component.py`
+  + `build_net_bridge.py` + `extract_sprot_fasta.py`; models
+  `deepgo_plusplus_light_cpu.json`, `deepgo_plusplus_light.json`,
+  `deepgo_plusplus_light_cnn.json`). Drops the GPU PLM heads (`mlp`/`prostt5`/
+  `esm2_3b`) and uses only CPU components (DIAMOND, FoldSeek over AlphaFold-DB
+  structures, InterProScan/-LR, STRING Net-KNN, optional BM25 `lit`) plus a CPU
+  **1D-CNN over sequence** (`cnn`, DeepGOCNN-style, frequency-weighted BCE, trained
+  on the 80,750 pre-t0 SwissProt proteins) meant to replace the PLM heads. Runs
+  through the existing predictor unchanged (component list read from the JSON).
+  Two CAFA6 findings (no-knowledge IA-weighted f_w; tables in `RESULTS.md`):
+  **(1) the best no-GPU panel `diam+foldseek+interpro+net` (0.550) beats the full
+  GPU model (0.532) on novel proteins** — the PLM heads are redundant with `net`;
+  **(2) the 1D-CNN does not improve novel-protein f_w** (standalone 0.206; −0.012
+  in panel) — a sequence model trained on pre-t0 data hits the same generalisation
+  wall, so it ships as the separate coverage-first `_cnn` model (0.516, predicts for
+  every protein incl. orphans) rather than in the default.
+  **(3) `foldseek` is not unconditionally GPU-free** (it needs a query structure —
+  a CPU AFDB lookup, but folding a novel sequence needs a GPU); the strictly-no-GPU
+  panel drops it (`diam+interpro+net`, 0.544, −0.006). **(4) `net` only fires for
+  STRING members**, so `build_net_bridge.py` adds a DIAMOND homology bridge (query →
+  pre-t0 STRING-member homolog → neighbour labels) that takes the 356 no-STRING
+  no-knowledge proteins from f_w 0 → 0.42 and lifts the structure-free panel to
+  **0.564** — shipped as **`deepgo_plusplus_light_cpu.json`** (`diam,interpro,net_union`),
+  the **recommended strictly-no-GPU model** (works for any sequence, incl. proteins
+  not in STRING). Bridge is leak-safe (pre-t0 homolog DB; novel queries can't
+  self-match). **Validated by a hold-out-from-STRING sweep** across all three
+  knowledge classes (delete each in-STRING protein's STRING node, recover via the
+  bridge; 0 % node-self contamination): the bridge recovers **~100 %** of the
+  direct-STRING f_w for no-knowledge (0.5210 vs 0.5213) and limited (0.5217 vs
+  0.5227) proteins and **~96 %** for partial (0.432 vs 0.449) — a near-perfect
+  substitute for STRING membership, not just a fallback.
+- **`deepgo-plusplus` module + reproducible retraining pipeline**
+  (`deepgo-plusplus/`). The learned-stacker predictor is consolidated into a
+  self-contained module — the predictor was renamed **`cafa-baseline` →
+  `deepgo-plusplus`** (the old id stays a working alias everywhere: sidecar
+  runner, CLI flags `--cafa-baseline*`, and the `RUNNERS` registry). The new
+  folder is **re-runnable at every UniProt / STRING release**: a `Makefile`
+  drives the full DAG (UniProt index → CAFA6 ground truth → Net-KNN/literature
+  components → train + freeze the integrator → `cafaeval`), inputs are declared
+  in `config.mk`, dependencies are pinned in `pyproject.toml` (uv), and input
+  release provenance is recorded in `VERSIONS.md`. Apply via the same canonical
+  runner (`pipeline/apply_integrator.py` reuses `run_deepgo_plusplus` — one
+  copy of the integration math). Frozen models shipped under
+  `deepgo-plusplus/models/` (`deepgo_plusplus_integrator{,_net,_lit_net}.json`).
+  **Comprehensive regression tests** (`deepgo-plusplus/tests/`, pure-CPU/offline
+  pytest): ground-truth knowledge-class + t0 logic, the UniProt index parser,
+  Net-KNN (vote/min-conf/corrupt-file skip), the literature **name-only leak
+  guard** + sharding, integrator schema/stability/leak-config guard, the frozen
+  apply (DAG propagation, min-score, the stable-sigmoid extreme-`z` regression),
+  an end-to-end signal-recovery chain, and a shipped-model schema check.
+
+- **DeepGO-PlusPlus learned-stacker GO predictor** (`DeepGoPlusPlusPredictor`,
+  sidecar id `deepgo-plusplus`). A CAFA6-competitive predictor built with no new
+  model architecture: it replaces naive max-merge of GSPA's component predictors
   (DIAMOND/BLAST-KNN, FoldSeek-KNN, CLEAN, InterPro, an ESM2 MLP head and a
   structure-aware ProstT5 head) with a **frozen per-aspect logistic-regression
   stacker**. On a faithful CAFA6 reconstruction (GOA snapshot,
@@ -26,17 +106,52 @@ user-visible deltas; for measured impact, follow the cross-references.
 
   At inference there is no ground truth, so the integrator is trained once and
   **frozen** to a 2 KB JSON
-  (`benchmark/neural/train_ltr_integrator.py --save-model`); an apply-only
-  sidecar runner (`run_neural_predictors.py --predictor cafa-baseline`)
+  (`deepgo-plusplus/pipeline/train_integrator.py --save-model`); an apply-only
+  sidecar runner (`run_neural_predictors.py --predictor deepgo-plusplus`)
   combines precomputed per-component score TSVs, propagates each to GO
   ancestors (max) and emits `sigmoid(w·x + b)`. Applying the frozen model to
   the no-knowledge set scores 0.489, confirming the deployable artifact is
-  faithful. New `CafaBaselineConfig` block in `GspaConfig`; wired into
-  `AnnotationPipeline.createAllPredictors()`; `--cafa-baseline*` CLI flags;
-  Spock coverage for flag serialisation, 4-column output parsing and
-  fail-fast on missing config. Shipped model
-  `benchmark/neural/models/cafa_baseline_integrator.json`; recipe and verified
-  numbers in `benchmark/neural/CAFA_BASELINE.md`. Off by default.
+  faithful. New `DeepGoPlusPlusConfig` block in `GspaConfig`; wired into
+  `AnnotationPipeline.createAllPredictors()`; `--deepgo-plusplus*` CLI flags
+  (legacy `--cafa-baseline*` aliases retained); Spock coverage for flag
+  serialisation, 4-column output parsing and fail-fast on missing config.
+  Shipped model `deepgo-plusplus/models/deepgo_plusplus_integrator.json`;
+  recipe and verified numbers in `deepgo-plusplus/README.md` + `RESULTS.md`.
+  Off by default.
+
+- **DeepGO-PlusPlus network + literature signals (Net-KNN, BM25 text-kNN).**
+  Two more components for the stacker, reproducing the rest of GOAlpha's
+  heterogeneous panel. **Net-KNN** (`net`) votes a query protein's STRING-v12
+  PPI neighbours' pre-t0 GO labels (guilt-by-association); it is leak-free
+  (STRING 2023 edges + `train_terms` labels both pre-t0) and the clear win —
+  adding it lifts the official 3-class IA-weighted f_w on the CAFA6
+  reconstruction **0.629 → 0.647** (no-knowledge 0.489 → 0.538), with gains
+  across novel/limited proteins and only a small partial-knowledge dip.
+  **Literature** (`lit`, BM25 text-kNN over SwissProt names) pushes
+  no-knowledge higher (→ 0.553 combined) but lowers the 3-class mean by hurting
+  partial-knowledge proteins and carries a name-leakage caveat, so it ships as
+  an optional no-knowledge booster, not a default. New shipped models
+  `deepgo_plusplus_integrator_net.json` (recommended) and
+  `deepgo_plusplus_integrator_lit_net.json`; builders
+  `pipeline/build_text_string_index.py`, `pipeline/build_net_component.py`,
+  `pipeline/build_lit_component.py`, `benchmark/neural/run_net_ws.sh`. The
+  Groovy predictor is unchanged (component list lives in the integrator JSON).
+
+### Changed
+- **Renamed `cafa-baseline` → `deepgo-plusplus`** across the predictor, config
+  (`GspaConfig.neural.deepGoPlusPlus`), CLI flags, sidecar runner and shipped
+  model filenames, and relocated the training scripts + models + docs into the
+  new `deepgo-plusplus/` module. The `cafa-baseline` id and `--cafa-baseline*`
+  flags continue to work as aliases, so existing pipelines and frozen models are
+  unaffected.
+
+### Fixed
+- **DeepGO-PlusPlus sidecar: numerically stable logistic sigmoid.** The apply
+  path computed `1/(1+exp(-z))` directly, which raised `OverflowError` for
+  extreme component combinations (large negative `z`); switched to the
+  branchless-by-sign stable form. The 6-component model was unaffected; the
+  fix is required for the larger net/lit models. Now pinned by a regression
+  test (`tests/test_apply_integrator.py::test_extreme_z_does_not_overflow`).
 
 ## [1.5.3] — 2026-05-11 — AntiFam pseudogene scanner
 
