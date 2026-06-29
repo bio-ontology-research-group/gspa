@@ -99,6 +99,24 @@ class AnnotateCommand implements Runnable {
                     + 'or a kingdom name (bacteria/archaea/eukaryote/virus). For single-organism inputs.')
     String organismTaxon
 
+    @Option(names = ['--infer-taxon'],
+            description = 'Infer the organism domain taxon from the predicted functions via the GO taxon constraints '
+                    + '(Asaad-style) and use it for consistency enforcement, instead of assuming one. Writes '
+                    + '<genome>_taxon_inference.tsv with the per-candidate evidence. Ignored if --taxon is given.')
+    boolean inferTaxon
+
+    @Option(names = ['--infer-taxon-min-score'],
+            description = 'Only predictions scoring at least this (0..1) inform taxon inference; the low-score tail '
+                    + 'is cross-domain noise that biases the call. Default ${DEFAULT-VALUE}.')
+    Double inferTaxonMinScore
+
+    @Option(names = ['--min-score'],
+            description = 'Drop GO annotations scoring below this (0..1) right after prediction, before metrics / '
+                    + 'output. Prunes the low-confidence GO-DAG tail (a learned predictor propagates ~thousands of '
+                    + 'near-zero terms per protein up the hierarchy), keeping genome-scale runs and outputs '
+                    + 'tractable. 0 = keep everything (default).')
+    Double minScore
+
     @Option(names = ['-t', '--threads'], description = 'Number of threads', defaultValue = '0')
     int threads
 
@@ -255,18 +273,52 @@ class AnnotateCommand implements Runnable {
         if (taxonConstraintsFile) config.quality.consistency.constraintsFile = taxonConstraintsFile
         if (taxonomyFile) config.quality.consistency.taxonomyFile = taxonomyFile
         if (organismTaxon) config.quality.consistency.organismTaxon = organismTaxon
+        // Inference needs the constraints loaded even when enforcement is off.
+        if (inferTaxon && !organismTaxon) config.quality.consistency.taxonConstraints = true
+        if (inferTaxonMinScore != null) config.quality.consistency.inferTaxonMinScore = inferTaxonMinScore
         if (enforceCompleteness) config.quality.completeness.enforce = true
         if (enforceCoherence) config.quality.coherence.enforce = true
         if (noProvenance) config.quality.provenance = false
 
         applyPredictorFlags(config)
 
+        // Wall-clock timing per phase — written to <genome>_timing.tsv and echoed,
+        // so genome-scale runs report where the time went (prediction vs ontology
+        // load vs metrics vs enforcement).
+        def timings = new LinkedHashMap<String, Double>()
+        final long tStart = System.nanoTime()
+        long[] lastMark = [tStart]
+        def lap = { String name ->
+            long now = System.nanoTime()
+            timings[name] = (timings[name] ?: 0.0d) + (now - lastMark[0]) / 1_000_000_000.0d
+            lastMark[0] = now
+        }
+
         // Build and configure annotation pipeline
         def pipeline = new AnnotationPipeline(config)
         pipeline.configure()
+        lap('setup')
 
         // Run annotation
         def genome = pipeline.annotate(primary)
+        lap('prediction')
+
+        // Optionally prune the low-confidence GO-DAG tail before anything else
+        // touches it. DeepGO-style predictors propagate every prediction up the
+        // ontology, emitting thousands of near-zero terms per protein; on a
+        // complete genome that is ~1e6 annotations that swamp IO, metrics and the
+        // JSON the web shows. A small floor keeps runs tractable without losing
+        // the confident calls (taxon inference, which uses its own high threshold,
+        // is unaffected).
+        if (minScore != null && minScore > 0.0d) {
+            long before = genome.proteins.sum { (long) it.annotations.annotations.size() } ?: 0L
+            genome.proteins.each { p ->
+                p.annotations.annotations.removeAll { it.isGO() && it.score < minScore }
+            }
+            long after = genome.proteins.sum { (long) it.annotations.annotations.size() } ?: 0L
+            println "Pruned GO annotations below score ${minScore}: ${before} -> ${after}"
+            lap('filter')
+        }
 
         // Write output
         pipeline.writeOutput(genome, outputDir)
@@ -279,6 +331,7 @@ class AnnotateCommand implements Runnable {
         } catch (Exception e) {
             System.err.println "  [warn] Failed to write operon TSVs: ${e.message}"
         }
+        lap('output')
 
         // Genome-scale metrics (+ optional enforcement). Needs a GO OWL file;
         // metrics run per contig by default ("not across").
@@ -293,6 +346,16 @@ class AnnotateCommand implements Runnable {
             if (complexTermsFile) qp.complexTermsFile(new File(complexTermsFile))
             // Coherence enforcement (process has_part) needs the ELK reasoner.
             def qualityPipeline = config.quality.coherence.enforce ? qp.initialize() : qp.initializeLite()
+            def goOnt = qualityPipeline.goOntology
+            lap('ontology_load')
+
+            // Infer the organism taxon from the predictions (before enforcement, so
+            // enforcement uses the inferred taxon) unless one was asserted explicitly.
+            if (inferTaxon && !config.quality.consistency.organismTaxon) {
+                def inf = qualityPipeline.inferOrganismTaxon(genome)
+                writeTaxonInference(inf, outputDir, genome.id)
+                lap('taxon_inference')
+            }
 
             if (wantEnforce) {
                 println "Enforcing quality constraints (consistency=${config.quality.consistency.enforce}/" +
@@ -300,11 +363,28 @@ class AnnotateCommand implements Runnable {
                     "coherence=${config.quality.coherence.enforce})..."
                 def report = qualityPipeline.enforceAll(genome)
                 if (report.provenance && report.count() > 0) {
+                    // Label every acted-upon term so the log never shows a bare GO id.
+                    if (goOnt != null) report.actions.each { it.termLabel = goOnt.getLabel(it.term) }
                     def actionsFile = new File(outputDir, "${genome.id}_enforcement_actions.tsv")
                     report.writeTsv(actionsFile)
                     println "  ${report.count()} enforcement action(s) ${report.countsByDimension()}: ${actionsFile}"
                 }
                 // Re-persist annotations so the written outputs reflect enforcement.
+                pipeline.writeOutput(genome, outputDir)
+                lap('enforcement')
+            }
+
+            // Enrich each GO annotation with its label + aspect (MF/BP/CC) and
+            // re-persist, so the annotations TSV never shows a bare GO id and
+            // carries an `aspect` column for standard-format (GAF) export /
+            // per-aspect summaries. After enforcement, so imputed terms are covered.
+            if (goOnt != null) {
+                genome.proteins.each { p ->
+                    p.annotations.goAnnotations().each { a ->
+                        if (!a.goAspect) a.goAspect = goOnt.getAspect(a.value)
+                        if (!a.goLabel) a.goLabel = goOnt.getLabel(a.value)
+                    }
+                }
                 pipeline.writeOutput(genome, outputDir)
             }
 
@@ -327,13 +407,47 @@ class AnnotateCommand implements Runnable {
                     QualityReportWriter.writeJson(report, reportFile)
                     println "  Whole-genome metrics: ${reportFile}"
                 }
+                lap('metrics')
             }
 
             qualityPipeline.dispose()
         }
 
+        writeTimingReport(timings, (System.nanoTime() - tStart) / 1_000_000_000.0d,
+            outputDir, genome, proteinsOnly)
+
         println ""
         println "Done. Output in: ${outputDir}"
+    }
+
+    /**
+     * Persist per-phase wall-clock timing to {@code <genome>_timing.tsv}
+     * (phase, seconds, proteins, seconds_per_1k_proteins) and echo a summary, so
+     * genome-scale runs are transparent about where the time was spent.
+     */
+    private void writeTimingReport(Map<String, Double> timings, double totalSec,
+                                   File outputDir, gspa.model.Genome genome, boolean proteinsOnly) {
+        if (timings.isEmpty()) return
+        outputDir.mkdirs()
+        int nProteins = genome?.proteins?.size() ?: 0
+        def file = new File(outputDir, "${genome.id}_timing.tsv")
+        file.withWriter { w ->
+            w.writeLine(['phase', 'seconds', 'percent'].join('\t'))
+            timings.each { name, sec ->
+                String pct = totalSec > 0 ? String.format(Locale.ROOT, '%.1f', 100.0d * sec / totalSec) : '0.0'
+                w.writeLine([name, String.format(Locale.ROOT, '%.3f', sec), pct].join('\t'))
+            }
+            w.writeLine(['total', String.format(Locale.ROOT, '%.3f', totalSec), '100.0'].join('\t'))
+            w.writeLine(['proteins', nProteins.toString(), ''].join('\t'))
+        }
+        double per1k = nProteins > 0 ? totalSec / nProteins * 1000.0d : 0.0d
+        println ""
+        println "Timing (${nProteins} proteins, ${String.format(Locale.ROOT, '%.1f', totalSec)}s total" +
+            (nProteins > 0 ? ", ${String.format(Locale.ROOT, '%.1f', per1k)}s / 1k proteins" : '') + "):"
+        timings.each { name, sec ->
+            println "  ${name.padRight(16)} ${String.format(Locale.ROOT, '%6.2f', sec)}s" +
+                (totalSec > 0 ? " (${String.format(Locale.ROOT, '%.0f', 100.0d * sec / totalSec)}%)" : '')
+        }
     }
 
     /**
@@ -391,6 +505,36 @@ class AnnotateCommand implements Runnable {
             }
         }
         println "Operons: ${operons.size()} (written to operons.tsv, protein_to_operon.tsv, operons_for_integrate.tsv)"
+    }
+
+    /**
+     * Write the taxon-inference evidence to {@code <genome>_taxon_inference.tsv}
+     * (taxon, label, forbidden, support, inferred) and echo a one-line summary.
+     */
+    private void writeTaxonInference(gspa.metrics.TaxonInference.Result inf, File outputDir, String genomeId) {
+        if (inf == null) return
+        outputDir.mkdirs()
+        def file = new File(outputDir, "${genomeId}_taxon_inference.tsv")
+        file.withWriter { w ->
+            w.writeLine(['taxon', 'label', 'depth', 'forbidden_terms', 'support_terms',
+                         'inferred', 'lineage'].join('\t'))
+            inf.candidates.each { c ->
+                boolean isBest = (c.taxon == inf.taxon)
+                w.writeLine([c.taxon, c.label, c.depth.toString(), c.forbidden.toString(),
+                             c.support.toString(), isBest.toString(),
+                             isBest ? inf.lineage.join(' > ') : ''].join('\t'))
+            }
+        }
+        if (inf.taxon) {
+            String detail = inf.candidates.take(6).collect { "${it.label}=${it.forbidden}" }.join(' ')
+            println "Inferred organism taxon: ${inf.label} (${inf.taxon})" +
+                "${inf.confident ? '' : ' [low confidence]'} from ${inf.constrainedPresent} " +
+                "constraint-bearing terms"
+            if (inf.lineage) println "  Lineage: ${inf.lineage.join(' > ')}"
+            println "  Top candidates (violations): ${detail}"
+        } else {
+            println "Organism taxon could not be inferred (no constraint-bearing terms predicted)."
+        }
     }
 
     private void applyPredictorFlags(GspaConfig config) {
@@ -474,6 +618,23 @@ class AnnotateCommand implements Runnable {
         }
         if (deepGoPlusPlusLightInterproscan) {
             config.predictors.neural.deepGoPlusPlusLight.interproscan = deepGoPlusPlusLightInterproscan
+        }
+
+        // Push the genome-scale score floor (--min-score) down into the neural
+        // sidecar so it never computes/emits the sub-floor, DAG-propagated tail
+        // that gspa would otherwise parse, propagate and then discard in the
+        // post-prediction filter below. On a bacterial proteome this shrinks the
+        // emitted set ~6x (170k -> 26k rows at 0.5) and cuts the prediction phase
+        // ~3x (151s -> 55s) with identical surviving annotations. The filter
+        // (further down) stays as a safety net.
+        if (minScore != null && minScore > 0.0d) {
+            def lc = config.predictors.neural.deepGoPlusPlusLight
+            lc.minScore = Math.max(lc.minScore, minScore)
+        }
+        // Wire the -t/--threads budget into the DIAMOND/sidecar thread count.
+        // (The option was previously parsed but never consumed by any predictor.)
+        if (threads > 0) {
+            config.predictors.neural.deepGoPlusPlusLight.threads = threads
         }
     }
 }

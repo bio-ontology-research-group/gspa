@@ -522,6 +522,13 @@ class GspaConfig {
         /** Path to taxonomy hierarchy file */
         String taxonomyFile
         /**
+         * Minimum prediction score a GO term must reach to inform taxon inference
+         * ({@link gspa.metrics.TaxonInference}). High by default: only confident
+         * predictions are organism-specific; the long tail of low-score calls is
+         * cross-domain noise that would bias the inferred taxon.
+         */
+        double inferTaxonMinScore = 0.9
+        /**
          * Optional explicit taxon-constraint source (overrides extraction from
          * the GO OWL): a {@code go-computed-taxon-constraints.obo} (.obo) or a
          * TSV ({@code GO-term<TAB>only_in|never_in<TAB>taxon}). Useful when the

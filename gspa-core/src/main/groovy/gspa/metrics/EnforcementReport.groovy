@@ -32,12 +32,12 @@ class EnforcementReport {
     /** TSV log of every enforcement action (one row each). */
     void writeTsv(File out) {
         out.withWriter { w ->
-            w.writeLine(['dimension', 'action', 'contig', 'protein_id', 'term',
+            w.writeLine(['dimension', 'action', 'contig', 'protein_id', 'term', 'term_label',
                          'reason', 'basis', 'score_before', 'score_after'].join('\t'))
             actions.each { a ->
                 w.writeLine([
                     a.dimension, a.action, a.contigId ?: '', a.proteinId ?: '', a.term ?: '',
-                    a.reason ?: '', a.basis ?: '',
+                    a.termLabel ?: '', a.reason ?: '', a.basis ?: '',
                     String.format(Locale.ROOT, '%.4f', a.scoreBefore),
                     String.format(Locale.ROOT, '%.4f', a.scoreAfter),
                 ].join('\t'))

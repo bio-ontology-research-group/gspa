@@ -46,6 +46,9 @@ class Annotation {
     /** For GO annotations: the GO aspect (MF, BP, CC) */
     String goAspect
 
+    /** For GO annotations: the human-readable term label (rdfs:label) */
+    String goLabel
+
     /**
      * Optional evidence type classification used by the Phase 7 integration
      * layer. Predictors may set this directly; otherwise {@code ClaimExtractor}

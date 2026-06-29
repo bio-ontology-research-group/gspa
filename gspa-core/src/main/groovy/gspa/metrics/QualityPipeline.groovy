@@ -415,6 +415,36 @@ class QualityPipeline {
         report
     }
 
+    /**
+     * Infer the organism's domain taxon from the genome's predicted annotations
+     * via the taxon constraints (see {@link TaxonInference}) and assert it on the
+     * SAT checker so subsequent consistency enforcement uses it. Returns the full
+     * per-candidate result for reporting; does nothing if the checker has no
+     * constraints loaded (call {@code initialize()} with consistency enabled).
+     */
+    TaxonInference.Result inferOrganismTaxon(Genome genome) {
+        if (!initialized) throw new IllegalStateException("Pipeline not initialized. Call initialize() first.")
+        if (satChecker == null) return null
+        // Max predicted score per GO term across the proteome — inference uses only
+        // the high-confidence terms (see TaxonInference.minScore).
+        Map<String, Double> termScore = [:].withDefault { 0.0d }
+        genome.proteins.each { p ->
+            p.annotations.goAnnotations().each { a ->
+                if (a.score > termScore[a.value]) termScore[a.value] = a.score
+            }
+        }
+        def res = new TaxonInference(checker: satChecker, goOntology: goOntology,
+            minScore: config.quality.consistency.inferTaxonMinScore).infer(termScore)
+        if (res?.taxon) {
+            satChecker.organismTaxon = res.taxon
+            log.info("Asserting inferred organism taxon for consistency: ${res.taxon} (${res.label})")
+        }
+        res
+    }
+
+    /** The loaded GO ontology (for aspect lookups / standard-format export). */
+    GoOntology getGoOntology() { goOntology }
+
     /** True if any enforcement pass is enabled in config. */
     boolean anyEnforcementEnabled() {
         config.quality.consistency.enforce || config.quality.completeness.enforce ||

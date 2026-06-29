@@ -65,11 +65,33 @@ class QualityReport {
     /** Per-source annotation counts */
     Map<String, Integer> annotationCountBySource = [:]
 
-    /** Composite quality score (weighted combination) */
+    /**
+     * Composite quality score (weighted combination). Coherence components are
+     * stored negative when they were not evaluated (e.g. ELK-free "lite" runs,
+     * which report them as N/A); folding a negative in as a real 0..1 value would
+     * wrongly punish the score. So only dimensions actually computed contribute,
+     * and the weights are renormalised over them — an un-evaluated dimension
+     * neither helps nor penalises.
+     */
     double getCompositeScore() {
-        double coherence = (processCoherence + pathwayCoherence + complexCoherence) / 3.0
+        List<Double> vals = []
+        List<Double> wts = []
+
+        vals << completeness; wts << 0.3d
+
         double consistencyScore = consistent ? 1.0 : Math.max(0.0, 1.0 - violations.size() * 0.01)
-        0.3 * completeness + 0.4 * coherence + 0.3 * consistencyScore
+        vals << consistencyScore; wts << 0.3d
+
+        List<Double> coh = [processCoherence, pathwayCoherence, complexCoherence].findAll { it >= 0.0d }
+        if (!coh.isEmpty()) {
+            vals << (coh.sum() / coh.size()); wts << 0.4d
+        }
+
+        double wsum = wts.sum()
+        if (wsum <= 0) return 0.0
+        double acc = 0.0
+        vals.eachWithIndex { v, i -> acc += wts[i] * v }
+        acc / wsum
     }
 
     double getAnnotationCoverage() {

@@ -746,7 +746,10 @@ class AnnotationPipeline {
         // so it is clear how each function was assigned.
         boolean prov = config.quality?.provenance
         output.withWriter { writer ->
-            def header = ['protein_id', 'type', 'value', 'score', 'source', 'evidence']
+            // `label` is the human-readable term name; `aspect` the GO sub-ontology
+            // (MF/BP/CC) — both needed so a GO id is never shown bare, and for
+            // standard-format (GAF) export / per-aspect summaries.
+            def header = ['protein_id', 'type', 'value', 'label', 'score', 'source', 'evidence', 'aspect']
             if (prov) header << 'provenance'
             writer.writeLine(header.join('\t'))
             genome.proteins.each { protein ->
@@ -755,9 +758,11 @@ class AnnotationPipeline {
                         protein.id,
                         ann.type,
                         ann.value,
+                        ann.goLabel ?: '',
                         String.format('%.4f', ann.score),
                         ann.source ?: '',
                         ann.evidence ?: '',
+                        ann.goAspect ?: '',
                     ]
                     if (prov) {
                         def trail = ann.provenance ? ann.provenance.join(' | ') :

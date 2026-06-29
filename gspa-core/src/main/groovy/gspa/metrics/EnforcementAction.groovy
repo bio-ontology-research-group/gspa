@@ -23,6 +23,9 @@ class EnforcementAction {
     /** The GO term acted upon. */
     String term
 
+    /** Human-readable label of {@link #term} (rdfs:label), for display. */
+    String termLabel
+
     /** Human-readable reason (e.g. 'taxon-inconsistent for NCBITaxon_2', 'missing essential function'). */
     String reason
 

@@ -569,6 +569,51 @@ def run_deepgo_plusplus(rows: list[ManifestRow], args: argparse.Namespace) -> No
 # -------- runner: deepgo-plusplus-light (self-contained, CPU-only) ----
 
 
+def _deepgo_plusplus_light_via_server(rows, args, server):
+    """Forward each manifest row to the warm dgpp_server.py over its Unix socket
+    and write the returned TSV — identical output to the in-process path, but the
+    205 MB model stays loaded in the server instead of being rebuilt per call."""
+    import socket as _socket
+    params = json.dumps({
+        'interpro': bool(args.dgpp_light_interpro),
+        'cnn': bool(args.dgpp_light_cnn),
+        'topk': args.top_k,
+        'min_score': args.min_score,
+        'threads': args.dgpp_light_threads,
+    }).encode()
+    name = getattr(args, 'predictor', 'deepgo-plusplus-light')
+    for row in rows:
+        out_path = output_path(row, name)
+        LOG.info("  %s -> %s (warm server)", row.tag, out_path)
+        fasta = Path(row.fasta_path).read_bytes()
+        sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+        sock.connect(server)
+        try:
+            sock.sendall(params + b'\n' + fasta)
+            sock.shutdown(_socket.SHUT_WR)
+            chunks = []
+            while True:
+                b = sock.recv(1 << 16)
+                if not b:
+                    break
+                chunks.append(b)
+        finally:
+            sock.close()
+        resp = b''.join(chunks).decode('utf-8', 'replace')
+        if resp.startswith('#ERR'):
+            raise SystemExit('deepgo-plusplus-light server error: ' + resp.strip())
+        fh, writer = open_output(out_path)
+        try:
+            for line in resp.splitlines():
+                if not line.strip():
+                    continue
+                c = line.split('\t')
+                if len(c) >= 4:
+                    writer.writerow([c[0], c[1], c[2], c[3]])
+        finally:
+            fh.close()
+
+
 def run_deepgo_plusplus_light(rows: list[ManifestRow], args: argparse.Namespace) -> None:
     """GSPA's **DeepGO-PlusPlus-Light** predictor: self-contained, CPU-only.
 
@@ -582,7 +627,23 @@ def run_deepgo_plusplus_light(rows: list[ManifestRow], args: argparse.Namespace)
 
     The inference core (``DGppLight``) is **reused verbatim** from
     ``deepgo-plusplus/service/predict.py`` so there is a single source of
-    truth for the model math; only the asset wiring lives here."""
+    truth for the model math; only the asset wiring lives here.
+
+    If ``DGPP_LIGHT_SERVER`` names a live Unix socket (the warm
+    ``dgpp_server.py`` running in the container), forward to it instead of
+    constructing DGppLight here — that skips the ~10 s per-request reload of
+    the 205 MB STRING Net-KNN index. Falls back to in-process if the socket is
+    absent (server still warming up, or not deployed)."""
+    server = os.environ.get('DGPP_LIGHT_SERVER')
+    if server and os.path.exists(server):
+        try:
+            _deepgo_plusplus_light_via_server(rows, args, server)
+            return
+        except OSError as exc:
+            # Stale socket / server died mid-flight: fall back to in-process so a
+            # crashed warm server degrades gracefully (slower) instead of failing.
+            LOG.warning("warm dgpp_light server at %s unavailable (%s); "
+                        "falling back to in-process construction", server, exc)
     if not args.dgpp_light_assets:
         raise SystemExit(
             "deepgo-plusplus-light requires --dgpp-light-assets "

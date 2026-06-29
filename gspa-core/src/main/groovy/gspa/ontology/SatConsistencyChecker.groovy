@@ -146,6 +146,18 @@ class SatConsistencyChecker {
         disjointWith[b] << a
     }
 
+    /**
+     * All ancestors of a taxon <em>including itself</em>, following multi-parent
+     * is_a. Exposed for callers (e.g. {@link gspa.metrics.TaxonInference}) that
+     * need to reason over a taxon's lineage directly rather than via a full SAT
+     * solve. The returned set must not be mutated.
+     */
+    Set<String> ancestorsWithSelf(String taxon) {
+        Set<String> acc = new HashSet<>(ancestorsOf(taxon))
+        acc.add(taxon)
+        acc
+    }
+
     /** All ancestors of a taxon (excluding itself), following multi-parent is_a. */
     private Set<String> ancestorsOf(String taxon) {
         def cached = ancestorCache[taxon]
