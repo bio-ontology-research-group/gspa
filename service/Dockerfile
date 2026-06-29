@@ -48,11 +48,18 @@ WORKDIR /app
 # Python deps: the service itself + numpy for the sidecar's integrator math.
 COPY service/requirements.txt /app/service/requirements.txt
 RUN pip install --break-system-packages -r /app/service/requirements.txt "numpy>=1.26,<3"
-# Optional CPU torch + fair-esm: ONLY the esm2-kNN / CNN light components need them;
-# the default DG++Light path (DIAMOND BLAST-KNN + STRING Net-KNN) is torch-free and
+# Optional torch + fair-esm: ONLY the esm2-kNN / CNN components need them; the
+# default DG++Light path (DIAMOND BLAST-KNN + STRING Net-KNN) is torch-free and
 # they are lazy-imported. Best-effort + unpinned so the image always builds across
-# base-image Python versions (the torch CPU index drops old pins on new Pythons).
-RUN pip install --break-system-packages --index-url https://download.pytorch.org/whl/cpu torch \
+# base-image Python versions (the torch index drops old pins on new Pythons).
+#
+# TORCH_INDEX selects the wheel build: default CPU; pass
+#   --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu128
+# for a GPU image (CUDA 12.8 / Blackwell sm_120) that runs the esm2-kNN + CNN
+# stream on the GPU under DGppLight.predict_full (DGPP_LIGHT_DEVICE=cuda),
+# overlapping the CPU DIAMOND/Net-KNN stream. Run such a container with `--gpus all`.
+ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
+RUN pip install --break-system-packages --index-url ${TORCH_INDEX} torch \
       && pip install --break-system-packages fair-esm "scikit-learn~=1.5" \
     || echo "[gspa] optional torch/esm components unavailable; default light path unaffected"
 

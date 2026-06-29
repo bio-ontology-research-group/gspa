@@ -22,6 +22,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 from collections import defaultdict
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -114,7 +115,8 @@ class DGppLight:
                  interproscan=None, cnn_model=None, threads=8,
                  tier_models=None, emb_store=None, esm2_name='esm2_t12_35M_UR50D',
                  esm2_layer=12, emapper=None, eggnog_data=None,
-                 psortb=None, psortb_gram='neg', proteinfer_dir=None):
+                 psortb=None, psortb_gram='neg', proteinfer_dir=None,
+                 device='cpu', full_integrator=None):
         """models: dict {(interpro: bool, cnn: bool) -> path to frozen JSON}.
         Only the combinations whose model file exists are served.
 
@@ -147,6 +149,12 @@ class DGppLight:
         self.esm2_layer = esm2_layer
         self._esm2 = None          # lazy (model, batch_converter)
         self._store = None         # lazy (ids, l2-normalized emb)
+        # Torch device for the GPU-able components (esm2_knn, cnn). 'cuda' runs
+        # the PLM/CNN stream on the GPU so it can overlap the CPU homology stream
+        # (DIAMOND + Net-KNN) under predict_full(); 'cpu' = the original behaviour.
+        self.device = device
+        self.full_model = (json.load(open(full_integrator))
+                           if full_integrator and os.path.exists(full_integrator) else None)
         # optional CPU auxiliary components (orphan tier; all gated on tool presence)
         self.emapper = emapper            # eggnog: emapper.py (orthology -> GO)
         self.eggnog_data = eggnog_data    # eggNOG data_dir
@@ -240,7 +248,8 @@ class DGppLight:
         model.load_state_dict(ckpt['state_dict'])
         model.eval()
         out = fasta_path + '.cnn.tsv'
-        bcc.predict(model, vocab, max_len, fasta_path, out, min_score, torch)
+        bcc.predict(model, vocab, max_len, fasta_path, out, min_score, torch,
+                    device=self.device)
         comp = defaultdict(dict)
         with open(out) as fh:
             for line in fh:
@@ -390,11 +399,12 @@ class DGppLight:
             emb /= (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-8)
             self._store = (list(d['ids']), emb)
         ids, store = self._store
-        if self._esm2 is None:                        # lazy-load ESM2-35M (CPU)
+        if self._esm2 is None:                        # lazy-load ESM2-35M (CPU/GPU)
             import torch, esm
             model, alphabet = getattr(esm.pretrained, self.esm2_name)()
             torch.set_num_threads(self.threads)
-            self._esm2 = (model.eval(), alphabet.get_batch_converter(), torch)
+            self._esm2 = (model.to(self.device).eval(),
+                          alphabet.get_batch_converter(), torch)
         model, bc, torch = self._esm2
         seqs = [(n, s) for n, s in read_fasta(open(fasta_path).read())]
         seqs.sort(key=lambda x: len(x[1]))            # length-sorted batching
@@ -402,11 +412,12 @@ class DGppLight:
         for i in range(0, len(seqs), 16):
             batch = [(n, s[:1022]) for n, s in seqs[i:i + 16]]
             _, _, toks = bc(batch)
+            toks = toks.to(self.device)
             with torch.no_grad():
                 rep = model(toks, repr_layers=[self.esm2_layer])['representations'][self.esm2_layer]
             for j, (n, s) in enumerate(batch):
                 L = min(len(s), 1022)
-                q = rep[j, 1:L + 1].mean(0).numpy()
+                q = rep[j, 1:L + 1].mean(0).cpu().numpy()
                 q /= (np.linalg.norm(q) + 1e-8)
                 sims = store @ q
                 nn = np.argpartition(-sims, min(topk, len(ids) - 1))[:topk]
@@ -499,3 +510,61 @@ class DGppLight:
             return self._apply(model, comps, min_score)
         finally:
             os.unlink(path)
+
+    def predict_full(self, fasta_text, *, model=None, topk=5, min_score=0.1,
+                     want=('diam', 'net_union', 'esm2_knn', 'cnn'),
+                     parallel=True):
+        """Full multi-evidence prediction running two resource-disjoint streams
+        CONCURRENTLY, then one integrator merge:
+
+          CPU stream : DIAMOND BLAST-KNN (`diam`) + STRING Net-KNN (`net_union`)
+                       — a subprocess + a numpy lookup, both release the GIL.
+          GPU stream : ESM2-kNN (`esm2_knn`) + the 1D-CNN (`cnn`) on self.device
+                       — CUDA kernels, release the GIL.
+
+        Unlike cascade() there is NO homology gate, so the GPU stream starts
+        immediately (it does not wait for DIAMOND to label orphans). With
+        self.device='cuda' the GPU stream is hidden under the DIAMOND scan, so the
+        PLM/CNN evidence costs ~0 extra wall-time. parallel=False runs the streams
+        sequentially (A/B comparison). Components are computed at min_score 0.01
+        (as elsewhere); the final per-aspect floor is applied in the merge."""
+        model = model or self.full_model
+        if model is None:
+            raise RuntimeError('predict_full needs a full integrator '
+                               '(pass model=... or construct with full_integrator=...)')
+        with tempfile.NamedTemporaryFile('w', suffix='.faa', delete=False) as fh:
+            fh.write(fasta_text)
+            path = fh.name
+        comps, errs = {}, {}
+
+        def cpu_stream():
+            try:
+                hom = self._diamond(path)              # the single homology pass
+                if 'diam' in want:
+                    comps['diam'] = self._propagate(self._diam_component(hom, topk))
+                if 'net_union' in want:
+                    comps['net_union'] = self._propagate(self._net_component(hom, topk))
+            except Exception as e:                     # noqa: BLE001
+                errs['cpu'] = e
+
+        def gpu_stream():
+            try:
+                if 'esm2_knn' in want and self.emb_store:
+                    comps['esm2_knn'] = self._propagate(self._esm2_knn_component(path))
+                if 'cnn' in want and self.cnn_model:
+                    comps['cnn'] = self._propagate(self._cnn_component(path))
+            except Exception as e:                     # noqa: BLE001
+                errs['gpu'] = e
+
+        try:
+            if parallel:
+                tc = threading.Thread(target=cpu_stream, name='cpu-stream')
+                tg = threading.Thread(target=gpu_stream, name='gpu-stream')
+                tc.start(); tg.start(); tc.join(); tg.join()
+            else:
+                cpu_stream(); gpu_stream()
+        finally:
+            os.unlink(path)
+        if errs:
+            raise RuntimeError(f'predict_full stream error: {errs}')
+        return self._apply(model, comps, min_score)

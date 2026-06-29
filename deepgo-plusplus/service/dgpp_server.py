@@ -61,7 +61,15 @@ def _build_pred():
         (True, True): m('deepgo_plusplus_light_full.json'),
     }
     obo = a('go.obo')
-    cnn = a('cnn_model.pt')
+    # CNN weights: the MCM-trained head is the shipped asset (cnn_mcm.pt); fall
+    # back to the older name if present.
+    cnn = next((c for c in (a('cnn_mcm.pt'), a('cnn_model.pt')) if os.path.exists(c)), None)
+    # esm2_knn reference store + full integrator power the GPU∥CPU predict_full
+    # path (DGPP_LIGHT_DEVICE=cuda). Both optional: absent -> predict_full simply
+    # omits those components; the default predict() path is unaffected.
+    emb = a('train_esm2_35m.npz')
+    full_integ = (os.environ.get('DGPP_FULL_INTEGRATOR')
+                  or m('deepgo_plusplus_integrator_cpu_lean.json'))
     return DGppLight(
         models=model_map,
         train_net_index=a('train_net_index.tsv'),
@@ -70,7 +78,10 @@ def _build_pred():
         diamond_db=a('train_db'),
         obo=obo if os.path.exists(obo) else None,
         diamond_bin=os.environ.get('DGPP_DIAMOND', 'diamond'),
-        cnn_model=cnn if os.path.exists(cnn) else None,
+        cnn_model=cnn,
+        emb_store=emb if os.path.exists(emb) else None,
+        device=os.environ.get('DGPP_LIGHT_DEVICE', 'cpu'),
+        full_integrator=full_integ if os.path.exists(full_integ) else None,
         threads=int(os.environ.get('DGPP_LIGHT_THREADS', '8')))
 
 
@@ -86,12 +97,21 @@ class _Handler(socketserver.StreamRequestHandler):
                 if p.get('threads'):
                     PRED.threads = int(p['threads'])
                 t0 = time.time()
-                res = PRED.predict(
-                    fasta,
-                    interpro=bool(p.get('interpro', False)),
-                    cnn=bool(p.get('cnn', False)),
-                    topk=int(p.get('topk', 5)),
-                    min_score=ms)
+                if p.get('full'):
+                    # GPU∥CPU multi-evidence path: DIAMOND+Net-KNN (CPU) overlap
+                    # ESM2-kNN+CNN (PRED.device); single integrator merge.
+                    res = PRED.predict_full(
+                        fasta,
+                        topk=int(p.get('topk', 5)),
+                        min_score=ms,
+                        parallel=bool(p.get('parallel', True)))
+                else:
+                    res = PRED.predict(
+                        fasta,
+                        interpro=bool(p.get('interpro', False)),
+                        cnn=bool(p.get('cnn', False)),
+                        topk=int(p.get('topk', 5)),
+                        min_score=ms)
                 dt = time.time() - t0
             n_rows = sum(len(v) for v in res.values())
             sys.stderr.write('dgpp_server: served %d proteins -> %d rows in %.1fs '

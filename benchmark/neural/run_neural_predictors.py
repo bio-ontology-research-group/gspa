@@ -574,13 +574,19 @@ def _deepgo_plusplus_light_via_server(rows, args, server):
     and write the returned TSV — identical output to the in-process path, but the
     205 MB model stays loaded in the server instead of being rebuilt per call."""
     import socket as _socket
-    params = json.dumps({
+    # DGPP_LIGHT_FULL=1 routes the request through the server's predict_full
+    # (CPU DIAMOND+Net-KNN overlapped with GPU ESM2-kNN+CNN when the server runs
+    # DGPP_LIGHT_DEVICE=cuda). Default off -> the original predict() path.
+    p = {
         'interpro': bool(args.dgpp_light_interpro),
         'cnn': bool(args.dgpp_light_cnn),
         'topk': args.top_k,
         'min_score': args.min_score,
         'threads': args.dgpp_light_threads,
-    }).encode()
+    }
+    if os.environ.get('DGPP_LIGHT_FULL', '') not in ('', '0', 'false', 'False'):
+        p['full'] = True
+    params = json.dumps(p).encode()
     name = getattr(args, 'predictor', 'deepgo-plusplus-light')
     for row in rows:
         out_path = output_path(row, name)
