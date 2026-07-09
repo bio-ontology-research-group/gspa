@@ -1,12 +1,13 @@
-# DeepGO-PlusPlus LAFA containers
+# DeepGO experimental LAFA containers
 
 This directory contains LAFA batch entrypoints for two submitted methods:
 
-- `deepgopp-light-lafa`: DIAMOND homology transfer plus the DG++Light learned
-  integrator. All runtime assets are derived from LAFA inputs.
-- `deepgopp-full-lafa`: DG++ full CPU/GPU batch predictor using the same LAFA-built
-  homology assets plus an ESM2-35M kNN store built from `--train_sequences` and
-  cached under `--cache_dir`.
+- `deepgo-experimental-light-lafa`: a conservative beta predictor using DIAMOND
+  homology transfer plus the lightweight DeepGO experimental integrator. All
+  runtime assets are derived from LAFA inputs.
+- `deepgo-experimental-full-lafa`: an experimental CPU/GPU batch predictor using
+  the same LAFA-built homology assets plus an ESM2-35M kNN store built from
+  `--train_sequences` and cached under `--cache_dir`.
 
 Both containers implement the standard LAFA command-line interface and write the
 required headerless 3-column output:
@@ -20,8 +21,8 @@ Query_ID<TAB>GO_Term<TAB>Score
 Run from the `deepgo-plusplus/` directory:
 
 ```bash
-docker build -f lafa/Dockerfile.light -t deepgopp-light-lafa:v1 .
-docker build -f lafa/Dockerfile.full  -t deepgopp-full-lafa:v1 .
+docker build -f lafa/Dockerfile.light -t deepgo-experimental-light-lafa:v1 .
+docker build -f lafa/Dockerfile.full  -t deepgo-experimental-full-lafa:v1 .
 ```
 
 ## Run
@@ -30,7 +31,7 @@ docker build -f lafa/Dockerfile.full  -t deepgopp-full-lafa:v1 .
 docker run --rm \
   -v /path/to/lafa_data:/app/data:ro \
   -v /path/to/output:/app/output:rw \
-  deepgopp-light-lafa:v1 \
+  deepgo-experimental-light-lafa:v1 \
   --query_file /app/data/test_sequences.fasta \
   --train_sequences /app/data/train_sequences.fasta \
   --annot_file /app/data/train_terms.tsv \
@@ -45,7 +46,7 @@ Full model:
 docker run --rm --gpus all \
   -v /path/to/lafa_data:/app/data:ro \
   -v /path/to/output:/app/output:rw \
-  deepgopp-full-lafa:v1 \
+  deepgo-experimental-full-lafa:v1 \
   --query_file /app/data/test_sequences.fasta \
   --train_sequences /app/data/train_sequences.fasta \
   --annot_file /app/data/train_terms.tsv \

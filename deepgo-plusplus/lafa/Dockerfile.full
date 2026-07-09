@@ -9,8 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm /tmp/diamond.tar.gz \
  && rm -rf /var/lib/apt/lists/*
 
+ENV TORCH_HOME=/app/.cache/torch
 RUN pip3 install --no-cache-dir numpy fair-esm \
- && pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
+ && pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124 \
+ && python3 -c "import esm; esm.pretrained.esm2_t12_35M_UR50D()"
 
 WORKDIR /app
 COPY service/predict.py /app/service/predict.py
