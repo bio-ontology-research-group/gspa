@@ -1,0 +1,30 @@
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 python3-pip curl ca-certificates \
+ && curl -L -o /tmp/diamond.tar.gz \
+      https://github.com/bbuchfink/diamond/releases/download/v2.1.9/diamond-linux64.tar.gz \
+ && tar -xzf /tmp/diamond.tar.gz -C /usr/local/bin diamond \
+ && rm /tmp/diamond.tar.gz \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir numpy fair-esm \
+ && pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
+
+WORKDIR /app
+COPY service/predict.py /app/service/predict.py
+COPY pipeline/apply_net_bridge.py pipeline/build_cnn_component.py /app/pipeline/
+COPY models/deepgo_plusplus_light_fast.json \
+     models/deepgo_plusplus_light_fast_cnn.json \
+     models/deepgo_plusplus_light_cpu.json \
+     models/deepgo_plusplus_light_full.json \
+     models/deepgo_plusplus_integrator_cpu_lean_mcm.json /app/models/
+COPY models/weights/cnn_mcm.pt /app/models/weights/cnn_mcm.pt
+COPY lafa/lafa_main.py /app/lafa/lafa_main.py
+
+ENV DGPP_LAFA_MODE=full \
+    DGPP_LAFA_CACHE=/app/cache \
+    DGPP_THREADS=8 \
+    DGPP_DEVICE=auto
+ENTRYPOINT ["python3", "/app/lafa/lafa_main.py"]

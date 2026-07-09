@@ -1,0 +1,25 @@
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+ && curl -L -o /tmp/diamond.tar.gz \
+      https://github.com/bbuchfink/diamond/releases/download/v2.1.9/diamond-linux64.tar.gz \
+ && tar -xzf /tmp/diamond.tar.gz -C /usr/local/bin diamond \
+ && rm /tmp/diamond.tar.gz \
+ && apt-get purge -y curl && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY service/predict.py /app/service/predict.py
+COPY pipeline/apply_net_bridge.py pipeline/build_cnn_component.py /app/pipeline/
+COPY models/deepgo_plusplus_light_fast.json \
+     models/deepgo_plusplus_light_fast_cnn.json \
+     models/deepgo_plusplus_light_cpu.json \
+     models/deepgo_plusplus_light_full.json \
+     models/deepgo_plusplus_integrator_cpu_lean_mcm.json /app/models/
+COPY models/weights/cnn_mcm.pt /app/models/weights/cnn_mcm.pt
+COPY lafa/lafa_main.py /app/lafa/lafa_main.py
+
+ENV DGPP_LAFA_MODE=light \
+    DGPP_LAFA_CACHE=/app/cache \
+    DGPP_THREADS=8
+ENTRYPOINT ["python3", "/app/lafa/lafa_main.py"]
