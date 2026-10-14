@@ -49,19 +49,22 @@ class GenomicContextPrior implements Prior {
     @Override
     Set<String> inputs() { ['operons', 'pathwayDatabase', 'metabolicGaps', 'posteriors'] as Set }
 
+    /** Relative boost when another protein in the same operon carries the same heteromeric complex ('n'). */
+    double complexOperonPartnerWeight = 0.95d
+
     @Override
     void beginIteration(IntegrationState state) {
         boosts = new LinkedHashMap<>()
         if (state.operons == null || state.operons.isEmpty()) return
-        if (state.pathwayDatabase == null) return
 
         // Pathway GO term sets, precomputed once.
         Map<String, Set<String>> pathwayTerms = new LinkedHashMap<>()
-        for (Map.Entry<String, PathwayGraph> e : state.pathwayDatabase.pathways.entrySet()) {
-            Set<String> req = e.value.getRequiredGoTerms() ?: new LinkedHashSet<String>()
-            if (!req.isEmpty()) pathwayTerms[e.key] = req
+        if (state.pathwayDatabase != null) {
+            for (Map.Entry<String, PathwayGraph> e : state.pathwayDatabase.pathways.entrySet()) {
+                Set<String> req = e.value.getRequiredGoTerms() ?: new LinkedHashSet<String>()
+                if (!req.isEmpty()) pathwayTerms[e.key] = req
+            }
         }
-        if (pathwayTerms.isEmpty()) return
 
         // Gap-filling set: GO terms that would close a metabolic gap.
         Set<String> gapFillerTerms = new LinkedHashSet<>()
@@ -69,58 +72,65 @@ class GenomicContextPrior implements Prior {
             if (gap.goTerm) gapFillerTerms << gap.goTerm
         }
 
-        // For each operon: determine pathway consensus and emit boosts.
+        // For each operon: determine pathway consensus and co-operonic complex partners.
         for (List<String> operon : state.operons) {
             if (operon == null || operon.size() < 2) continue
 
-            // Count how many operon members have a posterior > MAP for each pathway.
-            Map<String, Integer> pathwayCounts = new LinkedHashMap<>()
-            Set<String> strongOperonGoTerms = new LinkedHashSet<>()
+            // Track strong GO terms per protein in this operon.
+            Map<String, Set<String>> strongByProt = new LinkedHashMap<>()
             for (String pid : operon) {
+                Set<String> pTerms = new LinkedHashSet<>()
                 for (String fkey : state.functionKeysForProtein(pid)) {
                     if (state.getProbability(fkey) <= IntegrationState.MAP_THRESHOLD) continue
                     String[] parts = IntegrationState.splitFunctionKey(fkey)
                     if (parts == null || parts[1] != 'GO') continue
-                    strongOperonGoTerms << parts[2]
+                    pTerms << parts[2]
+                }
+                if (!pTerms.isEmpty()) strongByProt[pid] = pTerms
+            }
+            if (strongByProt.isEmpty()) continue
+
+            // 1. Pathway consensus across all active pathways in this operon
+            if (!pathwayTerms.isEmpty()) {
+                for (Map.Entry<String, Set<String>> pe : pathwayTerms.entrySet()) {
+                    Set<String> reqTerms = pe.value
+                    int activeProts = 0
+                    for (Set<String> pTerms : strongByProt.values()) {
+                        if (pTerms.any { reqTerms.contains(it) }) activeProts++
+                    }
+                    if (activeProts < 1) continue
+                    double consensusStrength = (double) activeProts / operon.size()
+                    for (String pid : operon) {
+                        for (String fkey : state.functionKeysForProtein(pid)) {
+                            String[] parts = IntegrationState.splitFunctionKey(fkey)
+                            if (parts == null || parts[1] != 'GO') continue
+                            String goId = parts[2]
+                            if (!reqTerms.contains(goId)) continue
+                            double boost = alphaCtx * consensusStrength
+                            if (gapFillerTerms.contains(goId)) boost *= alphaGapCtx
+                            boosts.merge(fkey, boost, { a, b -> Math.max(a as double, b as double) })
+                        }
+                    }
                 }
             }
 
-            // For each strong GO term in operon, find pathways containing it.
-            for (Map.Entry<String, Set<String>> pe : pathwayTerms.entrySet()) {
-                int members = 0
-                for (String goId : strongOperonGoTerms) {
-                    if (pe.value.contains(goId)) members++
-                }
-                if (members >= 1) pathwayCounts[pe.key] = members
-            }
-            if (pathwayCounts.isEmpty()) continue
-
-            // Consensus strength = top pathway's member fraction.
-            String topPathway = null
-            int topCount = 0
-            for (Map.Entry<String, Integer> c : pathwayCounts.entrySet()) {
-                if (c.value > topCount) { topCount = c.value; topPathway = c.key }
-            }
-            double consensusStrength = (double) topCount / operon.size()
-            if (consensusStrength <= 0.0) continue
-
-            Set<String> topPathwayTerms = pathwayTerms[topPathway]
-
-            // Emit boosts for every operon member's candidate GO claims
-            // whose functionId is in the top pathway's required set.
-            for (String pid : operon) {
-                for (String fkey : state.functionKeysForProtein(pid)) {
-                    String[] parts = IntegrationState.splitFunctionKey(fkey)
-                    if (parts == null || parts[1] != 'GO') continue
-                    String goId = parts[2]
-                    if (!topPathwayTerms.contains(goId)) continue
-
-                    double boost = alphaCtx * consensusStrength
-                    // Gap interaction bonus: candidate would close a gapseq gap.
-                    if (gapFillerTerms.contains(goId)) boost *= alphaGapCtx
-
-                    String boostKey = fkey
-                    boosts.merge(boostKey, boost, { a, b -> Math.max(a as double, b as double) })
+            // 2. Co-operonic obligate heteromeric complex subunit boost
+            if (state.complexClassification != null && !state.complexClassification.isEmpty()) {
+                for (String pid : operon) {
+                    for (String fkey : state.functionKeysForProtein(pid)) {
+                        String[] parts = IntegrationState.splitFunctionKey(fkey)
+                        if (parts == null || parts[1] != 'GO') continue
+                        String goId = parts[2]
+                        if (state.complexClassification[goId] != 'n') continue
+                        int partnerCount = 0
+                        for (Map.Entry<String, Set<String>> e : strongByProt.entrySet()) {
+                            if (e.key != pid && e.value.contains(goId)) partnerCount++
+                        }
+                        if (partnerCount >= 1) {
+                            double cBoost = alphaCtx * complexOperonPartnerWeight
+                            boosts.merge(fkey, cBoost, { a, b -> (a as double) + (b as double) })
+                        }
+                    }
                 }
             }
         }

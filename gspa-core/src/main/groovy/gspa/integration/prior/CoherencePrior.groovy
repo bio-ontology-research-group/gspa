@@ -33,6 +33,15 @@ class CoherencePrior implements Prior {
     /** Per-match boost magnitude (log-odds). Learned by the benchmark. */
     double alphaCoh = 1.0d
 
+    /** Relative weight for boosting missing partner subunits of a 1-subunit obligate heteromeric complex. */
+    double complexPartnerWeight = 0.85d
+
+    /** Relative weight for penalizing an isolated singleton obligate heteromeric complex with no candidate partner. */
+    double complexSingletonPenaltyWeight = 0.75d
+
+    /** Minimum sub-threshold probability for a protein to qualify as a candidate partner subunit. */
+    double complexCandidateMinProb = 0.08d
+
     /**
      * Cached per iteration: unsatisfied F terms that would complete a
      * process dependency, each paired with the triggering C term and the
@@ -44,6 +53,9 @@ class CoherencePrior implements Prior {
     /** Cached per iteration: pathway GO terms needed (term → (1 - coverage)). */
     private Map<String, Double> pathwayMissingTerms = new LinkedHashMap<>()
 
+    /** Cached per iteration: functionKey -> complex coherence weight (+boost or -penalty). */
+    private Map<String, Double> complexKeyWeights = new LinkedHashMap<>()
+
     @Override
     String name() { 'coherence' }
 
@@ -54,15 +66,19 @@ class CoherencePrior implements Prior {
     void beginIteration(IntegrationState state) {
         processMissingTerms = new LinkedHashMap<>()
         pathwayMissingTerms = new LinkedHashMap<>()
+        complexKeyWeights = new LinkedHashMap<>()
 
         Set<String> annotated = state.goReasoner != null
             ? state.currentlyAnnotatedGoTermsPropagated()
             : state.currentlyAnnotatedGoTerms()
+        Set<String> baselineAnnotated = state.goReasoner != null
+            ? state.baselineAnnotatedGoTermsPropagated()
+            : state.baselineAnnotatedGoTerms()
 
         // --- Process coherence: needs GoReasoner for has_part pairs ---
         if (state.goReasoner != null) try {
             def coherence = new Coherence(state.goOntology, state.goReasoner)
-            ProcessCoherenceResult result = coherence.evaluateProcessCoherence(annotated)
+            ProcessCoherenceResult result = coherence.evaluateProcessCoherence(baselineAnnotated)
             int triggered = result.triggered
             int satisfied = result.satisfied
             double fracAnnotated = triggered == 0 ? 1.0 : (satisfied / (double) triggered)
@@ -86,15 +102,14 @@ class CoherencePrior implements Prior {
                     Set<String> required = pathway.getRequiredGoTerms()
                     if (required == null || required.isEmpty()) continue
                     // Is this pathway "triggered"? Use any-member-annotated as a soft trigger.
-                    boolean triggeredPw = required.any { annotated.contains(it) }
+                    boolean triggeredPw = required.any { annotated.contains(it) || baselineAnnotated.contains(it) }
                     if (!triggeredPw) continue
                     int requiredCount = required.size()
-                    int annotatedCount = required.count { annotated.contains(it) }
+                    int annotatedCount = required.count { baselineAnnotated.contains(it) }
                     double coverage = (double) annotatedCount / requiredCount
-                    double weight = Math.max(0.0d, 1.0d - coverage)
-                    if (weight <= 0.0d) continue
+                    double weight = Math.max(0.25d, 1.0d - coverage)
                     for (String term : required) {
-                        if (annotated.contains(term)) continue
+                        if (baselineAnnotated.contains(term)) continue
                         pathwayMissingTerms.merge(term, weight, { a, b -> Math.max(a as double, b as double) })
                     }
                 }
@@ -103,7 +118,52 @@ class CoherencePrior implements Prior {
             }
         }
 
-        log.debug("CoherencePrior: ${processMissingTerms.size()} process-missing, ${pathwayMissingTerms.size()} pathway-missing terms")
+        // --- Complex coherence: obligate heteromeric complexes ('n') require >= 2 distinct proteins ---
+        if (state.complexClassification != null && !state.complexClassification.isEmpty()) {
+            try {
+                Map<String, List<String>> strongByComplex = [:].withDefault { [] }
+                Map<String, List<String>> candByComplex = [:].withDefault { [] }
+
+                for (Map.Entry<String, Double> entry : state.posteriorLogOdds.entrySet()) {
+                    String[] parts = IntegrationState.splitFunctionKey(entry.key)
+                    if (parts == null || parts[1] != 'GO') continue
+                    String goId = parts[2]
+                    if (state.complexClassification[goId] != 'n') continue
+                    double likeProb = state.getLikelihoodProbability(entry.key)
+                    double postProb = state.getProbability(entry.key)
+                    if (likeProb > IntegrationState.MAP_THRESHOLD) {
+                        strongByComplex[goId] << entry.key
+                    } else if (likeProb >= complexCandidateMinProb || postProb >= complexCandidateMinProb) {
+                        candByComplex[goId] << entry.key
+                    }
+                }
+
+                for (Map.Entry<String, List<String>> e : strongByComplex.entrySet()) {
+                    String goId = e.key
+                    List<String> strongKeys = e.value
+                    List<String> candKeys = candByComplex[goId] ?: []
+                    if (strongKeys.size() == 1) {
+                        if (!candKeys.isEmpty()) {
+                            // Boost sub-threshold partner subunit(s) to complete the obligate heteromer
+                            for (String ck : candKeys) {
+                                complexKeyWeights[ck] = complexPartnerWeight
+                            }
+                        } else {
+                            // Penalize isolated singleton heteromeric complex with no candidate partner
+                            complexKeyWeights[strongKeys[0]] = -complexSingletonPenaltyWeight
+                        }
+                    } else if (strongKeys.size() >= 2 && !candKeys.isEmpty()) {
+                        for (String ck : candKeys) {
+                            complexKeyWeights[ck] = 0.65d * complexPartnerWeight
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("CoherencePrior: complex check failed: ${ex.message}")
+            }
+        }
+
+        log.debug("CoherencePrior: ${processMissingTerms.size()} process-missing, ${pathwayMissingTerms.size()} pathway-missing, ${complexKeyWeights.size()} complex-adjusted keys")
     }
 
     @Override
@@ -114,9 +174,11 @@ class CoherencePrior implements Prior {
 
         double processWeight = processMissingTerms.getOrDefault(goId, 0.0d)
         double pathwayWeight = pathwayMissingTerms.getOrDefault(goId, 0.0d)
-        // Take the max of the two signals; they are not independent.
-        double weight = Math.max(processWeight, pathwayWeight)
-        if (weight <= 0.0d) return 0.0d
-        alphaCoh * weight
+        double complexWeight = complexKeyWeights.getOrDefault(functionKey, 0.0d)
+        // Take the max positive signal of process/pathway, plus complex subunit adjustment
+        double posWeight = Math.max(processWeight, pathwayWeight)
+        double totalWeight = posWeight + complexWeight
+        if (totalWeight == 0.0d) return 0.0d
+        alphaCoh * totalWeight
     }
 }

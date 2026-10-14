@@ -35,14 +35,19 @@ class ConsistencyPrior implements Prior {
     /** If true, effectively remove the claim entirely. */
     boolean hardFilter = false
 
-    /** Cached per iteration: GO terms that appear in any SAT UNSAT core. */
+    /** Cached per iteration: GO terms that appear in any SAT UNSAT core or violate organismTaxon. */
     private Set<String> conflictingTerms = Collections.emptySet()
+
+    /** Cached organism-level forbidden constrained terms (recomputed only if organismTaxon changes). */
+    private String cachedOrganismTaxon = null
+    private Set<String> cachedOrganismForbidden = Collections.emptySet()
+    private Map<String, Boolean> termForbiddenMemo = new HashMap<>()
 
     @Override
     String name() { 'consistency' }
 
     @Override
-    Set<String> inputs() { ['satConsistencyChecker', 'posteriors'] as Set }
+    Set<String> inputs() { ['satConsistencyChecker', 'posteriors', 'goOntology'] as Set }
 
     @Override
     void beginIteration(IntegrationState state) {
@@ -53,20 +58,55 @@ class ConsistencyPrior implements Prior {
             return
         }
 
-        Set<String> annotated = state.currentlyAnnotatedGoTerms()
-        if (annotated.isEmpty()) return
+        Set<String> terms = new LinkedHashSet<>()
 
-        try {
-            ConsistencyResult result = checker.check(annotated)
-            if (result.consistent) return
-            Set<String> terms = new LinkedHashSet<>()
-            for (ConsistencyViolation v : result.violations ?: []) {
-                if (v.involvedGoTerms != null) terms.addAll(v.involvedGoTerms)
+        // 1. If organismTaxon is set on the SAT checker, precompute all constrained
+        // GO terms forbidden in that organism so every candidate claim (at any
+        // probability threshold) is penalized if it or any of its GO ancestors is forbidden.
+        if (checker.organismTaxon) {
+            if (checker.organismTaxon != cachedOrganismTaxon) {
+                cachedOrganismTaxon = checker.organismTaxon
+                termForbiddenMemo.clear()
+                Set<String> constrained = new LinkedHashSet<>()
+                if (checker.taxonConstraints != null) {
+                    constrained.addAll(checker.taxonConstraints.onlyInTaxon.keySet())
+                    constrained.addAll(checker.taxonConstraints.neverInTaxon.keySet())
+                }
+                Set<String> orgForbidden = new LinkedHashSet<>()
+                for (String t : constrained) {
+                    try {
+                        if (!checker.check([t] as Set).consistent) {
+                            orgForbidden.add(t)
+                        }
+                    } catch (Exception ignored) {}
+                }
+                cachedOrganismForbidden = orgForbidden
             }
-            conflictingTerms = terms
-            log.debug("ConsistencyPrior: ${terms.size()} conflicting GO terms from ${result.violations?.size() ?: 0} violations")
-        } catch (Exception ex) {
-            log.warn("ConsistencyPrior: SAT check failed: ${ex.message}")
+            terms.addAll(cachedOrganismForbidden)
+        }
+
+        // 2. Also check currently annotated set for co-annotation UNSAT cores.
+        Set<String> annotated = state.currentlyAnnotatedGoTerms()
+        if (!annotated.isEmpty()) {
+            try {
+                Set<String> checkSet = new LinkedHashSet<>(annotated)
+                checkSet.removeAll(terms)
+                if (!checkSet.isEmpty()) {
+                    ConsistencyResult result = checker.check(checkSet)
+                    if (!result.consistent) {
+                        for (ConsistencyViolation v : result.violations ?: []) {
+                            if (v.involvedGoTerms != null) terms.addAll(v.involvedGoTerms)
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("ConsistencyPrior: SAT check failed: ${ex.message}")
+            }
+        }
+
+        conflictingTerms = terms
+        if (!terms.isEmpty()) {
+            log.debug("ConsistencyPrior: ${terms.size()} conflicting/forbidden GO terms active")
         }
     }
 
@@ -75,8 +115,19 @@ class ConsistencyPrior implements Prior {
         if (conflictingTerms.isEmpty()) return 0.0d
         String[] parts = IntegrationState.splitFunctionKey(functionKey)
         if (parts == null || parts[1] != 'GO') return 0.0d
-        if (!conflictingTerms.contains(parts[2])) return 0.0d
+        String goId = parts[2]
+        if (!isTermForbidden(goId, state)) return 0.0d
         double penalty = hardFilter ? -1000.0d : -alphaCons
         return penalty
+    }
+
+    private boolean isTermForbidden(String goId, IntegrationState state) {
+        if (conflictingTerms.contains(goId)) return true
+        if (state.goOntology == null) return false
+        Boolean memo = termForbiddenMemo.get(goId)
+        if (memo != null) return memo
+        boolean hit = state.goOntology.getAncestors(goId).any { conflictingTerms.contains(it) }
+        termForbiddenMemo.put(goId, hit)
+        return hit
     }
 }

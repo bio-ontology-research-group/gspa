@@ -10,7 +10,26 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-14
+
 ### Added
+- **Unified Three-Stage Neuro-Symbolic Architecture (`GSPA v2.0.0`)**:
+  - **Stage 1 — Iterative Bayesian Evidence Integration (`IterativeRefiner`)**: Jointly refines calibrated per-protein posteriors across all six genome-scale priors (`essentiality`, `coherence`, `consistency`, `anatomical`, `gap_filling`, `genomic_context`) with damped coordinate ascent ($\lambda = 0.5$).
+  - **Stage 2 — Deterministic Symbolic Constraint & Coherence Enforcement (`ConsistencyEnforcer`, `--enforce-stage2`)**: Guarantees $100\%$ taxonomic and anatomical consistency via SAT4J UNSAT-core semantic ancestor relaxation (`--enforce-consistency-mode relax`, recovering unpenalized evidence log-odds when relaxing a clade-violating child GO term to its most specific valid ancestor) and prunes isolated singleton subunit false positives of obligate heteromeric complexes (`--prune-singleton-complexes`).
+  - **Stage 3 — Optional Neuro-Symbolic Agentic Annotation Completion (`gspa-agent`, `--enable-agent` / `./gspa agent`)**: Extracts post-Stage-2 genome-scale anomalies (`PATHWAY_GAP`, `INCOMPLETE_COMPLEX`, `BORDERLINE_ESSENTIAL`, `BORDERLINE_CONFLICT`) via `AnomalyExtractor` and resolves them using local/cluster open-weight language models (`Qwen 3.8 27B` or fast 1-step SLM mode) equipped with five read-only genomic tools and gated by a deterministic `SymbolicGuardrail` (`0.0%` ontology violations).
+- **Cross-Ontology Anatomical & Developmental Constraints (`AnatomicalConstraints`, `AnatomicalPrior`)**:
+  - Programmatically extracted and bundled **2,714** verified GO–Uberon/Plant Ontology (`PO`)/Cell Ontology (`CL`) logical definitions (`go-anatomical-constraints.tsv`), **8,330** anatomical taxon constraints (`uberon-po-taxon-constraints.tsv`), **29,211** anatomical `is_a`/`part_of` hierarchy edges (`uberon-po-hierarchy.tsv`), and **11,466** NCBI taxonomy hierarchy edges (`ncbi-taxon-hierarchy.tsv`).
+  - Active-structure developmental boost (`+1.2` log-odds) rescues borderline true developmental/morphogenetic GO terms when structural markers of the target organ/tissue are supported in the genome (`79.8%` recovery across 575 held-out eukaryotic developmental annotations).
+- **Obligate Heteromeric Protein Complex Completion (`CoherencePrior`, `complex_terms.tsv`)**:
+  - Bundled `complex_terms.tsv` (1,923 GO protein complex terms classified into homomeric `h`, obligate heteromeric `n`, and ambiguous `a`, plus 27 complexes with explicit required catalytic/structural subunit mappings).
+  - Boosts borderline missing subunits when $\ge 60\%$ of partner subunits are present (`+1.5` log-odds) and attenuates isolated singleton subunit false positives (`-1.5` log-odds), raising Leave-Subunit-Out (LSO) $F_1$@0.50 from `0.000` to `0.742` (`100.0%` recall, `98.3%` Hit@1 across 175 held-out subunits in 6 prokaryotes).
+- **Stand-Alone Packaging & Documentation (`./gspa`, `gspa-2.0.0.jar`, `docs/CLI_REFERENCE.md`)**:
+  - Self-contained executable fat JAR (`gspa-2.0.0.jar`) bundling all ontology constraint tables, essentiality presets, HTML5 visualization templates, and the Stage 3 `run_gspa_agent.py` sidecar.
+  - Stand-alone root launcher script (`./gspa`) and comprehensive CLI documentation (`docs/CLI_REFERENCE.md`).
+- **Four-Pillar Empirical Benchmark Suite (`benchmark/unified/`, `results/`, `paper/`)**:
+  - Complete reproducible benchmark suite and empirical results across 21 reference genomes, 13 PGAP/DeepFRI genomes, 97 uncultured MAGs (16 phyla), 1,248 LRO metabolic gap-filling reactions, 175 LSO complex subunits, 6 multicellular/unicellular eukaryotes, and 120 Stage 3 agent anomalies.
+
+### Added (v1.5.x — v2.0.0 Pre-Release Development)
 - **DeepGO-PlusPlus-Light webservice + bridge optimization** (`deepgo-plusplus/service/`,
   `pipeline/apply_net_bridge.py`, model `deepgo_plusplus_light_fast.json`). The
   homology-bridged `net` is made request-fast by precomputing each train node's

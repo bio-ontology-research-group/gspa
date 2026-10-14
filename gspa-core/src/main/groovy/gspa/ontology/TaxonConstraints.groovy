@@ -142,6 +142,27 @@ class TaxonConstraints {
     int constrainedTermCount() {
         (onlyInTaxon.keySet() + neverInTaxon.keySet()).size()
     }
+
+    /** Normalize an organism taxon string or domain alias to NCBITaxon_XXXXX format */
+    static String normalizeTaxon(String raw) {
+        if (!raw) return null
+        String t = raw.trim()
+        switch (t.toLowerCase()) {
+            case 'bacteria': return 'NCBITaxon_2'
+            case 'archaea': return 'NCBITaxon_2157'
+            case 'eukaryote':
+            case 'eukaryota': return 'NCBITaxon_2759'
+            case 'fungi':
+            case 'yeast': return 'NCBITaxon_4751'
+            case 'metazoa': return 'NCBITaxon_33208'
+            case 'viridiplantae':
+            case 'plant': return 'NCBITaxon_33090'
+        }
+        if (t.startsWith('NCBITaxon_')) return t
+        if (t.startsWith('NCBITaxon:')) return 'NCBITaxon_' + t.substring('NCBITaxon:'.length())
+        if (t.isInteger()) return 'NCBITaxon_' + t
+        t
+    }
 }
 
 /**

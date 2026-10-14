@@ -56,6 +56,20 @@ class CalibrationTable {
         1.0 / (1.0 + Math.exp(-x))
     }
 
+    /** Convert probability in (0, 1) to log-odds (clamped by EPSILON). */
+    static double probToLogOdds(double p) {
+        double clamped = Math.max(EPSILON, Math.min(1.0d - EPSILON, p))
+        Math.log(clamped / (1.0d - clamped))
+    }
+
+    /** Convert log-odds to probability in (0, 1) via logistic sigmoid. */
+    static double logOddsToProb(double lo) {
+        if (lo >= 500.0d) return 1.0d - EPSILON
+        if (lo <= -500.0d) return EPSILON
+        double p = 1.0d / (1.0d + Math.exp(-lo))
+        Math.max(EPSILON, Math.min(1.0d - EPSILON, p))
+    }
+
     /**
      * Default Platt coefficients per known predictor. These are provisional
      * defaults chosen so that the highest plausible raw score for each tool

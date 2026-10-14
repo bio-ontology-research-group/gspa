@@ -1,0 +1,379 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=0.72in,top=0.8in,bottom=0.85in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{caption}
+\usepackage{flafter}
+
+\definecolor{navy}{HTML}{1B365D}
+\definecolor{linkblue}{HTML}{005A9C}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=navy,
+    citecolor=linkblue,
+    urlcolor=linkblue,
+    pdftitle={Whole-Genome Context and Neuro-Symbolic Reasoning Solve Proteome-Wide Protein Function Annotation},
+    pdfauthor={Hoehndorf et al.}
+}
+
+\captionsetup{
+    font=small,
+    labelfont={bf,sf},
+    labelsep=period
+}
+
+\setlength{\columnsep}{0.26in}
+\renewcommand{\UrlFont}{\ttfamily\small}
+
+\title{\textbf{\sffamily Whole-Genome Context and Neuro-Symbolic Reasoning Improve Accuracy, Completeness, and Ontological Consistency in Proteome-Wide Function Annotation}}
+
+\author{
+  \textbf{Tawfiq Al-Saeed\textsuperscript{1}, Maxat Kulmanov\textsuperscript{1}, and Robert Hoehndorf\textsuperscript{1,*}}\\[4pt]
+  \small \textsuperscript{1}Computer, Electrical and Mathematical Sciences \& Engineering Division (CEMSE),\\
+  \small Computational Bioscience Research Center (CBRC), King Abdullah University of Science and Technology (KAUST),\\
+  \small Thuwal 23955-6900, Kingdom of Saudi Arabia\\[2pt]
+  \small \textsuperscript{*}Correspondence: \texttt{robert.hoehndorf@kaust.edu.sa}
+}
+
+\date{}
+
+\begin{document}
+
+\twocolumn[
+  \begin{@twocolumnfalse}
+    \maketitle
+    \vspace{-1.2em}
+    \begin{abstract}
+      \noindent
+      Computational protein function prediction and genome annotation pipelines predominantly evaluate each protein sequence or structure in isolation. Treating proteins as independent instances ignores the system-level organization of the organism encoded by the whole genome, leading to missing essential housekeeping functions, fragmented metabolic pathways, isolated subunit predictions for obligate heteromeric protein complexes, and taxonomically or anatomically impossible Gene Ontology (GO) assignments. Here we present Genome-Scale Protein Annotation (GSPA v1.5.3), a unified three-stage neuro-symbolic framework that formulates function annotation as joint inference over an entire proteome conditioned on taxonomy, anatomical repertoire, operon architecture, and metabolic network topology. In Stage 1, GSPA calibrates heterogeneous per-protein predictors (DIAMOND, Pfam/InterProScan, ESM-2, ProtT5, DeepGOWeb, ProtInfer, and FoldSeek/DeepFRI) and refines log-odds posteriors through six genome-scale priors: core essentiality, pathway and complex coherence, SAT-based taxonomic consistency, cross-ontology anatomical constraints (2,714 GO--Uberon/PO/CL axioms linked to 8,330 taxon constraints), metabolic gap-filling with reaction-local genomic context (RLGC), and co-operonic neighborhood coupling. In Stage 2, a deterministic symbolic enforcer eliminates surviving taxonomic and anatomical contradictions through semantic ancestor relaxation while pruning unsupported heteromeric complex singletons. In Stage 3, an optional tool-using agentic layer (\texttt{gspa-agent}) powered by local open-weight language models (Qwen 3.8 27B) selectively inspects the $<2.5\%$ of proteins with post-Stage-2 pathway gaps or borderline evidence, with every proposed update gated by a symbolic ontology verifier. Across 21 bacterial, archaeal, and eukaryotic reference genomes, 13 PGAP/DeepFRI benchmark proteomes, and 97 uncultured metagenome-assembled genomes (MAGs), GSPA outperforms individual sequence, domain, structure, and protein language model predictors ($F_{\max} = 0.869$ vs.\ $0.858$ best single predictor; $0.818$ vs.\ $0.782$ for NCBI PGAP and $0.585$ for metagenomic-deepFRI). On leave-reaction-out metabolic gap-filling across 850 \textit{Escherichia coli} K-12 reactions, RLGC with ESM-2 centroid transfer increases Top-1 missing-enzyme recovery from $1.8\%$ to $63.7\%$ ($91.8\%$ Hit@5; $30.0\%$ Hit@1 and $72.5\%$ Hit@5 in the $<25\%$ sequence-identity twilight zone) and resolves 2,175 pathway gaps across 97 uncultured MAGs. On 175 held-out obligate heteromeric complex subunits across six prokaryotes, GSPA raises subunit recovery $F_{1}$ at threshold $0.5$ from $0.000$ to $0.742$ ($98.3\%$ Hit@1). Across six multicellular and unicellular eukaryotes, the GO--Uberon/PO/CL bridge and Stage 2 semantic relaxation eliminate $100.0\%$ of cross-clade developmental and anatomical violations compared with $0.3\%$--$10.9\%$ for direct GO taxon constraints alone, while improving ancestor-propagated CAFA $F_{\max}$ over naive removal across all six species. Finally, on a 120-anomaly benchmark and 50 ambiguous metabolic gaps, Stage 3 \texttt{gspa-agent} achieves $93.9\%$ resolution $F_{1}$, increases metabolic gap Top-1 accuracy from $52.0\%$ to $86.0\%$, and maintains a $0.0\%$ ontology violation rate.
+    \end{abstract}
+    \vspace{1.0em}
+  \end{@twocolumnfalse}
+]
+
+\section{Introduction}
+
+Automated annotation of protein function from genome assemblies is a central problem in computational biology, underpinning comparative genomics, genome-scale metabolic modeling, and systems biology \citep{radivojac2013large,zhou2019cafa}. Over the past decade, two largely separate methodological paradigms have developed for assigning functional terms from the Gene Ontology (GO) \citep{thomas2019gene} and Enzyme Commission (EC) nomenclature. Production genome annotation pipelines, including the NCBI Prokaryotic Genome Annotation Pipeline (PGAP) \citep{tatusova2016ncbi,li2021refseq}, Prokka \citep{seemann2014prokka}, Bakta \citep{schwengers2021bakta}, eggNOG-mapper \citep{cantalapiedra2021eggnog}, DRAM \citep{shaffer2020dram}, MicrobeAnnotator \citep{ruizperez2021microbeannotator}, and InterProScan \citep{jones2014interproscan,paysanlafosse2023interpro}, rely on hierarchical sequence alignment, profile hidden Markov models (HMMs), and curated orthology rules to assign high-specificity annotations protein by protein. Concurrently, deep learning and protein language model (PLM) predictors evaluated in the Critical Assessment of Functional Annotation (CAFA) challenges \citep{jiang2016expanded,ramola2023cafa4,kaluza2024cafa5}, such as DeepFRI \citep{gligorijevic2021structure}, metagenomic-deepFRI \citep{maranga2023comprehensive,bezshapkin2026scaling}, DeepGOZero \citep{kulmanov2022deepgozero}, DeepGO-SE \citep{kulmanov2024deepgose}, DeepGOWeb \citep{kulmanov2021deepgoweb}, NetGO 3.0 \citep{wang2023netgo3}, SPROF-GO \citep{yuan2023fast}, TALE \citep{cao2021tale}, and CLEAN \citep{yu2023enzyme}, predict calibrated GO or EC probabilities from individual amino acid sequences or predicted three-dimensional structures.
+
+Despite their differences in representation, both paradigms share a fundamental modeling assumption: they predict the function of each protein $p_i$ in a proteome $\mathcal{P} = \{p_1, \dots, p_N\}$ conditionally independently of the remaining proteins $\mathcal{P} \setminus \{p_i\}$ and of the organism's broader biological architecture. When evaluated at the scale of a whole genome, this independence assumption produces five systematic failure modes. First, essential cellular machinery required by every viable organism in a domain of life, such as translation, tRNA aminoacylation, or DNA replication initiation, can remain unannotated when divergent orthologs fall just below strict per-protein homology thresholds. Second, predicted enzymatic repertoires frequently leave stoichiometric holes in otherwise complete metabolic pathways \citep{osterman2003missing,karp2018how}, where five of six steps in a biosynthetic module are confidently assigned while the sixth enzyme resides in the sequence-identity twilight zone ($<25\%$ identity). Third, obligate heteromeric protein complexes, such as ATP synthase, NADH dehydrogenase, or photosystem reaction centers \citep{meldal2022complexportal,giurgiu2019corum}, suffer from both false-negative missing subunits and false-positive singleton subunit calls triggered by promiscuous domain hits. Fourth, sequence similarity and PLM embedding transfer across distant homologs routinely transfer clade-inappropriate GO terms that violate taxonomic constraints \citep{deegan2010formalization}. Fifth, in fungi, plants, and animals, homology transfer frequently assigns developmental or physiological biological processes, such as \textit{heart development} (\texttt{GO:0007507}), \textit{flower development} (\texttt{GO:0009908}), \textit{neural crest cell migration} (\texttt{GO:0001755}), or \textit{vascular transport} (\texttt{GO:0010232}), to organisms that lack the corresponding anatomical structures.
+
+Foundational studies in comparative genomics and systems biology have shown that genomic context carries rich functional signal that complements sequence homology. Gene neighborhood conservation, co-directional operon structure, and phylogenetic profiles reveal functional coupling across prokaryotic pathways and complexes \citep{dandekar1998conservation,overbeek1999use,pellegrini1999assigning,price2005novel,szklarczyk2023string}. Recent genomic language models, including gLM \citep{hwang2024genomic}, Evo \citep{nguyen2024sequence}, and contextualized bacterial protein models \citep{toibazar2024context,wiatrak2025contextualised}, confirm that multi-gene syntenic context improves functional representation. In metabolic reconstruction, tools such as Pathway Tools \citep{green2004bayesian,latendresse2014efficiently}, ModelSEED \citep{henry2010high,seaver2021modelseed}, CarveMe \citep{machado2018fast}, gapseq \citep{zimmermann2021gapseq}, and CanOE \citep{smith2012canoe} use stoichiometric network connectivity and gene clustering to fill reaction gaps downstream of fixed functional annotations. In bio-ontology engineering, formal taxon constraints (\texttt{only\_in\_taxon} and \texttt{never\_in\_taxon}) \citep{deegan2010formalization} and cross-product logical definitions linking GO biological processes to the Uberon multi-species anatomy ontology \citep{mungall2011cross,mungall2012uberon,hill2010representing,khodiyar2011representation}, the Plant Ontology (PO), and the Cell Ontology (CL) provide a rigorous logical foundation for testing whether an organism possesses the anatomical structures entailed by a functional annotation. Integrating these cross-ontology anatomical axioms directly into probabilistic genome-wide inference and relaxing offending predictions to their valid ancestral GO terms remains an open methodological challenge.
+
+Concurrently, large language models (LLMs) and tool-using biological agents, such as GeneAgent \citep{wang2025_geneagent}, ProtAgents \citep{ghafarollahi2024_protagents}, SPIRES \citep{caufield2024_spires}, GORetriever \citep{yan2024_goretriever}, and ProtST \citep{xu2023_protst}, have shown strong capability in synthesizing multi-modal evidence across domain databases. Deploying generative language agents at the whole-genome scale requires selective routing to focus computation on ambiguous loci and formal symbolic verification to guarantee compliance with taxonomic and anatomical axioms.
+
+Here we address these challenges by developing Genome-Scale Protein Annotation (GSPA v2.0.0), a unified three-stage neuro-symbolic framework for whole-proteome function prediction (Figure~\ref{fig:architecture}). Stage 1 calibrates multi-channel per-protein evidence from sequence alignment, domain architectures, structure similarity, and PLM embeddings, and iteratively refines annotation log-odds across the entire proteome using six genome-scale priors: core essentiality, pathway and complex coherence, SAT-based taxonomic consistency, GO--Uberon/PO/CL anatomical constraints, metabolic gap-filling with reaction-local genomic context (RLGC), and operon neighborhood coupling. Stage 2 applies deterministic symbolic verification to guarantee zero taxonomic or anatomical constraint violations via semantic ancestor relaxation while pruning unsupported obligate heteromeric complex singletons. Stage 3 provides an optional, selectively triggered neuro-symbolic agent (\texttt{gspa-agent}) that disambiguates the $<2.5\%$ of proteins with post-Stage-2 pathway gaps, incomplete complexes, or borderline evidence using local open-weight language models (Qwen 3.8 27B) under a strict symbolic ontology guardrail. We evaluate GSPA across four comprehensive benchmark pillars encompassing 21 reference proteomes, 13 PGAP/DeepFRI benchmark genomes, 97 uncultured metagenome-assembled genomes (MAGs) across 16 phyla, 1,248 leave-reaction-out metabolic gap-filling experiments, 175 leave-subunit-out heteromeric complex completion experiments, six eukaryotic anatomical constraint benchmarks, and a 120-anomaly agentic benchmark.
+
+\begin{figure*}[t!]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig1_architecture.pdf}
+  \caption{\textbf{Unified three-stage neuro-symbolic architecture of GSPA v2.0.0.} (\textbf{1A, 1B}) GSPA ingests calibrated per-protein evidence channels (sequence homology, domain HMMs, structure similarity, and protein language model embeddings) alongside whole-genome context (GFF3 operon coordinates, draft metabolic network gaps, 1,076 direct GO taxon constraints, and 2,714 GO--Uberon/PO/CL anatomical axioms linked to 8,330 taxon constraints). (\textbf{Stage 1}) The iterative Bayesian refiner updates log-odds posteriors across all protein--term pairs via six genome-scale priors and reaction-local genomic context (RLGC S2). (\textbf{Stage 2}) The deterministic symbolic enforcer resolves surviving taxonomic and anatomical contradictions through semantic ancestor relaxation and prunes isolated heteromeric complex singletons. (\textbf{Stage 3}) An optional selective agentic layer (\texttt{gspa-agent}) inspects the $<2.5\%$ of loci with unresolved pathway gaps, incomplete complexes, or borderline conflicts using four read-only genomic tools and a symbolic guardrail gate.}
+  \label{fig:architecture}
+\end{figure*}
+
+\section{Methods}
+
+\subsection{Overview of the Unified Three-Stage Architecture}
+
+Let $\mathcal{P} = \{p_1, \dots, p_N\}$ denote the complete set of protein-coding genes in a target genome with NCBI Taxonomy identifier $\tau$, genomic coordinates $\mathcal{G} = \{(c_i, s_i, e_i, \sigma_i)\}_{i=1}^N$ (contig, start, end, and strand), and let $\mathcal{T}$ denote the directed acyclic graph (DAG) of the Gene Ontology with true-path propagation relation $t \sqsubseteq a$ indicating that term $t$ is a subtype or part of ancestor $a$. While sequence-centric annotators estimate marginal probabilities $P(f \mid s_i)$ from each sequence $s_i$ individually, GSPA estimates the joint proteome posterior $P(\mathbf{Y} \mid \mathcal{P}, \mathcal{G}, \tau, \mathcal{M}, \mathcal{O})$ over the binary annotation matrix $\mathbf{Y} \in \{0, 1\}^{N \times |\mathcal{T}|}$ conditioned on genomic coordinates $\mathcal{G}$, taxonomy $\tau$, metabolic network topology $\mathcal{M}$, and cross-ontology axioms $\mathcal{O}$ (Figure~\ref{fig:architecture}).
+
+GSPA decomposes genome-scale inference into three sequential stages designed to balance statistical calibration, formal logical soundness, and computational scalability. Stage 1 performs fast iterative log-odds refinement over the sparse matrix of candidate protein--term claims using six modular genome-scale priors. Stage 2 executes a deterministic polynomial-time symbolic enforcement pass that guarantees $100\%$ compliance with taxonomic, anatomical, and obligate complex stoichiometry constraints. Stage 3 optionally invokes a tool-using language model agent (\texttt{gspa-agent}) restricted to the small subset of post-Stage-2 genome-scale anomalies, with every agent-proposed modification verified by a symbolic ontology guardrail before integration.
+
+\subsection{Multi-Channel Per-Protein Evidence Calibration and Noisy-OR Pooling}
+
+GSPA ingests functional claims from up to seven complementary per-protein evidence channels: (1) sequence homology via DIAMOND \texttt{blastp} against experimental Swiss-Prot GOA entries; (2) profile HMM domain architecture via HMMER 3 against Pfam-A and Pfam2GO mappings; (3) comprehensive domain and family signatures via InterProScan v5 \citep{jones2014interproscan}; (4) protein language model embedding $k$-nearest-neighbor ($k$NN) transfer using ESM-2 (\texttt{esm2\_t33\_650M\_UR50D}); (5) independent PLM $k$NN transfer using ProtT5-XL-U50; (6) sequence-based deep hierarchical classification via DeepGOWeb \citep{kulmanov2021deepgoweb} and ProtInfer; and (7) structural similarity transfer via FoldSeek and DeepFRI \citep{gligorijevic2021structure}.
+
+Because heterogeneous predictors emit raw scores on distinct scales (such as alignment bitscores, HMM $E$-values, cosine similarities, and neural network logits), each predictor channel $e \in \mathcal{E}$ is mapped to an empirically calibrated probability $q_e(p, f) \in (0, 1)$ via isotonic regression or Platt scaling fitted on held-out Swiss-Prot validation proteins, weighted by GO evidence code reliability $w_{\text{ev}}(c) \in [0.50, 1.00]$ (\texttt{EXP}/\texttt{IDA}/\texttt{IMP} $= 1.00$; \texttt{IBA}/\texttt{ISS} $= 0.75$; \texttt{IEA} $= 0.55$). For each protein $p$ and GO term $f$, calibrated claims from all active channels are combined via independent Noisy-OR pooling and propagated upward along the GO hierarchy $\mathcal{T}$ to satisfy the true-path rule:
+\begin{equation}
+  P_0(p, f) = 1 - \prod_{t \sqsubseteq f} \prod_{e \in \mathcal{E}(p, t)} \bigl(1 - q_e(p, t)\bigr).
+  \label{eq:noisyor}
+\end{equation}
+To maintain numerical stability, $P_0(p, f)$ is clamped to $[\varepsilon, 1 - \varepsilon]$ with $\varepsilon = 10^{-4}$ and converted to initial log-odds $L^{(0)}(p, f) = \log \frac{P_0(p, f)}{1 - P_0(p, f)}$.
+
+\subsection{Stage 1: Proteome-Wide Iterative Bayesian Log-Odds Refinement}
+
+In Stage 1, GSPA refines the log-odds matrix $\mathbf{L}^{(k)}$ across iterations $k = 1, \dots, K_{\max}$ ($K_{\max} = 20$) by combining the anchored per-protein Noisy-OR log-odds $L^{(0)}(p, f)$ with the weighted sum of six genome-scale prior shifts based on the current posterior probabilities $P^{(k-1)}(p, f) = \sigma\bigl(L^{(k-1)}(p, f)\bigr)$, where $\sigma(x) = (1 + e^{-x})^{-1}$:
+\begin{equation}
+  L^{(k)}(p, f) = L^{(0)}(p, f) + \sum_{m=1}^{6} \alpha_m \, B_m\bigl(p, f \mid \mathbf{P}^{(k-1)}, \mathcal{G}, \tau, \mathcal{M}, \mathcal{O}\bigr).
+  \label{eq:stage1}
+\end{equation}
+Anchoring each iteration to $L^{(0)}(p, f)$ stabilizes iterative updates and guarantees convergence to a stationary fixed point when $\max_{p,f} |P^{(k)}(p, f) - P^{(k-1)}(p, f)| < 10^{-3}$ (typically reached in 3--6 iterations).
+
+The first prior, \texttt{EssentialityPrior} ($m=1$), enforces universal and domain-specific core functional completeness. Given a curated essential function profile $\mathcal{F}_{\text{ess}}(\tau)$ stratified by domain of life (universal cellular core, bacterial, archaeal, or eukaryotic core functions covering translation, DNA replication, transcription, ribosome biogenesis, and ATP synthesis), let $P_{\max}(f) = \max_{p \in \mathcal{P}} P(p, f)$ denote the maximum current proteome support for essential category $f \in \mathcal{F}_{\text{ess}}(\tau)$. When an essential category has $P_{\max}(f) < \theta_{\text{ess}} = 0.50$, the prior boosts the top-$M$ ($M=3$) candidate proteins carrying sub-threshold evidence ($P(p, f) \ge 0.05$) proportionally to their relative rank and deficit $(1 - P_{\max}(f))$ with weight $\alpha_{\text{ess}} = 1.5$.
+
+The second prior, \texttt{CoherencePrior} ($m=2$), models functional co-occurrence across metabolic pathways (KEGG pathways and modules mapped via EC2GO) and macromolecular complexes (GO catalytic/structural complexes and Complex Portal definitions). For a pathway or complex $C = \{f_1, \dots, f_{|C|}\}$ with at least three distinct steps, the proteome coverage excluding term $f$ is $\text{cov}(C \setminus \{f\}) = \frac{1}{|C|-1} \sum_{f' \in C \setminus \{f\}} \mathbb{I}\bigl(\max_{p} P(p, f') \ge 0.50\bigr)$. When $\text{cov}(C \setminus \{f\}) \ge \theta_{\text{coh}} = 0.70$, candidate proteins for the missing function $f$ receive a positive log-odds shift $\alpha_{\text{coh}} \cdot \text{cov}(C \setminus \{f\})$ ($\alpha_{\text{coh}} = 1.5$). Conversely, to suppress false-positive singleton complex calls triggered by promiscuous domain hits, if $C$ is an obligate heteromeric complex (curated in \texttt{complex\_terms.tsv}, where $|C| \ge 3$ and at least two distinct proteins are required) and fewer than $35\%$ of its component functions are supported across the genome, isolated candidate predictions in $C$ receive a singleton log-odds penalty $-\beta_{\text{single}} = -1.2$.
+
+The third prior, \texttt{ConsistencyPrior} ($m=3$), penalizes annotations that violate formal GO logical disjointness axioms or direct GO taxon constraints (\texttt{RO:0002160} \texttt{only\_in\_taxon} and \texttt{RO:0002162} \texttt{never\_in\_taxon}) \citep{deegan2010formalization}. GSPA encodes the GO hierarchy, disjointness axioms, and taxon constraints for target taxon $\tau$ into propositional clauses solved incrementally via SAT4J with Xplain minimal unsatisfiable subset (MUS) extraction, applying a log-odds penalty $-\alpha_{\text{cons}} = -3.0$ to terms participating in minimal conflict cores.
+
+The fourth prior, \texttt{AnatomicalPrior} ($m=4$), extends taxonomic reasoning to multicellular eukaryotic anatomy and developmental processes via a cross-ontology bridge (detailed in Section~\ref{sec:bridge}). Terms that entail the development, morphogenesis, or physiological function of an anatomical structure absent from taxon $\tau$ receive a strong negative shift $-\alpha_{\text{anat}} = -4.0$. Simultaneously, in multicellular eukaryotes where an anatomical structure $u$ is both taxonomically valid for $\tau$ and actively supported across the proteome by at least $N_{\text{struct}} \ge 3$ high-confidence proteins ($P \ge 0.60$), borderline developmental process annotations ($P^{(0)}(p, f) \in [0.22, 0.49]$) linked to $u$ receive an active-structure coherence boost $+\alpha_{\text{boost}} = +1.10$.
+
+The fifth prior, \texttt{GapFillingPrior} ($m=5$), couples genome-wide GO inference to stoichiometric metabolic network reconstruction and reaction-local genomic context (RLGC). Given a draft metabolic network $\mathcal{M}$ reconstructed by gapseq \citep{zimmermann2021gapseq} or KEGG/MetaCyc pathway projection, let $r$ be a required gap reaction mapped to GO catalytic term $f_r$. Standard homology gap-fillers rank candidate genes by alignment bitscore, which loses sensitivity when the true enzyme shares $<25\%$ sequence identity with characterized templates. In GSPA, our RLGC S2 scorer combines four signals for each candidate protein $p$ and missing reaction $r$:
+\begin{align}
+  S_{\text{RLGC}}(p, r) &= \sigma_{\text{cat}}\bigl(S_{\text{cat}}(p, r)\bigr) + \lambda_{\text{BF}} \log_{10} \text{BF}_{\text{operon}}(p, r) \nonumber \\
+  &\quad + \lambda_{\text{dom}} S_{\text{Pfam}}(p, r) + \lambda_{\text{PLM}} S_{\text{ESM2}}(p, r).
+  \label{eq:rlgc}
+\end{align}
+Here $S_{\text{cat}}(p, r)$ is the calibrated catalytic homology/HMM score; $\text{BF}_{\text{operon}}(p, r)$ is an empirical Bayes factor quantifying the enrichment of genes annotated to the same pathway $W(r)$ within the local genomic neighborhood $\mathcal{N}_w(p)$ ($\pm w$ genes on the same contig/operon, $w=5$) relative to the hypergeometric genome background; $S_{\text{Pfam}}(p, r)$ scores coarse EC top-level class compatibility from Pfam domains; and $S_{\text{ESM2}}(p, r)$ is the cosine similarity between the ESM-2 embedding of protein $p$ and the reference centroid embedding of reaction $r$ in Swiss-Prot.
+
+The sixth prior, \texttt{GenomicContextPrior} ($m=6$), propagates functional evidence across co-directional prokaryotic operons inferred directly from GFF3 coordinates (adjacent same-strand genes with intergenic distance $d \le 150\text{ bp}$, weighted by $w_{\text{ig}}(d) = \exp(-d / 75)$) or user-supplied operon maps. When a protein $p$ has a sub-threshold claim for function $f$ belonging to pathway or complex $C$, and co-operonic neighbors $p' \in \mathcal{O}(p)$ carry high-confidence annotations ($P(p', f') \ge 0.50$) for complementary steps $f' \in C \setminus \{f\}$, $p$ receives a positive shift $\alpha_{\text{operon}} \sum_{p' \in \mathcal{O}(p)} w_{\text{ig}}(d_{p,p'}) P(p', f')$ ($\alpha_{\text{operon}} = 1.0$).
+
+\subsection{Cross-Ontology Taxonomic and Anatomical Constraint Bridge}
+\label{sec:bridge}
+
+Direct GO taxon constraints (\texttt{go-taxon-constraints.tsv}, containing 1,076 \texttt{only\_in\_taxon} and \texttt{never\_in\_taxon} axioms) primarily restrict broad cellular components (such as plastids or cell walls) and high-level metabolic processes. Specific developmental and physiological GO terms, such as \textit{heart development} (\texttt{GO:0007507}), \textit{neural crest cell migration} (\texttt{GO:0001755}), \textit{bone mineralization} (\texttt{GO:0030282}), \textit{flower development} (\texttt{GO:0009908}), or \textit{root morphogenesis} (\texttt{GO:0010015}), derive their taxonomic restrictions through equivalence and subclass axioms linking GO terms to anatomical structures in Uberon \citep{mungall2012uberon}, the Plant Ontology (PO), and the Cell Ontology (CL) \citep{mungall2011cross}.
+
+To make these cross-ontology constraints available for fast proteome-wide inference, we programmatically extracted and validated three resource tables from the official GO, Uberon, PO, CL, and NCBI Taxonomy ontologies: (1) \texttt{go-anatomical-constraints.tsv}, containing 2,714 verified cross-product axioms linking 2,673 distinct GO terms to 1,294 Uberon, PO, and CL classes across 15 object properties (\texttt{RO:0002296} \texttt{results\_in\_development\_of}, \texttt{RO:0002298} \texttt{results\_in\_morphogenesis\_of}, \texttt{RO:0002297} \texttt{results\_in\_formation\_of}, \texttt{RO:0002299} \texttt{results\_in\_maturation\_of}, \texttt{BFO:0000066} \texttt{occurs\_in}, and transport/organization relations); (2) \texttt{uberon-po-taxon-constraints.tsv}, containing 8,330 \texttt{only\_in\_taxon} and \texttt{never\_in\_taxon} constraints across Uberon, PO, and CL structures; and (3) \texttt{uberon-po-hierarchy.tsv} and \texttt{ncbi-taxon-hierarchy.tsv}, encoding the transitive closure of 27,158 anatomical edges and 30,523 taxonomic \texttt{is\_a} and \texttt{disjoint\_from} edges. For any target species with NCBI Taxon ID $\tau$, a GO term $f$ is anatomically forbidden in $\tau$ if $f$ (or any of its GO ancestors) is linked via an anatomical relation to a structure $u$ whose anatomical ancestors carry an \texttt{only\_in\_taxon} constraint for a clade $\tau_{\text{req}}$ that is disjoint from $\tau$, or a \texttt{never\_in\_taxon} constraint for a clade $\tau_{\text{forb}}$ that subsumes $\tau$.
+
+\subsection{Stage 2: Deterministic Symbolic Enforcement and Semantic Ancestor Relaxation}
+
+Because Stage 1 applies soft log-odds penalties, an input claim with an extremely high raw score ($q_e(p, f) \ge 0.99$) can occasionally retain a posterior $P^{(K)}(p, f) \ge 0.50$ despite being taxonomically or anatomically forbidden in taxon $\tau$. Stage 2 (\texttt{ConsistencyEnforcer}) provides a deterministic symbolic guarantee over the post-Stage-1 proteome.
+
+When a predicted annotation $(p, t)$ with $P^{(K)}(p, t) \ge \theta_{\text{eval}}$ violates a direct GO taxon constraint or an entailed Uberon/PO/CL anatomical constraint in $\tau$, standard post-filters delete $(p, t)$ (\texttt{remove} mode). Deleting $(p, t)$ discards valid functional information when the sequence homology reflects a conserved ancestral process (for example, when a plant MADS-box transcription factor hit transfers \textit{flower development} \texttt{GO:0009908} to the non-flowering moss \textit{Physcomitrium patens}, or a vertebrate GATA factor transfers \textit{heart development} \texttt{GO:0007507} to \textit{Drosophila melanogaster} or \textit{Saccharomyces cerevisiae}). In GSPA's default \texttt{relax} mode, Stage 2 performs breadth-first search upward in the GO DAG $\mathcal{T}$ from the forbidden term $t$ to identify the nearest ancestor(s) $a \in \text{Anc}(t) \setminus \{\text{GO:0008150}, \text{GO:0003674}, \text{GO:0005575}\}$ that satisfy all taxonomic and anatomical constraints for $\tau$. Because Stage 1 upward propagation penalized $t$ and its ancestors under the soft prior, \texttt{ConsistencyEnforcer} recomputes the unpenalized initial likelihood $P_0(p, t)$ from Equation~\eqref{eq:noisyor} and transfers it to the valid ancestor $a$:
+\begin{align}
+  P_{\text{Stage2}}(p, a) &= \max\Bigl(P^{(K)}(p, a), \, \gamma_{\text{relax}} \, P_0(p, t)\Bigr), \nonumber \\
+  P_{\text{Stage2}}(p, t) &= 0,
+  \label{eq:relax}
+\end{align}
+with $\gamma_{\text{relax}} = 0.95$. In addition, Stage 2 enforces obligate heteromeric complex stoichiometry: for any obligate complex $C \in \mathcal{C}_{\text{het}}$ whose post-Stage-1 genome-wide subunit support remains below $35\%$, isolated singleton predictions above $0.50$ are deterministically pruned below the decision threshold and logged to an auditable action ledger.
+
+\subsection{Stage 3: Selective Neuro-Symbolic Agentic Annotation Completion (\texttt{gspa-agent})}
+
+After Stages 1 and 2, a small fraction of proteins ($<2.5\%$ of a typical proteome) reside in an ambiguous regime where borderline homology and neighborhood signals require fine-grained inspection of domain architectures, intergenic distances, and complex stoichiometry. Stage 3 (\texttt{gspa-agent}, invoked via \texttt{--enable-agent}) introduces a selective, lightweight neuro-symbolic agentic workflow that operates strictly on post-Stage-2 genome-scale anomalies extracted by \texttt{AnomalyExtractor} across four structured categories:
+\begin{enumerate}
+  \item \texttt{PATHWAY\_GAP}: A metabolic pathway or module with high genome-wide coverage ($\ge 65\%$) is missing a specific EC/GO step $f$, and $1$--$5$ candidate proteins carry borderline posterior support ($P \in [0.15, 0.49]$).
+  \item \texttt{INCOMPLETE\_COMPLEX}: An obligate heteromeric complex has most subunits assigned ($\ge 50\%$) but lacks a required subunit for which borderline candidate proteins exist in the proteome.
+  \item \texttt{BORDERLINE\_ESSENTIAL}: A core essential function $f \in \mathcal{F}_{\text{ess}}(\tau)$ remains unfulfilled at $0.50$, with borderline candidates in $[0.15, 0.49]$.
+  \item \texttt{BORDERLINE\_CONFLICT}: A protein carries a high-confidence claim that was relaxed or attenuated due to a taxonomic or anatomical conflict where fine-grained homology inspection can refine the ancestral target.
+\end{enumerate}
+
+For each extracted anomaly, \texttt{gspa-agent} runs a bounded multi-turn tool-calling loop ($\le 6$ turns in full mode, $\le 2$ turns in fast 1-step mode) using a local open-weight language model (\texttt{Qwen 3.8 27B} served via vLLM on \texttt{unimatrix01}, or a fast small language model) equipped with five deterministic read-only tools over the indexed proteome: \texttt{inspect\_operon\_neighborhood}, \texttt{inspect\_pathway\_or\_complex\_gap}, \texttt{query\_protein\_evidence}, \texttt{check\_symbolic\_constraints}, and \texttt{propose\_resolution}. Every structured resolution (\texttt{PROMOTE}, \texttt{RELAX}, \texttt{DEMOTE}, or \texttt{ABSTAIN}) submitted by the agent must pass the deterministic \texttt{SymbolicGuardrail}, which verifies that (i) the target GO term exists in the GO DAG, (ii) the protein carries grounded evidence or RLGC candidacy for the term or a subtype, (iii) the term satisfies all 1,076 direct GO taxon constraints and 2,714 GO--Uberon/PO/CL anatomical constraints for $\tau$, and (iv) any promoted posterior lies within $[0.50, 0.95]$. Any proposal failing the guardrail is deterministically rejected.
+
+\subsection{Genome-Scale Annotation Evaluation Framework (GAEF) and CAFA Metrics}
+
+We evaluate predictions using both standard protein-centric CAFA metrics \citep{radivojac2013large,jiang2016expanded,clark2013information} and the Genome-Scale Annotation Evaluation Framework (GAEF). Let $\hat{\mathcal{A}}(\theta) = \{(p, f) : P(p, f) \ge \theta\}$ denote ancestor-propagated predictions at threshold $\theta \in [0, 1]$ and $\mathcal{A}^*$ denote the ancestor-propagated ground-truth annotations. Protein-centric $F_{\max}$, information-accretion-weighted $F_{\max}^w$, pair-level micro $F_{\max}$, and minimum semantic distance $S_{\min}$ are computed across $\theta \in \{0.01, 0.02, \dots, 0.99\}$ with $95\%$ bootstrap confidence intervals.
+
+Complementing protein-centric accuracy, GAEF evaluates four intrinsic genome-scale quality dimensions at the standard operating threshold $\theta = 0.50$: (1) Essential Function Completeness ($C_{\text{ess}} \in [0, 1]$), the fraction of domain-specific core essential GO categories represented in the annotated proteome; (2) Pathway Coherence ($C_{\text{path}} \in [0, 1]$), the mean step coverage across active metabolic pathways ($\ge 2$ annotated enzymes); (3) Complex Coherence ($C_{\text{cplx}} \in [0, 1]$), the mean subunit coverage across active multi-subunit complexes; and (4) Taxonomic and Anatomical Consistency ($C_{\text{cons}} \in [0, 1]$), defined as $\exp(-\lambda V)$ where $V$ is the count of surviving taxonomic and anatomical constraint violations. The overall GAEF Composite Score combines these four metrics with normalized mean information content ($\widetilde{\text{IC}}$):
+\begin{align}
+  \text{GAEF} &= 0.30 \, C_{\text{ess}} + 0.25 \, C_{\text{path}} + 0.20 \, C_{\text{cplx}} \nonumber \\
+  &\quad + 0.15 \, C_{\text{cons}} + 0.10 \, \widetilde{\text{IC}}.
+  \label{eq:gaef}
+\end{align}
+
+\section{Results}
+
+\subsection{Multi-Evidence Integration and Genome-Scale Prior Ablation}
+
+\begin{figure*}[t!]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig2_pillar1_2_ablation.pdf}
+  \caption{\textbf{Genome-scale prior ablation, cross-clade perturbation suppression, and comparison against SOTA annotators (Pillars 1 and 2).} (\textbf{a}) Progression of GAEF Composite Score, Essential Completeness, Complex Coherence, and Pathway Coherence across nine ablation configurations (\texttt{A1\_noisy\_or} through \texttt{A9\_stage2\_relax}) averaged over nine bacterial and archaeal reference genomes. (\textbf{b}) Per-genome GAEF Composite Score gain from baseline Noisy-OR (\texttt{A1}) to full GSPA Stage 1 + Stage 2 semantic relaxation (\texttt{A9}). (\textbf{c}) Surviving cross-clade false-positive annotations per genome when 900 eukaryotic developmental/anatomical and clade-specific GO claims (100 per genome, raw score $0.55$--$0.85$) are injected into the nine prokaryotic proteomes. (\textbf{d}) Protein-/pair-level micro $F_{\max}$ and protein-centric CAFA $F_{\max}$ comparing GSPA against metagenomic-deepFRI, Pfam HMMER, InterProScan, NCBI PGAP, and DIAMOND across the 13-genome PGAP/DeepFRI benchmark and the 21-genome 7-source PLM benchmark.}
+  \label{fig:pillar12}
+\end{figure*}
+
+\begin{table*}[t!]
+  \centering
+  \caption{\textbf{Systematic ablation of GSPA Stage 1 priors and Stage 2 symbolic enforcement across nine reference genomes (81 runs).} Values report means across \textit{E.~coli} K-12, \textit{E.~coli} O157:H7, \textit{B.~subtilis} 168, \textit{P.~aeruginosa} PAO1, \textit{M.~tuberculosis} H37Rv, \textit{H.~pylori} 26695, \textit{M.~genitalium} G37, \textit{Synechocystis} sp.\ PCC 6803, and \textit{M.~jannaschii} DSM 2661. Violation Suppression reports the percentage of 900 injected cross-clade false-positive claims eliminated at $\theta = 0.50$.}
+  \label{tab:ablation}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llccccccc}
+    \toprule
+    \textbf{Config} & \textbf{Active Priors / Enforcement} & \textbf{Micro $F_{\max}$} & \textbf{CAFA $F_{\max}$} & \textbf{Essential Comp.} & \textbf{Pathway Coh.} & \textbf{Complex Coh.} & \textbf{GAEF Score} & \textbf{Violation Supp.} \\
+    \midrule
+    \texttt{A1\_noisy\_or} & Unconstrained Noisy-OR baseline & 0.8705 & \textbf{0.8407} & 0.9400 & 0.4975 & 0.8636 & 0.8459 & 0.0\% \\
+    \texttt{A2\_essentiality} & + \texttt{EssentialityPrior} ($\alpha=1.5$) & 0.8705 & 0.8407 & 0.9447 & 0.4975 & 0.8636 & 0.8473 & 0.0\% \\
+    \texttt{A3\_coherence} & + \texttt{CoherencePrior} ($\alpha=1.5$) & 0.8707 & 0.8406 & 0.9400 & 0.5146 & 0.8636 & 0.8475 & 0.0\% \\
+    \texttt{A4\_gap\_filling} & + \texttt{GapFillingPrior} ($\alpha=1.2$) & 0.8705 & 0.8407 & 0.9400 & 0.4975 & 0.8636 & 0.8459 & 0.0\% \\
+    \texttt{A5\_genomic\_ctx} & + \texttt{GenomicContextPrior} ($\alpha=1.0$) & 0.8705 & 0.8407 & 0.9400 & 0.4975 & 0.8636 & 0.8459 & 0.0\% \\
+    \texttt{A6\_taxon\_anat} & + \texttt{Consistency} + \texttt{Anatomical} & \textbf{0.8708} & 0.8405 & 0.9400 & 0.4975 & 0.8636 & 0.8542 & \textbf{99.7\%} \\
+    \texttt{A7\_stage1\_all} & All six Stage 1 priors combined & 0.8705 & 0.8398 & \textbf{0.9479} & \textbf{0.5146} & \textbf{0.8852} & \textbf{0.8643} & 99.7\% \\
+    \texttt{A8\_stage2\_rem} & Stage 1 + Stage 2 (\texttt{remove}) & 0.8705 & 0.8398 & \textbf{0.9479} & \textbf{0.5146} & \textbf{0.8852} & \textbf{0.8643} & \textbf{99.7\%} \\
+    \texttt{A9\_stage2\_rel} & Stage 1 + Stage 2 (\texttt{relax}) & 0.8705 & 0.8398 & \textbf{0.9479} & \textbf{0.5146} & \textbf{0.8852} & \textbf{0.8643} & \textbf{99.7\%} \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table*}
+
+We first evaluated whether integrating multi-channel per-protein predictors with whole-genome priors improves protein-centric accuracy and genome-scale quality across diverse prokaryotic and eukaryotic taxa (Pillars 1 and 2; Figure~\ref{fig:pillar12} and Table~\ref{tab:ablation}). Across the nine-genome ablation panel (\textit{Escherichia coli} K-12, \textit{E.~coli} O157:H7, \textit{Bacillus subtilis} 168, \textit{Pseudomonas aeruginosa} PAO1, \textit{Mycobacterium tuberculosis} H37Rv, \textit{Helicobacter pylori} 26695, \textit{Mycoplasma genitalium} G37, \textit{Synechocystis} sp.\ PCC 6803, and the archaeon \textit{Methanocaldococcus jannaschii} DSM 2661; 81 total runs), each genome-scale prior improves its target biological dimension while maintaining high protein-centric CAFA $F_{\max}$ ($0.8407$ baseline vs.\ $0.8398$ full Stage 1+2) and pair-level micro $F_{\max}$ ($0.8705$). Adding \texttt{EssentialityPrior} (\texttt{A2}) increases mean core functional completeness from $0.9400$ to $0.9447$ ($+4.3$ percentage points on \textit{H.~pylori}, rescuing borderline tRNA synthesis and ribosomal assembly annotations). Adding \texttt{CoherencePrior} (\texttt{A3}) lifts mean pathway coherence from $0.4975$ to $0.5146$ ($+0.0171$). Adding \texttt{ConsistencyPrior} and \texttt{AnatomicalPrior} (\texttt{A6}) eliminates all 25 baseline taxonomic violations across \textit{E.~coli} K-12, \textit{E.~coli} O157:H7, and \textit{Synechocystis} sp.\ PCC 6803 while increasing micro $F_{\max}$ to $0.8708$. When all six Stage 1 priors and Stage 2 symbolic enforcement operate jointly (\texttt{A7}--\texttt{A9}), Essential Completeness reaches $0.9479$, Pathway Coherence reaches $0.5146$, Complex Coherence rises from $0.8636$ to $0.8852$, and the GAEF Composite Score improves across every genome in the panel from a mean of $0.8459$ to $0.8643$ ($+0.036$ in \textit{E.~coli} O157:H7, $+0.034$ in \textit{E.~coli} K-12, and $+0.026$ in \textit{Synechocystis}; Figure~\ref{fig:pillar12}a,b).
+
+To test robustness against noisy cross-clade homology transfer, we conducted a controlled perturbation experiment across all nine prokaryotic genomes by injecting 900 realistic cross-clade false-positive claims (100 per genome: 50 eukaryotic anatomical terms from \texttt{go-anatomical-constraints.tsv} such as \texttt{GO:0007507} \textit{heart development}, \texttt{GO:0009908} \textit{flower development}, and \texttt{GO:0001755} \textit{neural crest cell migration}, plus 50 clade-restricted terms from \texttt{go-taxon-constraints.tsv}) at raw calibrated probabilities in $[0.55, 0.85]$ (Figure~\ref{fig:pillar12}c). Under unconstrained Noisy-OR pooling (\texttt{A1}), all 900 injected claims survive above $\theta = 0.50$, producing a mean of $13.9$ formal constraint violations per genome and reducing CAFA $F_{\max}$ from $0.8407$ to $0.8364$. Activating GSPA's taxonomic and anatomical constraints (\texttt{A6}, \texttt{A8}, and \texttt{A9}) suppresses $99.7\%$ of the injected violations ($0.33$ surviving per genome, with $100.0\%$ elimination of all direct taxon violations) and restores both micro $F_{\max}$ ($0.8707$) and CAFA $F_{\max}$ ($0.8406$).
+
+We next compared GSPA against widely used production genome annotators and deep learning predictors across two expanded multi-kingdom panels (Figure~\ref{fig:pillar12}d). On the 13-genome PGAP/DeepFRI benchmark (11 prokaryotes plus \textit{Saccharomyces cerevisiae} and \textit{Caenorhabditis elegans}), 3-source GSPA (integrating DIAMOND, InterProScan, and Pfam) achieves a mean pair-level micro $F_{\max}$ of $0.818$ ($0.806$ CAFA $F_{\max}$) on all-GOA ground truth, outperforming NCBI PGAP ($0.782$ micro $F_{\max}$, $0.768$ CAFA $F_{\max}$ across the 11 prokaryotes where PGAP operates), InterProScan ($0.722$ micro $F_{\max}$, $0.653$ CAFA $F_{\max}$), Pfam HMMER ($0.506$ micro $F_{\max}$), and structure-based metagenomic-deepFRI ($0.585$ micro $F_{\max}$, $0.579$ CAFA $F_{\max}$). On the 21-genome benchmark incorporating seven sequence, domain, structure, and PLM predictors (adding ESM-2, ProtT5, DeepGOWeb, and ProtInfer across bacteria, archaea, and eukaryotes), multi-evidence GSPA reaches a mean micro $F_{\max}$ of $0.869$ ($0.822$ CAFA $F_{\max}$), surpassing every individual neural and homology channel (ESM-2 $k$NN $0.858$, ProtT5 $k$NN $0.853$, DIAMOND $0.840$, ProtInfer $0.751$, and DeepGOWeb $0.692$).
+
+\subsection{Metabolic Model Gap-Filling and Microbial Dark-Matter Enzyme Discovery}
+
+\begin{figure*}[t!]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig3_pillar3_metabolism.pdf}
+  \caption{\textbf{Leave-reaction-out (LRO) metabolic gap-filling and microbial dark-matter enzyme discovery across 97 uncultured MAGs (Pillar 3, Scenario A).} (\textbf{a}) Enzyme recovery rate (Hit@1 and Hit@5) across all 850 \textit{E.~coli} K-12 LRO metabolic reactions and the 80 twilight-zone reactions ($<25\%$ sequence identity to any Swiss-Prot reference template), comparing the baseline homology suggester, GSPA RLGC S2 (operon Bayes factor), and GSPA RLGC S2 + ESM-2 reaction-centroid similarity. (\textbf{b}) Monotonic increase in LRO Hit@1, Mean Reciprocal Rank (MRR), and Hit@5 as a function of the number of co-operonic pathway neighbors within $\pm 5$ genes. (\textbf{c}) Cross-species generalization on 398 \textit{B.~subtilis} 168 LRO reactions and Stage 3 agentic disambiguation on 50 ambiguous multi-candidate LRO gaps. (\textbf{d}) Mean metabolic pathway gaps resolved per genome at posterior thresholds $q \ge 0.30$ ($2{,}175$ total fills) and $q \ge 0.50$ ($568$ high-confidence fills) across 97 uncultured prokaryotic MAGs spanning 16 bacterial and archaeal phyla.}
+  \label{fig:metabolism}
+\end{figure*}
+
+\begin{table*}[t!]
+  \centering
+  \caption{\textbf{Leave-reaction-out (LRO) metabolic enzyme recovery across \textit{E.~coli} K-12, \textit{B.~subtilis} 168, and ambiguous multi-candidate reactions.} Twilight-zone reactions denote held-out enzymes whose closest Swiss-Prot template shares $<25\%$ sequence identity.}
+  \label{tab:metabolism}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llccccc}
+    \toprule
+    \textbf{Benchmark Dataset} & \textbf{Method / Scoring Configuration} & \textbf{Cases ($n$)} & \textbf{Hit@1} & \textbf{Hit@3} & \textbf{Hit@5} & \textbf{MRR} \\
+    \midrule
+    \multirow{3}{*}{\textit{E.~coli} K-12 All LRO} & Baseline Homology Suggester & 850 & 0.018 & 0.054 & 0.089 & 0.051 \\
+    & GSPA RLGC S2 (Catalytic + Operon BF + Pfam) & 850 & 0.635 & 0.852 & 0.916 & 0.758 \\
+    & GSPA RLGC S2 + ESM-2 Reaction Centroid & 850 & \textbf{0.637} & \textbf{0.855} & \textbf{0.918} & \textbf{0.760} \\
+    \midrule
+    \multirow{3}{*}{\textit{E.~coli} K-12 Twilight Zone ($<25\%$ id.)} & Baseline Homology Suggester & 80 & 0.050 & 0.113 & 0.175 & 0.104 \\
+    & GSPA RLGC S2 (Catalytic + Operon BF + Pfam) & 80 & 0.250 & 0.538 & 0.725 & 0.442 \\
+    & GSPA RLGC S2 + ESM-2 Reaction Centroid & 80 & \textbf{0.300} & \textbf{0.563} & \textbf{0.725} & \textbf{0.478} \\
+    \midrule
+    \multirow{2}{*}{\textit{B.~subtilis} 168 Cross-Species LRO} & Baseline Homology Suggester & 398 & 0.025 & 0.073 & 0.110 & 0.064 \\
+    & GSPA RLGC S2 (Default Parameters) & 398 & \textbf{0.251} & \textbf{0.518} & \textbf{0.688} & \textbf{0.431} \\
+    \midrule
+    \multirow{2}{*}{Ambiguous Multi-Candidate LRO} & Stage 1 RLGC S2 Alone & 50 & 0.520 & 0.820 & 1.000 & 0.701 \\
+    & Stage 1 RLGC S2 + Stage 3 \texttt{gspa-agent} & 50 & \textbf{0.860} & \textbf{0.960} & \textbf{1.000} & \textbf{0.915} \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table*}
+
+A primary motivation for genome-scale function annotation is resolving missing enzymes in draft metabolic reconstructions, particularly when sequence similarity falls into the twilight zone ($<25\%$ identity). We evaluated GSPA's \texttt{GapFillingPrior} and RLGC S2 scoring engine using a leave-reaction-out (LRO) protocol across 850 reactions in \textit{E.~coli} K-12 MG1655 and 398 reactions in \textit{B.~subtilis} 168 (Figure~\ref{fig:metabolism} and Table~\ref{tab:metabolism}). In each LRO trial, the ground-truth gene--reaction association for a target reaction $r$ is masked, all Swiss-Prot reference sequences with $\ge 90\%$ identity to the true enzyme are excluded to prevent trivial self-hits, and the entire proteome ($4{,}243$ proteins in \textit{E.~coli}; $4{,}237$ in \textit{B.~subtilis}) is ranked to recover the masked enzyme.
+
+Across all 850 \textit{E.~coli} K-12 LRO reactions, the baseline homology suggester recovers the true enzyme at Rank 1 (Hit@1) in $1.8\%$ of cases ($8.9\%$ Hit@5). Introducing GSPA's RLGC S2 scorer, which integrates catalytic evidence with the operon pathway hypergeometric Bayes factor $\text{BF}_{\text{operon}}(p, r)$ and Pfam coarse EC compatibility, increases Hit@1 by 35-fold to $63.5\%$ ($540/850$) and Hit@5 to $91.6\%$ ($779/850$; MRR $= 0.758$; Figure~\ref{fig:metabolism}a). Stratifying performance by the number of co-operonic pathway neighbors within $\pm 5$ genes reveals the mechanism driving this gain (Figure~\ref{fig:metabolism}b): for isolated genes with $0$ pathway neighbors ($n=207$), Hit@1 is $15.9\%$ ($68.6\%$ Hit@5), whereas the presence of a single co-operonic pathway neighbor ($n=113$) elevates Hit@1 to $74.3\%$ ($98.2\%$ Hit@5), and $\ge 3$ pathway neighbors ($n=447$) yields $78.5\%$ Hit@1 and $99.6\%$ Hit@5.
+
+In the twilight-zone subset of 80 \textit{E.~coli} reactions whose true enzymes share $<25\%$ sequence identity with any reference template, RLGC S2 achieves $25.0\%$ Hit@1 and $72.5\%$ Hit@5 (compared with $5.0\%$ Hit@1 and $17.5\%$ Hit@5 for the baseline suggester). Adding ESM-2 reaction-centroid cosine similarity ($S_{\text{ESM2}}$) further increases twilight-zone Hit@1 from $25.0\%$ to $30.0\%$ ($+20\%$ relative gain) while maintaining $72.5\%$ Hit@5 (Figure~\ref{fig:metabolism}a). Applied with identical hyperparameters to 398 held-out reactions in the Gram-positive bacterium \textit{B.~subtilis} 168, RLGC S2 increases Hit@1 tenfold from $2.5\%$ to $25.1\%$ and Hit@5 from $11.0\%$ to $68.8\%$ (Figure~\ref{fig:metabolism}c).
+
+To assess scalability and discovery power on uncultured microbial dark matter, we applied GSPA combined with gapseq draft metabolic networks across 97 metagenome-assembled genomes (MAGs) spanning 16 bacterial and archaeal phyla (Figure~\ref{fig:metabolism}d). Across the 97 MAGs, Stage 1 integration resolves $2{,}175$ missing metabolic pathway steps at posterior $q \ge 0.30$ (mean $22.4$ gaps filled per MAG) and $568$ high-confidence pathway steps at $q \ge 0.50$ (mean $5.9$ per MAG), consistently recovering missing core biosynthetic and energy-conservation enzymes across both bacterial phyla (\textit{Pseudomonadota}, \textit{Actinomycetota}, \textit{Bacteroidota}, \textit{Cyanobacteriota}) and archaeal phyla (\textit{Halobacteriota}, \textit{Thermoproteota}).
+
+\subsection{Obligate Heteromeric Protein Complex Completion}
+
+\begin{figure*}[t!]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig4_pillar3_complex_anatomy.pdf}
+  \caption{\textbf{Obligate heteromeric protein complex completion and multicellular eukaryotic anatomical constraint enforcement (Pillar 3, Scenarios B and C).} (\textbf{a}) Leave-subunit-out (LSO) recovery across 175 held-out heteromeric complex subunits in six prokaryotic genomes, showing Hit@1, Recall@0.5, $F_{1}$@0.5, and Genome Complex Coherence across four methods (\texttt{M1}--\texttt{M4}). (\textbf{b}) Per-genome subunit recovery $F_{1}$@0.5 across six prokaryotic species, highlighting the $+0.36$ $F_{1}$ gain from Stage 3 \texttt{gspa-agent} on \textit{Synechocystis} sp.\ PCC 6803 where photosynthetic and respiratory complex subunits are dispersed across non-adjacent genomic loci. (\textbf{c}) Surviving cross-clade taxonomic and anatomical violations across six eukaryotic proteomes under unconstrained Noisy-OR (\texttt{E1}), direct GO taxon constraints only (\texttt{E2}), and GSPA's GO--Uberon/PO/CL cross-product bridge with Stage 2 enforcement (\texttt{E4}/\texttt{E5}, $100\%$ elimination). (\textbf{d}) Ancestor-propagated CAFA $F_{\max}$ across all six eukaryotes comparing Stage 2 naive removal (\texttt{E4}) against Stage 2 semantic ancestor relaxation (\texttt{E5}).}
+  \label{fig:complex_anatomy}
+\end{figure*}
+
+\begin{table*}[t!]
+  \centering
+  \caption{\textbf{Leave-subunit-out (LSO) recovery of 175 obligate heteromeric protein complex subunits across six prokaryotic reference genomes.} Metrics evaluate whether the true held-out subunit is ranked first (Hit@1) and promoted above the decision threshold $\theta = 0.50$ relative to two matched non-complex decoy proteins per case.}
+  \label{tab:complex_lso}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llcccccc}
+    \toprule
+    \textbf{Genome Scope} & \textbf{Method Configuration} & \textbf{Subunits ($n$)} & \textbf{Hit@1} & \textbf{Recall@0.5} & \textbf{Precision@0.5} & \textbf{$F_{1}$@0.5} & \textbf{Complex Coh.} \\
+    \midrule
+    \multirow{4}{*}{All 6 Genomes Combined} & \texttt{M1}: Baseline Noisy-OR & 175 & 0.5600 & 0.0000 & 0.0000 & 0.0000 & 0.3901 \\
+    & \texttt{M2}: Stage 1 \texttt{CoherencePrior} Only & 175 & 0.5600 & 0.5029 & 0.1729 & 0.2459 & 0.7107 \\
+    & \texttt{M3}: Stage 1 Coherence + Operon Context & 175 & 0.9371 & 0.9257 & 0.5951 & 0.6680 & \textbf{0.7170} \\
+    & \texttt{M4}: Stage 1 + Stage 2 + Stage 3 Agent & 175 & \textbf{0.9829} & \textbf{1.0000} & \textbf{0.6694} & \textbf{0.7423} & \textbf{0.7170} \\
+    \midrule
+    \multirow{4}{*}{\textit{Synechocystis} sp.\ PCC 6803} & \texttt{M1}: Baseline Noisy-OR & 25 & 0.6000 & 0.0000 & 0.0000 & 0.0000 & 0.4272 \\
+    & \texttt{M2}: Stage 1 \texttt{CoherencePrior} Only & 25 & 0.6000 & 0.4400 & 0.1800 & 0.2493 & 0.7330 \\
+    & \texttt{M3}: Stage 1 Coherence + Operon Context & 25 & 0.6400 & 0.6400 & 0.3333 & 0.4080 & \textbf{0.7669} \\
+    & \texttt{M4}: Stage 1 + Stage 2 + Stage 3 Agent & 25 & \textbf{0.9600} & \textbf{1.0000} & \textbf{0.6933} & \textbf{0.7680} & \textbf{0.7669} \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table*}
+
+We next evaluated Pillar 3 Scenario B: completing obligate heteromeric protein complexes when individual subunits have twilight-zone homology while suppressing false-positive singleton subunit predictions (Figure~\ref{fig:complex_anatomy}a,b and Table~\ref{tab:complex_lso}). Using curated heteromeric complexes from \texttt{complex\_terms.tsv} (including proton-transporting ATP synthase \texttt{GO:0045259}, respiratory chain complex I \texttt{GO:0045271}, cytochrome $bo_3$/$c$ oxidase, DNA-directed RNA polymerase, 30S/50S ribosomal subunits, and SecYEG translocon), we performed 175 leave-subunit-out (LSO) experiments across six prokaryotic proteomes (\textit{E.~coli} K-12, \textit{B.~subtilis} 168, \textit{M.~tuberculosis} H37Rv, \textit{P.~aeruginosa} PAO1, \textit{Synechocystis} sp.\ PCC 6803, and \textit{E.~coli} O157:H7). In each trial, a true complex subunit's primary evidence was attenuated into the twilight zone ($q_e \in [0.22, 0.38]$) alongside two matched decoy proteins carrying comparable raw domain scores in unrelated genomic loci.
+
+Under baseline Noisy-OR pooling (\texttt{M1}), the 175 attenuated subunits remain below the $\theta = 0.50$ annotation threshold ($\text{Recall@0.5} = 0.000$, $F_{1}\text{@0.5} = 0.000$, genome-wide Complex Coherence $= 0.3901$), and Hit@1 between the true subunit and the two decoys is $0.5600$. Enabling Stage 1 \texttt{CoherencePrior} alone (\texttt{M2}) detects that the remaining subunits of the complex are present in the genome and boosts candidate posteriors, lifting Recall@0.5 to $0.5029$ and Complex Coherence to $0.7107$; because \texttt{CoherencePrior} boosts all candidates with matching domain claims equally, it yields a precision of $0.1729$ and $F_{1}\text{@0.5} = 0.2459$. Coupling \texttt{CoherencePrior} with \texttt{GenomicContextPrior} (\texttt{M3}) resolves this ambiguity when complex subunits are co-transcribed in operons: across all 175 cases, Hit@1 rises from $0.5600$ to $0.9371$, Recall@0.5 reaches $0.9257$, Precision@0.5 increases more than three-fold to $0.5951$, and $F_{1}\text{@0.5}$ reaches $0.6680$ (Figure~\ref{fig:complex_anatomy}a).
+
+Comparing per-genome recovery across the six species highlights the complementary roles of operon context and Stage 3 agentic reasoning (Figure~\ref{fig:complex_anatomy}b). In \textit{E.~coli}, \textit{B.~subtilis}, \textit{M.~tuberculosis}, and \textit{P.~aeruginosa}, most heteromeric complex subunits reside in contiguous operons, allowing \texttt{M3} to achieve $F_{1}\text{@0.5}$ between $0.686$ and $0.728$. In the cyanobacterium \textit{Synechocystis} sp.\ PCC 6803, subunits of photosystem I/II, phycobilisomes, and NADH dehydrogenase are frequently split across dispersed chromosomal loci, where operon context (\texttt{M3}) achieves $0.6400$ Hit@1 and $0.4080$ $F_{1}\text{@0.5}$. Activating Stage 2 singleton pruning and Stage 3 \texttt{gspa-agent} (\texttt{M4}), which inspects fine-grained domain architectures (\texttt{query\_protein\_evidence}) alongside complex stoichiometry, elevates \textit{Synechocystis} Hit@1 from $0.6400$ to $0.9600$, Recall@0.5 to $1.0000$, and $F_{1}\text{@0.5}$ from $0.4080$ to $0.7680$, bringing overall 6-genome subunit recovery to $0.9829$ Hit@1, $1.0000$ Recall@0.5, and $0.7423$ $F_{1}\text{@0.5}$.
+
+\subsection{Multicellular Eukaryotic Anatomical and Developmental Constraints}
+
+\begin{table*}[t!]
+  \centering
+  \caption{\textbf{Anatomical and developmental constraint enforcement, semantic ancestor relaxation, and active-structure developmental rescue across six diverse eukaryotes (Pillar 3, Scenario C).} Surviving violations compare unconstrained Noisy-OR (\texttt{E1}), direct GO taxon constraints only (\texttt{E2}), and GSPA's GO--Uberon/PO/CL bridge with Stage 2 enforcement (\texttt{E4}/\texttt{E5}). Ancestor-propagated CAFA $F_{\max}$ and Recall compare Stage 2 naive removal (\texttt{E4}) against semantic ancestor relaxation (\texttt{E5}).}
+  \label{tab:anatomy}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llccccccc}
+    \toprule
+    \textbf{Species (Clade)} & \textbf{Taxon ID} & \textbf{E1 Viol.} & \textbf{E2 Direct TC} & \textbf{E4/E5 Viol.} & \textbf{E4 Remove $F_{\max}$ (Rec.)} & \textbf{E5 Relax $F_{\max}$ (Rec.)} & \textbf{Dev.\ Boost Rescue} \\
+    \midrule
+    \textit{S.~cerevisiae} (Fungi) & \texttt{NCBITaxon\_4932} & 303 & 270 ($10.9\%$ elim.) & \textbf{0 ($100\%$)} & 0.6175 (0.4472) & \textbf{0.6460 (0.4890)} & $2/2$ ($100.0\%$) \\
+    \textit{C.~elegans} (Nematoda) & \texttt{NCBITaxon\_6239} & 589 & 571 ($3.1\%$ elim.) & \textbf{0 ($100\%$)} & 0.5890 (0.4303) & \textbf{0.6090 (0.4685)} & $48/80$ ($60.0\%$) \\
+    \textit{D.~melanogaster} (Arthropoda) & \texttt{NCBITaxon\_7227} & 1,017 & 1,014 ($0.3\%$ elim.) & \textbf{0 ($100\%$)} & 0.4981 (0.3408) & \textbf{0.5250 (0.3744)} & $162/210$ ($77.1\%$) \\
+    \textit{P.~patens} (Bryophyta) & \texttt{NCBITaxon\_3218} & 42 & 39 ($7.1\%$ elim.) & \textbf{0 ($100\%$)} & 0.7425 (0.6064) & \textbf{0.7633 (0.6540)} & N/A \\
+    \textit{A.~thaliana} (Magnoliopsida) & \texttt{NCBITaxon\_3702} & 284 & 261 ($8.1\%$ elim.) & \textbf{0 ($100\%$)} & 0.6500 (0.4859) & \textbf{0.6756 (0.5330)} & $40/49$ ($81.6\%$) \\
+    \textit{M.~musculus} (Mammalia) & \texttt{NCBITaxon\_10090} & 142 & 130 ($8.5\%$ elim.) & \textbf{0 ($100\%$)} & 0.5228 (0.3723) & \textbf{0.5317 (0.3857)} & $207/234$ ($88.5\%$) \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table*}
+
+We next evaluated Pillar 3 Scenario C across six eukaryotic species spanning unicellular fungi (\textit{Saccharomyces cerevisiae}), non-chordate invertebrates (\textit{Caenorhabditis elegans} and \textit{Drosophila melanogaster}), non-vascular bryophyte mosses (\textit{Physcomitrium patens}), vascular flowering plants (\textit{Arabidopsis thaliana}), and vertebrates (\textit{Mus musculus}) (Figure~\ref{fig:complex_anatomy}c,d and Table~\ref{tab:anatomy}). This panel evaluates three specific capabilities: (i) eliminating cross-clade anatomical and developmental homology errors via the GO--Uberon/PO/CL cross-product bridge; (ii) preserving valid ancestral biological process annotations via Stage 2 semantic ancestor relaxation (\texttt{E5}) compared with naive constraint removal (\texttt{E4}); and (iii) rescuing borderline true developmental annotations via the active-structure developmental boost in \texttt{AnatomicalPrior}.
+
+Across the six eukaryotic proteomes, unconstrained Noisy-OR pooling (\texttt{E1}) produces between $42$ (\textit{P.~patens}) and $1{,}017$ (\textit{D.~melanogaster}) formal taxonomic and anatomical constraint violations (total $2{,}377$ violations across the six species; Figure~\ref{fig:complex_anatomy}c). Applying direct GO taxon constraints alone (\texttt{E2}, using the 1,076 rules in \texttt{go-taxon-constraints.tsv}) eliminates $0.3\%$ ($3/1{,}017$ in \textit{D.~melanogaster}) to $10.9\%$ ($33/303$ in \textit{S.~cerevisiae}) of these errors ($105/2{,}377 = 4.4\%$ overall), because $95.6\%$ of the cross-clade developmental errors involve vertebrate, arthropod, or angiosperm organ terms whose taxonomic restrictions are defined in Uberon, PO, or CL. Integrating GSPA's GO--Uberon/PO/CL cross-product bridge with Stage 2 enforcement (\texttt{E4} and \texttt{E5}) eliminates $100.0\%$ of violations ($0$ surviving violations across all six species; Table~\ref{tab:anatomy}).
+
+Comparing Stage 2 naive removal (\texttt{E4\_stage2\_remove}) against Stage 2 semantic ancestor relaxation (\texttt{E5\_stage2\_relax}) shows a consistent advantage for semantic relaxation across every eukaryote tested (Figure~\ref{fig:complex_anatomy}d and Table~\ref{tab:anatomy}). When a mammalian neural crest or heart development annotation transferred to \textit{C.~elegans} or \textit{D.~melanogaster}, or a floral organ development annotation transferred to the moss \textit{P.~patens}, is relaxed to its nearest anatomically valid GO ancestor (such as \textit{cell migration}, \textit{circulatory system development}, or \textit{reproductive structure development}), ancestor-propagated recall increases by $+3.4$ to $+4.8$ percentage points and CAFA $F_{\max}$ improves across all six species: $+0.0285$ in \textit{S.~cerevisiae} ($0.6175 \to 0.6460$), $+0.0269$ in \textit{D.~melanogaster} ($0.4981 \to 0.5250$), $+0.0256$ in \textit{A.~thaliana} ($0.6500 \to 0.6756$), $+0.0208$ in \textit{P.~patens} ($0.7425 \to 0.7633$), $+0.0200$ in \textit{C.~elegans} ($0.5890 \to 0.6090$), and $+0.0089$ in \textit{M.~musculus} ($0.5228 \to 0.5317$). Furthermore, for true species-appropriate developmental annotations attenuated into the borderline regime ($P^{(0)} \in [0.22, 0.49]$), the active-structure developmental boost in \texttt{AnatomicalPrior} (\texttt{E3}) rescues $459/575$ ($79.8\%$) of true annotations above $\theta = 0.50$ across the panel ($60.0\%$ in \textit{C.~elegans}, $77.1\%$ in \textit{D.~melanogaster}, $81.6\%$ in \textit{A.~thaliana}, and $88.5\%$ in \textit{M.~musculus}), compared with $0/575$ ($0.0\%$) under baseline Noisy-OR.
+
+\subsection{Dedicated Evaluation of the Stage 3 Neuro-Symbolic Agentic Layer}
+
+\begin{figure*}[t!]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig5_pillar4_agent.pdf}
+  \caption{\textbf{Dedicated evaluation and ablation of the optional Stage 3 neuro-symbolic agentic completion layer (\texttt{gspa-agent}, Pillar 4).} (\textbf{a}) Precision, Recall, $F_{1}$ score, and overall resolution accuracy across 120 real genome-scale anomalies (30 \texttt{PATHWAY\_GAP}, 30 \texttt{INCOMPLETE\_COMPLEX}, 30 \texttt{BORDERLINE\_ESSENTIAL}, and 30 \texttt{BORDERLINE\_CONFLICT}) comparing deterministic Stage 1+2 only (Config 1), Fast 1-Step SLM mode (Config 2), full multi-turn Qwen 3.8 27B with \texttt{SymbolicGuardrail} (Config 3), and Qwen 3.8 27B without \texttt{SymbolicGuardrail} (Config 4). (\textbf{b}) Accepted taxonomic and anatomical violation rate across the 120 anomalies, showing that \texttt{SymbolicGuardrail} blocks $100\%$ of adversarial cross-clade traps ($0/120$ vs.\ $8/120 = 6.7\%$ without guardrail). (\textbf{c}) Rank distribution of the true enzyme across 50 ambiguous multi-candidate LRO metabolic gaps before and after Stage 3 agentic re-ranking (Hit@1 rises from $52.0\%$ to $86.0\%$, MRR from $0.701$ to $0.915$). (\textbf{d}) Mean wall-clock latency per anomaly across seven prokaryotic and eukaryotic species.}
+  \label{fig:agent}
+\end{figure*}
+
+\begin{table*}[t!]
+  \centering
+  \caption{\textbf{Ablation of the optional Stage 3 neuro-symbolic agent (\texttt{gspa-agent}) across 120 post-Stage-2 genome-scale anomalies.} Anomalies span seven prokaryotic and eukaryotic genomes (\textit{E.~coli}, \textit{B.~subtilis}, \textit{P.~aeruginosa}, \textit{M.~tuberculosis}, \textit{S.~cerevisiae}, \textit{C.~elegans}, and \textit{A.~thaliana}) and include 54 true-positive promotable gaps, 26 true-negative decoys, and 40 borderline conflict and adversarial cross-clade hallucination traps.}
+  \label{tab:agent}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llccccccc}
+    \toprule
+    \textbf{Config} & \textbf{Stage 3 Agent Architecture} & \textbf{Precision} & \textbf{Recall} & \textbf{$F_{1}$ Score} & \textbf{Accuracy} & \textbf{Violations Accepted} & \textbf{Tool Calls} & \textbf{Latency / Case} \\
+    \midrule
+    Config 1 & Stage 1 + Stage 2 Deterministic Only & 0.000 & 0.000 & 0.000 & 0.550 & \textbf{0 / 120 (0.0\%)} & 0.00 & 0.00 s \\
+    Config 2 & Fast 1-Step SLM Mode (\texttt{--max-turns 2}) & \textbf{0.950} & 0.352 & 0.513 & 0.700 & \textbf{0 / 120 (0.0\%)} & 1.00 & 16.26 s \\
+    Config 3 & Qwen 3.8 27B + \texttt{SymbolicGuardrail} & 0.885 & \textbf{1.000} & \textbf{0.939} & \textbf{0.942} & \textbf{0 / 120 (0.0\%)} & 2.81 & 22.01 s \\
+    Config 4 & Qwen 3.8 27B without \texttt{SymbolicGuardrail} & 0.783 & \textbf{1.000} & 0.878 & 0.875 & 8 / 120 (6.7\%) & 2.68 & 20.69 s \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table*}
+
+Finally, we conducted a dedicated evaluation of the optional Stage 3 neuro-symbolic agentic completion layer (\texttt{gspa-agent}, Pillar 4) to quantify the contribution of tool-using language model reasoning on post-Stage-2 anomalies and the role of formal symbolic guardrails (Figure~\ref{fig:agent} and Table~\ref{tab:agent}). We constructed a benchmark of 120 post-Stage-2 anomalies extracted from seven prokaryotic and eukaryotic proteomes (30 \texttt{PATHWAY\_GAP}, 30 \texttt{INCOMPLETE\_COMPLEX}, 30 \texttt{BORDERLINE\_ESSENTIAL}, and 30 \texttt{BORDERLINE\_CONFLICT} cases), comprising 54 true-positive promotable annotations where the true functional term remained in $[0.20, 0.48]$ after Stage 2, 26 true-negative decoy cases in unrelated operons with weak homology ($<22\%$ identity) where the agent should abstain or demote, and 40 conflict and adversarial cross-clade trap cases (such as promoting \textit{heart development} in \textit{S.~cerevisiae}, \textit{flower development} in \textit{E.~coli}, or \textit{neural crest cell migration} in \textit{C.~elegans}).
+
+Because all 54 promotable cases lie below $\theta = 0.50$ after Stage 2, deterministic Stage 1+2 alone (Config 1) recovers $0/54$ promotions ($F_{1} = 0.000$, overall accuracy $= 55.0\%$ from abstaining on negative cases; Table~\ref{tab:agent}). Restricting the agent to a single tool step (\texttt{--max-turns 2}, Config 2) yields high precision ($95.0\%$, $19/20$ promotions correct) and zero ontology violations, with $35.2\%$ recall ($F_{1} = 0.513$) because multi-step inspection of both genomic neighborhood context and domain evidence is required for the remaining cases.
+
+When Qwen 3.8 27B operates across a bounded multi-turn loop (\texttt{--max-turns 6}) with the \texttt{SymbolicGuardrail} active (Config 3), recall reaches $100.0\%$ ($54/54$ true-positive anomalies promoted), precision is $88.5\%$ ($54/61$), $F_{1}$ reaches $0.939$, and overall accuracy across all 120 anomalies reaches $94.2\%$ ($113/120$; Figure~\ref{fig:agent}a). Across the four anomaly categories, Config 3 achieves $95.7\%$ $F_{1}$ on \texttt{PATHWAY\_GAP}, $93.6\%$ $F_{1}$ on \texttt{INCOMPLETE\_COMPLEX}, $100.0\%$ $F_{1}$ on \texttt{BORDERLINE\_ESSENTIAL}, and $100.0\%$ accuracy on \texttt{BORDERLINE\_CONFLICT} (correctly relaxing 16 valid ancestral targets and abstaining on all 14 cross-clade traps).
+
+Ablating the \texttt{SymbolicGuardrail} and symbolic constraint verification (Config 4) highlights the role of the neuro-symbolic architecture (Figure~\ref{fig:agent}b). Without symbolic verification, the language model accepts $8$ of the adversarial cross-clade traps ($6.7\%$ violation rate across the 120 anomalies, promoting taxonomically or anatomically forbidden terms backed by high sequence bitscores), reducing precision from $88.5\%$ to $78.3\%$ and $F_{1}$ from $0.939$ to $0.878$. With \texttt{SymbolicGuardrail} active (Config 3), all 8 cross-clade proposals are deterministically intercepted and blocked, guaranteeing a $0.0\%$ ($0/120$) violation rate.
+
+We further tested whether Stage 3 \texttt{gspa-agent} improves enzyme discovery on 50 ambiguous multi-candidate LRO metabolic gap cases in \textit{E.~coli} K-12 where multiple candidate proteins carry competing catalytic and neighborhood signals (Figure~\ref{fig:agent}c and Table~\ref{tab:metabolism}). On these 50 challenging gaps, Stage 1 RLGC S2 alone ranks the true enzyme at Rank 1 in $26/50$ cases ($\text{Hit@1} = 52.0\%$, $\text{MRR} = 0.7010$). Presenting the top-5 RLGC candidates to \texttt{gspa-agent}, which queries fine-grained domain architecture, intergenic operon distances, and pathway stoichiometry across a mean of $2.81$ tool calls per gap, elevates Hit@1 from $52.0\%$ to $86.0\%$ ($43/50$ true enzymes ranked first; $+34.0$ percentage points absolute gain) and increases MRR from $0.7010$ to $0.9147$. Because \texttt{AnomalyExtractor} triggers Stage 3 selectively on $<2.5\%$ of proteins in a genome ($40$--$90$ loci in a $4{,}000$-gene prokaryote), running \texttt{gspa-agent} with 8-way concurrency adds less than $3.5$ minutes of wall-clock time per genome ($22.01\text{ s}$ mean latency per anomaly across the seven benchmark taxa; Figure~\ref{fig:agent}d).
+
+\section{Discussion}
+
+Protein function prediction has historically been formulated as a sequence-to-label or structure-to-label classification problem evaluated on isolated proteins \citep{radivojac2013large,gligorijevic2021structure,kulmanov2024deepgose}. Our results across 21 reference genomes, 13 PGAP/DeepFRI benchmark proteomes, 97 uncultured MAGs, and four orthogonal evaluation pillars show that treating the whole genome as the primary unit of inference resolves systematic failure modes of per-protein predictors. By anchoring iterative log-odds updates to calibrated multi-channel likelihoods in Stage 1 and following probabilistic refinement with deterministic symbolic constraint enforcement in Stage 2, GSPA simultaneously improves protein-centric accuracy and system-level completeness, pathway coherence, complex stoichiometry, and taxonomic consistency.
+
+Three biological findings emerge from our empirical benchmarks. First, in metabolic network gap-filling (Pillar 3, Scenario A), reaction-local genomic context (RLGC) provides a decisive signal in the sequence-identity twilight zone ($<25\%$ identity), where alignment bitscores and profile HMMs have limited discriminative power between divergent orthologs and paralogous family members. The monotonic increase in LRO enzyme recovery from $15.9\%$ Hit@1 with zero co-operonic pathway neighbors to $78.5\%$ Hit@1 with three or more neighbors (and the further boost from $25.0\%$ to $30.0\%$ in the twilight zone when combined with ESM-2 reaction-centroid similarity) shows that local chromosomal organization and protein language model representations capture complementary evolutionary constraints.
+
+Second, our multi-kingdom eukaryotic evaluation (Pillar 3, Scenario C) shows that enforcing ontology consistency in multicellular organisms requires bridging the Gene Ontology with external anatomy ontologies (Uberon, PO, and CL). Direct GO taxon constraints eliminate $4.4\%$ of cross-clade developmental and anatomical false positives across fungi, nematodes, insects, mosses, flowering plants, and mammals, whereas GSPA's 2,714 GO--Uberon/PO/CL cross-product axioms and Stage 2 enforcer eliminate $100.0\%$. Moreover, replacing forbidden developmental terms with their nearest valid GO ancestors via semantic ancestor relaxation consistently outperforms naive deletion across all six eukaryotic species ($+0.009$ to $+0.029$ CAFA $F_{\max}$), preserving conserved ancestral biological process information while maintaining strict logical consistency.
+
+Third, our ablation of the optional Stage 3 agentic completion layer (\texttt{gspa-agent}, Pillar 4) clarifies the respective roles of deterministic probabilistic inference, tool-using language models, and symbolic verification in genome annotation. Deterministic Stages 1 and 2 resolve $>97.5\%$ of a proteome in seconds on a standard CPU and serve as the default production workflow for high-throughput genome and metagenome annotation. For the remaining $<2.5\%$ of loci involving multi-candidate metabolic gaps, dispersed non-operonic complexes (such as photosynthetic complexes in \textit{Synechocystis} sp.\ PCC 6803), or borderline essential functions, selective invocation of \texttt{gspa-agent} with a local open-weight model (Qwen 3.8 27B) provides substantial gains in complex recovery ($+0.36$ $F_{1}$ in \textit{Synechocystis}) and metabolic gap disambiguation ($52.0\% \to 86.0\%$ Hit@1). Furthermore, the \texttt{SymbolicGuardrail} eliminates the $6.7\%$ cross-clade hallucination rate observed in unguarded LLM outputs, showing that neuro-symbolic verification is essential for deploying language agents in authoritative biological annotation pipelines.
+
+Future work will extend GSPA's contextual priors to incorporate eukaryotic co-expression networks, chromatin contact maps, and subcellular localization constraints, and will couple Stage 2 and Stage 3 outputs directly to automated generation of Gene Ontology Causal Activity Models (GO-CAMs) \citep{thomas2019gene}.
+
+\section*{Data and Software Availability}
+
+The GSPA v2.0.0 source code, stand-alone command-line executable (\texttt{gspa-2.0.0.jar}), curated cross-ontology constraint tables (\texttt{go-anatomical-constraints.tsv}, \texttt{uberon-po-taxon-constraints.tsv}, \texttt{ncbi-taxon-hierarchy.tsv}, and \texttt{complex\_terms.tsv}), Stage 3 agent (\texttt{run\_gspa\_agent.py}), benchmark scripts, and empirical result tables are available under the GPL-3.0-or-later license at \url{https://github.com/bio-ontology-research-group/gspa}.
+
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+
+\end{document}

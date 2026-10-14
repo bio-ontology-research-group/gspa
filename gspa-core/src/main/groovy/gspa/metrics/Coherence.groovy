@@ -72,6 +72,9 @@ class Coherence {
      * Process coherence: fraction of triggered has_part dependencies that are satisfied.
      */
     ProcessCoherenceResult evaluateProcessCoherence(Set<String> annotatedTerms) {
+        if (goReasoner == null) {
+            return new ProcessCoherenceResult(score: -1.0, triggered: 0, satisfied: 0, unsatisfied: [])
+        }
         def result = goReasoner.checkProcessCoherence(annotatedTerms)
         int triggered = result.triggered as int
         int satisfied = result.satisfied as int

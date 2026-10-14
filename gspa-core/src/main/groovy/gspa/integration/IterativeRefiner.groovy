@@ -56,6 +56,7 @@ class IterativeRefiner {
 
         // Seed posteriors from likelihood alone.
         Map<String, Double> posteriorLogOdds = new LinkedHashMap<>(likelihood)
+        state.likelihoodLogOdds = new LinkedHashMap<>(likelihood)
         state.updatePosteriors(posteriorLogOdds)
 
         int iterationsRun = 0
@@ -196,12 +197,17 @@ class IterativeRefiner {
         keys.addAll(a.keySet())
         keys.addAll(b.keySet())
         double sum = 0.0d
+        int changedCount = 0
         for (String k : keys) {
             double pA = sigmoid(a.getOrDefault(k, 0.0d))
             double pB = sigmoid(b.getOrDefault(k, 0.0d))
-            sum += Math.abs(pA - pB)
+            double diff = Math.abs(pA - pB)
+            if (diff > 1e-9d) {
+                sum += diff
+                changedCount++
+            }
         }
-        sum / keys.size()
+        changedCount == 0 ? 0.0d : (sum / changedCount)
     }
 
     private static double sigmoid(double x) {

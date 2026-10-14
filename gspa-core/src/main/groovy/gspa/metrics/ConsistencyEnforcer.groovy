@@ -4,21 +4,26 @@ import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.model.Genome
 import gspa.model.Protein
+import gspa.ontology.AnatomicalConstraints
 import gspa.ontology.GoOntology
 import gspa.ontology.SatConsistencyChecker
 import gspa.ontology.TaxonConsistencyMaxSat
 import groovy.util.logging.Slf4j
 
 /**
- * Post-annotation taxon-constraint enforcement on predicted GO annotations.
+ * Post-annotation taxon and anatomical constraint enforcement on predicted GO annotations.
  *
  * Modes:
  * <ul>
  *   <li>{@code remove} / {@code downrank} / {@code flag} — act on each
- *       annotation found taxon-inconsistent. With an organism asserted on the
+ *       annotation found taxon- or anatomically-inconsistent. With an organism asserted on the
  *       {@link SatConsistencyChecker}, a term is inconsistent iff it (or an
  *       ancestor) cannot occur in the organism's lineage (precise per-term).
  *       Without one, per-protein co-annotation conflicts are used.</li>
+ *   <li>{@code relax} — Semantic Ancestor Relaxation: replaces each violating GO term
+ *       with its closest non-root ancestor in the GO hierarchy ({@code is_a}/{@code part_of})
+ *       that satisfies all taxonomic and anatomical constraints for the organism,
+ *       or removes the annotation if no valid non-root ancestor exists.</li>
  *   <li>{@code minimal-flip} — joint, minimum-cost demotion via
  *       {@link TaxonConsistencyMaxSat} (Asaad Stage-1): resolves co-annotation
  *       conflicts optimally (drops the lower-weight of two disjoint
@@ -34,6 +39,7 @@ class ConsistencyEnforcer {
 
     GoOntology goOntology
     SatConsistencyChecker satChecker
+    AnatomicalConstraints anatomicalConstraints
     String mode = 'remove'
     double downrankFactor = 0.5
 
@@ -43,12 +49,13 @@ class ConsistencyEnforcer {
     static class Result {
         int proteinsAffected = 0
         int annotationsAffected = 0
+        int annotationsRelaxed = 0
         int violations = 0
 
         @Override
         String toString() {
             "ConsistencyEnforcer.Result(violations=${violations}, " +
-                "proteins=${proteinsAffected}, annotations=${annotationsAffected})"
+                "proteins=${proteinsAffected}, annotations=${annotationsAffected}, relaxed=${annotationsRelaxed})"
         }
     }
 
@@ -62,7 +69,8 @@ class ConsistencyEnforcer {
             genome.proteins.each { Protein p -> enforceProtein(p, result) }
         }
         log.info("Consistency enforcement (${mode}): acted on ${result.annotationsAffected} annotation(s) " +
-            "across ${result.proteinsAffected} protein(s); ${result.violations} violation(s) found")
+            "(relaxed=${result.annotationsRelaxed}) across ${result.proteinsAffected} protein(s); " +
+            "${result.violations} violation(s) found")
         result
     }
 
@@ -106,7 +114,7 @@ class ConsistencyEnforcer {
                 def victims = p.annotations.goAnnotations().findAll { remove.contains(it.value) }
                 if (victims) {
                     result.violations++
-                    applyAction(p, victims, result, 'remove', 'co-annotation taxon conflict')
+                    applyAction(p, victims, result, 'remove', 'co-annotation taxon conflict', null)
                 }
             }
         }
@@ -116,8 +124,8 @@ class ConsistencyEnforcer {
 
     private void enforceOrganism(Genome genome, Result result) {
         Set<String> forbidden = computeForbiddenTerms()
-        log.info("Organism ${satChecker.organismTaxon}: ${forbidden.size()} GO terms forbidden by taxon constraints")
-        String reason = "taxon-inconsistent for ${satChecker.organismTaxon}"
+        log.info("Organism ${satChecker.organismTaxon}: ${forbidden.size()} GO terms forbidden by taxon/anatomical constraints")
+        String defaultReason = "taxon-inconsistent for ${satChecker.organismTaxon}"
         genome.proteins.each { Protein p ->
             List<Annotation> victims = p.annotations.goAnnotations().findAll { ann ->
                 forbidden.contains(ann.value) ||
@@ -125,7 +133,7 @@ class ConsistencyEnforcer {
             }
             if (victims) {
                 result.violations++
-                applyAction(p, victims, result, effectiveAction(), reason)
+                applyAction(p, victims, result, effectiveAction(), defaultReason, forbidden)
             }
         }
     }
@@ -137,6 +145,9 @@ class ConsistencyEnforcer {
         Set<String> forbidden = new HashSet<>()
         constrained.each { term ->
             if (!satChecker.check([term] as Set).consistent) forbidden.add(term)
+        }
+        if (anatomicalConstraints != null && satChecker.organismTaxon) {
+            forbidden.addAll(anatomicalConstraints.computeForbiddenGoTerms(satChecker.organismTaxon, satChecker))
         }
         forbidden
     }
@@ -154,7 +165,7 @@ class ConsistencyEnforcer {
         Set<String> conflicting = cr.violations.collectMany { it.involvedGoTerms ?: [] } as Set
         if (!conflicting) return
         List<Annotation> victims = go.findAll { ann -> annotationViolates(ann, conflicting) }
-        if (victims) applyAction(p, victims, result, effectiveAction(), 'co-annotation taxon conflict')
+        if (victims) applyAction(p, victims, result, effectiveAction(), 'co-annotation taxon conflict', conflicting)
     }
 
     private boolean annotationViolates(Annotation ann, Set<String> conflicting) {
@@ -169,17 +180,24 @@ class ConsistencyEnforcer {
         switch (mode?.toLowerCase()) {
             case 'downrank': return 'downrank'
             case 'flag': return 'flag'
+            case 'relax': return 'relax'
             default: return 'remove'
         }
     }
 
-    private void applyAction(Protein p, List<Annotation> victims, Result result, String action, String reason) {
+    private void applyAction(Protein p, List<Annotation> victims, Result result, String action,
+                             String defaultReason, Set<String> forbidden) {
+        if (action == 'relax') {
+            applyRelaxAction(p, victims, result, defaultReason, forbidden)
+            return
+        }
         if (action == 'remove') {
             // Batch removal — O(n) instead of O(n*victims) of per-element remove.
             p.annotations.annotations.removeAll(new HashSet<>(victims))
         }
         victims.each { Annotation a ->
             double before = a.score
+            String reason = resolveReason(a.value, defaultReason)
             if (action == 'downrank') {
                 a.score = a.score * downrankFactor
                 a.evidence = tag(a.evidence)
@@ -192,6 +210,59 @@ class ConsistencyEnforcer {
         result.annotationsAffected += victims.size()
     }
 
+    private void applyRelaxAction(Protein p, List<Annotation> victims, Result result,
+                                  String defaultReason, Set<String> forbidden) {
+        p.annotations.annotations.removeAll(new HashSet<>(victims))
+        Map<String, Annotation> existingGo = p.annotations.goAnnotations().collectEntries { [it.value, it] }
+        AnatomicalConstraints relaxer = anatomicalConstraints ?: new AnatomicalConstraints()
+        String orgTax = satChecker?.organismTaxon
+
+        victims.each { Annotation a ->
+            double before = a.score
+            String baseReason = resolveReason(a.value, defaultReason)
+            String relaxedGo = (goOntology != null && orgTax) ?
+                relaxer.findValidRelaxedAncestor(a.value, orgTax, satChecker, goOntology, forbidden) : null
+            if (relaxedGo != null) {
+                Annotation existing = existingGo[relaxedGo]
+                if (existing != null) {
+                    if (before > existing.score) {
+                        existing.score = before
+                    }
+                    existing.evidence = tagRelaxed(existing.evidence, a.value)
+                    record(p, existing, 'relax', "${baseReason} -> relaxed to ${relaxedGo}", before, existing.score)
+                } else {
+                    Annotation replacement = new Annotation(
+                        type: AnnotationType.GO,
+                        value: relaxedGo,
+                        score: before,
+                        source: a.source,
+                        evidence: tagRelaxed(a.evidence, a.value),
+                        goAspect: a.goAspect ?: (goOntology?.getAspect(relaxedGo)),
+                        goLabel: goOntology?.getLabel(relaxedGo)
+                    )
+                    p.annotations.add(replacement)
+                    existingGo[relaxedGo] = replacement
+                    record(p, replacement, 'relax', "${baseReason} -> relaxed to ${relaxedGo}", before, before)
+                }
+                result.annotationsRelaxed++
+            } else {
+                record(p, a, 'remove', "${baseReason} (no valid non-root ancestor)", before, 0.0d)
+            }
+        }
+        result.proteinsAffected++
+        result.annotationsAffected += victims.size()
+    }
+
+    private String resolveReason(String goId, String defaultReason) {
+        if (anatomicalConstraints != null && satChecker?.organismTaxon) {
+            def details = anatomicalConstraints.checkTerm(goId, satChecker.organismTaxon, satChecker, goOntology)
+            if (!details.isEmpty()) {
+                return "anatomical-inconsistent for ${satChecker.organismTaxon}: ${details[0].summary()}"
+            }
+        }
+        defaultReason
+    }
+
     private void record(Protein p, Annotation a, String action, String reason, double before, double after) {
         if (report == null) return
         def ea = new EnforcementAction(
@@ -199,11 +270,16 @@ class ConsistencyEnforcer {
             contigId: p.contig?.id, proteinId: p.id, term: a.value,
             reason: reason, basis: "${a.source ?: 'predictor'}@${String.format(Locale.ROOT, '%.3f', before)}",
             scoreBefore: before, scoreAfter: after)
-        // For downrank/flag the annotation survives -> attach trail; for remove only log.
+        // For downrank/flag/relax the annotation survives -> attach trail; for remove only log.
         report.record(ea, action == 'remove' ? null : a)
     }
 
     private static String tag(String evidence) {
         evidence ? "${evidence};taxon-inconsistent" : 'taxon-inconsistent'
+    }
+
+    private static String tagRelaxed(String evidence, String fromGoId) {
+        String suffix = "relaxed-from:${fromGoId}"
+        evidence ? "${evidence};${suffix}" : suffix
     }
 }

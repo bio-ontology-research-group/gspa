@@ -42,6 +42,9 @@ class EvaluateCommand implements Runnable {
     @Option(names = ['--taxonomy'], description = 'Taxonomy hierarchy TSV (child\\tparent)')
     File taxonomy
 
+    @Option(names = ['--taxon'], description = 'Organism NCBI taxon (e.g. NCBITaxon_562, bacteria, eukaryote)')
+    String organismTaxon
+
     @Option(names = ['--mag'], description = 'Input is a MAG')
     boolean mag
 
@@ -66,7 +69,11 @@ class EvaluateCommand implements Runnable {
         // Load genome from GFF3
         def genome = GffReader.readGff3(input)
         genome.mag = mag
-        println "Loaded genome: ${genome.contigs.size()} contigs, ${genome.features.size()} features"
+        String normTax = organismTaxon ? gspa.ontology.TaxonConstraints.normalizeTaxon(organismTaxon) : (kingdom ? gspa.ontology.TaxonConstraints.normalizeTaxon(kingdom) : null)
+        if (normTax) {
+            genome.taxonomy = new gspa.model.TaxonomyInfo(ncbiTaxId: normTax)
+        }
+        println "Loaded genome: ${genome.contigs.size()} contigs, ${genome.features.size()} features (taxon=${genome.taxonomy?.ncbiTaxId})"
 
         // Load GO annotations from GAF
         if (annotations?.exists()) {
@@ -117,7 +124,6 @@ class EvaluateCommand implements Runnable {
             pipeline.ec2goFile(ec2go)
         }
         if (taxonomy?.exists()) {
-            pipeline.taxonConstraintsFromOntology()
             pipeline.taxonomyFile(taxonomy)
         }
 

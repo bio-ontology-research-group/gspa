@@ -32,6 +32,7 @@ class ConsistencyViolation {
 
     enum ViolationType {
         TAXON_CONFLICT,         // never_in_taxon / only_in_taxon violation
+        ANATOMICAL_CONFLICT,    // GO-Uberon-PO anatomical/developmental structure violation
         MISSING_ESSENTIAL,      // Essential function not covered
         INCOHERENT_PATHWAY,     // Incomplete pathway
         INCOHERENT_COMPLEX,     // Missing complex subunits

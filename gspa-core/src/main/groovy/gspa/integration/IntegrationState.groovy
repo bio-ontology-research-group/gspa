@@ -4,6 +4,7 @@ import gspa.config.EssentialFunctions
 import gspa.model.AnnotationType
 import gspa.model.Genome
 import gspa.model.GenomeLayout
+import gspa.ontology.AnatomicalConstraints
 import gspa.ontology.GoOntology
 import gspa.ontology.GoReasoner
 import gspa.ontology.PathwayDatabase
@@ -42,8 +43,26 @@ class IntegrationState {
     GoOntology goOntology
     GoReasoner goReasoner
     SatConsistencyChecker satConsistencyChecker
+    AnatomicalConstraints anatomicalConstraints
     EssentialFunctions essentialFunctions
     PathwayDatabase pathwayDatabase
+
+    /** Complex classification map: GO_ID -> 'h' (homomeric) | 'n' (heteromeric) | 'a' (ambiguous). */
+    Map<String, String> complexClassification = new LinkedHashMap<>()
+
+    /** Load bundled complex_terms.tsv from classpath if available. */
+    void loadBundledComplexTerms() {
+        def s = getClass().getResourceAsStream('/complex-terms/complex_terms.tsv')
+        if (s != null) {
+            s.withReader('UTF-8') { r ->
+                r.eachLine { line ->
+                    if (!line?.trim() || line.startsWith('GO_term') || line.startsWith('#')) return
+                    def f = line.split('\t')
+                    if (f.length >= 2) complexClassification[f[0].trim()] = f[1].trim()
+                }
+            }
+        }
+    }
 
     // --- Pre-computed inputs from Phase 3 / 5 predictors ---
 
@@ -174,6 +193,44 @@ class IntegrationState {
      */
     static String functionKey(String proteinId, AnnotationType type, String functionId) {
         "${proteinId}|${type}|${functionId}".toString()
+    }
+
+    static String functionKey(String proteinId, String type, String functionId) {
+        "${proteinId}|${type}|${functionId}".toString()
+    }
+
+    /** Initial (Noisy-OR calibrated) likelihood log-odds by function key. */
+    Map<String, Double> likelihoodLogOdds = new LinkedHashMap<>()
+
+    /** Get initial likelihood probability for a function key via sigmoid. */
+    double getLikelihoodProbability(String functionKey) {
+        Double lo = likelihoodLogOdds != null ? likelihoodLogOdds[functionKey] : null
+        if (lo == null) lo = posteriorLogOdds.getOrDefault(functionKey, 0.0d)
+        sigmoid(lo)
+    }
+
+    /**
+     * Set of GO terms annotated at baseline (likelihood > threshold) before prior rescue.
+     */
+    Set<String> baselineAnnotatedGoTerms(double threshold = MAP_THRESHOLD) {
+        Map<String, Double> src = (likelihoodLogOdds != null && !likelihoodLogOdds.isEmpty()) ? likelihoodLogOdds : posteriorLogOdds
+        Set<String> out = new LinkedHashSet<>()
+        for (Map.Entry<String, Double> entry : src.entrySet()) {
+            if (sigmoid(entry.value) <= threshold) continue
+            String[] parts = splitFunctionKey(entry.key)
+            if (parts == null) continue
+            if (parts[1] == 'GO') out << parts[2]
+        }
+        out
+    }
+
+    /**
+     * As {@link #baselineAnnotatedGoTerms} with upward GO closure.
+     */
+    Set<String> baselineAnnotatedGoTermsPropagated(double threshold = MAP_THRESHOLD) {
+        Set<String> raw = baselineAnnotatedGoTerms(threshold)
+        if (goOntology == null) return raw
+        goOntology.propagateAnnotations(raw)
     }
 
     /**

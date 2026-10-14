@@ -1,367 +1,188 @@
-# GSPA — Genome-Scale Protein Annotation
+# GSPA v2.0.0 — Genome-Scale Protein Annotation
 
-GSPA is a functional-annotation pipeline for prokaryotic and archaeal
-genomes, MAGs, and microbial communities. It combines multiple
-**evidence types** (sequence similarity, protein domains, orthology,
-genomic context, metabolic-model gap analysis) through Bayesian
-integration, then uses ontology-derived **priors** (essentiality,
-pathway coherence, taxon consistency, metabolic gaps) to boost weak
-evidence and suppress taxon-constraint violations.
+[![Release](https://img.shields.io/badge/release-v2.0.0-blue.svg)](https://github.com/bio-ontology-research-group/gspa/releases/tag/v2.0.0)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Java 21+](https://img.shields.io/badge/Java-21%2B-orange.svg)](https://adoptium.net/)
 
-It ships with wrappers for ~16 external tools (DIAMOND, MMseqs2,
-HMMER/Pfam, FoldSeek, eggNOG-mapper, InterProScan, gapseq, AMRFinder,
-dbCAN, antiSMASH, SignalP, DeepTMHMM, …) and three built-in quality
-metrics (Completeness, Coherence, Consistency) from the GAEF framework.
+**GSPA (Genome-Scale Protein Annotation)** is a stand-alone, three-stage neuro-symbolic framework for whole-proteome protein function prediction and genome-scale quality assessment across **Bacteria**, **Archaea**, and **Eukaryota**.
 
-## Complete example: annotating a bacterial genome
+Whereas standard annotation pipelines and protein language model (PLM) predictors annotate each protein in isolation, **GSPA v2.0.0** formulates function prediction as a **joint genome-wide inference problem**:
+1. **Stage 1 — Iterative Bayesian Evidence Integration**: Combines calibrated per-protein evidence across sequence homology (`DIAMOND`, `MMseqs2`), domain profiles (`Pfam`, `InterProScan`), structural similarity (`FoldSeek`, `DeepFRI`), and deep protein language models (`ESM-2`, `ProtT5`, `DeepGOWeb`, `ProtInfer`, `CLEAN`) via group-wise Noisy-OR pooling, then iteratively refines log-odds posteriors across the entire proteome using **six genome-scale priors**:
+   - `EssentialityPrior`: Core domain-universal essential function completeness (`bacteria`, `archaea`, `eukaryote`).
+   - `CoherencePrior`: Metabolic pathway/module stoichiometry (KEGG, MetaCyc) and obligate heteromeric protein complex completion (`complex_terms.tsv`).
+   - `ConsistencyPrior`: SAT4J UNSAT-core taxonomic consistency (`only_in_taxon`, `never_in_taxon`).
+   - `AnatomicalPrior`: Cross-ontology GO–Uberon–Plant Ontology (`PO`)–Cell Ontology (`CL`) anatomical and developmental structure constraints (`2,714` verified logical definitions linked to `8,330` taxon constraints).
+   - `GapFillingPrior` & `RLGC S2`: Metabolic network gap-filling (`gapseq`) coupled to operon pathway hypergeometric Bayes factors, Pfam coarse EC compatibility, and `ESM-2` reaction-centroid similarity.
+   - `GenomicContextPrior`: Operon and synteny neighborhood functional coupling.
+2. **Stage 2 — Deterministic Symbolic Constraint & Coherence Enforcement**: Guarantees $100\%$ taxonomic and anatomical consistency via **semantic ancestor relaxation** (`--enforce-consistency-mode relax`, replacing clade-invalid specific GO terms with their most specific valid GO ancestor while preserving unpenalized evidence log-odds) and prunes unsupported singleton subunits of obligate heteromeric complexes.
+3. **Stage 3 — Optional Neuro-Symbolic Agentic Annotation Completion (`gspa-agent`, `--enable-agent`)**: Selectively routes remaining post-Stage-2 genome-scale anomalies (`PATHWAY_GAP`, `INCOMPLETE_COMPLEX`, `BORDERLINE_ESSENTIAL`, `BORDERLINE_CONFLICT` — typically $<2\%$ of the proteome) to a tool-using local/cluster language model (`Qwen 3.8 27B` or fast 1-step SLM mode) gated by a deterministic **Symbolic Guardrail** that blocks any hallucinated or clade-violating GO terms.
 
-This walkthrough annotates *B. subtilis* 168 from scratch using the
-benchmark workflow. Estimated wall-clock times are for a 16-core
-server; most steps parallelize trivially.
+📖 **Full CLI & Stand-Alone User Guide:** [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md)  
+📄 **Manuscript & Figures:** [`paper/main.pdf`](paper/main.pdf) | [`results/`](results/)
 
-### Prerequisites
+---
 
-Download once (total ~17 GB):
+## Quickstart (Stand-Alone Tool)
+
+### 1. Download Stand-Alone Release (`v2.0.0`)
+
+Download the pre-compiled stand-alone distribution (`gspa-2.0.0-standalone.tar.gz`) or the self-contained executable JAR (`gspa-2.0.0.jar`) directly from [GitHub Releases](https://github.com/bio-ontology-research-group/gspa/releases/tag/v2.0.0) (requires **Java 21+**):
 
 ```bash
-# GO ontology + taxon constraints
-curl -L -o go.owl http://purl.obolibrary.org/obo/go.owl                                    # 130 MB
-curl -L -o go-taxon-constraints.obo \
-  http://current.geneontology.org/ontology/imports/go-computed-taxon-constraints.obo         # 2 MB
+curl -LO https://github.com/bio-ontology-research-group/gspa/releases/download/v2.0.0/gspa-2.0.0-standalone.tar.gz
+tar -xzf gspa-2.0.0-standalone.tar.gz
+cd gspa-2.0.0
 
-# EC → GO mapping
-curl -L -o ec2go http://current.geneontology.org/ontology/external2go/ec2go                 # 350 KB
-
-# Swiss-Prot reference (for leave-one-out DIAMOND DB)
-curl -L -o uniprot_sprot.fasta.gz \
-  https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz  # 93 MB
-
-# RefSeq ↔ UniProt ID mapping (for operon protein-ID bridging)
-curl -L -o gene_refseq_uniprotkb_collab.gz \
-  https://ftp.ncbi.nlm.nih.gov/refseq/uniprotkb/gene_refseq_uniprotkb_collab.gz           # 1.2 GB
-
-# GOA annotations (ground-truth evaluation only; not needed for annotation itself)
-curl -L -o goa_uniprot_all.gaf.gz \
-  https://ftp.ebi.ac.uk/pub/databases/GO/goa/UNIPROT/goa_uniprot_all.gaf.gz                # 15 GB
-
-# KEGG pathway DB (built from KEGG REST + ec2go)
-python3 benchmark/build_kegg_pathway_tsv.py \
-  --ec-pathway <(curl -sL https://rest.kegg.jp/link/pathway/ec) \
-  --pathway-names <(curl -sL https://rest.kegg.jp/list/pathway) \
-  --ec2go ec2go --out kegg_pathways.tsv                                                     # 1 min
+./gspa --version
+# 2.0.0
 ```
 
-### Step 1 — Download the genome (~10 s)
+Or build from source with the included Gradle wrapper:
 
 ```bash
-# UniProt proteome FASTA (normalized to bare accessions)
-curl -sL "https://rest.uniprot.org/uniprotkb/stream?query=proteome:UP000001570&format=fasta" \
-  | awk '/^>/{split($0,a,"|"); print ">"a[2]" "substr($0,2); next}{print}' > bsubtilis.faa
-
-# NCBI genomic FASTA + GFF (for gapseq and operon extraction)
-curl -sL ".../GCF_000009045.1_ASM904v1_genomic.fna.gz" | gunzip > bsubtilis.fna
-curl -sL ".../GCF_000009045.1_ASM904v1_genomic.gff.gz" | gunzip > bsubtilis.gff
+git clone https://github.com/bio-ontology-research-group/gspa.git
+cd gspa
+./gradlew clean test :gspa-cli:shadowJar
+./gspa --version
 ```
 
-### Step 2 — Build leave-one-out DIAMOND DB (~2 min)
+### 2. Run Genome-Scale Integration (`gspa integrate`)
+
+Because `gspa-2.0.0.jar` bundles all cross-ontology constraint tables (`go-taxon-constraints.tsv`, `ncbi-taxon-hierarchy.tsv`, `go-anatomical-constraints.tsv`, `uberon-po-taxon-constraints.tsv`, `uberon-po-hierarchy.tsv`, `complex_terms.tsv`) and essentiality presets (`bacteria`, `archaea`, `eukaryote`), you can run Stage 1 + Stage 2 immediately out of the box:
 
 ```bash
-# Exclude this genome's proteins from Swiss-Prot
-grep '^>' bsubtilis.faa | awk '{print substr($1,2)}' > exclude.txt
-python3 benchmark/filter_fasta_by_exclude.py \
-  --fasta <(gunzip -c uniprot_sprot.fasta.gz) --exclude exclude.txt --output reference.fasta
-diamond makedb --in reference.fasta --db reference --threads 16
-```
-
-### Step 3 — Run predictors (~40 min)
-
-```bash
-# DIAMOND blastp — sequence similarity (SEQUENCE_SIMILARITY evidence type)
-diamond blastp --db reference --query bsubtilis.faa \
-  --out diamond.tsv --outfmt 6 qseqid sseqid pident length qlen slen evalue bitscore stitle \
-  --evalue 1e-5 --max-target-seqs 50 --query-cover 50 --subject-cover 50 --id 30 \
-  --threads 16                                                                     # ~10 s
-
-# HMMER/Pfam — protein domain families (SEQUENCE_DOMAIN evidence type)
-hmmsearch --domtblout pfam.domtbl --noali -E 1e-5 --cpu 16 Pfam-A.hmm bsubtilis.faa  # ~15 min
-
-# InterProScan — multi-database domain/family/motif scan with InterPro2GO
-#   (SEQUENCE_DOMAIN evidence type; runs Pfam, TIGRFAM, CDD, SUPERFAMILY,
-#    Panther, ProSite, HAMAP, FunFam, etc. and maps hits to GO via InterPro)
-interproscan.sh -i bsubtilis.faa -o interproscan.tsv -f TSV --goterms --cpu 8 -dp  # ~25 min
-```
-
-### Step 4 — Parse predictor outputs → claims.jsonl (~3 min)
-
-```bash
-python3 benchmark/02b_parse_predictors_to_claims.py \
-  --results-dir ./preds \
-  --goa goa_uniprot_all.gaf.gz \
-  --pfam2go pfam2go.txt \
-  --interproscan interproscan.tsv \
-  --test-accs exclude.txt \
-  --output claims.jsonl
-```
-
-### Step 5 — Extract operons from GFF (~1 s)
-
-```bash
-python3 benchmark/make_operons.py bsubtilis.gff operons_refseq.tsv 300
-
-# Remap RefSeq → UniProt using the collab file
-python3 benchmark/build_refseq_uniprot_map.py \
-  --collab gene_refseq_uniprotkb_collab.gz \
-  --genomes bsubtilis:refseq_ids.txt:uniprot_accs.txt \
-  --out-dir maps/
-# Then remap the operon file using the resulting TSV
-```
-
-### Step 6 — Run gapseq (~8-10 h)
-
-```bash
-gapseq find -p all bsubtilis.fna
-# → bsubtilis-all-Pathways.tbl, bsubtilis-all-Reactions.tbl
-
-python3 benchmark/parse_gapseq_gaps.py \
-  --pathways-tbl bsubtilis-all-Pathways.tbl \
-  --reactions-tbl bsubtilis-all-Reactions.tbl \
-  --ec2go ec2go --tag bsubtilis --out gaps.jsonl
-```
-
-### Step 7 — Integrate with priors + dark matter (~30 s)
-
-```bash
-java -jar gspa.jar integrate \
+# Minimal stand-alone run (using bundled taxonomic, anatomical, complex, and essentiality resources)
+./gspa integrate \
   --claims claims.jsonl \
   --out integrated.tsv \
-  --go-owl go.owl --lite \
+  --taxon NCBITaxon_562 \
   --essential-profile bacteria \
-  --pathways kegg_pathways.tsv --ec2go ec2go \
-  --operons operons.tsv \
-  --gaps gaps.jsonl \
-  --enable-priors essentiality,coherence,gap_filling,genomic_context \
-  --dark-matter --suggestions-out suggestions.tsv
+  --enforce-stage2 \
+  --enforce-consistency-mode relax \
+  --lite
+
+# Full run with GO OWL, KEGG pathways/modules, operons, metabolic gaps, dark-matter RLGC, and Stage 3 Agent
+./gspa integrate \
+  --claims ecoli_claims.jsonl \
+  --out ecoli_integrated.tsv \
+  --go-owl go.owl \
+  --taxon NCBITaxon_562 \
+  --essential-profile bacteria \
+  --pathways kegg_pathways.tsv \
+  --modules kegg_modules.tsv \
+  --ec2go ec2go.txt \
+  --operons ecoli_operons.tsv \
+  --gaps ecoli_gaps.jsonl \
+  --enable-priors essentiality,coherence,consistency,anatomical,gap_filling,genomic_context \
+  --enforce-stage2 \
+  --enforce-consistency-mode relax \
+  --enforcement-actions-out ecoli_stage2_actions.tsv \
+  --dark-matter --suggestions-out ecoli_dark_matter.tsv \
+  --enable-agent --agent-model qwen3.8-27b \
+  --lite
 ```
 
-Output:
-- `integrated.tsv` — per-protein × per-GO-term posterior probabilities
-  with provenance (which predictors, which priors, convergence iteration)
-- `suggestions.tsv` — dark-matter singleton/disjunctive suggestions for
-  metabolic gaps
-
-### Step 8 — Evaluate quality (~20 s with reasoner cache, ~12 min first run)
+### 3. Run GAEF Genome-Scale Quality Evaluation (`gspa evaluate`)
 
 ```bash
-# Convert integrated TSV to synthetic GFF + GAF for gspa evaluate
-python3 benchmark/make_synth_gff_gaf.py \
+# Convert integrated.tsv + proteome.faa to GFF3 + GAF2.2
+uv run python benchmark/make_synth_gff_gaf.py \
   --fasta bsubtilis.faa --tsv integrated.tsv \
   --gff-out synth.gff --gaf-out synth.gaf
 
-java -jar gspa.jar evaluate \
-  -i synth.gff -a synth.gaf --go-owl go.owl \
-  --ec2go ec2go --pathways kegg_pathways.tsv \
-  --reasoner-cache ./reasoner-cache \
-  -k bacteria -o quality.json
+# Evaluate Completeness, Pathway Coherence, Complex Coherence, Taxon/Anatomy Consistency & IC
+./gspa evaluate \
+  -i synth.gff -a synth.gaf \
+  --go-owl go.owl \
+  --taxon NCBITaxon_1423 -k bacteria \
+  --pathways kegg_pathways.tsv --modules kegg_modules.tsv --ec2go ec2go.txt \
+  --lite -o quality_report.json
 ```
 
-### Step 9 — Self-contained HTML browser (~30 s)
+### 4. Interactive HTML5 Genome & Pathway Browser (`gspa visualize`)
 
 ```bash
-java -jar gspa.jar visualize \
-  --workspace . \
+./gspa visualize \
+  --workdir . \
   --genome-id bsubtilis \
-  --output bsubtilis_browser.html
+  --out bsubtilis_browser.html
 ```
 
-Produces a single self-contained HTML file (~25 MB with embedded FASTA)
-with tabs for Proteins, Functions, Genome (igv.js), Operons (named by
-hypergeometric GO BP enrichment), Pathways (per-KEGG-map coverage with
-per-reaction colouring + KEGG Modules), Special features (AMR + BGC),
-Quality (GAEF metrics + named missing essentials + incoherent process
-pairs), and Pipeline provenance. Bundles a Python templater extracted
-at runtime; needs `python3` on PATH but no other external deps.
+---
 
-### Optional — KEGG Modules (per-genome focused enrichment)
+## Empirical Benchmark Results (GSPA v2.0.0)
 
-Smaller, focused units (5–15 enzymes vs 50+ in main KEGG maps) make
-per-genome dominant-pathway tagging meaningful. Layer them in:
+GSPA v2.0.0 is evaluated across **four benchmark pillars** spanning 21 reference genomes, 13 PGAP/DeepFRI benchmark genomes, 97 uncultured MAGs (16 phyla), 1,248 leave-reaction-out (LRO) metabolic gap-filling trials, 175 leave-subunit-out (LSO) heteromeric complex trials, 6 eukaryotic anatomical constraint benchmarks, and a 120-anomaly Stage 3 agent benchmark. Full tables and reports are in [`results/`](results/).
 
-```bash
-python3 benchmark/fetch_kegg_modules.py --out kegg_modules.tsv  # 520 modules
+### Pillar 1 & 2: Multi-Predictor Integration, 9-Genome Ablation & Cross-Clade Perturbation Defense
 
-# Stack onto KEGG main in integrate / evaluate / visualize:
-java -jar gspa.jar integrate ... --pathways kegg_pathways.tsv \
-  --modules kegg_modules.tsv
-java -jar gspa.jar evaluate ... --pathways kegg_pathways.tsv \
-  --modules kegg_modules.tsv
-```
+- **21-Genome 7-Predictor Benchmark:** Integrating DIAMOND, InterProScan, Pfam, ESM-2, ProtT5, DeepGOWeb, and ProtInfer via GSPA achieves **0.869 micro $F_{\max}$** (**0.822 CAFA $F_{\max}$**), outperforming every individual predictor (`ESM-2`: `0.858`, `ProtT5`: `0.853`, `DIAMOND`: `0.840`, `ProtInfer`: `0.751`, `DeepGOWeb`: `0.692`).
+- **13-Genome PGAP / DeepFRI Comparison:** 3-source GSPA (`DIAMOND` + `InterProScan` + `Pfam`) achieves **0.818 micro $F_{\max}$** (**0.806 CAFA $F_{\max}$**), surpassing **NCBI PGAP** (`0.782` micro $F_{\max}$, `0.768` CAFA $F_{\max}`), **InterProScan** (`0.722`), **Pfam** (`0.506`), and **metagenomic-deepFRI** (`0.585`).
 
-### Estimated total time
+| Ablation Configuration (9 Reference Genomes, 81 Runs) | Micro $F_{\max}$ | CAFA $F_{\max}$ | Essential Completeness | Pathway Coherence | Complex Coherence | GAEF Composite Score | Perturbation Suppression (900 Injected Violations) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `A1_noisy_or` (Unconstrained Baseline) | 0.8705 | 0.8407 | 0.9400 | 0.4975 | 0.8636 | 0.8459 | 0.0% |
+| `A2_essentiality` (`+ EssentialityPrior`) | 0.8705 | 0.8407 | 0.9447 | 0.4975 | 0.8636 | 0.8473 | 0.0% |
+| `A3_coherence` (`+ CoherencePrior`) | 0.8707 | 0.8406 | 0.9400 | 0.5146 | 0.8636 | 0.8475 | 0.0% |
+| `A6_consistency_anatomical` (`+ Taxon & Anatomy`) | **0.8708** | 0.8405 | 0.9400 | 0.4975 | 0.8636 | 0.8542 | **99.7%** |
+| `A7_stage1_all` (All 6 Stage 1 Priors) | 0.8705 | 0.8398 | **0.9479** | **0.5146** | **0.8852** | **0.8643** | 99.7% |
+| `A9_stage2_relax` (Stage 1 + Stage 2 `relax`) | 0.8705 | 0.8398 | **0.9479** | **0.5146** | **0.8852** | **0.8643** | **99.7%** (`100%` direct taxon) |
 
-| Step | Wall clock | Notes |
-|---|---|---|
-| Download genome | 10 s | UniProt + NCBI FTP |
-| Build DIAMOND DB | 2 min | One-time per reference set |
-| DIAMOND blastp | 10 s | 16 threads |
-| HMMER/Pfam | 15 min | 16 threads, ~4k proteins |
-| InterProScan | 25 min | 8 threads, ~4k proteins; runs Pfam + TIGRFAM + CDD + SUPERFAMILY + Panther + ... |
-| Parse claims | 3 min | GOA scan dominates; ~10s with pre-built subset |
-| Extract operons | 1 s | Intergenic distance from GFF |
-| gapseq find | **8-10 h** | MetaCyc pathway detection via tblastn |
-| Integrate + dark matter | 30 s | All 4 priors + Phase 8 suggester |
-| Quality evaluation | 20 s | With reasoner cache |
-| **Total** | **~9-11 h** | **Dominated by gapseq** |
+*(Full report: [`results/pillar1_2_ablation_report.md`](results/pillar1_2_ablation_report.md))*
 
-Without gapseq (skip step 6, lose GapFillingPrior and dark-matter
-suggestions): **~45 min total**.
-Without InterProScan (lose TIGRFAM/CDD/SUPERFAMILY/Panther GO hits):
-**~20 min total**.
+### Pillar 3, Scenario A: Leave-Reaction-Out (LRO) Metabolic Gap-Filling & 97-MAG Dark Matter
 
-## Project layout
+| Benchmark Dataset | Method / Scoring Engine | Cases ($n$) | Hit@1 | Hit@3 | Hit@5 | MRR |
+|---|---|---:|---:|---:|---:|---:|
+| ***E. coli* K-12 All LRO** | Baseline Homology Suggester | 850 | 1.8% | 5.4% | 8.9% | 0.051 |
+| ***E. coli* K-12 All LRO** | GSPA RLGC S2 (Catalytic + Operon BF + Pfam) | 850 | 63.5% | 85.2% | 91.6% | 0.758 |
+| ***E. coli* K-12 All LRO** | **GSPA RLGC S2 + ESM-2 Reaction Centroid** | 850 | **63.7%** | **85.5%** | **91.8%** | **0.760** |
+| ***E. coli* K-12 Twilight Zone ($<25\%$ id.)** | Baseline Homology Suggester | 80 | 5.0% | 11.3% | 17.5% | 0.104 |
+| ***E. coli* K-12 Twilight Zone ($<25\%$ id.)** | GSPA RLGC S2 (Catalytic + Operon BF + Pfam) | 80 | 25.0% | 53.8% | 72.5% | 0.442 |
+| ***E. coli* K-12 Twilight Zone ($<25\%$ id.)** | **GSPA RLGC S2 + ESM-2 Reaction Centroid** | 80 | **30.0%** | **56.3%** | **72.5%** | **0.478** |
+| ***B. subtilis* 168 Cross-Species LRO** | Baseline Homology Suggester | 398 | 2.5% | 7.3% | 11.0% | 0.064 |
+| ***B. subtilis* 168 Cross-Species LRO** | **GSPA RLGC S2 (Default Parameters)** | 398 | **25.1%** | **51.8%** | **68.8%** | **0.431** |
+| **Ambiguous Multi-Candidate LRO** | Stage 1 RLGC S2 Alone | 50 | 52.0% | 82.0% | 100.0% | 0.701 |
+| **Ambiguous Multi-Candidate LRO** | **Stage 1 RLGC S2 + Stage 3 `gspa-agent`** | 50 | **86.0%** | **96.0%** | **100.0%** | **0.915** |
 
-Multi-module Gradle (Groovy 4 + Java 21):
+- **97 Uncultured Prokaryotic MAGs (16 Phyla):** Resolves **2,175** missing metabolic pathway steps at $q \ge 0.30$ (`22.4` gaps/MAG) and **568** high-confidence pathway steps at $q \ge 0.50$ (`5.9` gaps/MAG).
 
-- **gspa-core** — data model, GO ontology (OWL API + ELK), quality
-  metrics (SAT4J for taxon-constraint consistency), I/O, config,
-  Phase 7 integration engine (`gspa.integration`), Phase 8 dark-matter
-  suggester (`gspa.integration.suggester`).
-- **gspa-predictors** — `Predictor` interface, `AbstractToolPredictor`,
-  gene callers, all tool wrappers, `AnnotationPipeline` orchestrator,
-  community / crossfeeding analyzer.
-- **gspa-cli** — picocli CLI: `annotate`, `evaluate`, `compare`,
-  `report`, `integrate`.
-- **gspa-nf** — Nextflow workflow (Docker + BioContainers).
-- **benchmark/** — 9-genome head-to-head vs PGAP. See
-  [`benchmark/RESULTS.md`](benchmark/RESULTS.md).
+### Pillar 3, Scenario B & C: Heteromeric Complex Completion & Eukaryotic Anatomical Constraints
 
-## Evidence integration (Phase 7)
+- **Obligate Heteromeric Protein Complexes (175 LSO Trials across 6 Prokaryotes):** Raises held-out subunit recovery $F_1$@0.50 from **0.000** (`Noisy-OR`) to **0.668** (`Stage 1 Coherence + Operon Context`, `96.0%` Hit@1) and **0.742** (`+ Stage 2 Pruning + Stage 3 Agent`, **100.0% Recall**, **98.3% Hit@1**).
+- **Multicellular Eukaryotic Anatomical Constraints (6 Species: *S. cerevisiae*, *C. elegans*, *D. melanogaster*, *P. patens*, *A. thaliana*, *M. musculus*):** Direct GO taxon constraints catch only **4.4%** ($105/2{,}377$) of cross-clade anatomical false positives (e.g., *heart development* in yeast or plants, *neural crest migration* in arthropods/nematodes, *flower development* in animals). GSPA's GO–Uberon/PO/CL bridge + Stage 2 eliminates **100.0%** ($2{,}377/2{,}377$), while semantic ancestor relaxation (`relax`) improves ancestor-propagated CAFA $F_{\max}$ over naive deletion (`remove`) on all 6 species (`+0.009` to `+0.029`) and rescues **79.8%** ($459/575$) of borderline true developmental annotations.
 
-Each predictor emits `Annotation` objects lifted into `EvidenceClaim`
-records. The integrator:
+*(Full report: [`results/pillar3_report.md`](results/pillar3_report.md))*
 
-1. Groups claims by `(protein, function)`.
-2. Collapses by evidence-correlation group (homology, structure,
-   context, ml-sequence, …) so DIAMOND + Pfam don't double-count.
-3. Combines via log-odds **Noisy-OR** with per-type reliability.
-4. Iterative refinement (up to 6 rounds, Jacobi damping 0.5):
-   `L_post = L_lik + Σ λ_k · prior_k(protein, function, state)`
-5. Full provenance per annotation.
+### Pillar 4: Stage 3 Neuro-Symbolic Agent (`gspa-agent`) Evaluation
 
-### Priors
+| Configuration (120-Anomaly Benchmark Across 7 Genomes) | Precision | Recall | $F_1$ Score | Overall Accuracy | Ontology Violation Rate | Latency / Anomaly |
+|---|---:|---:|---:|---:|---:|---:|
+| **Config 1:** Stage 1 + Stage 2 Deterministic Only | 100.0% | 0.0% | 0.0% | 50.0% | **0.0%** (`0/120`) | 0.00 s |
+| **Config 2:** `gspa-agent` Fast 1-Step Mode (`--max-turns 2`) + Guardrail | **90.7%** | 81.7% | 86.0% | 86.7% | **0.0%** (`0/120`) | 3.74 s |
+| **Config 3:** `gspa-agent` `Qwen 3.8 27B` Multi-Turn (`--max-turns 6`) + Guardrail | 88.5% | **100.0%** | **93.9%** | **94.2%** | **0.0%** (`0/120`) | 5.31 s |
+| **Config 4:** `gspa-agent` `Qwen 3.8 27B` Multi-Turn **without** `SymbolicGuardrail` | 78.9% | 98.5% | 87.8% | 86.7% | **6.7%** (`8/120`) | 5.29 s |
 
-| Prior | What it does | Needs |
-|---|---|---|
-| `EssentialityPrior` | Boost claims for uncovered essential functions (exact-match or descendant-expanded with ELK) | Essential profile |
-| `CoherencePrior` | Boost claims that close triggered-but-incomplete pathways, scaled by `(1 − coverage)` | KEGG pathway DB |
-| `ConsistencyPrior` | Penalize (−3 log-odds) GO terms in SAT4J UNSAT core against taxon constraints | `--taxonomy` lineage + taxon constraints OBO |
-| `GapFillingPrior` | Boost claims matching gapseq-identified missing reactions (0.7× for gapseq guesses) | gapseq gaps JSONL |
-| `GenomicContextPrior` | Boost weak claims in operons with pathway consensus; extra weight if claim closes a gap | Operons + pathway DB |
+*(Full report: [`results/pillar4_agent_report.md`](results/pillar4_agent_report.md))*
 
-All priors degrade gracefully — each is silent when its inputs are
-missing. Validated to fire correctly on 9 benchmark genomes with
-50+ claims crossing the 0.5 threshold per genome.
+---
 
-## Dark-matter suggester (Phase 8)
+## Repository Structure
 
-For each gapseq-identified metabolic gap `(pathway P, reaction R,
-target function f_R)`:
+- **`gspa`** — Stand-alone CLI launcher script (`./gspa integrate|evaluate|annotate|visualize|compare|report|agent`).
+- **`gspa-core/`** — Core Groovy/Java library: GO/Uberon/PO/CL/NCBITaxon ontology reasoning (OWL API + ELK + SAT4J), Stage 1 `IterativeRefiner` and 6 genome-scale priors, Stage 2 `ConsistencyEnforcer` (`relax` / `remove`), `ReactionLocalContextSuggester` (RLGC S2), Stage 3 `AnomalyExtractor` & `AgentCompletionRunner`, and bundled constraint tables (`src/main/resources/`).
+- **`gspa-predictors/`** — Tool wrappers (`DIAMOND`, `MMseqs2`, `Pfam`, `InterProScan`, `FoldSeek`, `gapseq`, `DeepGO-PlusPlus`, `ProteInfer`, `CLEAN`, `AMRFinderPlus`, `antiSMASH`, etc.).
+- **`gspa-cli/`** — Picocli command-line interface and ShadowJar packaging (`gspa-2.0.0.jar`).
+- **`gspa-nf/`** — Nextflow workflow for high-throughput cluster/cloud execution.
+- **`benchmark/agent/`** — Stage 3 Neuro-Symbolic Agent sidecar (`run_gspa_agent.py`, also bundled inside `gspa-2.0.0.jar`).
+- **`benchmark/unified/`** — Reproducible benchmark suites for Pillars 1–4.
+- **`scripts/`** — Programmatic OBO Foundry OWL constraint extraction scripts (`extract_anatomical_constraints.py`, `extract_complex_terms.py`).
+- **`results/`** — Empirical TSV summary tables and markdown analysis reports across all 4 benchmark pillars.
+- **`paper/`** — LaTeX manuscript (`main.tex`, `main.pdf`), bibliography (`references.bib`), and figure generator (`generate_figures.py`).
+- **`docs/`** — Stand-alone CLI and schema documentation (`docs/CLI_REFERENCE.md`).
 
-1. **Bayes factor** `BF(O, P)` for each operon — does this operon
-   participate in pathway P? Based on current posteriors of members.
-2. **Per-protein log-odds** `L_R(p) = L_lik + L_op + commitment_penalty`
-   within passing operons (BF ≥ 10).
-3. **Softmax** over operon → `q(p)` per protein.
-4. **Singleton** if `q(top) > 0.5`; **disjunctive** credible set
-   otherwise (cumulative q ≥ 0.9).
-
-Benchmark results on 5 genomes with gapseq data:
-
-| Genome | Gaps | Singleton | Disjunctive | Total |
-|---|---|---|---|---|
-| ecoli | 368 | 913 | 2,903 | 3,816 |
-| ecolo157 | 386 | 1,095 | 3,516 | 4,611 |
-| paeruginosa | 427 | 1,083 | 3,835 | 4,918 |
-| mjannaschii | 124 | 193 | 377 | 570 |
-| synechocystis | 277 | 314 | 1,015 | 1,329 |
-
-## Quality metrics (GAEF)
-
-- **Completeness** — essential-function coverage per kingdom.
-- **Coherence** — process (ELK has_part), pathway, complex coverage.
-- **Consistency** — taxon constraints via SAT4J; UNSAT core for
-  violation explanation.
-- **Information content** — mean IC of annotated terms.
-- **Composite score** — weighted combination.
-
-## Benchmark results
-
-13-genome head-to-head against PGAP (3 original + 10 new).
-**Mean GSPA / PGAP = 1.93×** (range 1.59-2.59×) using DIAMOND + Pfam +
-InterProScan + priors:
-
-| Genome | GSPA F-max | PGAP F-max | Ratio |
-|---|---|---|---|
-| rprowazekii | **0.911** | 0.503 | 1.81× |
-| mgenitalium | **0.908** | 0.469 | 1.94× |
-| tpallidum | **0.892** | 0.491 | 1.82× |
-| saureus | **0.867** | 0.449 | 1.93× |
-| vcholerae | **0.858** | 0.443 | 1.94× |
-| pfuriosus | **0.857** | 0.350 | 2.45× |
-| hpylori | **0.819** | 0.316 | 2.59× |
-
-**F-max definitions** (we report both per genome):
-- *Micro* — TP/FP/FN summed across all (protein, GO-term) pairs in
-  the genome at each threshold; F1 from the global sums; max over
-  thresholds. Upweights heavily-annotated proteins.
-- *CAFA* — CAFA III/IV per-protein protocol: precision/recall computed
-  per protein, then averaged across proteins; F1 from those averages;
-  max over thresholds. Each protein contributes equally.
-
-The numbers above are micro F-max. Both metrics agree GSPA > PGAP on
-every genome (CAFA mean ratio = 1.96× vs micro 1.93×). See
-[`benchmark/RESULTS.md`](benchmark/RESULTS.md) for full per-genome
-tables and the full procedure for both metrics.
-
-Full tables: [`benchmark/RESULTS.md`](benchmark/RESULTS.md) |
-[`benchmark/ABLATION_REPORT.txt`](benchmark/ABLATION_REPORT.txt) |
-[`benchmark/STATUS.md`](benchmark/STATUS.md)
-
-## Build & test
-
-```bash
-./gradlew build                  # compile + unit tests
-./gradlew clean test             # fresh build
-./gradlew :gspa-cli:shadowJar    # fat jar
-```
-
-Requires Java 21+ (Gradle wrapper included).
+---
 
 ## License
 
-GSPA is licensed under the GNU General Public License, version 3 or
-later (GPL-3.0-or-later). See [`LICENSE`](LICENSE) for the full text.
-
-Dependencies: OWL API (LGPL), ELK (Apache-2.0), SAT4J (LGPL/EPL —
-LGPL leg used here), picocli (Apache-2.0), Jackson (Apache-2.0), Spock
-(Apache-2.0). All are GPLv3-compatible. AGPL-3.0 tools (currently
-DeepEC) are invoked via Python subprocess sidecars without static or
-dynamic linking; AGPL §13 also grants explicit GPLv3 combination
-compatibility.
-
-## Related work
-
-[metagenomic-deepFRI](https://github.com/Tomasz-Lab/metagenomic-deepFRI)
-(Bezshapkin et al., bioRxiv 2026-04-29) is a structure-informed GO
-predictor that scales DeepFRI to metagenomic datasets via FoldComp
-database retrieval. It is *complementary* to GSPA: a single
-structural-evidence channel that GSPA's Bayesian integrator can
-consume alongside DIAMOND, Pfam, InterProScan, and the existing
-DeepFRI / FoldSeek wrappers. v1.5.0 ships a head-to-head comparison
-on the 13-genome PGAP panel (`benchmark/RESULTS.md` "v1.5.0 —
-comparison with metagenomic-deepFRI"); native `MdFPredictor.groovy`
-integration is a v1.6 task.
-
-## Citation
-
-Paper in preparation. If you use GSPA, please cite this repository
-and the quality-metrics paper the GAEF framework is drawn from.
+GSPA is licensed under the **GNU General Public License v3.0 or later (`GPL-3.0-or-later`)**. See [`LICENSE`](LICENSE) for full details.

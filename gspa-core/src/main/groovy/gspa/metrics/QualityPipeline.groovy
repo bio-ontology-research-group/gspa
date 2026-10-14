@@ -25,6 +25,7 @@ class QualityPipeline {
     private GoOntology goOntology
     private GoReasoner goReasoner
     private TaxonConstraints taxonConstraints
+    private AnatomicalConstraints anatomicalConstraints
     private SatConsistencyChecker satChecker
     private PathwayDatabase pathwayDatabase
     private EssentialFunctions essentialFunctions
@@ -100,6 +101,11 @@ class QualityPipeline {
         this
     }
 
+    QualityPipeline anatomicalConstraints(AnatomicalConstraints ac) {
+        this.anatomicalConstraints = ac
+        this
+    }
+
     QualityPipeline ec2goFile(File file) {
         def ec2go = PathwayLoader.loadEc2Go(file)
         pathwayDatabase = PathwayLoader.createFromEc2Go(ec2go)
@@ -164,7 +170,10 @@ class QualityPipeline {
             }
         }
 
-        // Default taxon constraints if not set
+        // Default taxon + anatomical constraints if not set
+        if (anatomicalConstraints == null) {
+            anatomicalConstraints = AnatomicalConstraints.loadBundled()
+        }
         if (taxonConstraints == null) {
             taxonConstraints = new TaxonConstraints()
             loadTaxonConstraints()
@@ -182,6 +191,11 @@ class QualityPipeline {
         }
         if (complexTermsFile?.exists()) {
             coherenceEvaluator.loadComplexTerms(complexTermsFile)
+        } else {
+            File bundledComplex = resourceToTempFile(BUNDLED_COMPLEX_TERMS, 'complex_terms', '.tsv')
+            if (bundledComplex?.exists()) {
+                coherenceEvaluator.loadComplexTerms(bundledComplex)
+            }
         }
         consistencyEvaluator = new Consistency(satChecker)
         icEvaluator = new InformationContent(goOntology)
@@ -203,6 +217,9 @@ class QualityPipeline {
         if (essentialFunctions == null) {
             essentialFunctions = EssentialFunctions.getDefault(config.resolveOrganismDomain())
         }
+        if (anatomicalConstraints == null) {
+            anatomicalConstraints = AnatomicalConstraints.loadBundled()
+        }
         if (taxonConstraints == null) {
             taxonConstraints = new TaxonConstraints()
             loadTaxonConstraints()
@@ -213,9 +230,20 @@ class QualityPipeline {
         }
 
         completenessEvaluator = new Completeness(goOntology, essentialFunctions)
+        coherenceEvaluator = new Coherence(goOntology, null)
+        if (pathwayDatabase != null) {
+            coherenceEvaluator.pathwayDatabase = pathwayDatabase
+        }
+        if (complexTermsFile?.exists()) {
+            coherenceEvaluator.loadComplexTerms(complexTermsFile)
+        } else {
+            File bundledComplex = resourceToTempFile(BUNDLED_COMPLEX_TERMS, 'complex_terms', '.tsv')
+            if (bundledComplex?.exists()) {
+                coherenceEvaluator.loadComplexTerms(bundledComplex)
+            }
+        }
         consistencyEvaluator = new Consistency(satChecker)
         icEvaluator = new InformationContent(goOntology)
-        // coherenceEvaluator stays null — process coherence will be skipped
 
         initialized = true
         log.info("Quality pipeline initialized (lite mode, no ELK)")
@@ -284,11 +312,29 @@ class QualityPipeline {
 
         // Consistency
         if (config.quality.consistency.taxonConstraints) {
+            if (genome.taxonomy?.ncbiTaxId && satChecker != null && !satChecker.organismTaxon) {
+                satChecker.organismTaxon = genome.taxonomy.ncbiTaxId
+            }
             def consr = consistencyEvaluator.evaluateWithAttribution(genome)
-            report.consistent = consr.consistent
-            report.violations = consr.violations
-            log.info("  Consistency: ${consr.consistent ? 'PASS' : 'FAIL'} " +
-                "(${consr.violations.size()} violations)")
+            List<gspa.model.ConsistencyViolation> allViolations = new ArrayList<>(consr.violations ?: [])
+            if (anatomicalConstraints != null && satChecker?.organismTaxon) {
+                def anatViolations = anatomicalConstraints.evaluateTerms(
+                    genome.allGoTerms(), satChecker.organismTaxon, satChecker, goOntology
+                )
+                for (def av : anatViolations) {
+                    Set<String> cTerms = av.involvedGoTerms as Set
+                    genome.proteins.each { protein ->
+                        if (protein.annotations.goTermIds().intersect(cTerms)) {
+                            av.involvedProteins << protein.id
+                        }
+                    }
+                    allViolations << av
+                }
+            }
+            report.consistent = consr.consistent && allViolations.isEmpty()
+            report.violations = allViolations
+            log.info("  Consistency: ${report.consistent ? 'PASS' : 'FAIL'} " +
+                "(${report.violations.size()} violations)")
         }
 
         // Information content
@@ -385,6 +431,7 @@ class QualityPipeline {
 
         if (cc.enforce) {
             def r = new ConsistencyEnforcer(goOntology: goOntology, satChecker: satChecker,
+                anatomicalConstraints: anatomicalConstraints,
                 mode: cc.enforceMode, downrankFactor: cc.downrankFactor, report: report).enforce(genome)
             log.info("  consistency: ${r}")
         }
@@ -445,6 +492,12 @@ class QualityPipeline {
     /** The loaded GO ontology (for aspect lookups / standard-format export). */
     GoOntology getGoOntology() { goOntology }
 
+    /** The loaded anatomical constraints. */
+    AnatomicalConstraints getAnatomicalConstraints() { anatomicalConstraints }
+
+    /** The SAT consistency checker. */
+    SatConsistencyChecker getSatChecker() { satChecker }
+
     /** True if any enforcement pass is enabled in config. */
     boolean anyEnforcementEnabled() {
         config.quality.consistency.enforce || config.quality.completeness.enforce ||
@@ -458,9 +511,10 @@ class QualityPipeline {
         goReasoner?.dispose()
     }
 
-    /** Bundled (vendored) taxon-constraint resources — see resources/taxon-constraints/PROVENANCE.md. */
+    /** Bundled (vendored) taxon-constraint and complex resources. */
     private static final String BUNDLED_CONSTRAINTS = '/taxon-constraints/go-taxon-constraints.tsv'
     private static final String BUNDLED_HIERARCHY = '/taxon-constraints/ncbi-taxon-hierarchy.tsv'
+    private static final String BUNDLED_COMPLEX_TERMS = '/complex-terms/complex_terms.tsv'
 
     /**
      * Populate {@link #taxonConstraints} for consistency checking / enforcement.
@@ -468,26 +522,36 @@ class QualityPipeline {
      * taxon constraints (Asaad et al.) &rarr; only_in/never_in axioms from the
      * loaded GO ontology (go-basic carries none, so the bundled file is the
      * default that makes consistency actually act).
+     * Also augments {@link #taxonConstraints} with GO-to-anatomy-to-taxon
+     * constraints from {@link #anatomicalConstraints}.
      */
     private void loadTaxonConstraints() {
         boolean want = config.quality.consistency.taxonConstraints || config.quality.consistency.enforce
         if (!want) return
         String cf = config.quality.consistency.constraintsFile
+        boolean loaded = false
         if (cf) {
             File f = new File(cf)
             if (!f.exists()) {
                 log.warn("Taxon constraints file not found: ${cf}; falling back to bundled constraints")
             } else if (cf.toLowerCase().endsWith('.obo')) {
-                taxonConstraints.loadFromObo(f); return
+                taxonConstraints.loadFromObo(f)
+                loaded = true
             } else {
-                taxonConstraints.loadFromTsv(f); return
+                taxonConstraints.loadFromTsv(f)
+                loaded = true
             }
         }
-        File bundled = resourceToTempFile(BUNDLED_CONSTRAINTS, 'go-taxon-constraints', '.tsv')
-        if (bundled) {
-            taxonConstraints.loadFromTsv(bundled)
-        } else if (goOntology != null) {
-            taxonConstraints.loadFromGoOntology(goOntology)
+        if (!loaded) {
+            File bundled = resourceToTempFile(BUNDLED_CONSTRAINTS, 'go-taxon-constraints', '.tsv')
+            if (bundled) {
+                taxonConstraints.loadFromTsv(bundled)
+            } else if (goOntology != null) {
+                taxonConstraints.loadFromGoOntology(goOntology)
+            }
+        }
+        if (anatomicalConstraints != null) {
+            anatomicalConstraints.augmentTaxonConstraints(taxonConstraints)
         }
     }
 

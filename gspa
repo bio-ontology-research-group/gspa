@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# =============================================================================
+# GSPA v2.0.0 — Stand-Alone Command-Line Launcher
+# Genome-Scale Protein Annotation (Stage 1 + Stage 2 + Stage 3 gspa-agent)
+# =============================================================================
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION="2.0.0"
+
+# Subcommand shortcut: `gspa agent [args...]` invokes the Stage 3 Neuro-Symbolic Agent directly
+if [[ "${1:-}" == "agent" ]]; then
+    shift
+    if [[ -f "${SCRIPT_DIR}/benchmark/agent/run_gspa_agent.py" ]]; then
+        AGENT_SCRIPT="${SCRIPT_DIR}/benchmark/agent/run_gspa_agent.py"
+    elif [[ -f "${SCRIPT_DIR}/run_gspa_agent.py" ]]; then
+        AGENT_SCRIPT="${SCRIPT_DIR}/run_gspa_agent.py"
+    else
+        echo "[gspa] Error: run_gspa_agent.py not found." >&2
+        exit 1
+    fi
+    if command -v uv >/dev/null 2>&1; then
+        exec uv run python "${AGENT_SCRIPT}" "$@"
+    else
+        exec python3 "${AGENT_SCRIPT}" "$@"
+    fi
+fi
+
+# Locate gspa-2.0.0.jar
+if [[ -n "${GSPA_JAR:-}" && -f "${GSPA_JAR}" ]]; then
+    JAR="${GSPA_JAR}"
+elif [[ -f "${SCRIPT_DIR}/gspa-${VERSION}.jar" ]]; then
+    JAR="${SCRIPT_DIR}/gspa-${VERSION}.jar"
+elif [[ -f "${SCRIPT_DIR}/gspa-cli/build/libs/gspa-${VERSION}.jar" ]]; then
+    JAR="${SCRIPT_DIR}/gspa-cli/build/libs/gspa-${VERSION}.jar"
+elif [[ -x "${SCRIPT_DIR}/gradlew" ]]; then
+    echo "[gspa] Building stand-alone gspa-${VERSION}.jar via Gradle..." >&2
+    (cd "${SCRIPT_DIR}" && ./gradlew :gspa-cli:shadowJar --quiet)
+    JAR="${SCRIPT_DIR}/gspa-cli/build/libs/gspa-${VERSION}.jar"
+else
+    echo "[gspa] Error: Could not locate gspa-${VERSION}.jar. Download it from GitHub Releases or run './gradlew :gspa-cli:shadowJar'." >&2
+    exit 1
+fi
+
+JAVA_BIN="${JAVA_HOME:+${JAVA_HOME}/bin/}java"
+JVM_OPTS="${GSPA_JVM_OPTS:--Xmx8g}"
+
+exec "${JAVA_BIN}" ${JVM_OPTS} -jar "${JAR}" "$@"

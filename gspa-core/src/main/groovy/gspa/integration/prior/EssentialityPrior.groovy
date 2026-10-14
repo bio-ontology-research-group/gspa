@@ -58,8 +58,8 @@ class EssentialityPrior implements Prior {
         // otherwise fall back to the raw annotated set (coarser but
         // still functional — only misses indirect coverage).
         Set<String> annotated = state.goReasoner != null
-            ? state.currentlyAnnotatedGoTermsPropagated()
-            : state.currentlyAnnotatedGoTerms()
+            ? state.baselineAnnotatedGoTermsPropagated()
+            : state.baselineAnnotatedGoTerms()
         Set<String> essentials = state.essentialFunctions.getGoTerms()
         Set<String> uncovered = new LinkedHashSet<>()
         for (String e : essentials) {
