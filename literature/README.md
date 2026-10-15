@@ -1,6 +1,6 @@
 # Literature Collection for Genome-Scale Protein Annotation (GSPA)
 
-This directory contains verified literature reviews, BibTeX reference files, and 55 open-access full-text PDFs supporting the GSPA manuscript.
+This directory contains verified literature reviews, BibTeX reference files, and 68 open-access full-text PDFs supporting the GSPA manuscript.
 
 ## Synthesis Reports & BibTeX Files
 
@@ -28,6 +28,16 @@ This directory contains verified literature reviews, BibTeX reference files, and
    - Scalable cascade routing & selective prediction: FrugalGPT (Chen et al. 2023, NeurIPS), BioMistral (Labrak et al. 2024, ACL), GSPA Three-Tier Adaptive Cascade Routing Architecture
    - Neuro-symbolic guardrails: ELK reasoner (Kazakov et al. 2014, JAR), DeepGOZero & DeepGO-SE (Kulmanov et al. 2022, 2024), Taxon Constraints (Deegan et al. 2010), Uberon cross-products (Mungall et al. 2012)
 
+5. **[05_sota_8scenarios_and_4kingdoms.md](05_sota_8scenarios_and_4kingdoms.md)** ([05_references.bib](05_references.bib))
+   - SOTA baselines, benchmark datasets, and computational efficiency across all 8 GSPA scenarios:
+     * Scenario 1 (Suite 1): Prospective CAFA & enzyme temporal holdouts (NetGO 3.0, DeepGO-SE, SPROF-GO, AnnoPRO, TALE, ESM-2 kNN/MLP)
+     * Scenario 2 (Suite 2): Multi-kingdom proteome-wide annotation across Bacteria, Archaea, Viruses, and Eukaryotes under Homology Masking Protocol H and Out-of-Clade Protocol D; viral Baltimore-class and essential core gene constraints
+     * Scenarios 3, 4, 5 (Suites 3, 4, 5): Role-stratified leave-reaction-out (LRO) metabolic gap-filling across Core Biomass Stratum A, Alternative Catabolic Stratum B (B1 vs B2), and Secondary/Peripheral Stratum C; mathematical audit of reaction MILP defects vs GSPA StoichiometricLocusRefiner
+     * Scenario 6 (Suite 6): Experimentally validated difficult bacterial enzymes (RB-TnSeq Price-149) across 6 SOTA EC predictors (CLEAN, DeepProZyme, EnzBERT, MAPred, GraphEC, TopEC)
+     * Scenarios 7 & 8 (Suites 7 & 8): Large-scale phenotype and diagnostic enzyme reproduction in BacDive (4,788 strains, 171,984 assays; Track 1 blind genome-to-phenotype and Track 2 phenotype-assisted dark-matter attribution)
+     * Dedicated sections on Obligate Heteromeric Complex Completion (CORUM, Complex Portal, STRING) and Multicellular Eukaryotic Anatomical/Taxonomic Constraint Enforcement (GO taxon constraints, Uberon/PO/CL cross-products, ELK reasoner)
+     * Comprehensive computational efficiency benchmark (wall-clock runtime and peak RAM per genome across 25+ tools)
+
 ## Full-Text PDFs ([pdfs/](pdfs/))
 
-55 verified open-access PDFs are stored in [`pdfs/`](pdfs/).
+63 verified open-access PDFs are stored in [`pdfs/`](pdfs/).

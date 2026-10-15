@@ -64,17 +64,29 @@ import picocli.CommandLine.Option
 )
 class IntegrateCommand implements Runnable {
 
-    @Option(names = ['--claims'], required = true,
-            description = 'JSONL file of evidence claims (one per line).')
+    @Option(names = ['--claims'], required = false,
+            description = 'JSONL file of evidence claims (one per line). Required unless --batch-manifest is given.')
     File claimsFile
 
     @Option(names = ['--theta'],
             description = 'JSON file with reliability + prior-weight hyperparameters.')
     File thetaFile
 
-    @Option(names = ['--out'], required = true,
-            description = 'Output TSV path.')
+    @Option(names = ['--out'], required = false,
+            description = 'Output TSV path. Required unless --batch-manifest is given.')
     File outFile
+
+    @Option(names = ['--batch-manifest'],
+            description = 'TSV manifest for multi-genome batch integration sharing loaded GO ontology, taxon/anatomical constraints, and pathway DB in memory across genomes.')
+    File batchManifestFile
+
+    @Option(names = ['--batch-threads'],
+            description = 'Number of parallel worker threads when running --batch-manifest (default: 8).')
+    int batchThreads = 8
+
+    @Option(names = ['--batch-stats-out'],
+            description = 'Optional TSV path to record per-genome wall-clock runtime (sec) and memory (MB) in --batch-manifest mode.')
+    File batchStatsOut
 
     @Option(names = ['--provenance'],
             description = 'Optional provenance JSON output path.')
@@ -330,15 +342,46 @@ class IntegrateCommand implements Runnable {
             description = 'Output JSONL path for Stage 3 agent resolutions.')
     File agentResolutionsOut
 
+    // --- Stage 2B: StoichiometricLocusRefiner (FBA-coupled metabolic repair & locus attribution) ---
+
+    @Option(names = ['--enable-fba-refiner'],
+            description = 'Enable Stage 2B StoichiometricLocusRefiner (Positive-Cost Flux-Certified Repair + pFBA + Backward Locus Responsibility).')
+    boolean enableFbaRefiner = false
+
+    @Option(names = ['--fba-data-dir'],
+            description = 'Directory containing universal_metadata.json, fba_matrices_v6RE.pkl, tight_bounds_v6_{neg,pos}.pkl, seedr2ec.pkl, seedec2r.pkl, medium.pkl.')
+    File fbaDataDir
+
+    @Option(names = ['--fba-sidecar'],
+            description = 'Path to scripts/stoichiometric_locus_refiner.py.')
+    File fbaSidecar = new File('scripts/stoichiometric_locus_refiner.py')
+
+    @Option(names = ['--fba-python-bin'],
+            description = 'Python interpreter for StoichiometricLocusRefiner sidecar.')
+    String fbaPythonBin = 'python3'
+
+    @Option(names = ['--fba-gram'],
+            description = 'Gram stain biomass template for StoichiometricLocusRefiner: neg (default) or pos.')
+    String fbaGram = 'neg'
+
+    @Option(names = ['--fba-medium'],
+            description = 'Medium name for StoichiometricLocusRefiner (default: minimal).')
+    String fbaMedium = 'minimal'
+
     @Override
     void run() {
+        validatePhase10Flags()
+        if (batchManifestFile != null) {
+            runBatchManifest()
+            return
+        }
+        if (claimsFile == null || outFile == null) {
+            throw new IllegalArgumentException("Either --batch-manifest or both --claims and --out must be provided.")
+        }
         println "GSPA integrate"
         println "  Claims: ${claimsFile}"
         println "  Theta:  ${thetaFile ?: '(defaults)'}"
         println "  Out:    ${outFile}"
-
-        // Phase 10 flag validation.
-        validatePhase10Flags()
 
         // --- Load claims ---
         def calibration = new CalibrationTable()
@@ -445,9 +488,22 @@ class IntegrateCommand implements Runnable {
             }
         }
 
-        // --- Optional Stage 2: Symbolic Constraint & Coherence Enforcement ---
+        // --- Optional Stage 2A: Symbolic Constraint & Coherence Enforcement ---
         if (enforceStage2) {
             runStage2Enforcement(state, integrated)
+        }
+
+        // --- Optional Stage 2B: StoichiometricLocusRefiner ---
+        if (enableFbaRefiner && fbaDataDir != null) {
+            def fbaRefiner = new gspa.integration.fba.StoichiometricLocusRefiner(
+                fbaDataDir: fbaDataDir,
+                sidecarScript: fbaSidecar,
+                pythonBin: fbaPythonBin,
+                gram: fbaGram,
+                medium: fbaMedium
+            )
+            def fbaSum = fbaRefiner.refine(state, integrated)
+            println "  Stage 2B StoichiometricLocusRefiner (gram=${fbaGram}, medium=${fbaMedium}): coreRxns=${fbaSum.nCoreRxns}, repairedRxns=${fbaSum.nRepairedRxns}, uncertified=${fbaSum.nUncertifiedAdditions}, updatedLoci=${fbaSum.nUpdatedLoci} (${String.format(Locale.ROOT, '%.2f', fbaSum.solveTimeSec)}s)"
         }
 
         // --- Optional Stage 3: Neuro-Symbolic Agentic Completion (gspa-agent) ---
@@ -471,8 +527,34 @@ class IntegrateCommand implements Runnable {
         }
 
         // --- Write output TSV ---
-        outFile.parentFile?.mkdirs()
-        outFile.withWriter { w ->
+        writeIntegratedOutputTsv(integrated, outFile)
+        println "  Wrote: ${outFile}"
+
+        // --- Optional provenance JSON ---
+        if (provenanceFile != null) {
+            def mapper = new ObjectMapper()
+            def provList = integrated.provenance.values().collect { prov ->
+                [
+                    function_key: prov.functionKey,
+                    protein_id: prov.proteinId,
+                    likelihood_logodds: prov.likelihoodLogOdds,
+                    final_logodds: prov.finalLogOdds,
+                    final_probability: prov.finalProbability,
+                    prior_contributions: prov.priorContributions,
+                    n_supporting: prov.supportingClaims?.size() ?: 0,
+                    supporting_sources: prov.supportingClaims ? prov.supportingClaims*.source : [],
+                    convergence_iter: prov.convergenceIter,
+                ]
+            }
+            provenanceFile.parentFile?.mkdirs()
+            mapper.writerWithDefaultPrettyPrinter().writeValue(provenanceFile, provList)
+            println "  Provenance: ${provenanceFile}"
+        }
+    }
+
+    private static void writeIntegratedOutputTsv(IntegratedAnnotationSet integrated, File targetOutFile) {
+        targetOutFile.parentFile?.mkdirs()
+        targetOutFile.withWriter { w ->
             w.writeLine(['protein_id', 'type', 'function_id', 'go_aspect',
                          'posterior_prob', 'likelihood_logodds', 'final_logodds',
                          'n_supporting', 'priors_fired', 'convergence_iter'].join('\t'))
@@ -497,27 +579,235 @@ class IntegrateCommand implements Runnable {
                 ].join('\t'))
             }
         }
-        println "  Wrote: ${outFile}"
+    }
 
-        // --- Optional provenance JSON ---
-        if (provenanceFile != null) {
-            def mapper = new ObjectMapper()
-            def provList = integrated.provenance.values().collect { prov ->
-                [
-                    function_key: prov.functionKey,
-                    protein_id: prov.proteinId,
-                    likelihood_logodds: prov.likelihoodLogOdds,
-                    final_logodds: prov.finalLogOdds,
-                    final_probability: prov.finalProbability,
-                    prior_contributions: prov.priorContributions,
-                    n_supporting: prov.supportingClaims?.size() ?: 0,
-                    supporting_sources: prov.supportingClaims ? prov.supportingClaims*.source : [],
-                    convergence_iter: prov.convergenceIter,
-                ]
+    /**
+     * Batch execution mode (--batch-manifest): loads GO ontology, anatomical/taxon
+     * constraints, complex classifications, essential function presets, and pathway
+     * databases ONCE into memory, then processes all manifest rows across a parallel
+     * worker thread pool, recording per-genome wall-clock runtime and memory usage.
+     *
+     * Manifest TSV columns (tab-separated, '-' or empty uses CLI default):
+     *   0: genome_id (or tag)
+     *   1: claims_path
+     *   2: out_path
+     *   3: taxon (optional, e.g. NCBITaxon_562, bacteria, archaea, virus, eukaryote)
+     *   4: essential_profile (optional, e.g. bacteria, archaea, virus, eukaryote)
+     *   5: operons_path (optional)
+     *   6: gaps_path (optional)
+     *   7: max_iter (optional integer override, e.g. 1, 2, 3)
+     *   8: enforce_stage2 (optional true/false override)
+     *   9: enforce_mode (optional relax/remove override)
+     *  10: enable_priors (optional comma-separated prior list override)
+     */
+    private void runBatchManifest() {
+        long t0Batch = System.nanoTime()
+        println "GSPA integrate --batch-manifest ${batchManifestFile} (threads=${batchThreads})"
+
+        Map theta = thetaFile?.exists() ? new ObjectMapper().readValue(thetaFile, Map) : [:]
+        Map<EvidenceType, Double> reliability = EvidenceCombiner.defaultReliability()
+        if (theta.reliability instanceof Map) {
+            (theta.reliability as Map).each { k, v ->
+                try {
+                    reliability[EvidenceType.valueOf(k as String)] = (v as Number).doubleValue()
+                } catch (ignored) {}
             }
-            provenanceFile.parentFile?.mkdirs()
-            mapper.writerWithDefaultPrettyPrinter().writeValue(provenanceFile, provList)
-            println "  Provenance: ${provenanceFile}"
+        }
+
+        // 1. Load shared reference data ONCE
+        def sharedState = new IntegrationState(new Genome(id: 'shared_reference'))
+        wireReferenceData(sharedState, [])
+        Map<String, gspa.config.EssentialFunctions> essentialPresets = [:]
+        ['bacteria', 'archaea', 'eukaryote', 'virus'].each { prof ->
+            try {
+                essentialPresets[prof] = gspa.config.EssentialFunctions.loadPreset(prof)
+            } catch (Exception ignored) {}
+        }
+        // Ensure base SAT consistency checker is loaded even if --taxon was not passed on CLI
+        if (sharedState.satConsistencyChecker == null) {
+            try {
+                def tc = new gspa.ontology.TaxonConstraints()
+                if (taxonConstraintsFile != null && taxonConstraintsFile.exists()) {
+                    if (taxonConstraintsFile.name.toLowerCase().endsWith('.obo')) tc.loadFromObo(taxonConstraintsFile)
+                    else tc.loadFromTsv(taxonConstraintsFile)
+                } else {
+                    File bundledTc = classpathToTempFile('/taxon-constraints/go-taxon-constraints.tsv', 'go-taxon-constraints', '.tsv')
+                    if (bundledTc != null && bundledTc.exists()) tc.loadFromTsv(bundledTc)
+                }
+                boolean wantAnatShared = enablePriors == null || enablePriors.trim().toLowerCase() == 'all' ||
+                    enablePriors.split(',').collect { it.trim().toLowerCase() }.contains('anatomical')
+                if (sharedState.anatomicalConstraints != null && wantAnatShared) {
+                    sharedState.anatomicalConstraints.augmentTaxonConstraints(tc)
+                }
+                def checker = new gspa.ontology.SatConsistencyChecker(tc)
+                if (taxonomyFile != null && taxonomyFile.exists()) {
+                    checker.loadTaxonomyTsv(taxonomyFile)
+                } else {
+                    File bundledHier = classpathToTempFile('/taxon-constraints/ncbi-taxon-hierarchy.tsv', 'ncbi-taxon-hierarchy', '.tsv')
+                    if (bundledHier != null && bundledHier.exists()) checker.loadTaxonomyTsv(bundledHier)
+                }
+                sharedState.satConsistencyChecker = checker
+            } catch (Exception e) {
+                System.err.println "  [warn] Failed to initialize shared SAT checker: ${e.message}"
+            }
+        }
+        double initSec = (System.nanoTime() - t0Batch) / 1e9d
+        println String.format(Locale.ROOT, "  Shared reference initialization completed in %.2f s", initSec)
+
+        // 2. Parse manifest rows
+        List<String[]> rows = []
+        batchManifestFile.eachLine { line, idx ->
+            String trimmed = line.trim()
+            if (trimmed.isEmpty() || trimmed.startsWith('#')) return
+            String[] parts = trimmed.split('\t', -1)
+            if (idx == 1 && (parts[0] in ['genome_id', 'tag', 'id'] || parts[1] in ['claims_path', 'claims'])) return
+            if (parts.length >= 3) {
+                rows << parts
+            }
+        }
+        println "  Loaded ${rows.size()} batch tasks from ${batchManifestFile}"
+
+        // 3. Process rows across thread pool
+        int nThreads = Math.max(1, batchThreads)
+        def pool = java.util.concurrent.Executors.newFixedThreadPool(nThreads)
+        List<java.util.concurrent.Future<Map>> futures = []
+
+        for (int rowIdx = 0; rowIdx < rows.size(); rowIdx++) {
+            final String[] r = rows[rowIdx]
+            futures << pool.submit({ ->
+                long tStart = System.nanoTime()
+                String tag = r[0].trim()
+                File rowClaimsFile = new File(r[1].trim())
+                File rowOutFile = new File(r[2].trim())
+                String rowTaxonRaw = (r.length > 3 && r[3].trim() && r[3].trim() != '-') ? r[3].trim() : organismTaxon
+                String rowEssProf = (r.length > 4 && r[4].trim() && r[4].trim() != '-') ? r[4].trim() : essentialProfile
+                File rowOperonsFile = (r.length > 5 && r[5].trim() && r[5].trim() != '-') ? new File(r[5].trim()) : operonsFile
+                File rowGapsFile = (r.length > 6 && r[6].trim() && r[6].trim() != '-') ? new File(r[6].trim()) : gapsFile
+                Integer rowMaxIter = (r.length > 7 && r[7].trim() && r[7].trim() != '-') ? Integer.parseInt(r[7].trim()) : (theta.max_iter != null ? (theta.max_iter as Number).intValue() : null)
+                boolean rowEnforceS2 = (r.length > 8 && r[8].trim() && r[8].trim() != '-') ? Boolean.parseBoolean(r[8].trim()) : enforceStage2
+                String rowEnforceMode = (r.length > 9 && r[9].trim() && r[9].trim() != '-') ? r[9].trim() : enforceConsistencyMode
+                String rowPriorsStr = (r.length > 10 && r[10].trim() && r[10].trim() != '-') ? r[10].trim() : enabledPriors
+
+                def calibration = new CalibrationTable()
+                def extractor = new ClaimExtractor(calibration)
+                List<EvidenceClaim> claims = extractor.readClaimsJsonl(rowClaimsFile)
+
+                def state = new IntegrationState(new Genome(id: tag))
+                state.goOntology = sharedState.goOntology
+                state.goReasoner = sharedState.goReasoner
+                state.anatomicalConstraints = sharedState.anatomicalConstraints
+                state.complexClassification = sharedState.complexClassification
+                state.pathwayDatabase = sharedState.pathwayDatabase
+                state.reactionGraph = sharedState.reactionGraph
+                if (rowEssProf != null && essentialPresets.containsKey(rowEssProf.toLowerCase())) {
+                    state.essentialFunctions = essentialPresets[rowEssProf.toLowerCase()]
+                } else {
+                    state.essentialFunctions = sharedState.essentialFunctions
+                }
+                String resolvedTax = resolveOrganismTaxon(rowTaxonRaw)
+                if (sharedState.satConsistencyChecker != null && (resolvedTax != null || rowEnforceS2)) {
+                    state.satConsistencyChecker = sharedState.satConsistencyChecker.copyForTaxon(resolvedTax)
+                }
+                if (rowOperonsFile != null && rowOperonsFile.exists()) {
+                    List<List<String>> ops = []
+                    rowOperonsFile.eachLine { ln ->
+                        ln = ln.trim()
+                        if (!ln.isEmpty() && !ln.startsWith('#')) ops << (ln.split('\t') as List)
+                    }
+                    state.operons = ops
+                }
+                if (rowGapsFile != null && rowGapsFile.exists()) {
+                    def mapper = new ObjectMapper()
+                    List gaps = []
+                    rowGapsFile.eachLine { ln ->
+                        ln = ln.trim()
+                        if (!ln.isEmpty() && !ln.startsWith('#')) {
+                            Map rec = mapper.readValue(ln, Map)
+                            gaps << new gspa.integration.MetabolicGap(
+                                pathwayId: rec.pathway_id as String,
+                                reactionId: rec.reaction_id as String,
+                                ecNumber: rec.ec_number as String,
+                                goTerm: rec.go_term as String,
+                                gapseqGuessed: (rec.gapseq_guessed ?: false) as boolean,
+                            )
+                        }
+                    }
+                    state.metabolicGaps = gaps
+                }
+
+                def combiner = new EvidenceCombiner(reliability)
+                if (theta.second_opinion_bonus != null) {
+                    combiner.secondOpinionBonus = (theta.second_opinion_bonus as Number).doubleValue()
+                }
+                Set<String> enabled = (rowPriorsStr ?: '').split(',').collect { it.trim() }.findAll { it && it != 'none' } as Set
+                def engine = buildPriorEngine(theta, enabled)
+                def refiner = new IterativeRefiner(combiner)
+                refiner.priorEngine = engine
+                if (rowMaxIter != null) refiner.maxIter = rowMaxIter
+                if (theta.epsilon != null) refiner.epsilon = (theta.epsilon as Number).doubleValue()
+                if (theta.damping != null) refiner.damping = (theta.damping as Number).doubleValue()
+
+                IntegratedAnnotationSet integrated = refiner.refine(claims, state)
+                if (rowEnforceS2) {
+                    runStage2Enforcement(state, integrated, rowEnforceMode, null, false)
+                }
+                writeIntegratedOutputTsv(integrated, rowOutFile)
+
+                double elapsedSec = (System.nanoTime() - tStart) / 1e9d
+                Runtime rt = Runtime.getRuntime()
+                double usedHeapMb = (rt.totalMemory() - rt.freeMemory()) / (1024.0d * 1024.0d)
+                double totalHeapMb = rt.totalMemory() / (1024.0d * 1024.0d)
+                return [
+                    genome_id: tag,
+                    out_path: rowOutFile.path,
+                    n_claims: claims.size(),
+                    n_integrated: integrated.annotations.size(),
+                    n_provenance: integrated.provenance.size(),
+                    max_iter: refiner.maxIter,
+                    enforce_stage2: rowEnforceS2,
+                    enforce_mode: rowEnforceMode,
+                    runtime_sec: elapsedSec,
+                    used_heap_mb: usedHeapMb,
+                    total_heap_mb: totalHeapMb
+                ]
+            } as java.util.concurrent.Callable<Map>)
+        }
+
+        List<Map> stats = []
+        int done = 0
+        for (def f : futures) {
+            stats << f.get()
+            done++
+            if (done % 50 == 0 || done == rows.size()) {
+                double elapsedAll = (System.nanoTime() - t0Batch) / 1e9d
+                println String.format(Locale.ROOT, "  Batch progress: %d / %d completed (%.2f s elapsed)", done, rows.size(), elapsedAll)
+            }
+        }
+        pool.shutdown()
+
+        if (batchStatsOut != null) {
+            batchStatsOut.parentFile?.mkdirs()
+            batchStatsOut.withWriter { w ->
+                w.writeLine(['genome_id', 'out_path', 'n_claims', 'n_integrated', 'n_provenance',
+                             'max_iter', 'enforce_stage2', 'enforce_mode',
+                             'runtime_sec', 'used_heap_mb', 'total_heap_mb'].join('\t'))
+                for (Map s : stats) {
+                    w.writeLine([
+                        s.genome_id,
+                        s.out_path,
+                        s.n_claims,
+                        s.n_integrated,
+                        s.n_provenance,
+                        s.max_iter,
+                        s.enforce_stage2,
+                        s.enforce_mode,
+                        String.format(Locale.ROOT, '%.4f', s.runtime_sec as double),
+                        String.format(Locale.ROOT, '%.1f', s.used_heap_mb as double),
+                        String.format(Locale.ROOT, '%.1f', s.total_heap_mb as double)
+                    ].join('\t'))
+                }
+            }
+            println "  Wrote batch runtime/memory stats: ${batchStatsOut}"
         }
     }
 
@@ -632,7 +922,9 @@ class IntegrateCommand implements Runnable {
                         taxonConstraints.loadFromGoOntology(state.goOntology)
                     }
                 }
-                if (state.anatomicalConstraints != null) {
+                boolean wantAnat = enablePriors == null || enablePriors.trim().toLowerCase() == 'all' ||
+                    enablePriors.split(',').collect { it.trim().toLowerCase() }.contains('anatomical')
+                if (state.anatomicalConstraints != null && wantAnat) {
                     state.anatomicalConstraints.augmentTaxonConstraints(taxonConstraints)
                 }
                 if (taxonConstraints.constrainedTermCount() > 0) {
@@ -774,11 +1066,15 @@ class IntegrateCommand implements Runnable {
      * {@code integrated.provenance} so downstream CAFA and GAEF evaluators
      * observe the enforced/relaxed/imputed annotations.
      */
-    private void runStage2Enforcement(IntegrationState state, IntegratedAnnotationSet integrated) {
+    private void runStage2Enforcement(IntegrationState state, IntegratedAnnotationSet integrated,
+                                      String modeOverride = null, File actionsOutOverride = null,
+                                      boolean verbose = true) {
         if (state.satConsistencyChecker == null) {
-            println "  [warn] Stage 2 enforcement skipped: no SAT consistency checker available"
+            if (verbose) println "  [warn] Stage 2 enforcement skipped: no SAT consistency checker available"
             return
         }
+        String effMode = modeOverride ?: (enforceConsistencyMode ?: 'relax')
+        File effActionsOut = actionsOutOverride != null ? actionsOutOverride : (verbose ? enforcementActionsOut : null)
         Genome genome = new Genome(id: 'stage2')
         Contig contig = new Contig(id: 'contig_1', genome: genome)
         genome.contigs << contig
@@ -806,16 +1102,18 @@ class IntegrateCommand implements Runnable {
             ))
         }
 
+        Set<String> enabledStage2Set = (enablePriors ?: '').split(',').collect { it.trim() }.findAll { it && it != 'none' } as Set
+        boolean useAnatomicalInStage2 = enabledStage2Set.isEmpty() || enabledStage2Set.contains('anatomical')
         def report = new EnforcementReport(provenance: true)
         def consEnf = new ConsistencyEnforcer(
             goOntology: state.goOntology,
             satChecker: state.satConsistencyChecker,
-            anatomicalConstraints: state.anatomicalConstraints,
-            mode: enforceConsistencyMode ?: 'relax',
+            anatomicalConstraints: useAnatomicalInStage2 ? state.anatomicalConstraints : null,
+            mode: effMode,
             report: report
         )
         def consRes = consEnf.enforce(genome)
-        println "  Stage 2 Consistency (${enforceConsistencyMode}): ${consRes}"
+        if (verbose) println "  Stage 2 Consistency (${effMode}): ${consRes}"
 
         // Rebuild GO entries in integrated.provenance directly from the enforced genome proteins
         // so removals, downranks, and ancestor relaxations are 100% reflected.
@@ -844,7 +1142,7 @@ class IntegrateCommand implements Runnable {
                         !(k in ['consistency', 'anatomical']) || (v != null && v > 0.0d)
                     }?.values()?.sum() ?: 0.0d) as double
                     double unpenalizedLo = origProv.likelihoodLogOdds + validPriorSum
-                    double unpenalizedProb = CalibrationTable.logOddsToProb(unpenalizedLo)
+                    double unpenalizedProb = CalibrationTable.logOddsToProb(unpenalizedLo) * consEnf.relaxFactor
                     if (unpenalizedProb > a.score) {
                         a.score = unpenalizedProb
                     }
@@ -896,15 +1194,48 @@ class IntegrateCommand implements Runnable {
                 }
             }
         }
-        println "  Stage 2 synced to integrated output (relaxed_new=${relaxedAdded})"
+        // Obligate heteromeric complex singleton pruning: if an obligate heteromer ('n') has only a single
+        // active protein (>= 0.50) and no partner candidate (>= 0.08) across the proteome, attenuate it to 0.45.
+        if (state.complexClassification != null && !state.complexClassification.isEmpty()) {
+            Map<String, List<String>> activeHeteromerByTerm = [:].withDefault { [] }
+            Map<String, List<String>> candHeteromerByTerm = [:].withDefault { [] }
+            for (def prov : integrated.provenance.values()) {
+                String[] fkey = IntegrationState.splitFunctionKey(prov.functionKey)
+                if (fkey == null || fkey[1] != 'GO') continue
+                String goId = fkey[2]
+                if (state.complexClassification[goId] != 'n') continue
+                if (prov.finalProbability >= 0.5d) {
+                    activeHeteromerByTerm[goId] << prov.functionKey
+                } else if (prov.finalProbability >= 0.08d) {
+                    candHeteromerByTerm[goId] << prov.functionKey
+                }
+            }
+            for (def entry : activeHeteromerByTerm.entrySet()) {
+                String goId = entry.key
+                List<String> activeKeys = entry.value
+                List<String> candKeys = candHeteromerByTerm[goId] ?: []
+                if (activeKeys.size() == 1 && candKeys.isEmpty()) {
+                    def singleProv = integrated.provenance[activeKeys[0]]
+                    if (singleProv != null && singleProv.finalProbability > 0.45d) {
+                        singleProv.finalProbability = 0.45d
+                        singleProv.finalLogOdds = CalibrationTable.probToLogOdds(0.45d)
+                        singleProv.priorContributions['stage2_singleton_prune'] = -0.5d
+                        integrated.annotations.annotations.removeAll {
+                            it.type == AnnotationType.GO && it.value == goId && singleProv.proteinId == (it.metaClass.respondsTo(it, 'getProteinId') ? it.proteinId : singleProv.proteinId)
+                        }
+                    }
+                }
+            }
+        }
+        if (verbose) println "  Stage 2 synced to integrated output (relaxed_new=${relaxedAdded})"
 
-        if (enforcementActionsOut != null && report.count() > 0) {
+        if (effActionsOut != null && report.count() > 0) {
             if (state.goOntology != null) {
                 report.actions.each { it.termLabel = state.goOntology.getLabel(it.term) }
             }
-            enforcementActionsOut.parentFile?.mkdirs()
-            report.writeTsv(enforcementActionsOut)
-            println "  Stage 2 enforcement actions: ${enforcementActionsOut}"
+            effActionsOut.parentFile?.mkdirs()
+            report.writeTsv(effActionsOut)
+            if (verbose) println "  Stage 2 enforcement actions: ${effActionsOut}"
         }
     }
 

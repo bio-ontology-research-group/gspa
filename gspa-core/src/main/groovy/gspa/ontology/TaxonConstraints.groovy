@@ -16,10 +16,18 @@ class TaxonConstraints {
     private static final Logger log = LoggerFactory.getLogger(TaxonConstraints)
 
     /** GO term -> set of taxa where the term can only occur */
-    Map<String, Set<String>> onlyInTaxon = [:].withDefault { [] as Set }
+    Map<String, Set<String>> onlyInTaxon = [:].withDefault { new LinkedHashSet<String>() }
 
     /** GO term -> set of taxa where the term never occurs */
-    Map<String, Set<String>> neverInTaxon = [:].withDefault { [] as Set }
+    Map<String, Set<String>> neverInTaxon = [:].withDefault { new LinkedHashSet<String>() }
+
+    void addOnlyIn(String goTerm, String taxon) {
+        onlyInTaxon[goTerm].add(taxon)
+    }
+
+    void addNeverIn(String goTerm, String taxon) {
+        neverInTaxon[goTerm].add(taxon)
+    }
 
     /**
      * Load taxon constraints from a GO-Plus OWL ontology.
@@ -31,13 +39,13 @@ class TaxonConstraints {
         // Extract only_in_taxon relationships
         def onlyInAxioms = go.getExistentialAxioms(GoOntology.ONLY_IN_TAXON)
         onlyInAxioms.each { axiom ->
-            onlyInTaxon[axiom.subject] << axiom.object
+            addOnlyIn(axiom.subject, axiom.object)
         }
 
         // Extract never_in_taxon relationships
         def neverInAxioms = go.getExistentialAxioms(GoOntology.NEVER_IN_TAXON)
         neverInAxioms.each { axiom ->
-            neverInTaxon[axiom.subject] << axiom.object
+            addNeverIn(axiom.subject, axiom.object)
         }
 
         log.info("Loaded ${onlyInTaxon.size()} only_in_taxon and ${neverInTaxon.size()} never_in_taxon constraints")
@@ -63,13 +71,13 @@ class TaxonConstraints {
             } else if (currentId != null && line.startsWith('relationship: RO:0002162 ')) {
                 // only_in_taxon (RO:0002162 = in_taxon used as only_in via relationship)
                 String taxon = line.substring('relationship: RO:0002162 '.length()).trim()
-                onlyInTaxon[currentId] << taxon
+                addOnlyIn(currentId, taxon)
             } else if (currentId != null && line.startsWith('property_value: RO:0002161 ')) {
                 // never_in_taxon
                 String taxon = line.substring('property_value: RO:0002161 '.length()).trim()
                 // OBO property_value may have a trailing xsd:string — strip it
                 if (taxon.contains(' ')) taxon = taxon.split('\\s+')[0]
-                neverInTaxon[currentId] << taxon
+                addNeverIn(currentId, taxon)
             }
         }
         log.info("Loaded from OBO: ${onlyInTaxon.size()} only_in_taxon, ${neverInTaxon.size()} never_in_taxon constraints")
@@ -93,10 +101,10 @@ class TaxonConstraints {
 
             switch (relation) {
                 case ['only_in_taxon', 'RO:0002160']:
-                    onlyInTaxon[goTerm] << taxon
+                    addOnlyIn(goTerm, taxon)
                     break
                 case ['never_in_taxon', 'RO:0002161']:
-                    neverInTaxon[goTerm] << taxon
+                    addNeverIn(goTerm, taxon)
                     break
             }
         }
@@ -115,13 +123,17 @@ class TaxonConstraints {
         Map<String, Set<String>> negativeSource = [:].withDefault { [] as Set }
 
         goTerms.each { goTerm ->
-            onlyInTaxon[goTerm]?.each { taxon ->
-                positiveTaxa << taxon
-                positiveSource[taxon] << goTerm
+            if (onlyInTaxon.containsKey(goTerm)) {
+                onlyInTaxon[goTerm]?.each { taxon ->
+                    positiveTaxa << taxon
+                    positiveSource[taxon] << goTerm
+                }
             }
-            neverInTaxon[goTerm]?.each { taxon ->
-                negativeTaxa << taxon
-                negativeSource[taxon] << goTerm
+            if (neverInTaxon.containsKey(goTerm)) {
+                neverInTaxon[goTerm]?.each { taxon ->
+                    negativeTaxa << taxon
+                    negativeSource[taxon] << goTerm
+                }
             }
         }
 

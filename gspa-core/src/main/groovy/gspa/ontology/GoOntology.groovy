@@ -36,10 +36,10 @@ class GoOntology {
     OWLOntology ontology
     OWLDataFactory factory
 
-    // Caches
-    private Map<String, Set<String>> ancestorCache = [:]
-    private Map<String, Set<String>> descendantCache = [:]
-    private Map<String, String> labelCache = [:]
+    // Caches (thread-safe for concurrent batch integration)
+    private Map<String, Set<String>> ancestorCache = new java.util.concurrent.ConcurrentHashMap<>()
+    private Map<String, Set<String>> descendantCache = new java.util.concurrent.ConcurrentHashMap<>()
+    private Map<String, String> labelCache = new java.util.concurrent.ConcurrentHashMap<>()
 
     GoOntology() {
         manager = OWLManager.createOWLOntologyManager()

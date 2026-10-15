@@ -41,10 +41,10 @@ class SatConsistencyChecker {
     TaxonConstraints taxonConstraints
 
     /** Multi-parent subclass map: child taxon -> set of parent taxa (is_a). */
-    Map<String, Set<String>> subClassOf = [:].withDefault { [] as Set }
+    Map<String, Set<String>> subClassOf = [:].withDefault { new LinkedHashSet<String>() }
 
     /** Symmetric explicit disjointness: taxon -> set of taxa disjoint from it. */
-    Map<String, Set<String>> disjointWith = [:].withDefault { [] as Set }
+    Map<String, Set<String>> disjointWith = [:].withDefault { new LinkedHashSet<String>() }
 
     /**
      * Optional organism taxon to assert (the {@code provide_taxon_id} mode):
@@ -62,10 +62,48 @@ class SatConsistencyChecker {
      */
     boolean siblingDisjointness = true
 
-    private final Map<String, Set<String>> ancestorCache = [:]
+    private Map<String, Set<String>> ancestorCache = new java.util.concurrent.ConcurrentHashMap<>()
+    private Map<String, Set<String>> forbiddenTermsCache = new java.util.concurrent.ConcurrentHashMap<>()
 
     SatConsistencyChecker(TaxonConstraints taxonConstraints) {
         this.taxonConstraints = taxonConstraints
+    }
+
+    /**
+     * Create a lightweight clone sharing the loaded taxon hierarchy, disjointness,
+     * taxonConstraints, and thread-safe caches, with its own {@code organismTaxon}.
+     */
+    SatConsistencyChecker copyForTaxon(String taxon) {
+        def copy = new SatConsistencyChecker(this.taxonConstraints)
+        copy.subClassOf = this.subClassOf
+        copy.disjointWith = this.disjointWith
+        copy.siblingDisjointness = this.siblingDisjointness
+        copy.ancestorCache = this.ancestorCache
+        copy.forbiddenTermsCache = this.forbiddenTermsCache
+        copy.organismTaxon = taxon
+        copy
+    }
+
+    /**
+     * Return cached set of all directly constrained GO terms in {@link #taxonConstraints}
+     * that are forbidden in {@link #organismTaxon}. Shared across {@link #copyForTaxon} clones.
+     */
+    Set<String> getForbiddenConstrainedTerms() {
+        if (!organismTaxon || taxonConstraints == null) return Collections.emptySet()
+        Set<String> cached = forbiddenTermsCache.get(organismTaxon)
+        if (cached != null) return cached
+        Set<String> constrained = new LinkedHashSet<>()
+        constrained.addAll(taxonConstraints.onlyInTaxon.keySet())
+        constrained.addAll(taxonConstraints.neverInTaxon.keySet())
+        Set<String> orgForbidden = new LinkedHashSet<>()
+        for (String t : constrained) {
+            if (!check([t] as Set).consistent) {
+                orgForbidden.add(t)
+            }
+        }
+        Set<String> immutable = Collections.unmodifiableSet(orgForbidden)
+        forbiddenTermsCache.put(organismTaxon, immutable)
+        immutable
     }
 
     // --- Hierarchy loaders ---------------------------------------------------
@@ -81,17 +119,21 @@ class SatConsistencyChecker {
             if (line.startsWith('#') || line.trim().isEmpty()) return
             def fields = line.split('\t')
             if (fields.length >= 2) {
-                subClassOf[fields[0].trim()] << fields[1].trim()
+                subClassOf.computeIfAbsent(fields[0].trim()) { new LinkedHashSet<String>() }.add(fields[1].trim())
             }
         }
         ancestorCache.clear()
+        forbiddenTermsCache.clear()
         log.info("Loaded ${subClassOf.size()} taxa with parents")
     }
 
     /** Legacy loader from a child -> parent map (programmatic / testing). */
     void loadTaxonomyHierarchy(Map<String, String> parentMap) {
-        parentMap.each { child, parent -> subClassOf[child] << parent }
+        parentMap.each { child, parent ->
+            subClassOf.computeIfAbsent(child) { new LinkedHashSet<String>() }.add(parent)
+        }
         ancestorCache.clear()
+        forbiddenTermsCache.clear()
     }
 
     /**
@@ -115,7 +157,7 @@ class SatConsistencyChecker {
             if (term == 'Term' || term.isEmpty()) return   // header
             switch (rel) {
                 case 'is_a':
-                    subClassOf[term] << other
+                    subClassOf.computeIfAbsent(term) { new LinkedHashSet<String>() }.add(other)
                     break
                 case 'disjoint_from':
                     addDisjoint(term, other)
@@ -135,6 +177,7 @@ class SatConsistencyChecker {
         }
         siblingDisjointness = false
         ancestorCache.clear()
+        forbiddenTermsCache.clear()
         log.info("Loaded taxon hierarchy: ${subClassOf.size()} taxa, " +
             "${disjointWith.size()} with explicit disjointness")
     }
@@ -142,8 +185,8 @@ class SatConsistencyChecker {
     void loadTaxonomyTsv(String path) { loadTaxonomyTsv(new File(path)) }
 
     private void addDisjoint(String a, String b) {
-        disjointWith[a] << b
-        disjointWith[b] << a
+        disjointWith.computeIfAbsent(a) { new LinkedHashSet<String>() }.add(b)
+        disjointWith.computeIfAbsent(b) { new LinkedHashSet<String>() }.add(a)
     }
 
     /**
@@ -167,8 +210,10 @@ class SatConsistencyChecker {
         stack.push(taxon)
         while (!stack.isEmpty()) {
             String cur = stack.pop()
-            subClassOf[cur]?.each { parent ->
-                if (acc.add(parent)) stack.push(parent)
+            if (subClassOf.containsKey(cur)) {
+                subClassOf[cur]?.each { parent ->
+                    if (acc.add(parent)) stack.push(parent)
+                }
             }
         }
         ancestorCache[taxon] = acc
@@ -189,6 +234,51 @@ class SatConsistencyChecker {
         // taxon alone can never be unsatisfiable).
         if (requirements.positiveTaxa.isEmpty() && requirements.negativeTaxa.isEmpty()) {
             return new ConsistencyResult(consistent: true)
+        }
+
+        // Exact Horn-SAT fast path when explicit disjointness is loaded (!siblingDisjointness):
+        // Positive unit clauses (organismTaxon + only_in_taxon) propagate exclusively upward
+        // along is_a (child -> parent). Thus the unique minimal set of true variables M is
+        // the union of ancestorsWithSelf for all positive unit taxa.
+        if (!siblingDisjointness) {
+            Set<String> forcedTrue = new HashSet<>()
+            if (hasOrganism) {
+                forcedTrue.add(organismTaxon)
+                forcedTrue.addAll(ancestorsOf(organismTaxon))
+            }
+            for (String pos : requirements.positiveTaxa) {
+                forcedTrue.add(pos)
+                forcedTrue.addAll(ancestorsOf(pos))
+            }
+            boolean conflictFound = false
+            for (String neg : requirements.negativeTaxa) {
+                if (forcedTrue.contains(neg)) {
+                    conflictFound = true
+                    break
+                }
+            }
+            if (!conflictFound) {
+                for (String t : forcedTrue) {
+                    if (disjointWith.containsKey(t)) {
+                        Set<String> dis = disjointWith[t]
+                        if (dis != null) {
+                            for (String d : dis) {
+                                if (forcedTrue.contains(d)) {
+                                    conflictFound = true
+                                    break
+                                }
+                            }
+                        }
+                    }
+                    if (conflictFound) break
+                }
+            }
+            if (!conflictFound) {
+                return new ConsistencyResult(consistent: true)
+            }
+            if (goTerms.size() == 1) {
+                return buildUnsatResult(requirements, "Single-term taxon constraint violation for ${organismTaxon ?: 'co-annotation'}", goTerms)
+            }
         }
 
         // Relevant taxa: constraint taxa + organism + all of their ancestors.
@@ -224,18 +314,22 @@ class SatConsistencyChecker {
         try {
             // 1. Subclass: child -> parent  (¬child ∨ parent)
             relevantTaxa.each { child ->
-                subClassOf[child]?.each { parent ->
-                    if (taxonToVar.containsKey(parent)) {
-                        addClause([-taxonToVar[child], taxonToVar[parent]] as int[])
+                if (subClassOf.containsKey(child)) {
+                    subClassOf[child]?.each { parent ->
+                        if (taxonToVar.containsKey(parent)) {
+                            addClause([-taxonToVar[child], taxonToVar[parent]] as int[])
+                        }
                     }
                 }
             }
 
             // 2a. Explicit disjointness: ¬A ∨ ¬B for each disjoint pair in scope.
             relevantTaxa.each { a ->
-                disjointWith[a]?.each { b ->
-                    if (taxonToVar.containsKey(b) && taxonToVar[a] < taxonToVar[b]) {
-                        addClause([-taxonToVar[a], -taxonToVar[b]] as int[])
+                if (disjointWith.containsKey(a)) {
+                    disjointWith[a]?.each { b ->
+                        if (taxonToVar.containsKey(b) && taxonToVar[a] < taxonToVar[b]) {
+                            addClause([-taxonToVar[a], -taxonToVar[b]] as int[])
+                        }
                     }
                 }
             }
@@ -245,8 +339,10 @@ class SatConsistencyChecker {
             if (siblingDisjointness) {
                 Map<String, List<String>> childrenByParent = [:].withDefault { [] }
                 relevantTaxa.each { child ->
-                    subClassOf[child]?.each { parent ->
-                        if (taxonToVar.containsKey(parent)) childrenByParent[parent] << child
+                    if (subClassOf.containsKey(child)) {
+                        subClassOf[child]?.each { parent ->
+                            if (taxonToVar.containsKey(parent)) childrenByParent[parent] << child
+                        }
                     }
                 }
                 childrenByParent.values().each { sibs ->

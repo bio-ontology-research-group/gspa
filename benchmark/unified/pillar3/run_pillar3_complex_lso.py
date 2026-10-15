@@ -444,6 +444,8 @@ def main():
 
         operon_file = OPERONS_DIR / f"{genome}_operons.tsv"
 
+        import concurrent.futures
+
         # Method 1: Baseline Noisy-OR
         out_m1 = PILLAR3_DIR / f"{genome}_m1_baseline.tsv"
         cmd_m1 = [
@@ -453,13 +455,6 @@ def main():
             "--lite",
             f"--out={out_m1}"
         ]
-        run_gspa_command(cmd_m1, f"{genome}_M1")
-        res_m1 = evaluate_method_predictions(out_m1, cases, genome, extended_classes)
-        benchmark_records.append({
-            "genome": genome,
-            "method": "Baseline Noisy-OR",
-            **res_m1
-        })
 
         # Method 2: Stage 1 CoherencePrior
         out_m2 = PILLAR3_DIR / f"{genome}_m2_coherence.tsv"
@@ -471,13 +466,6 @@ def main():
             "--lite",
             f"--out={out_m2}"
         ]
-        run_gspa_command(cmd_m2, f"{genome}_M2")
-        res_m2 = evaluate_method_predictions(out_m2, cases, genome, extended_classes)
-        benchmark_records.append({
-            "genome": genome,
-            "method": "Stage 1 CoherencePrior",
-            **res_m2
-        })
 
         # Method 3: Stage 1 Coherence + Operon Context
         out_m3 = PILLAR3_DIR / f"{genome}_m3_coherence_operon.tsv"
@@ -491,7 +479,43 @@ def main():
             "--lite",
             f"--out={out_m3}"
         ]
-        run_gspa_command(cmd_m3, f"{genome}_M3")
+
+        # Method 4: Stage 1 + Stage 2 + Stage 3 Agent (selective inspection of unresolved complexes)
+        out_m3_s2 = PILLAR3_DIR / f"{genome}_m3_stage2.tsv"
+        cmd_m3_s2 = [
+            JAVA, "-jar", JAR, "integrate",
+            f"--claims={lso_claims}",
+            "--enable-priors=coherence,genomic_context",
+            "--enforce-stage2",
+            f"--operons={operon_file}",
+            f"--modules={complex_modules_file}",
+            f"--complex-terms={extended_terms_file}",
+            "--lite",
+            f"--out={out_m3_s2}"
+        ]
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+            futs = [
+                ex.submit(run_gspa_command, cmd_m1, f"{genome}_M1"),
+                ex.submit(run_gspa_command, cmd_m2, f"{genome}_M2"),
+                ex.submit(run_gspa_command, cmd_m3, f"{genome}_M3"),
+                ex.submit(run_gspa_command, cmd_m3_s2, f"{genome}_M4_Stage2"),
+            ]
+            for fut in futs:
+                fut.result()
+
+        res_m1 = evaluate_method_predictions(out_m1, cases, genome, extended_classes)
+        benchmark_records.append({
+            "genome": genome,
+            "method": "Baseline Noisy-OR",
+            **res_m1
+        })
+        res_m2 = evaluate_method_predictions(out_m2, cases, genome, extended_classes)
+        benchmark_records.append({
+            "genome": genome,
+            "method": "Stage 1 CoherencePrior",
+            **res_m2
+        })
         res_m3 = evaluate_method_predictions(out_m3, cases, genome, extended_classes)
         benchmark_records.append({
             "genome": genome,
@@ -499,67 +523,120 @@ def main():
             **res_m3
         })
 
-        # Method 4: Stage 1 + Stage 2 + Stage 3 Agent (selective inspection of unresolved LSO complexes)
         out_m4 = PILLAR3_DIR / f"{genome}_m4_agent.tsv"
         m3_preds = {}
         prot_other_terms = {}
-        with open(out_m3, "r", encoding="utf-8") as f_m3:
+        prot_top_terms = {}
+        by_cid_prots: Dict[str, List[Tuple[str, float]]] = {}
+        root_terms_lso = {"GO:0005575", "GO:0003674", "GO:0008150", "GO:0110165", "GO:0032991"}
+        with open(out_m3_s2, "r", encoding="utf-8") as f_m3:
             r_m3 = csv.DictReader(f_m3, delimiter="\t")
             for row in r_m3:
                 pid_r = row["protein_id"].strip()
                 fid_r = row["function_id"].strip()
                 pr_r = float(row["posterior_prob"])
                 m3_preds[(pid_r, fid_r)] = pr_r
-                if pr_r >= 0.60 and fid_r != "GO:0005575":
-                    prot_other_terms.setdefault(pid_r, []).append(f"{fid_r} ({names.get(fid_r, fid_r)}: {pr_r:.2f})")
+                by_cid_prots.setdefault(fid_r, []).append((pid_r, pr_r))
+                if pr_r >= 0.45 and fid_r not in root_terms_lso:
+                    prot_top_terms.setdefault(pid_r, []).append((pr_r, f"{fid_r}@{pr_r:.2f}"))
+                if pr_r >= 0.35 and fid_r not in root_terms_lso:
+                    prot_other_terms.setdefault(pid_r, []).append((pr_r, fid_r, f"{fid_r} ({names.get(fid_r, fid_r)}: {pr_r:.2f})"))
+
+        for pid_k in prot_top_terms:
+            prot_top_terms[pid_k].sort(key=lambda x: -x[0])
+        for pid_k in prot_other_terms:
+            prot_other_terms[pid_k].sort(key=lambda x: -x[0])
+
+        # Load real operon memberships and real claims for symmetric, zero-leakage candidate feature construction
+        prot_to_op = load_operons(operon_file)
+        op_to_prots: Dict[str, List[str]] = {}
+        for p_k, op_v in prot_to_op.items():
+            op_to_prots.setdefault(op_v, []).append(p_k)
+        claims_by_pf = {}
+        domain_claims_by_prot = {}
+        with open(lso_claims, "r", encoding="utf-8") as f_cl:
+            for line in f_cl:
+                if not line.strip():
+                    continue
+                cobj = json.loads(line)
+                pid_c = cobj["protein_id"].strip()
+                fid_c = cobj["function_id"].strip()
+                src_c = cobj.get("source", "diamond")
+                rsc_c = round(float(cobj.get("raw_score", 0.30)), 4)
+                ev_type = "DOMAIN_ARCHITECTURE" if src_c in ("interpro", "pfam", "iprscan") else "SEQUENCE_SIMILARITY"
+                entry = {
+                    "source": f"{src_c}:{fid_c} ({names.get(fid_c, fid_c)})",
+                    "evidence_type": ev_type,
+                    "raw_score": rsc_c,
+                    "calibrated_prob": round(rsc_c * 0.90, 4),
+                }
+                claims_by_pf.setdefault((pid_c, fid_c), []).append(entry)
+                if fid_c not in root_terms_lso:
+                    is_dom = 1 if ev_type == "DOMAIN_ARCHITECTURE" else 0
+                    domain_claims_by_prot.setdefault(pid_c, []).append((is_dom, rsc_c, fid_c, entry))
+
+        for pid_k in domain_claims_by_prot:
+            domain_claims_by_prot[pid_k].sort(key=lambda x: (-x[0], -x[1]))
 
         anom_file = PILLAR3_DIR / f"{genome}_lso_anomalies.jsonl"
         res_file = PILLAR3_DIR / f"{genome}_lso_resolutions.jsonl"
         unresolved_cases = []
+        evaluated_cids = sorted({c["complex_id"] for c in cases})
         with open(anom_file, "w", encoding="utf-8") as f_an:
-            for idx_c, c in enumerate(cases):
-                cid = c["complex_id"]
-                p_star = c["held_out_subunit"]
-                if m3_preds.get((p_star, cid), 0.0) < 0.50:
-                    unresolved_cases.append(c)
+            for idx_c, cid in enumerate(evaluated_cids):
+                # Label-free anomaly detection: identify high-confidence anchor subunits (>= 0.70)
+                # and sub-anchor borderline candidates in [0.08, 0.70) without inspecting ground-truth p_star
+                cid_entries = by_cid_prots.get(cid, [])
+                anchor_subunits = sorted(p for p, pr in cid_entries if pr >= 0.70)
+                cand_subunits = sorted(p for p, pr in cid_entries if 0.08 <= pr < 0.70)
+                max_cand_prob = max((m3_preds.get((p, cid), 0.0) for p in cand_subunits), default=0.0)
+                if anchor_subunits and cand_subunits and max_cand_prob < 0.50:
+                    unresolved_cases.append(cid)
+                    comp_ops = {prot_to_op.get(cp, "") for cp in anchor_subunits if prot_to_op.get(cp, "")}
                     cands_list = []
-                    for cand_p in [p_star] + c["decoys"]:
-                        is_true = (cand_p == p_star)
-                        ev_summary = "; ".join(prot_other_terms.get(cand_p, [])[:4])
-                        if is_true:
-                            ev_summary = f"InterPro/Pfam conserved subunit domain for {c['complex_name']}; " + ev_summary
-                        else:
-                            ev_summary = f"Unrelated housekeeping/metabolic protein ({ev_summary or 'no complex domain'})"
+                    for cand_p in cand_subunits:
+                        cand_op = prot_to_op.get(cand_p, "")
+                        in_comp_op = bool(cand_op and cand_op in comp_ops)
+                        op_nbrs = {}
+                        if cand_op:
+                            for nb_p in op_to_prots.get(cand_op, []):
+                                if nb_p == cand_p:
+                                    continue
+                                nb_terms = [t_str for _, t_str in prot_top_terms.get(nb_p, [])[:3]]
+                                if nb_p in anchor_subunits and f"{cid}" not in " ".join(nb_terms):
+                                    nb_terms.insert(0, f"{cid}@{m3_preds.get((nb_p, cid), 0.85):.2f}")
+                                if nb_terms:
+                                    op_nbrs[nb_p] = nb_terms
+                        cand_post = round(m3_preds.get((cand_p, cid), 0.25), 4)
+                        sup_claims = list(claims_by_pf.get((cand_p, cid), [
+                            {"source": "diamond", "evidence_type": "SEQUENCE_SIMILARITY", "raw_score": cand_post, "calibrated_prob": cand_post}
+                        ]))
+                        for _, _, fid_d, dom_entry in domain_claims_by_prot.get(cand_p, []):
+                            if fid_d != cid and len(sup_claims) < 4:
+                                sup_claims.append(dom_entry)
+                        other_anns = [t_str for _, fid_o, t_str in prot_other_terms.get(cand_p, []) if fid_o != cid][:5]
+                        bf_est = round(cand_post * (9.5 if in_comp_op else 2.2), 2)
                         cands_list.append({
                             "protein_id": cand_p,
                             "function_id": cid,
-                            "current_posterior": round(m3_preds.get((cand_p, cid), 0.30), 4),
-                            "operon_id": c["held_out_operon"] if is_true else "",
-                            "in_pathway_operon": False,
-                            "operon_neighbors": {cp: [cid] for cp in c["companion_subunits"][:3]} if is_true else {},
-                            "other_annotations": [ev_summary],
-                            "rlgc_bayes_factor": 4.2 if is_true else 0.3,
-                            "supporting_claims": (
-                                [
-                                    {"source": "diamond", "evidence_type": "SEQUENCE_SIMILARITY", "raw_score": 0.45, "calibrated_prob": 0.42},
-                                    {"source": "interpro", "evidence_type": "DOMAIN_ARCHITECTURE", "raw_score": 0.68, "calibrated_prob": 0.64, "evidence": ev_summary},
-                                ]
-                                if is_true
-                                else [
-                                    {"source": "diamond", "evidence_type": "SEQUENCE_SIMILARITY", "raw_score": 0.28, "calibrated_prob": 0.22}
-                                ]
-                            ),
+                            "current_posterior": cand_post,
+                            "operon_id": cand_op,
+                            "in_pathway_operon": in_comp_op,
+                            "operon_neighbors": op_nbrs,
+                            "other_annotations": other_anns,
+                            "rlgc_bayes_factor": bf_est,
+                            "supporting_claims": sup_claims,
                         })
                     anom_obj = {
                         "anomaly_id": f"{genome}_LSO_{idx_c}_{cid}",
                         "anomaly_type": "INCOMPLETE_COMPLEX",
                         "organism_taxon": "NCBITaxon_2",
                         "target_function_id": cid,
-                        "target_function_label": c["complex_name"],
+                        "target_function_label": names.get(cid, cid),
                         "missing_functions": [cid],
-                        "present_functions": [f"{cp}:{cid}" for cp in c["companion_subunits"]],
+                        "present_functions": [f"{cp}:{cid}" for cp in anchor_subunits],
                         "candidates": cands_list,
-                        "description": f"Obligate heteromeric complex {cid} ({c['complex_name']}) has strong subunits {c['companion_subunits']} but needs its partner subunit disambiguated among borderline candidates."
+                        "description": f"Obligate heteromeric complex {cid} ({names.get(cid, cid)}) has strong subunits {anchor_subunits} but needs its partner subunit disambiguated among borderline candidates."
                     }
                     f_an.write(json.dumps(anom_obj) + "\n")
 
@@ -586,7 +663,7 @@ def main():
                             conf_val = float(robj.get("confidence", robj.get("new_probability", 0.65)))
                             promoted_keys[(robj["protein_id"], robj["function_id"])] = max(0.58, conf_val)
 
-        with open(out_m3, "r", encoding="utf-8") as f_in, open(out_m4, "w", encoding="utf-8") as f_out:
+        with open(out_m3_s2, "r", encoding="utf-8") as f_in, open(out_m4, "w", encoding="utf-8") as f_out:
             header_line = f_in.readline()
             f_out.write(header_line)
             hdr = header_line.strip().split("\t")
@@ -642,28 +719,29 @@ def main():
             "complex_coherence": avg_coh
         })
 
-    # Save to pillar3_complex_lso.tsv
-    out_tsv = results_dir / "pillar3_complex_lso.tsv"
-    with open(out_tsv, "w", encoding="utf-8", newline="") as f:
-        fieldnames = ["genome", "method", "n_cases", "hit_at_1", "recall_at_05",
-                      "precision_at_05", "f1_at_05", "complex_coherence"]
-        w = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t", extrasaction="ignore")
-        w.writeheader()
-        for r in benchmark_records:
-            w.writerow({
-                "genome": r["genome"],
-                "method": r["method"],
-                "n_cases": r["n_cases"],
-                "hit_at_1": f"{r['hit_at_1']:.4f}",
-                "recall_at_05": f"{r['recall_at_05']:.4f}",
-                "precision_at_05": f"{r['precision_at_05']:.4f}",
-                "f1_at_05": f"{r['f1_at_05']:.4f}",
-                "complex_coherence": f"{r['complex_coherence']:.4f}"
-            })
+    # Save to pillar3_complex_lso.tsv in both results_dir and local_results_dir
+    out_dirs = [results_dir] + ([local_results_dir] if local_results_dir and local_results_dir != results_dir else [])
+    for odir in out_dirs:
+        out_tsv = odir / "pillar3_complex_lso.tsv"
+        with open(out_tsv, "w", encoding="utf-8", newline="") as f:
+            fieldnames = ["genome", "method", "n_cases", "hit_at_1", "recall_at_05",
+                          "precision_at_05", "f1_at_05", "complex_coherence"]
+            w = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t", extrasaction="ignore")
+            w.writeheader()
+            for r in benchmark_records:
+                w.writerow({
+                    "genome": r["genome"],
+                    "method": r["method"],
+                    "n_cases": r["n_cases"],
+                    "hit_at_1": f"{r['hit_at_1']:.4f}",
+                    "recall_at_05": f"{r['recall_at_05']:.4f}",
+                    "precision_at_05": f"{r['precision_at_05']:.4f}",
+                    "f1_at_05": f"{r['f1_at_05']:.4f}",
+                    "complex_coherence": f"{r['complex_coherence']:.4f}"
+                })
+        print(f"Results successfully saved to {out_tsv}")
 
     print("\n" + "=" * 70)
-    print(f"Results successfully saved to {out_tsv}")
-    print("=" * 70)
 
 
 if __name__ == "__main__":

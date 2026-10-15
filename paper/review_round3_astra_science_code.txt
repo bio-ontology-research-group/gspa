@@ -1,0 +1,373 @@
+# Executive Summary & Overall Technical Verdict
+
+The manuscript titled “Genome-Scale Context, Stoichiometric Refinement, and Neuro-Symbolic Reasoning for Proteome Function Annotation” proposes a potentially useful integration of protein-level evidence, genomic context, ontology constraints, metabolic feasibility, and selective language-model assistance. However, **the current implementation and deposited evidence do not substantiate several central scientific claims. I would not recommend acceptance at Nature Methods in its present form.**
+
+**Substantial revisions to code, methods, equations, benchmark construction, statistical analysis, and reported results are required.** The most serious findings are:
+
+- Stage 3 benchmark features are generated using the known true/decoy identity.
+- The claimed 108-genome SLR audit reuses two random-score template solves.
+- Price-149 “single-predictor” refinement incorporates multiple predictors.
+- Price-149 `Fmax` is an average of per-protein oracle-optimal ranking scores, not standard threshold-swept dataset-level \(F_{\max}\).
+- The Python refiner does not implement the described lexicographic pFBA, FVA, or perturbation ensemble.
+- Deposited per-protein Price-149 results contradict the headline summary table.
+- BacDive experiments evaluate different formulas and feature sets from those described in Methods.
+
+These are problems of scientific validity and reproducibility, not presentation.
+
+I did not read any `paper/review_*.txt` files. This review used manuscript source, implementation, benchmark generators, deposited TSV/JSONL files, small read-only computations, and primary literature. I did not rerun the complete external-predictor/HPC pipelines. No files were modified.
+
+Two version discrepancies matter: the actual source namespace is `gspa`, not the requested `org/gspa`, and this `main.tex` contains **eight numbered equations**, not eighteen. Below, equation numbers refer to those eight equations in source order.
+
+# Part I: Scientific Contributions, SOTA Comparison & Experimental Design Critique
+
+### [S1] The credible contribution is constrained integration; the broad conceptual novelty claim is overstated
+
+The manuscript’s assertion that existing approaches predict proteins independently of the rest of the organism is too broad. DeepGO-SE explicitly incorporates ontology knowledge and, in its interaction-based configuration, protein interactions. gLM contextualizes proteins using neighboring genes; Bacformer addresses contextualized bacterial protein representations; Protein Set Transformer provides protein and genome representations for viruses. These are directly relevant to the proposed conceptual advance. [DeepGO-SE, 2024](https://www.nature.com/articles/s42256-024-00795-w), [gLM, 2024](https://www.nature.com/articles/s41467-024-46947-9), [Bacformer, 2025 preprint](https://www.biorxiv.org/content/10.1101/2025.07.20.665723v1), [Protein Set Transformer, 2025](https://www.nature.com/articles/s41467-025-66049-4).
+
+The potentially distinctive contribution is the combination of explicit constraints, locus attribution, and auditable abstention. Establish this through matched-input comparisons against contextual models and simpler constraint-aware pipelines. A seven-channel ensemble beating an individual predictor does not isolate genome-context reasoning.
+
+### [S2] Suite 1 does not yet establish a reproducible prospective advantage
+
+The reported temporal result is modest: Stage 0 \(0.6929\), Iteration 1 \(0.6937\), and Iteration 3 \(0.6919\). This supports, at most, a small first-pass improvement with subsequent degradation, not a general benefit from iterative completion.
+
+More seriously, [run_pillars1_4_5_6.py:38](/home/leechuck/Public/software/gspa/benchmark/unified/pillar1_5_6/run_pillars1_4_5_6.py:38) writes a hard-coded CAFA result list to the canonical temporal-results filename. The CAFA6 values are also embedded directly in [run_expanded_8scenarios_3100genomes.py:71](/home/leechuck/Public/software/gspa/benchmark/unified/run_expanded_8scenarios_3100genomes.py:71).
+
+Hard-coded summaries may transcribe legitimate experiments, but they do not reproduce them. Deposit prediction matrices, target/aspect membership, actual \(t_0/t_1\) releases, calibration splits, model checkpoints, donor inventories, and metric commands. Distinguish a retrospectively reconstructed temporal benchmark from genuinely frozen prospective predictions.
+
+### [S3] Suite 2’s homology and clade controls are not established by the supplied masking implementation
+
+[apply_protocol_H.py:142](/home/leechuck/Public/software/gspa/benchmark/manifests/apply_protocol_H.py:142) falls back from sequence identity to arbitrary score ceilings when identity metadata are absent. It attenuates some family-transfer evidence instead of removing prohibited donors. Its genus/family exclusion uses a small manually enumerated taxon map.
+
+The principal claim-filtering method ends without implementing the advertised complete ESM/ProtT5/FoldSeek donor filtering. A separate centroid builder excludes specified proteins/genomes, but this alone does not establish the manuscript’s universal forbidden-donor protocol.
+
+Additionally, the 25-proteome H/D runner writes literal result dictionaries rather than executing masked predictions: [run_pillars1_4_5_6.py:91](/home/leechuck/Public/software/gspa/benchmark/unified/pillar1_5_6/run_pillars1_4_5_6.py:91).
+
+Require accession-level exclusion logs, full taxonomy resolution, independently checked sequence identities and coverage criteria, rebuilt lookup indices, and explicit treatment of supervised predictor training exposure. Filtering lookup databases cannot erase information learned by an already-trained supervised head.
+
+### [S4] Suites 3–5 conflate homology-stratified evaluation with donor-database masking
+
+The role-stratified LRO runner loads existing rank tables and selects cases by `max_pident_annot_homolog <= cutoff`; it does not rerun candidate generation or inference after removing donors: [run_pillar2_all.py:365](/home/leechuck/Public/software/gspa/benchmark/unified/pillar2_fba_lro_price149/run_pillar2_all.py:365).
+
+Thus these rows demonstrate performance on identity-defined subsets, unless separate upstream masking runs can be documented. They do not themselves demonstrate the stated intervention on the donor database.
+
+Stratum assignment also includes string/neighborhood heuristics, including `"PWY" in pw and n_pw <= 4`, rather than exclusively verified metabolic tasks: [run_pillar2_all.py:285](/home/leechuck/Public/software/gspa/benchmark/unified/pillar2_fba_lro_price149/run_pillar2_all.py:285). That is insufficient to establish “secondary metabolism” or cognate-substrate dependence.
+
+The manuscript appropriately acknowledges that PLM-only ranking explains most Track B performance. The additional four recoveries require paired analysis and independent organisms beyond the development genome. Candidate-pool denominators should remain explicit.
+
+### [S5] Suite 5 complex recovery and Stage 3 LRO contain direct label-conditioned feature construction
+
+This is a critical validity failure.
+
+In [build_pillar4_dataset.py:154](/home/leechuck/Public/software/gspa/benchmark/unified/pillar4/build_pillar4_dataset.py:154), the true protein is inserted into the top-five candidate list if absent. Subsequently:
+
+- `in_pathway_operon` depends on `is_true`.
+- Neighborhood descriptions depend on `is_true`.
+- Bayes factors, domain compatibility, and PLM cosine values are drawn from different ranges for true and decoy candidates.
+
+The 120-anomaly benchmark similarly generates label-specific scores and evidence. These values are returned to the agent as tool evidence by [run_gspa_agent.py:515](/home/leechuck/Public/software/gspa/benchmark/agent/run_gspa_agent.py:515).
+
+The complex-LSO agent benchmark is even more explicit: true candidates receive BF \(4.2\), decoys \(0.3\), and true candidates receive additional domain evidence: [run_pillar3_complex_lso.py:535](/home/leechuck/Public/software/gspa/benchmark/unified/pillar3/run_pillar3_complex_lso.py:535).
+
+Masking gene symbols does not remove this leakage. These experiments can serve as synthetic software demonstrations, but cannot establish empirical biological recovery. Rebuild them with feature extraction entirely independent of truth.
+
+### [S6] Suite 6 does not test the advertised single-predictor refinement
+
+[scripts/eval_price149_real_all6.py:287](/home/leechuck/Public/software/gspa/scripts/eval_price149_real_all6.py:287) constructs an ensemble from `core_predictors`. The resulting `multi_sup` contributes directly to every “Full GSPA” arm.
+
+Consequently, improvement over GraphEC or another baseline cannot be attributed to context refinement of that predictor alone. The comparison mixes additional predictive evidence with contextual reasoning.
+
+The cognate-substrate arms also receive assay-condition information absent from the standalone predictors. This is a legitimate condition-assisted task, but must be evaluated separately and with matched-information baselines.
+
+GraphEC itself evaluates Price-149, so implementation fidelity, vocabulary coverage, structure quality, and training overlap require explicit auditing before interpreting its unusually weak local baseline. [GraphEC primary paper](https://www.nature.com/articles/s41467-024-52533-w).
+
+### [S7] Suites 7–8 establish phenotype prediction, not dark-matter gene attribution
+
+The BacDive script predicts assay outcomes from reconstruction calls and aggregate strain/genus statistics. It does not validate which dark-matter gene catalyzes a reaction. Phenotype-level agreement cannot identify a locus when alternative enzymes, transporters, regulatory effects, or pathway routes explain the same phenotype.
+
+The labeled Traitar/DiASPora/RF baselines are local classifiers over reconstruction-call features, not faithful reproductions of the Pfam/KO/EC feature pipelines described in Methods. On the enzyme panel, GSPA additionally receives a whole-strain vector unavailable to the baseline, and uses different model settings and thresholds.
+
+Genus-derived features are computed before CV from the complete prediction cohort. This is transductive use of held-out feature distributions, not demonstrated phenotype-label leakage, but it contradicts a strictly inductive out-of-genus interpretation.
+
+Track 2 pools revealed labels across strains and genera. Describe that actual information regime and evaluate locus attribution separately.
+
+### [S8] Ontology consistency is valuable but is not equivalent to biological correctness
+
+Eliminating violations against the same constraint tables used by the algorithm is an internal invariant. It does not establish annotation accuracy or constraint completeness.
+
+The eukaryotic stress-test generator creates claims from known annotations, randomly assigns scores, removes BP claims from selected proteins, and injects cross-clade terms: [run_pillar3_eukaryotic_anatomy.py:286](/home/leechuck/Public/software/gspa/benchmark/unified/pillar3/run_pillar3_eukaryotic_anatomy.py:286). This is a constructed perturbation experiment, not an independent sample of erroneous homology transfers.
+
+Separate:
+
+- Endogenous predictor errors with independently audited truth.
+- Synthetic perturbation recovery.
+- Formal constraint coverage and false-rejection rates.
+
+The cross-ontology bridge could be a useful contribution, but each relation type needs justified entailment semantics. Taxonomic compatibility of a referenced anatomical entity is not automatically equivalent to organismal possession of that entity in every biological relation.
+
+### [S9] The agent contribution requires matched tools and matched guardrails
+
+GeneAgent already demonstrates database-assisted, self-verifying biological language agents, although its gene-set task differs from locus annotation. [GeneAgent, Nature Methods 2025](https://www.nature.com/articles/s41592-025-02748-6).
+
+Here, comparing a guarded LLM with unguarded tabular classifiers does not isolate the value of language-model reasoning. Apply the same deterministic guardrail and ancestor-relaxation routine to every comparator. Include simple ranking rules over all available tool features.
+
+On the deposited 50-case dataset, I obtained **44/50 Hit@1 by selecting the largest supplied BF alone**, and **44/50 using domain compatibility alone**. Given the label-conditioned construction, the reported 48/50 agent result is not evidence of novel biological reasoning.
+
+# Part II: Code, Methods, Equations & Algorithms Audit
+
+### [C1] Equation 1: calibration, dependence correction, pooling, and bounds differ
+
+Methods specifies isotonic calibration, evidence-code reliability weights, donor-count exponents, and upward Noisy-OR.
+
+The executable implementation instead uses:
+
+- Platt-style logistic calibration: [CalibrationTable.groovy:49](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/CalibrationTable.groovy:49).
+- Maximum weighted evidence within fixed correlation groups: [EvidenceCombiner.groovy:86](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/EvidenceCombiner.groovy:86).
+- Evidence-type weights rather than the stated GO evidence-code scheme.
+- Group probabilities clipped to \([0.001,0.999]\), pooled probabilities to \([10^{-6},1-10^{-6}]\), and log-odds to \([-12,12]\).
+
+This is materially different from Equation 1 and its stated \(10^{-4}\) probability bound.
+
+Even the manuscript’s proposed donor discount does not yield duplicate invariance: identical duplicated evidence increases support as \(\sqrt n\). Calibration must be demonstrated after pooling and after contextual refinement, using held-out reliability diagrams, Brier/log scores, and coverage-stratified results.
+
+### [C2] Equation 2: iteration, damping, convergence, and true-path propagation differ
+
+[IterativeRefiner.groovy:36](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/IterativeRefiner.groovy:36) defaults to six iterations, tolerance \(0.005\), and damping \(0.5\). Lines 80–104 apply clipped, damped log-odds updates.
+
+The stopping statistic is the **mean probability change over changed keys**, not the stated maximum change below \(10^{-3}\). Two successive increases trigger rollback.
+
+The update loop iterates over existing claim keys. `IntegrationState.updatePosteriors` simply assigns the map; it does not perform the stated per-iteration probability-max ancestor propagation.
+
+Configuration can override some defaults, but cannot turn these algorithms into the manuscript’s equation. Supply exact run configurations and reconcile the executable update rule.
+
+Anchoring does not prove convergence. Threshold-gated boosts can switch on and off across iterations.
+
+### [C3] The six \(B_m\) definitions are not the implemented priors
+
+The discrepancies go beyond parameter values:
+
+- **Essentiality:** fixed boosts to descendants of uncovered essential terms, not top-three rank-weighted \((1-P_{\max})/\mathrm{rank}\) allocation. [EssentialityPrior.groovy:93](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/prior/EssentialityPrior.groovy:93).
+- **Coherence:** pathway weighting uses baseline coverage and `max(0.25, 1-coverage)`, rather than the stated high-coverage gate and coverage-proportional boost. [CoherencePrior.groovy:98](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/prior/CoherencePrior.groovy:98).
+- **Consistency:** organism-forbidden terms are penalized at any score; residual checking uses a genome-level annotated term set, not the stated per-protein \(P\ge0.20\) sets. [ConsistencyPrior.groovy:53](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/prior/ConsistencyPrior.groovy:53).
+- **Anatomy:** active structures use anchored likelihood support; boosts lack the stated \([0.22,0.49]\) candidate gate. [AnatomicalPrior.groovy:91](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/prior/AnatomicalPrior.groovy:91).
+- **Gap filling:** a function-level fixed boost replaces the stated candidate-specific rank-weighted RLGC prior. [GapFillingPrior.groovy:44](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/prior/GapFillingPrior.groovy:44).
+- **Operon context:** operon consensus and complex-partner boosts replace the stated adjacent-gene \(\exp(-d/75)\) sum. [GenomicContextPrior.groovy:102](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/prior/GenomicContextPrior.groovy:102).
+
+The manuscript should describe one identified implementation, with benchmark variants explicitly separated.
+
+### [C4] Equation 3 does not describe the checked-in RLGC suggester
+
+[ReactionLocalContextSuggester.groovy:15](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/suggester/ReactionLocalContextSuggester.groovy:15) uses reaction-graph locality, genomic density, diversity, commitment, self-exclusion, strand, and intergenic-distance terms.
+
+Its default Gaussian bandwidth is **5,000 bp**, not the manuscript’s \(\pm5\)-gene kernel. It is not the stated additive catalytic/Pfam/ESM score.
+
+Identify the exact implementation producing each RLGC result and distinguish the Java/Groovy suggester from benchmark-side ranking variants.
+
+### [C5] Equation 4: semantic relaxation differs in both target selection and probability
+
+The manuscript applies \(0.95P_0\) to every nearest valid ancestor.
+
+[ConsistencyEnforcer.groovy:212](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/metrics/ConsistencyEnforcer.groovy:212) instead transfers the current annotation score without the \(0.95\) factor. [AnatomicalConstraints.groovy:364](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/ontology/AnatomicalConstraints.groovy:364) returns the first valid BFS ancestor, not all valid ancestors at minimum distance.
+
+Multiple-parent GO terms can therefore produce different output and branch retention from the equation. Test ties, multiple inheritance, root-only relaxation, and conflicting ancestors explicitly.
+
+### [C6] Equation 5: the “DNF mechanism compiler” does not parse general GPR logic
+
+[GprMechanismCompiler.groovy:47](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/fba/GprMechanismCompiler.groovy:47) checks whether the string contains `" and "` and `" or "`. It treats all mapped ECs as a conjunction only if AND occurs without OR and there are multiple ECs. Otherwise each EC becomes an alternative.
+
+The Python implementation repeats this logic at [stoichiometric_locus_refiner.py:116](/home/leechuck/Public/software/gspa/scripts/stoichiometric_locus_refiner.py:116).
+
+This cannot represent `(A AND B) OR C`, and a multi-subunit enzyme with one reaction-level EC does not acquire distinct subunit roles. EC alternatives and required protein subunits are different biological entities.
+
+A real parser and explicit role/subunit mapping are required before claiming DNF-aware complex support.
+
+### [C7] Stage 2B’s claimed lexicographic pFBA and certificates are not implemented
+
+At [stoichiometric_locus_refiner.py:371](/home/leechuck/Public/software/gspa/scripts/stoichiometric_locus_refiner.py:371), addition cost is based on
+\[
+\max(0.05,-\operatorname{logit}(p)+4),
+\]
+not \(1-p+0.001\).
+
+The implementation performs one weighted repair LP with a small background flux penalty. It does not solve the stated second total-flux minimization constrained by the optimal first-stage repair cost.
+
+Further discrepancies:
+
+- Active-repair cutoff is \(10^{-7}\), not \(10^{-6}\).
+- The LP calls do not specify the claimed \(10^{-9}\) feasibility tolerance.
+- Knockouts operate only on the already-selected repair subnetwork.
+- Knockout infeasibility populates both KO and FVA sets.
+- Ensemble support is assigned from the same outcome; no 5% perturbation pass is performed.
+- `n_uncertified_additions` is returned as literal zero.
+
+Consequently, the reported confidence combines repeated information from one test, not three independent certificates.
+
+### [C8] Metabolic feasibility claims need stronger mathematical conditions
+
+A finite imbalance penalty of 25 does not forbid imbalanced reactions whenever a balanced route exists. A sufficiently expensive balanced route can still lose.
+
+Also:
+
+- Minimizing weighted flux is not minimizing the number of added reactions.
+- Stoichiometric steady state \(Sv=0\) does not establish elemental balance, thermodynamic feasibility, or biological correctness.
+- \(v^++v^-=|v|\) is not an identity without a complementarity/optimality argument.
+- “FVA at 99% optimal repair cost” is ambiguous for a minimization problem; a bound below the minimum would be infeasible.
+- The code drops positive lower-bound requirements when constructing unrestricted nonnegative split variables, except for its separately handled biomass constraint.
+
+The medium also unconditionally unions the requested medium with a substantial hard-coded uptake set: [stoichiometric_locus_refiner.py:259](/home/leechuck/Public/software/gspa/scripts/stoichiometric_locus_refiner.py:259). The resulting environment must be documented before calling it minimal glucose or interpreting auxotrophy.
+
+### [C9] Equation 6 is partly implemented, but the CLI does not pass its contextual evidence
+
+The Python responsibility updater includes sequence odds, BF, synteny, and PLM arguments. However, the Groovy payload contains gene scores and basic solver parameters only: [StoichiometricLocusRefiner.groovy:82](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/integration/fba/StoichiometricLocusRefiner.groovy:82).
+
+The Python entry point calls attribution without BF, synteny, or PLM maps: [stoichiometric_locus_refiner.py:681](/home/leechuck/Public/software/gspa/scripts/stoichiometric_locus_refiner.py:681). They therefore take neutral defaults.
+
+Moreover, attribution iterates over all ECs associated with a repaired reaction, rather than conditioning on a selected catalytic mechanism. This can promote alternative EC explanations simultaneously.
+
+The fixed null mass example only establishes behavior for its stipulated three candidates. It is not a general guarantee against false promotion with larger candidate pools or accumulated reaction boosts.
+
+### [C10] Equation 7 is not the observed outer-loop execution
+
+The CLI invokes Stage 2B once, followed by Stage 2A, reversing the manuscript’s stated order: [IntegrateCommand.groovy:491](/home/leechuck/Public/software/gspa/gspa-cli/src/main/groovy/gspa/cli/IntegrateCommand.groovy:491).
+
+Price-149 iterations use hand-written probability mixtures and successive boosts: [eval_price149_real_all6.py:318](/home/leechuck/Public/software/gspa/scripts/eval_price149_real_all6.py:318). They do not implement the geometrically damped log-odds anchor in Equation 7.
+
+Geometric weighting of successive updates is also not, by itself, proof of contraction or monotone convergence.
+
+### [C11] Equation 8 differs from the core GAEF implementation
+
+The manuscript assigns 0.20 each to pathway and complex coherence. [QualityReport.groovy:76](/home/leechuck/Public/software/gspa/gspa-core/src/main/groovy/gspa/model/QualityReport.groovy:76) assigns total weight 0.40 to the mean of all available process, pathway, and complex coherence components, with renormalization when components are unavailable.
+
+The two formulas agree only in restricted configurations. Specify the formula actually used for every reported table and regenerate composite values consistently.
+
+### [C12] Stage 3’s guardrail does not establish the claimed complete ontology guarantee
+
+The Python guardrail loads direct GO constraints and direct GO-to-anatomy links, but does not load GO ancestor closure or anatomical hierarchy closure: [run_gspa_agent.py:64](/home/leechuck/Public/software/gspa/benchmark/agent/run_gspa_agent.py:64).
+
+It also:
+
+- Converts `union_of` membership into pairwise disjointness, which is not valid for a generic ontology union.
+- Accepts missing organism taxonomy.
+- Does not establish that a proposed `RELAX` target is an ancestor of the original term.
+- Can treat candidate vocabulary membership as sufficient evidence of identifier validity.
+
+The guarantee must be restricted to the checks actually implemented, or the guardrail must be replaced with a tested closure-aware validator. Apply it equally to non-agent baselines.
+
+# Part III: Data & Statistical Verification Audit
+
+### [D1] Price-149 per-protein data contradict Table 3
+
+I summed `gspa_iter3_top1` in [pillar2_price149_per_protein_real.tsv](/home/leechuck/Public/software/gspa/results/pillar2_price149_per_protein_real.tsv).
+
+| Predictor | Manuscript Iteration 3 hits | Deposited per-protein hits |
+|---|---:|---:|
+| CLEAN | 71 | 70 |
+| MAPred | 68 | 78 |
+| DeepProZyme | 57 | 82 |
+| EnzBERT | 56 | 74 |
+| GraphEC | 58 | 73 |
+| TopEC | 5 | 5 |
+
+All baseline counts agree with the manuscript, so this is specifically a refined-output provenance mismatch.
+
+For CLEAN, the deposited paired outcomes give 12 gains and 2 losses, with exact two-sided McNemar \(p=0.01294\), not the reported \(0.0026\). Other refined counts and tests also differ.
+
+Choose one immutable prediction set and regenerate every summary and statistical test.
+
+### [D2] Price-149 “Fmax” is an oracle ranking metric with a tie bug
+
+[eval_price149_real_all6.py:42](/home/leechuck/Public/software/gspa/scripts/eval_price149_real_all6.py:42) maximizes F1 over ranked prefixes separately for each protein. Line 365 averages these maxima.
+
+This differs from both standard protein-centric and micro dataset-level threshold-swept \(F_{\max}\).
+
+I executed the function on two tied predictions, one true and one false, both scored 0.5. It returns `fmax=1.0`; any score threshold includes either both or neither, so attainable F1 is at most \(2/3\).
+
+Recompute using a shared score threshold and tie-consistent inclusion. The current values cannot support calibration claims.
+
+### [D3] The 108-genome audit is not 108 genome-specific SLR experiments
+
+[run_pillar2_all.py:59](/home/leechuck/Public/software/gspa/benchmark/unified/pillar2_fba_lro_price149/run_pillar2_all.py:59) generates random reaction probabilities and solves one Gram-negative and one Gram-positive template. It then copies those results across genomes.
+
+It estimates METEOR flux-certified additions using `min(meteor_net_added, slr_added)` rather than measuring METEOR’s added-reaction fluxes. Several invariant counts are assigned literal zeros.
+
+The deposited 108 rows corroborate this:
+
+- 63 rows have exactly 4 SLR additions and runtime 28.3582 s.
+- 45 rows have exactly 13 additions and runtime 30.4818 s.
+- Their mean stored runtime is **29.243 s**, whereas the summary/manuscript reports **0.42 s**.
+
+Thus the 7.75-addition mean, 97.6% padding comparison, and reported invariant/runtimes require genome-specific remeasurement.
+
+### [D4] Canonical files disagree with manuscript numerical claims
+
+Examples sufficient to demonstrate a broader provenance problem:
+
+- The 25-proteome H30 file reports CAFA \(F_{\max}\) **0.476 to 0.649**, not the manuscript’s **0.654 to 0.718**. Its baseline violation field is **42.1**, not the cited 412.
+- The endogenous eukaryote file sums to **1,009 violations**, not 1,006.
+- That file gives yeast baseline \(F_{\max}=0.6644\), not the manuscript’s \(0.7376\).
+- The stress-test metadata records **46** moss injections, not 30.
+- The reported 703 surviving E3 stress-test violations imply pooled elimination of **70.4%**, not 95.5%. The approximately 86% figure is a species-unweighted average.
+- The prose identifies 2,809.5 core reactions but decomposes them into 446.4 plus 2,370.9, which sums to **2,817.3**, the reported total including repairs.
+
+These require regenerating prose and tables from a single verified dataset, not selecting values across incompatible files.
+
+### [D5] Several “empirical” reproduction paths are synthetic or hard-coded
+
+Beyond the literal CAFA/H/D tables, [run_real_protein_level_3100.py:505](/home/leechuck/Public/software/gspa/benchmark/unified/run_real_protein_level_3100.py:505) generates predictor scores from truth using random draws. It adds desired relaxed ancestors to truth and later boosts terms by iterating over truth sets.
+
+This directly invalidates that runner as an independent empirical SOTA evaluation. It does not prove that every newer 88-genome result uses this runner; provenance must establish the boundary.
+
+Similarly, the six-GEM compiler writes only three comparator methods, while the deposited result file includes additional GSPA entries. The supplied generator does not explain those entries.
+
+Separate synthetic tests, transcribed historical summaries, and executable empirical evaluations in both filenames and provenance.
+
+### [D6] BacDive Methods and reported uncertainty do not match the generator
+
+The actual Track 1 carbon score is a linear mixture of reconstruction calls and aggregate prediction rates, not the stated log-odds formula. Track 2 mixes revealed strain/substrate/genus empirical rates, not the stated KEGG/ModelSEED co-occurrence \(\psi\) formula.
+
+Relevant implementations are at [run_bacdive_tracks1_2.py:195](/home/leechuck/Public/software/gspa/benchmark/unified/pillar3_bacdive/run_bacdive_tracks1_2.py:195), [line 468](/home/leechuck/Public/software/gspa/benchmark/unified/pillar3_bacdive/run_bacdive_tracks1_2.py:468), and [line 521](/home/leechuck/Public/software/gspa/benchmark/unified/pillar3_bacdive/run_bacdive_tracks1_2.py:521).
+
+The split is a per-row hash with approximately 30% reveal probability, not exactly 30% within each strain. The code also uses model sizes different from Methods.
+
+The stored per-fold SDs differ from several prose SDs; for example, the carbon DiASPora file reports 0.0098, whereas prose reports 0.014.
+
+### [D7] Eukaryotic “CAFA” scoring and IC retention are not implemented as described
+
+[run_pillar3_eukaryotic_anatomy.py:450](/home/leechuck/Public/software/gspa/benchmark/unified/pillar3/run_pillar3_eukaryotic_anatomy.py:450):
+
+- Evaluates the transfer-protein subset.
+- Pools TP/FP/FN across proteins, producing micro F1.
+- Searches nine thresholds from 0.1 to 0.9.
+- Computes IC from evaluation truth using annotation-count normalization.
+
+This is not the stated protein-centric CAFA evaluation over 0.01–0.99, and it is not standard information accretion. IC retention should be recomputed from an independent reference corpus with an explicit definition and consistent population.
+
+### [D8] Statistical inference must respect dependence and selection
+
+The effective independent units are often genomes, genera, pathways, or homologous families, not individual annotations or assays.
+
+Required changes include:
+
+- Clustered bootstrap or hierarchical analysis for BacDive and multi-genome results.
+- Paired prediction-level tests for model comparisons.
+- Nested tuning for thresholds and ensemble weights.
+- Family/pathway-separated evaluation of E. coli-tuned LRO models.
+- Multiple-comparison control or clearly identified primary endpoints.
+- A paired bootstrap of F1 differences; McNemar tests disagreement in binary correctness, not F1 directly.
+- Explicit recognition that 50 selected candidate-covered LRO cases do not estimate proteome-wide recovery.
+
+The agent reranking evaluator also increases the true protein’s rank after any incorrect promotion, even when the promoted candidate was already above it: [evaluate_pillar4.py:278](/home/leechuck/Public/software/gspa/benchmark/unified/pillar4/evaluate_pillar4.py:278). Reconstruct the actual reordered list before calculating MRR.
+
+# Actionable Checklist of Required Fixes
+
+1. **Freeze a reproducible release:** commit, configurations, checkpoints, database dates, donor inventories, manifests, and prediction-level outputs.
+2. **Remove label-conditioned benchmark features.** Rebuild Stage 3 and LSO datasets from independently computed evidence; retain synthetic cases only as explicitly labeled tests.
+3. **Rerun the 108-genome audit using each genome’s actual scores.** Measure every invariant and runtime rather than assigning or copying values.
+4. **Implement or accurately describe the metabolic algorithm:** GPR parsing, subunit roles, lexicographic objectives, FVA, knockout alternatives, perturbation ensemble, balance restrictions, and medium.
+5. **Reconcile all eight equations and six prior definitions with the executable pipeline.**
+6. **Fix Price-149 evaluation:** genuine single-predictor arms, separate ensemble arms, matched assay information, shared-threshold \(F_{\max}\), and reconciled per-protein results.
+7. **Implement auditable donor masking.** Separate database interventions from identity-stratified subsets.
+8. **Reproduce phenotype baselines faithfully**, with equal feature access, nested tuning, declared transductive information, and strain/genus-aware uncertainty.
+9. **Recompute ontology metrics** with consistent true-path propagation, protein-centric and micro metrics distinguished, independent IC, and correct ancestor relaxation.
+10. **Compare agents with identically guarded deterministic and supervised alternatives.**
+11. **Generate every manuscript number from verified outputs**, including counts, confidence intervals, significance tests, runtimes, and sensitivity analyses.
+12. **Narrow the scientific claim until these experiments are complete.** The present evidence supports a promising integration framework and software demonstrations; it does not yet establish the claimed empirical advances across all eight suites.

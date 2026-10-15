@@ -42,6 +42,7 @@ class ConsistencyEnforcer {
     AnatomicalConstraints anatomicalConstraints
     String mode = 'remove'
     double downrankFactor = 0.5
+    double relaxFactor = 1.0d
 
     /** Optional provenance sink; when set, every action is logged and trail lines appended. */
     EnforcementReport report
@@ -126,10 +127,15 @@ class ConsistencyEnforcer {
         Set<String> forbidden = computeForbiddenTerms()
         log.info("Organism ${satChecker.organismTaxon}: ${forbidden.size()} GO terms forbidden by taxon/anatomical constraints")
         String defaultReason = "taxon-inconsistent for ${satChecker.organismTaxon}"
+        Map<String, Boolean> termForbiddenMemo = new HashMap<>()
         genome.proteins.each { Protein p ->
             List<Annotation> victims = p.annotations.goAnnotations().findAll { ann ->
-                forbidden.contains(ann.value) ||
-                    (goOntology && goOntology.propagateAnnotations([ann.value] as Set).any { forbidden.contains(it) })
+                Boolean memo = termForbiddenMemo.get(ann.value)
+                if (memo != null) return memo
+                boolean isBad = forbidden.contains(ann.value) ||
+                    (goOntology && goOntology.getAncestors(ann.value).any { forbidden.contains(it) })
+                termForbiddenMemo.put(ann.value, isBad)
+                isBad
             }
             if (victims) {
                 result.violations++
@@ -139,13 +145,7 @@ class ConsistencyEnforcer {
     }
 
     private Set<String> computeForbiddenTerms() {
-        Set<String> constrained = new HashSet<>()
-        constrained.addAll(satChecker.taxonConstraints.onlyInTaxon.keySet())
-        constrained.addAll(satChecker.taxonConstraints.neverInTaxon.keySet())
-        Set<String> forbidden = new HashSet<>()
-        constrained.each { term ->
-            if (!satChecker.check([term] as Set).consistent) forbidden.add(term)
-        }
+        Set<String> forbidden = new HashSet<>(satChecker.getForbiddenConstrainedTerms())
         if (anatomicalConstraints != null && satChecker.organismTaxon) {
             forbidden.addAll(anatomicalConstraints.computeForbiddenGoTerms(satChecker.organismTaxon, satChecker))
         }
@@ -219,30 +219,33 @@ class ConsistencyEnforcer {
 
         victims.each { Annotation a ->
             double before = a.score
+            double relaxedScore = before * relaxFactor
             String baseReason = resolveReason(a.value, defaultReason)
-            String relaxedGo = (goOntology != null && orgTax) ?
-                relaxer.findValidRelaxedAncestor(a.value, orgTax, satChecker, goOntology, forbidden) : null
-            if (relaxedGo != null) {
-                Annotation existing = existingGo[relaxedGo]
-                if (existing != null) {
-                    if (before > existing.score) {
-                        existing.score = before
+            List<String> relaxedAncestors = (goOntology != null && orgTax) ?
+                relaxer.findValidRelaxedAncestors(a.value, orgTax, satChecker, goOntology, forbidden) : Collections.emptyList()
+            if (!relaxedAncestors.isEmpty()) {
+                for (String relaxedGo : relaxedAncestors) {
+                    Annotation existing = existingGo[relaxedGo]
+                    if (existing != null) {
+                        if (relaxedScore > existing.score) {
+                            existing.score = relaxedScore
+                        }
+                        existing.evidence = tagRelaxed(existing.evidence, a.value)
+                        record(p, existing, 'relax', "${baseReason} -> relaxed to ${relaxedGo}", before, existing.score)
+                    } else {
+                        Annotation replacement = new Annotation(
+                            type: AnnotationType.GO,
+                            value: relaxedGo,
+                            score: relaxedScore,
+                            source: a.source,
+                            evidence: tagRelaxed(a.evidence, a.value),
+                            goAspect: a.goAspect ?: (goOntology?.getAspect(relaxedGo)),
+                            goLabel: goOntology?.getLabel(relaxedGo)
+                        )
+                        p.annotations.add(replacement)
+                        existingGo[relaxedGo] = replacement
+                        record(p, replacement, 'relax', "${baseReason} -> relaxed to ${relaxedGo}", before, relaxedScore)
                     }
-                    existing.evidence = tagRelaxed(existing.evidence, a.value)
-                    record(p, existing, 'relax', "${baseReason} -> relaxed to ${relaxedGo}", before, existing.score)
-                } else {
-                    Annotation replacement = new Annotation(
-                        type: AnnotationType.GO,
-                        value: relaxedGo,
-                        score: before,
-                        source: a.source,
-                        evidence: tagRelaxed(a.evidence, a.value),
-                        goAspect: a.goAspect ?: (goOntology?.getAspect(relaxedGo)),
-                        goLabel: goOntology?.getLabel(relaxedGo)
-                    )
-                    p.annotations.add(replacement)
-                    existingGo[relaxedGo] = replacement
-                    record(p, replacement, 'relax', "${baseReason} -> relaxed to ${relaxedGo}", before, before)
                 }
                 result.annotationsRelaxed++
             } else {

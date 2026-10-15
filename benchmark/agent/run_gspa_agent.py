@@ -17,9 +17,9 @@ Provides 5 deterministic local tools to the LLM agent:
   4. check_symbolic_constraints(go_term, organism_taxon)
   5. propose_resolution(anomaly_id, action, protein_id, function_id, confidence, rationale)
 
-Every agent proposal is gated by the deterministic Symbolic Guardrail
-(TaxonConstraints + AnatomicalConstraints + GO ID validation) unless
---no-guardrail is explicitly passed for ablation experiments.
+Every agent proposal is gated by the deterministic closure-aware Symbolic Guardrail
+(TaxonConstraints + AnatomicalConstraints + GO DAG true-path closure + GO ID validation)
+unless --no-guardrail is explicitly passed for ablation experiments.
 """
 
 from __future__ import annotations
@@ -39,29 +39,41 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RESOURCES_DIR = REPO_ROOT / "gspa-core" / "src" / "main" / "resources"
+DEFAULT_GO_OBO = REPO_ROOT / "benchmark" / "neural" / "cafa6_recon" / "go-basic.obo"
 
 GO_ID_RE = re.compile(r"^GO:\d{7}$")
 EC_ID_RE = re.compile(r"^(EC:)?\d+\.\d+\.\d+\.(\d+|-)$")
+GO_ROOTS = {"GO:0003674", "GO:0008150", "GO:0005575"}
 
 
 class SymbolicGuardrail:
-    """Deterministic taxon + anatomical + ontology guardrail for Stage 3 proposals."""
+    """
+    Deterministic closure-aware taxon + anatomical + GO DAG guardrail for Stage 3 proposals
+    and deterministic/supervised comparators.
+    """
 
-    def __init__(self, resources_dir: Path = RESOURCES_DIR) -> None:
+    def __init__(self, resources_dir: Path = RESOURCES_DIR, go_obo_path: Optional[Path] = None) -> None:
         self.parents: Dict[str, Set[str]] = {}
         self.disjoint: Dict[str, Set[str]] = {}
         self.only_in: Dict[str, Set[str]] = {}
         self.never_in: Dict[str, Set[str]] = {}
+        self.anat_parents: Dict[str, Set[str]] = {}
+        self.anat_only_in: Dict[str, Set[str]] = {}
+        self.anat_never_in: Dict[str, Set[str]] = {}
         self.go_anatomy: Dict[str, List[Tuple[str, str, str, str]]] = {}
+        self.go_parents: Dict[str, Set[str]] = {}
+        self.go_labels: Dict[str, str] = {}
         self.known_go_terms: Set[str] = set()
         self._lineage_cache: Dict[str, Set[str]] = {}
-        self._load(resources_dir)
+        self._go_anc_cache: Dict[str, Set[str]] = {}
+        self._anat_anc_cache: Dict[str, Set[str]] = {}
+        self._load(resources_dir, go_obo_path or DEFAULT_GO_OBO)
 
     def _add_disjoint(self, a: str, b: str) -> None:
         self.disjoint.setdefault(a, set()).add(b)
         self.disjoint.setdefault(b, set()).add(a)
 
-    def _load(self, resources_dir: Path) -> None:
+    def _load(self, resources_dir: Path, go_obo_path: Optional[Path]) -> None:
         hier_path = resources_dir / "taxon-constraints" / "ncbi-taxon-hierarchy.tsv"
         unions: Dict[str, List[str]] = {}
         if hier_path.exists():
@@ -79,12 +91,18 @@ class SymbolicGuardrail:
                     elif rel == "disjoint_from":
                         self._add_disjoint(t, other)
                     elif rel == "union_of":
+                        # In ncbi-taxon-hierarchy.tsv, union_of links a union taxon (e.g. NCBITaxon_union_...)
+                        # to its constituent member clades (which are disjoint clades in GO taxon constraints,
+                        # and each member is_a the union taxon).
+                        self.parents.setdefault(other, set()).add(t)
                         unions.setdefault(t, []).append(other)
         for members in unions.values():
             for i in range(len(members)):
                 for j in range(i + 1, len(members)):
                     self._add_disjoint(members[i], members[j])
 
+        # Load direct GO taxon constraints (supports both 3-column GO_ID\tConstraint_Type\tTaxon_ID
+        # and 4-column GO_ID\tGO_Label\tConstraint_Type\tTaxon_ID formats)
         tc_path = resources_dir / "taxon-constraints" / "go-taxon-constraints.tsv"
         if tc_path.exists():
             with open(tc_path, "r", encoding="utf-8") as fh:
@@ -93,17 +111,36 @@ class SymbolicGuardrail:
                     if not line or line.startswith("#") or line.startswith("GO_ID\t"):
                         continue
                     parts = line.split("\t")
-                    if len(parts) < 4:
+                    if len(parts) == 3:
+                        go_id, ctype, tax_id = parts[0].strip(), parts[1].strip(), parts[2].strip()
+                    elif len(parts) >= 4:
+                        if parts[1].strip() in ("only_in_taxon", "never_in_taxon", "RO:0002160", "RO:0002161"):
+                            go_id, ctype, tax_id = parts[0].strip(), parts[1].strip(), parts[2].strip()
+                        else:
+                            go_id, ctype, tax_id = parts[0].strip(), parts[2].strip(), parts[3].strip()
+                    else:
                         continue
-                    go_id, ctype, tax_id = parts[0].strip(), parts[2].strip(), parts[3].strip()
+                    tax_id = tax_id.replace("NCBITaxon:", "NCBITaxon_")
                     self.known_go_terms.add(go_id)
-                    if ctype == "only_in_taxon":
+                    if ctype in ("only_in_taxon", "RO:0002160"):
                         self.only_in.setdefault(go_id, set()).add(tax_id)
-                    elif ctype == "never_in_taxon":
+                    elif ctype in ("never_in_taxon", "RO:0002161"):
                         self.never_in.setdefault(go_id, set()).add(tax_id)
 
-        anat_only: Dict[str, Set[str]] = {}
-        anat_never: Dict[str, Set[str]] = {}
+        # Load anatomical hierarchy (is_a / part_of / develops_from)
+        anat_hier_path = resources_dir / "anatomical-constraints" / "uberon-po-hierarchy.tsv"
+        if anat_hier_path.exists():
+            with open(anat_hier_path, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line or line.startswith("#") or line.startswith("Child_ID\t"):
+                        continue
+                    parts = line.split("\t")
+                    if len(parts) >= 3:
+                        child_id, parent_id = parts[0].strip(), parts[2].strip()
+                        self.anat_parents.setdefault(child_id, set()).add(parent_id)
+
+        # Load anatomical taxon constraints
         anat_tc_path = resources_dir / "anatomical-constraints" / "uberon-po-taxon-constraints.tsv"
         if anat_tc_path.exists():
             with open(anat_tc_path, "r", encoding="utf-8") as fh:
@@ -115,11 +152,13 @@ class SymbolicGuardrail:
                     if len(parts) < 4:
                         continue
                     anat_id, ctype, tax_id = parts[0].strip(), parts[2].strip(), parts[3].strip()
+                    tax_id = tax_id.replace("NCBITaxon:", "NCBITaxon_")
                     if ctype == "only_in_taxon":
-                        anat_only.setdefault(anat_id, set()).add(tax_id)
+                        self.anat_only_in.setdefault(anat_id, set()).add(tax_id)
                     elif ctype == "never_in_taxon":
-                        anat_never.setdefault(anat_id, set()).add(tax_id)
+                        self.anat_never_in.setdefault(anat_id, set()).add(tax_id)
 
+        # Load GO-to-anatomy cross-product constraints and propagate along anatomical ancestors
         go_anat_path = resources_dir / "anatomical-constraints" / "go-anatomical-constraints.tsv"
         if go_anat_path.exists():
             with open(go_anat_path, "r", encoding="utf-8") as fh:
@@ -130,65 +169,107 @@ class SymbolicGuardrail:
                     parts = line.split("\t")
                     if len(parts) < 6:
                         continue
-                    go_id, rel_id, rel_lbl, anat_id, anat_lbl = (
+                    go_id, go_lbl, rel_id, rel_lbl, anat_id, anat_lbl = (
                         parts[0].strip(),
+                        parts[1].strip(),
                         parts[2].strip(),
                         parts[3].strip(),
                         parts[4].strip(),
                         parts[5].strip(),
                     )
                     self.known_go_terms.add(go_id)
+                    self.go_labels.setdefault(go_id, go_lbl)
                     self.go_anatomy.setdefault(go_id, []).append((rel_id, rel_lbl, anat_id, anat_lbl))
-                    for tx in anat_only.get(anat_id, ()):
-                        self.only_in.setdefault(go_id, set()).add(tx)
-                    for tx in anat_never.get(anat_id, ()):
-                        self.never_in.setdefault(go_id, set()).add(tx)
+                    for a_anc in self.anat_ancestors(anat_id):
+                        for tx in self.anat_only_in.get(a_anc, ()):
+                            self.only_in.setdefault(go_id, set()).add(tx)
+                        for tx in self.anat_never_in.get(a_anc, ()):
+                            self.never_in.setdefault(go_id, set()).add(tx)
+
+        # Load GO DAG hierarchy (is_a and part_of) from go-basic.obo if available
+        if go_obo_path and go_obo_path.exists():
+            cur_id: Optional[str] = None
+            is_obs = False
+            with open(go_obo_path, "r", encoding="utf-8") as fh:
+                for raw in fh:
+                    line = raw.strip()
+                    if line == "[Term]":
+                        cur_id = None
+                        is_obs = False
+                    elif line.startswith("[") and line.endswith("]"):
+                        cur_id = None
+                    elif line.startswith("id: GO:"):
+                        cur_id = line[4:].strip()
+                        self.known_go_terms.add(cur_id)
+                    elif cur_id and line.startswith("name: "):
+                        self.go_labels[cur_id] = line[6:].strip()
+                    elif cur_id and line == "is_obsolete: true":
+                        is_obs = True
+                        self.known_go_terms.discard(cur_id)
+                    elif cur_id and not is_obs:
+                        if line.startswith("is_a: GO:"):
+                            parent = line[6:].split("!")[0].strip()
+                            self.go_parents.setdefault(cur_id, set()).add(parent)
+                        elif line.startswith("relationship: part_of GO:"):
+                            parent = line[len("relationship: part_of ") :].split("!")[0].strip()
+                            self.go_parents.setdefault(cur_id, set()).add(parent)
+
+    def anat_ancestors(self, anat_id: str) -> Set[str]:
+        if anat_id in self._anat_anc_cache:
+            return self._anat_anc_cache[anat_id]
+        acc = {anat_id}
+        stack = [anat_id]
+        while stack:
+            cur = stack.pop()
+            for p in self.anat_parents.get(cur, ()):
+                if p not in acc:
+                    acc.add(p)
+                    stack.append(p)
+        self._anat_anc_cache[anat_id] = acc
+        return acc
+
+    def go_ancestors(self, go_id: str) -> Set[str]:
+        if go_id in self._go_anc_cache:
+            return self._go_anc_cache[go_id]
+        acc = {go_id}
+        stack = [go_id]
+        while stack:
+            cur = stack.pop()
+            for p in self.go_parents.get(cur, ()):
+                if p not in acc:
+                    acc.add(p)
+                    stack.append(p)
+        self._go_anc_cache[go_id] = acc
+        return acc
 
     def lineage(self, taxon: str) -> Set[str]:
-        if taxon in self._lineage_cache:
-            return self._lineage_cache[taxon]
-        acc = {taxon}
-        stack = [taxon]
+        norm_tax = taxon.replace("NCBITaxon:", "NCBITaxon_").strip()
+        if norm_tax in self._lineage_cache:
+            return self._lineage_cache[norm_tax]
+        acc = {norm_tax}
+        stack = [norm_tax]
         while stack:
             cur = stack.pop()
             for p in self.parents.get(cur, ()):
                 if p not in acc:
                     acc.add(p)
                     stack.append(p)
-        self._lineage_cache[taxon] = acc
+        self._lineage_cache[norm_tax] = acc
         return acc
 
-    def check_go_term(self, go_id: str, organism_taxon: str, allowed_go_vocab: Optional[Set[str]] = None) -> Dict[str, Any]:
-        if not GO_ID_RE.match(go_id):
-            return {
-                "valid": False,
-                "reason": f"Malformed GO identifier '{go_id}' (must match GO:XXXXXXX).",
-                "violation_type": "HALLUCINATED_ID",
-            }
-        if allowed_go_vocab is not None and go_id not in allowed_go_vocab and go_id not in self.known_go_terms:
-            return {
-                "valid": False,
-                "reason": f"GO term '{go_id}' not found in ontology or candidate vocabulary.",
-                "violation_type": "HALLUCINATED_ID",
-            }
-        if not organism_taxon:
-            return {"valid": True, "reason": "Consistent (no organism taxon asserted)."}
-
-        org_lin = self.lineage(organism_taxon)
-
-        # Check never_in_taxon
-        for neg_tax in self.never_in.get(go_id, ()):
+    def _check_single_term_direct(self, term: str, org_lin: Set[str], organism_taxon: str) -> Optional[Dict[str, Any]]:
+        for neg_tax in self.never_in.get(term, ()):
             if neg_tax in org_lin:
-                anat_info = self.go_anatomy.get(go_id)
+                anat_info = self.go_anatomy.get(term)
                 vtype = "ANATOMICAL_CONFLICT" if anat_info else "NEVER_IN_TAXON"
                 return {
                     "valid": False,
-                    "reason": f"{go_id} violates never_in_taxon {neg_tax} for organism {organism_taxon}.",
+                    "reason": f"{term} violates never_in_taxon {neg_tax} for organism {organism_taxon}.",
                     "violation_type": vtype,
+                    "violating_term": term,
                 }
 
-        # Check only_in_taxon
-        for req_tax in self.only_in.get(go_id, ()):
+        for req_tax in self.only_in.get(term, ()):
             if req_tax in org_lin:
                 continue
             req_lin = self.lineage(req_tax)
@@ -198,7 +279,7 @@ class SymbolicGuardrail:
                     is_disjoint = True
                     break
             if is_disjoint:
-                anat_info = self.go_anatomy.get(go_id)
+                anat_info = self.go_anatomy.get(term)
                 vtype = "ANATOMICAL_CONFLICT" if anat_info else "ONLY_IN_TAXON"
                 anat_str = (
                     f" via anatomical structure {anat_info[0][2]} ({anat_info[0][3]})"
@@ -207,15 +288,89 @@ class SymbolicGuardrail:
                 )
                 return {
                     "valid": False,
-                    "reason": f"{go_id}{anat_str} requires {req_tax}, which is disjoint with {organism_taxon}.",
+                    "reason": f"{term}{anat_str} requires {req_tax}, which is disjoint with {organism_taxon}.",
                     "violation_type": vtype,
+                    "violating_term": term,
                 }
+        return None
+
+    def check_go_term(
+        self,
+        go_id: str,
+        organism_taxon: str,
+        allowed_go_vocab: Optional[Set[str]] = None,
+        require_taxon: bool = True,
+    ) -> Dict[str, Any]:
+        if not GO_ID_RE.match(go_id):
+            return {
+                "valid": False,
+                "reason": f"Malformed GO identifier '{go_id}' (must match GO:XXXXXXX).",
+                "violation_type": "HALLUCINATED_ID",
+            }
+        if self.known_go_terms and go_id not in self.known_go_terms:
+            return {
+                "valid": False,
+                "reason": f"GO term '{go_id}' does not exist in the Gene Ontology.",
+                "violation_type": "HALLUCINATED_ID",
+            }
+        if not organism_taxon or not organism_taxon.strip():
+            if require_taxon:
+                return {
+                    "valid": False,
+                    "reason": "Missing organism_taxon; cannot certify taxonomic/anatomical consistency.",
+                    "violation_type": "MISSING_TAXON",
+                }
+            return {"valid": True, "reason": "Consistent (no organism taxon asserted).", "violation_type": None}
+
+        norm_org = organism_taxon.replace("NCBITaxon:", "NCBITaxon_").strip()
+        org_lin = self.lineage(norm_org)
+
+        # True-path closure check: check go_id and all of its GO ancestors (is_a / part_of)
+        for anc in self.go_ancestors(go_id):
+            viol = self._check_single_term_direct(anc, org_lin, norm_org)
+            if viol is not None:
+                if anc != go_id:
+                    viol["reason"] = f"{go_id} inherits constraint violation from ancestor {anc}: {viol['reason']}"
+                return viol
 
         return {
             "valid": True,
-            "reason": f"{go_id} satisfies all taxonomic and anatomical constraints for {organism_taxon}.",
+            "reason": f"{go_id} and its GO ancestor closure satisfy all taxonomic and anatomical constraints for {norm_org}.",
             "violation_type": None,
         }
+
+    def find_nearest_valid_ancestors(self, violating_go: str, organism_taxon: str) -> List[str]:
+        """
+        Level-order BFS up the GO DAG (is_a / part_of) to find all valid non-root
+        ancestors at the minimum valid BFS distance d_min.
+        """
+        if not self.go_parents or not organism_taxon:
+            return []
+        visited = {violating_go}
+        current_level = [
+            p for p in sorted(self.go_parents.get(violating_go, ()))
+            if p not in GO_ROOTS and p not in visited
+        ]
+        visited.update(current_level)
+
+        while current_level:
+            valid_at_level: List[str] = []
+            next_level: List[str] = []
+            for cand in current_level:
+                if cand in GO_ROOTS:
+                    continue
+                chk = self.check_go_term(cand, organism_taxon, require_taxon=True)
+                if chk["valid"]:
+                    valid_at_level.append(cand)
+                else:
+                    for p in sorted(self.go_parents.get(cand, ())):
+                        if p not in GO_ROOTS and p not in visited:
+                            visited.add(p)
+                            next_level.append(p)
+            if valid_at_level:
+                return valid_at_level
+            current_level = next_level
+        return []
 
 
 def load_api_key() -> str:
@@ -293,7 +448,7 @@ def build_tools_schema() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "check_symbolic_constraints",
-                "description": "Verify whether a GO term satisfies all SAT taxonomic and Uberon/PO/CL anatomical constraints for the organism.",
+                "description": "Verify whether a GO term satisfies all SAT taxonomic and Uberon/PO/CL anatomical constraints for the organism, and list nearest valid ancestors if violated.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -319,7 +474,7 @@ def build_tools_schema() -> List[Dict[str, Any]]:
                             "description": "Action to take on the candidate annotation.",
                         },
                         "protein_id": {"type": "string", "description": "Selected candidate protein ID (empty if ABSTAIN)."},
-                        "function_id": {"type": "string", "description": "Target GO or EC ID."},
+                        "function_id": {"type": "string", "description": "Target GO or EC ID (or relaxed ancestor GO ID if RELAX)."},
                         "confidence": {
                             "type": "number",
                             "description": "Calibrated posterior confidence in [0.50, 0.95] for PROMOTE/RELAX or [0.05, 0.25] for DEMOTE.",
@@ -341,6 +496,7 @@ def call_chat_completion(
     tools: Optional[List[Dict[str, Any]]] = None,
     max_tokens: int = 512,
     temperature: float = 0.0,
+    seed: int = 42,
 ) -> Dict[str, Any]:
     url = f"{api_base}/chat/completions"
     payload: Dict[str, Any] = {
@@ -348,6 +504,7 @@ def call_chat_completion(
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
+        "seed": seed,
         "chat_template_kwargs": {"enable_thinking": False},
     }
     if tools:
@@ -383,7 +540,9 @@ def solve_single_anomaly(
     model: str,
     model_mode: str,
     use_guardrail: bool,
-    max_turns: int = 3,
+    max_turns: int = 6,
+    seed: int = 42,
+    temperature: float = 0.0,
 ) -> Dict[str, Any]:
     t0 = time.time()
     anom_id = anomaly["anomaly_id"]
@@ -413,26 +572,21 @@ def solve_single_anomaly(
     if use_guardrail:
         sys_prompt = (
             "You are GSPA-Agent, a neuro-symbolic genome-scale protein function curation agent. "
-            "Your goal is to resolve genome-level functional anomalies (pathway gaps, incomplete heteromeric complexes, "
-            "missing essential functions, or borderline conflicts) with high precision.\n"
-            "Rules:\n"
-            "1. First call `check_symbolic_constraints` on the target GO term and organism taxon. If `valid=false`, immediately DEMOTE or RELAX (never PROMOTE).\n"
-            "2. PROMOTE a valid candidate protein ONLY if supported by multiple convergent signals: "
-            "e.g., (a) operon co-localization (`in_pathway_operon=true`), "
-            "(b) a strong RLGC Bayes factor (`rlgc_bayes_factor >= 3.0`), or "
-            "(c) multi-predictor consensus (`supporting_claims` from >= 2 sources with posterior >= 0.20).\n"
-            "3. For generic borderline conflicts (`GO:0005515`, `GO:0003677`, `GO:0016740`) without strong pathway/RLGC support (`rlgc_bayes_factor <= 1.5`), choose RELAX or ABSTAIN.\n"
-            "4. ABSTAIN when candidate evidence is weak (posterior < 0.25 with no operon or RLGC support).\n"
-            "5. Always call `propose_resolution` with your final structured decision. /no_think"
+            "Your task is to resolve genome-level functional anomalies (pathway gaps, incomplete heteromeric complexes, "
+            "missing essential functions, or borderline conflicts) by inspecting candidate evidence and ontology constraints.\n"
+            "Guidelines:\n"
+            "1. For GO terms, call `check_symbolic_constraints` to verify taxonomic and anatomical consistency for the organism. "
+            "If the target GO term violates a constraint, never PROMOTE it; choose DEMOTE or RELAX (if a valid ancestor exists and the protein has domain/sequence support).\n"
+            "2. Use `inspect_operon_neighborhood` and `query_protein_evidence` to evaluate whether a candidate protein has convergent genomic context (co-operonic pathway neighbors, RLGC density/Bayes factor) and sequence/structure/domain support.\n"
+            "3. Choose PROMOTE only when biological evidence supports assigning the target function to a specific candidate protein.\n"
+            "4. Choose RELAX when a broad or ancestor function is supported but the specific term is over-specific or constrained.\n"
+            "5. Choose DEMOTE or ABSTAIN when candidates are weak decoys or lack coherent functional support.\n"
+            "6. Submit your final decision via `propose_resolution`. /no_think"
         )
     else:
         sys_prompt = (
-            "You are an evidence-based genome protein function curation agent (without symbolic ontology constraints). "
-            "Decide based strictly on numerical predictor scores, PLM embeddings, operon co-localization, and RLGC Bayes factors.\n"
-            "Rules:\n"
-            "1. PROMOTE a candidate protein whenever it has strong numerical evidence (`in_pathway_operon=true`, `rlgc_bayes_factor >= 3.0`, or >= 2 `supporting_claims` with raw_score >= 0.45).\n"
-            "2. For generic low-BF candidates (`rlgc_bayes_factor <= 1.5` and `in_pathway_operon=false`), choose RELAX or ABSTAIN.\n"
-            "3. Always call `propose_resolution` with your final structured decision. /no_think"
+            "You are a genome protein function curation agent operating without symbolic ontology constraints. "
+            "Evaluate candidate proteins using `inspect_operon_neighborhood` and `query_protein_evidence` based on numerical predictor scores, domain hits, operon context, and RLGC evidence, then submit your decision via `propose_resolution`. /no_think"
         )
 
     user_prompt = (
@@ -442,7 +596,7 @@ def solve_single_anomaly(
         f"- Context: {json.dumps(anomaly.get('context', {}))}\n"
         f"- Candidates ({len(candidates)}):\n"
         f"{json.dumps(candidates, indent=2)}\n\n"
-        "Inspect evidence or constraints if needed, then call `propose_resolution`. /no_think"
+        "Inspect evidence or constraints as needed, then call `propose_resolution`. /no_think"
     )
 
     messages: List[Dict[str, Any]] = [
@@ -450,7 +604,6 @@ def solve_single_anomaly(
         {"role": "user", "content": user_prompt},
     ]
 
-    # For qwen-small single-turn mode, limit to 1 turn to emulate ultra-low-latency SLM routing
     effective_turns = 1 if model_mode == "qwen-small" else max_turns
     proposal: Optional[Dict[str, Any]] = None
     tool_calls_made = 0
@@ -464,14 +617,14 @@ def solve_single_anomaly(
                 messages=messages,
                 tools=tools_schema,
                 max_tokens=450,
-                temperature=0.0,
+                temperature=temperature,
+                seed=seed,
             )
             choice = resp["choices"][0]["message"]
             messages.append(choice)
             tcalls = choice.get("tool_calls") or []
 
             if not tcalls:
-                # Try parsing JSON from content if the model emitted raw JSON instead of a tool call
                 content = (choice.get("content") or "").strip()
                 m = re.search(r"\{.*\}", content, re.DOTALL)
                 if m:
@@ -482,7 +635,6 @@ def solve_single_anomaly(
                             break
                     except Exception:
                         pass
-                # Natural language fallback parsing if model answered in text
                 upper_content = content.upper()
                 for act in ["PROMOTE", "DEMOTE", "RELAX", "ABSTAIN"]:
                     if act in upper_content:
@@ -542,7 +694,10 @@ def solve_single_anomaly(
                 elif fn_name == "check_symbolic_constraints":
                     go_t = fn_args.get("go_term", target_func)
                     if use_guardrail:
-                        tool_out = guardrail.check_go_term(go_t, org_tax, allowed_vocab)
+                        chk = guardrail.check_go_term(go_t, org_tax, allowed_vocab)
+                        if not chk["valid"] and GO_ID_RE.match(go_t):
+                            chk["nearest_valid_ancestors"] = guardrail.find_nearest_valid_ancestors(go_t, org_tax)
+                        tool_out = chk
                     else:
                         tool_out = {
                             "valid": True,
@@ -597,7 +752,7 @@ def solve_single_anomaly(
         conf = 0.70
     rationale = str(proposal.get("rationale", "")).strip()
 
-    # Apply deterministic Symbolic Guardrail
+    # Apply deterministic closure-aware Symbolic Guardrail
     guardrail_status = "PASS"
     guardrail_note = ""
     if use_guardrail and action in ("PROMOTE", "RELAX"):
@@ -606,11 +761,37 @@ def solve_single_anomaly(
             guardrail_note = f"Proposed protein '{pid}' is not in the candidate set for {anom_id}."
             action = "ABSTAIN"
         elif func_id.startswith("GO:") or not EC_ID_RE.match(func_id):
-            chk = guardrail.check_go_term(func_id, org_tax, allowed_vocab)
-            if not chk["valid"]:
-                guardrail_status = "REJECTED"
-                guardrail_note = chk["reason"]
-                action = "ABSTAIN"
+            if action == "PROMOTE":
+                chk = guardrail.check_go_term(func_id, org_tax, allowed_vocab)
+                if not chk["valid"]:
+                    guardrail_status = "REJECTED"
+                    guardrail_note = chk["reason"]
+                    action = "ABSTAIN"
+            elif action == "RELAX":
+                # If the agent requested RELAX on the original target_func, or proposed a specific ancestor:
+                if func_id == target_func:
+                    chk_orig = guardrail.check_go_term(target_func, org_tax, allowed_vocab)
+                    if not chk_orig["valid"]:
+                        valid_ancs = guardrail.find_nearest_valid_ancestors(target_func, org_tax)
+                        if valid_ancs:
+                            func_id = valid_ancs[0]
+                            guardrail_note = f"Relaxed {target_func} to nearest valid ancestor {func_id}."
+                        else:
+                            guardrail_status = "REJECTED"
+                            guardrail_note = f"No valid non-root ancestor exists for {target_func} in {org_tax}."
+                            action = "ABSTAIN"
+                else:
+                    # Verify that proposed func_id is an ancestor of target_func and is valid
+                    ancs = guardrail.go_ancestors(target_func)
+                    chk_rel = guardrail.check_go_term(func_id, org_tax, allowed_vocab)
+                    if not chk_rel["valid"]:
+                        guardrail_status = "REJECTED"
+                        guardrail_note = chk_rel["reason"]
+                        action = "ABSTAIN"
+                    elif guardrail.go_parents and func_id not in ancs:
+                        guardrail_status = "REJECTED"
+                        guardrail_note = f"Proposed RELAX target {func_id} is not an ancestor of {target_func}."
+                        action = "ABSTAIN"
 
     return {
         "anomaly_id": anom_id,
@@ -624,6 +805,7 @@ def solve_single_anomaly(
         "guardrail_note": guardrail_note,
         "rationale": rationale,
         "tool_calls": tool_calls_made,
+        "seed": seed,
         "latency_sec": round(time.time() - t0, 4),
     }
 
@@ -636,6 +818,8 @@ def main() -> int:
     parser.add_argument("--api-base", default=None, help="OpenAI-compatible base URL")
     parser.add_argument("--max-concurrency", default=8, type=int, help="Max concurrent anomaly workers")
     parser.add_argument("--max-turns", default=6, type=int, help="Max multi-turn interaction budget")
+    parser.add_argument("--seed", default=42, type=int, help="Deterministic sampling seed")
+    parser.add_argument("--temperature", default=0.0, type=float, help="Sampling temperature")
     parser.add_argument("--resources-dir", default=None, type=Path, help="Path to ontology constraint resources directory")
     parser.add_argument("--no-guardrail", action="store_true", help="Disable Symbolic Guardrail (for ablation)")
     args = parser.parse_args()
@@ -685,6 +869,8 @@ def main() -> int:
                     args.model,
                     use_guardrail,
                     args.max_turns,
+                    args.seed,
+                    args.temperature,
                 )
                 for anom in anomalies
             ]

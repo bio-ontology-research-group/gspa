@@ -63,7 +63,7 @@ class AnatomicalConstraints {
     }
 
     /** GO_ID -> list of cross-product links to UBERON/PO/CL structures. */
-    Map<String, List<AnatomicalLink>> goToAnatomy = [:].withDefault { [] }
+    Map<String, List<AnatomicalLink>> goToAnatomy = [:]
 
     /** Anatomy_ID -> human label. */
     Map<String, String> anatomyLabels = [:]
@@ -72,16 +72,16 @@ class AnatomicalConstraints {
     Map<String, String> goLabels = [:]
 
     /** Anatomy_ID -> set of NCBITaxon_ID where structure can only occur. */
-    Map<String, Set<String>> anatomyOnlyIn = [:].withDefault { new LinkedHashSet<String>() }
+    Map<String, Set<String>> anatomyOnlyIn = [:]
 
     /** Anatomy_ID -> set of NCBITaxon_ID where structure never occurs. */
-    Map<String, Set<String>> anatomyNeverIn = [:].withDefault { new LinkedHashSet<String>() }
+    Map<String, Set<String>> anatomyNeverIn = [:]
 
     /** "Anatomy_ID|Constraint_Type|Taxon_ID" -> provenance source string. */
     Map<String, String> constraintSources = [:]
 
     /** Anatomy_ID -> parent Anatomy_IDs (is_a / part_of / develops_from). */
-    Map<String, Set<String>> anatomyParents = [:].withDefault { new LinkedHashSet<String>() }
+    Map<String, Set<String>> anatomyParents = [:]
 
     /**
      * Load bundled anatomical constraint tables from the classpath.
@@ -148,7 +148,7 @@ class AnatomicalConstraints {
                 anatomyId: f[4].trim(),
                 anatomyLabel: f[5].trim()
             )
-            goToAnatomy[link.goId] << link
+            goToAnatomy.computeIfAbsent(link.goId) { [] }.add(link)
             goLabels[link.goId] = link.goLabel
             anatomyLabels[link.anatomyId] = link.anatomyLabel
         }
@@ -168,11 +168,11 @@ class AnatomicalConstraints {
             String source = f.length >= 6 ? f[5].trim() : 'UBERON/PO'
             anatomyLabels[anatId] = anatLabel
             if (ctype == 'only_in_taxon') {
-                anatomyOnlyIn[anatId] << taxonId
+                anatomyOnlyIn.computeIfAbsent(anatId) { new LinkedHashSet<String>() }.add(taxonId)
                 constraintSources["${anatId}|only_in_taxon|${taxonId}".toString()] = source
                 count++
             } else if (ctype == 'never_in_taxon') {
-                anatomyNeverIn[anatId] << taxonId
+                anatomyNeverIn.computeIfAbsent(anatId) { new LinkedHashSet<String>() }.add(taxonId)
                 constraintSources["${anatId}|never_in_taxon|${taxonId}".toString()] = source
                 count++
             }
@@ -185,7 +185,7 @@ class AnatomicalConstraints {
             if (!line?.trim() || line.startsWith('#') || line.startsWith('Child_ID\t')) return
             def f = line.split('\t')
             if (f.length >= 3) {
-                anatomyParents[f[0].trim()] << f[2].trim()
+                anatomyParents.computeIfAbsent(f[0].trim()) { new LinkedHashSet<String>() }.add(f[2].trim())
             }
         }
     }
@@ -203,10 +203,10 @@ class AnatomicalConstraints {
         goToAnatomy.each { String goId, List<AnatomicalLink> links ->
             links.each { AnatomicalLink link ->
                 anatomyOnlyIn[link.anatomyId]?.each { String tax ->
-                    if (tc.onlyInTaxon[goId].add(tax)) added++
+                    if (tc.onlyInTaxon.computeIfAbsent(goId) { new LinkedHashSet<String>() }.add(tax)) added++
                 }
                 anatomyNeverIn[link.anatomyId]?.each { String tax ->
-                    if (tc.neverInTaxon[goId].add(tax)) added++
+                    if (tc.neverInTaxon.computeIfAbsent(goId) { new LinkedHashSet<String>() }.add(tax)) added++
                 }
             }
         }
@@ -257,7 +257,7 @@ class AnatomicalConstraints {
                     Set<String> reqLineage = checker.ancestorsWithSelf(reqTax)
                     boolean disjoint = false
                     for (String a : orgLineage) {
-                        Set<String> dis = checker.disjointWith[a]
+                        Set<String> dis = checker.disjointWith.containsKey(a) ? checker.disjointWith[a] : null
                         if (dis != null && dis.any { reqLineage.contains(it) }) {
                             disjoint = true
                             break
@@ -283,19 +283,26 @@ class AnatomicalConstraints {
         out
     }
 
+    private Map<String, Set<String>> forbiddenAnatCache = new java.util.concurrent.ConcurrentHashMap<>()
+    private Map<String, List<String>> relaxedAncestorsCache = new java.util.concurrent.ConcurrentHashMap<>()
+
     /**
      * Precompute the set of all directly anatomically-constrained GO terms that are
-     * forbidden in {@code organismTaxon}.
+     * forbidden in {@code organismTaxon}. Cached per {@code organismTaxon}.
      */
     Set<String> computeForbiddenGoTerms(String organismTaxon, SatConsistencyChecker checker) {
         if (!organismTaxon || checker == null) return Collections.emptySet()
+        Set<String> cached = forbiddenAnatCache.get(organismTaxon)
+        if (cached != null) return cached
         Set<String> forbidden = new LinkedHashSet<>()
         for (String goId : goToAnatomy.keySet()) {
             if (!checkTerm(goId, organismTaxon, checker, null).isEmpty()) {
                 forbidden.add(goId)
             }
         }
-        forbidden
+        Set<String> immutable = Collections.unmodifiableSet(forbidden)
+        forbiddenAnatCache.put(organismTaxon, immutable)
+        immutable
     }
 
     /**
@@ -324,64 +331,94 @@ class AnatomicalConstraints {
     }
 
     /**
-     * Semantic Ancestor Relaxation: given a GO term that violates a taxon or anatomical
-     * constraint in {@code organismTaxon}, perform breadth-first search up the GO hierarchy
-     * ({@code is_a} and {@code part_of}) to find the closest non-root ancestor GO term that
-     * is both taxon-consistent and anatomically consistent for {@code organismTaxon}.
+     * Semantic Ancestor Relaxation (multi-parent aware): given a GO term that violates a taxon
+     * or anatomical constraint in {@code organismTaxon}, perform level-by-level breadth-first
+     * search up the GO hierarchy ({@code is_a} and {@code part_of}) to find all valid non-root
+     * ancestor GO terms at the minimum valid BFS distance d_min.
      *
-     * @return the closest valid ancestor GO ID, or {@code null} if no non-root valid ancestor exists
+     * @return list of valid ancestors at minimum BFS distance (empty if none exist)
      */
-    String findValidRelaxedAncestor(String violatingGoTerm, String organismTaxon,
-                                    SatConsistencyChecker checker, GoOntology goOntology,
-                                    Set<String> forbiddenTerms = null) {
-        if (goOntology == null || checker == null || !organismTaxon) return null
+    List<String> findValidRelaxedAncestors(String violatingGoTerm, String organismTaxon,
+                                           SatConsistencyChecker checker, GoOntology goOntology,
+                                           Set<String> forbiddenTerms = null) {
+        if (goOntology == null || checker == null || !organismTaxon) return Collections.emptyList()
+        int forbHash = (forbiddenTerms != null && !forbiddenTerms.isEmpty()) ? forbiddenTerms.hashCode() : 0
+        String cacheKey = "${organismTaxon}|${violatingGoTerm}|${forbHash}".toString()
+        List<String> cached = relaxedAncestorsCache.get(cacheKey)
+        if (cached != null) return cached
+
         String prevOrg = checker.organismTaxon
         checker.organismTaxon = organismTaxon
         try {
             Set<String> visited = new HashSet<>()
-            Queue<String> queue = new ArrayDeque<>()
+            List<String> currentLevel = new ArrayList<>()
             visited.add(violatingGoTerm)
 
             def seedParents = new LinkedHashSet<String>()
             seedParents.addAll(goOntology.getDirectParents(violatingGoTerm))
             seedParents.addAll(goOntology.getPartOfParents(violatingGoTerm))
             for (String p : seedParents) {
-                if (visited.add(p)) queue.add(p)
+                if (!GO_ROOTS.contains(p) && visited.add(p)) {
+                    currentLevel.add(p)
+                }
             }
 
-            while (!queue.isEmpty()) {
-                String cand = queue.poll()
-                if (GO_ROOTS.contains(cand)) continue
+            while (!currentLevel.isEmpty()) {
+                List<String> validAtLevel = new ArrayList<>()
+                List<String> nextLevel = new ArrayList<>()
 
-                boolean candForbidden = (forbiddenTerms != null && forbiddenTerms.contains(cand))
-                if (!candForbidden) {
-                    // Check all ancestors of cand as well (true-path rule)
-                    Set<String> candClosure = goOntology.propagateAnnotations([cand] as Set)
-                    if (forbiddenTerms != null && candClosure.any { forbiddenTerms.contains(it) }) {
-                        candForbidden = true
-                    } else if (!checker.check(candClosure).consistent) {
-                        candForbidden = true
-                    } else if (!checkTerm(cand, organismTaxon, checker, goOntology).isEmpty()) {
-                        candForbidden = true
+                for (String cand : currentLevel) {
+                    if (GO_ROOTS.contains(cand)) continue
+
+                    boolean candForbidden = (forbiddenTerms != null && forbiddenTerms.contains(cand))
+                    if (!candForbidden) {
+                        Set<String> candClosure = goOntology.propagateAnnotations([cand] as Set)
+                        if (forbiddenTerms != null && candClosure.any { forbiddenTerms.contains(it) }) {
+                            candForbidden = true
+                        } else if (!checker.check(candClosure).consistent) {
+                            candForbidden = true
+                        } else if (!checkTerm(cand, organismTaxon, checker, goOntology).isEmpty()) {
+                            candForbidden = true
+                        }
+                    }
+
+                    if (!candForbidden) {
+                        validAtLevel.add(cand)
+                    } else {
+                        def parents = new LinkedHashSet<String>()
+                        parents.addAll(goOntology.getDirectParents(cand))
+                        parents.addAll(goOntology.getPartOfParents(cand))
+                        for (String p : parents) {
+                            if (!GO_ROOTS.contains(p) && visited.add(p)) {
+                                nextLevel.add(p)
+                            }
+                        }
                     }
                 }
 
-                if (!candForbidden) {
-                    return cand
+                if (!validAtLevel.isEmpty()) {
+                    List<String> immutable = Collections.unmodifiableList(validAtLevel)
+                    relaxedAncestorsCache.put(cacheKey, immutable)
+                    return immutable
                 }
-
-                def parents = new LinkedHashSet<String>()
-                parents.addAll(goOntology.getDirectParents(cand))
-                parents.addAll(goOntology.getPartOfParents(cand))
-                for (String p : parents) {
-                    if (!GO_ROOTS.contains(p) && visited.add(p)) {
-                        queue.add(p)
-                    }
-                }
+                currentLevel = nextLevel
             }
-            return null
+            List<String> empty = Collections.emptyList()
+            relaxedAncestorsCache.put(cacheKey, empty)
+            return empty
         } finally {
             checker.organismTaxon = prevOrg
         }
+    }
+
+    /**
+     * Convenience wrapper returning the primary (first) valid ancestor at minimum BFS distance,
+     * or {@code null} if no non-root valid ancestor exists.
+     */
+    String findValidRelaxedAncestor(String violatingGoTerm, String organismTaxon,
+                                    SatConsistencyChecker checker, GoOntology goOntology,
+                                    Set<String> forbiddenTerms = null) {
+        List<String> valid = findValidRelaxedAncestors(violatingGoTerm, organismTaxon, checker, goOntology, forbiddenTerms)
+        valid.isEmpty() ? null : valid[0]
     }
 }

@@ -10,24 +10,35 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-10-14
+## [2.1.0] - 2026-10-14
 
 ### Added
-- **Unified Three-Stage Neuro-Symbolic Architecture (`GSPA v2.0.0`)**:
-  - **Stage 1 — Iterative Bayesian Evidence Integration (`IterativeRefiner`)**: Jointly refines calibrated per-protein posteriors across all six genome-scale priors (`essentiality`, `coherence`, `consistency`, `anatomical`, `gap_filling`, `genomic_context`) with damped coordinate ascent ($\lambda = 0.5$).
-  - **Stage 2 — Deterministic Symbolic Constraint & Coherence Enforcement (`ConsistencyEnforcer`, `--enforce-stage2`)**: Guarantees $100\%$ taxonomic and anatomical consistency via SAT4J UNSAT-core semantic ancestor relaxation (`--enforce-consistency-mode relax`, recovering unpenalized evidence log-odds when relaxing a clade-violating child GO term to its most specific valid ancestor) and prunes isolated singleton subunit false positives of obligate heteromeric complexes (`--prune-singleton-complexes`).
-  - **Stage 3 — Optional Neuro-Symbolic Agentic Annotation Completion (`gspa-agent`, `--enable-agent` / `./gspa agent`)**: Extracts post-Stage-2 genome-scale anomalies (`PATHWAY_GAP`, `INCOMPLETE_COMPLEX`, `BORDERLINE_ESSENTIAL`, `BORDERLINE_CONFLICT`) via `AnomalyExtractor` and resolves them using local/cluster open-weight language models (`Qwen 3.8 27B` or fast 1-step SLM mode) equipped with five read-only genomic tools and gated by a deterministic `SymbolicGuardrail` (`0.0%` ontology violations).
+- **Stage 2B Flux-Certified Stoichiometric Locus Refiner (`StoichiometricLocusRefiner`, `--enable-fba-refiner`)**:
+  - Implemented `GprMechanismCompiler`, `SparseRoleAggregator` (Top-$M$ isozyme OR and geometric-mean subunit AND), positive-cost LP/MILP repair + two-step lexicographic parsimonious FBA (`pFBA`) in HiGHS (`scripts/stoichiometric_locus_refiner.py`), and `LocusResponsibilityUpdater` ($r_{j,u}(p) \propto w_{j,u}(p)$ with explicit unassigned/novel gene hypothesis $h_\varnothing$).
+  - Audited across 108 bacterial metabolic reconstructions (`results/pillar2_invariant_audit_summary.tsv`), eliminating the `97.6%` uncertified zero-flux reaction padding of negative-cost MILP gap-filling (`METEOR v8`: `305.84 / 313.35` zero-flux additions/genome vs. `StoichiometricLocusRefiner`: `0.0 / 7.75 = 0.0%` padding, `100.0%` flux-certified).
+- **Multi-Channel Homology Masking (`Protocol H`), Out-of-Clade Generalization (`Protocol D`), and 8 Immutable Benchmark Suites (`benchmark/manifests/`)**:
+  - Implemented `benchmark/manifests/apply_protocol_H.py` and `build_all_manifests.py` with SHA-256 verification (`MANIFEST_CHECKSUMS.sha256`) covering `Suite 1` (CAFA Temporal Holdouts + `Holdout-125`), `Suite 2` (25 Reference Proteomes under `Protocol H` at 100%, $\le 70\%$, $\le 50\%$, $\le 30\%$, Genus, Family + `Protocol D`), `Suites 3–5` (Role-Stratified LRO across `Strata A, B, C` and 5 formal Recoverability Ceilings $\mathcal{C}_{\text{struct}}, \mathcal{C}_{\text{task}}, \mathcal{C}_{\text{unique}}, \mathcal{C}_{\text{operon}}, \mathcal{C}_{\text{complex}}$), `Suite 6` (`Price-149` RB-TnSeq proteins across 8 enzyme predictors), and `Suites 7–8` (`BacDive` bacterial strains across `50,075` diagnostic enzyme pairs, `17,496` type-strain enzyme assays, and `2,332` carbon-source assays in `Track 1` and `Track 2`).
+- **Non-Agentic Reranker Baselines (`Pillar 5`) & Empty Quarter Extremophile Vignette (`Pillar 6`)**:
+  - Added 5-fold cross-validated Logistic Regression and GBDT tabular reranker baselines (`results/pillar5_agent_vs_rerankers.tsv`) and desert extremophile case study (`results/pillar6_empty_quarter_vignette.tsv`).
+
+## [2.0.0] - 2026-10-12
+
+### Added
+- **Unified Four-Stage Neuro-Symbolic Architecture (`GSPA v2.0.0`)**:
+  - **Stage 1 — Iterative Bayesian Evidence Integration (`IterativeRefiner`)**: Jointly refines calibrated per-protein posteriors across all six genome-scale priors (`essentiality`, `coherence`, `consistency`, `anatomical`, `gap_filling`, `genomic_context`).
+  - **Stage 2A — Deterministic Symbolic Constraint & Coherence Enforcement (`ConsistencyEnforcer`, `--enforce-stage2`)**: Guarantees $100\%$ taxonomic and anatomical consistency via semantic ancestor relaxation (`--enforce-consistency-mode relax`) and prunes isolated singleton subunit false positives of obligate heteromeric complexes (`--prune-singleton-complexes`).
+  - **Stage 3 — Optional Neuro-Symbolic Agentic Annotation Completion (`gspa-agent`, `--enable-agent` / `./gspa agent`)**: Extracts post-Stage-2 genome-scale anomalies (`PATHWAY_GAP`, `INCOMPLETE_COMPLEX`, `BORDERLINE_ESSENTIAL`, `BORDERLINE_CONFLICT`) via `AnomalyExtractor` and resolves them using local/cluster open-weight language models (`Qwen2.5-32B-Instruct` or fast 1-step SLM mode) equipped with five read-only genomic tools and gated by a deterministic `SymbolicGuardrail` (`0.0%` ontology violations).
 - **Cross-Ontology Anatomical & Developmental Constraints (`AnatomicalConstraints`, `AnatomicalPrior`)**:
-  - Programmatically extracted and bundled **2,714** verified GO–Uberon/Plant Ontology (`PO`)/Cell Ontology (`CL`) logical definitions (`go-anatomical-constraints.tsv`), **8,330** anatomical taxon constraints (`uberon-po-taxon-constraints.tsv`), **29,211** anatomical `is_a`/`part_of` hierarchy edges (`uberon-po-hierarchy.tsv`), and **11,466** NCBI taxonomy hierarchy edges (`ncbi-taxon-hierarchy.tsv`).
-  - Active-structure developmental boost (`+1.2` log-odds) rescues borderline true developmental/morphogenetic GO terms when structural markers of the target organ/tissue are supported in the genome (`79.8%` recovery across 575 held-out eukaryotic developmental annotations).
+  - Programmatically extracted and bundled **2,714** verified GO–Uberon/Plant Ontology (`PO`)/Cell Ontology (`CL`) logical definitions (`go-anatomical-constraints.tsv`), **8,330** anatomical taxon constraints (`uberon-po-taxon-constraints.tsv`), **27,158** anatomical `is_a`/`part_of` hierarchy edges (`uberon-po-hierarchy.tsv`), and **30,523** NCBI taxonomy hierarchy edges (`ncbi-taxon-hierarchy.tsv`).
+  - Active-structure developmental boost (`+1.10` log-odds) rescues borderline true developmental/morphogenetic GO terms when structural markers of the target organ/tissue are supported in the genome (`79.8%` recovery across 575 held-out eukaryotic developmental annotations).
 - **Obligate Heteromeric Protein Complex Completion (`CoherencePrior`, `complex_terms.tsv`)**:
   - Bundled `complex_terms.tsv` (1,923 GO protein complex terms classified into homomeric `h`, obligate heteromeric `n`, and ambiguous `a`, plus 27 complexes with explicit required catalytic/structural subunit mappings).
-  - Boosts borderline missing subunits when $\ge 60\%$ of partner subunits are present (`+1.5` log-odds) and attenuates isolated singleton subunit false positives (`-1.5` log-odds), raising Leave-Subunit-Out (LSO) $F_1$@0.50 from `0.000` to `0.742` (`100.0%` recall, `98.3%` Hit@1 across 175 held-out subunits in 6 prokaryotes).
-- **Stand-Alone Packaging & Documentation (`./gspa`, `gspa-2.0.0.jar`, `docs/CLI_REFERENCE.md`)**:
-  - Self-contained executable fat JAR (`gspa-2.0.0.jar`) bundling all ontology constraint tables, essentiality presets, HTML5 visualization templates, and the Stage 3 `run_gspa_agent.py` sidecar.
+  - Boosts borderline missing subunits when $\ge 70\%$ of partner subunits are present (`+1.5` log-odds) and attenuates isolated singleton subunit false positives (`-1.2` log-odds), raising Leave-Subunit-Out (LSO) $F_1$@0.50 from `0.000` to `0.7423` (`100.0%` recall, `98.29%` Hit@1 across 175 held-out subunits in 6 prokaryotes).
+- **Stand-Alone Packaging & Documentation (`./gspa`, `gspa-2.1.0.jar`, `docs/CLI_REFERENCE.md`)**:
+  - Self-contained executable fat JAR (`gspa-2.1.0.jar`) bundling all ontology constraint tables, essentiality presets, HTML5 visualization templates, and the Stage 3 `run_gspa_agent.py` sidecar.
   - Stand-alone root launcher script (`./gspa`) and comprehensive CLI documentation (`docs/CLI_REFERENCE.md`).
-- **Four-Pillar Empirical Benchmark Suite (`benchmark/unified/`, `results/`, `paper/`)**:
-  - Complete reproducible benchmark suite and empirical results across 21 reference genomes, 13 PGAP/DeepFRI genomes, 97 uncultured MAGs (16 phyla), 1,248 LRO metabolic gap-filling reactions, 175 LSO complex subunits, 6 multicellular/unicellular eukaryotes, and 120 Stage 3 agent anomalies.
+- **Empirical Benchmark Suite (`benchmark/unified/`, `results/`, `paper/`)**:
+  - Complete reproducible benchmark suite and empirical results across 21 reference genomes, 13 PGAP/DeepFRI genomes, 97 uncultured MAGs (16 phyla), LRO metabolic gap-filling reactions, 175 LSO complex subunits, 6 multicellular/unicellular eukaryotes, and 120 Stage 3 agent anomalies.
 
 ### Added (v1.5.x — v2.0.0 Pre-Release Development)
 - **DeepGO-PlusPlus-Light webservice + bridge optimization** (`deepgo-plusplus/service/`,

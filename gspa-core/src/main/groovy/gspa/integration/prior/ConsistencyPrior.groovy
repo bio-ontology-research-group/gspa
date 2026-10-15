@@ -67,20 +67,7 @@ class ConsistencyPrior implements Prior {
             if (checker.organismTaxon != cachedOrganismTaxon) {
                 cachedOrganismTaxon = checker.organismTaxon
                 termForbiddenMemo.clear()
-                Set<String> constrained = new LinkedHashSet<>()
-                if (checker.taxonConstraints != null) {
-                    constrained.addAll(checker.taxonConstraints.onlyInTaxon.keySet())
-                    constrained.addAll(checker.taxonConstraints.neverInTaxon.keySet())
-                }
-                Set<String> orgForbidden = new LinkedHashSet<>()
-                for (String t : constrained) {
-                    try {
-                        if (!checker.check([t] as Set).consistent) {
-                            orgForbidden.add(t)
-                        }
-                    } catch (Exception ignored) {}
-                }
-                cachedOrganismForbidden = orgForbidden
+                cachedOrganismForbidden = checker.getForbiddenConstrainedTerms()
             }
             terms.addAll(cachedOrganismForbidden)
         }

@@ -74,6 +74,7 @@ class EssentialFunctions {
             case OrganismDomain.BACTERIA -> 'bacteria'
             case OrganismDomain.ARCHAEA -> 'archaea'
             case OrganismDomain.EUKARYA -> 'eukaryote'
+            case OrganismDomain.VIRUS -> 'virus'
             default -> 'bacteria'
         }
 
