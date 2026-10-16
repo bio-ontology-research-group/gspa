@@ -1,0 +1,36 @@
+# Round 1 Final Technical & Code Validation Gate Report (`v6`) — GSPA v2.1.0
+
+**VERDICT: ACCEPTED (NO FURTHER TECHNICAL/CODE REVISIONS REQUIRED)**
+
+## 1. Executive Summary
+Following the external `claude-fable-5-1` Round 1 validation report (`paper/review_round3_fable_validation_v5.txt`), which verified that all 13 code/equation/statistical/provenance fixes from `v4` and all carried-over `v2`/`v3`/Astra items are genuinely fixed in the codebase and test suite (`./gradlew clean test`: `BUILD SUCCESSFUL, 78 Spock spec files / 80 JUnit XML reports, 433 tests, 0 failures, 0 errors, 2 skipped`) and identified 8 final text/table/provenance synchronization items, we audited `HEAD` (`4e925a2`, tagged `v2.1.0`) across `paper/main.tex`, `paper/supplement.tex`, `results/PROVENANCE_MAP.md`, and `paper/response_round3_science_code.md`.
+
+All 8 items from `paper/review_round3_fable_validation_v5.txt` are **100% resolved** with zero remaining discrepancies.
+
+---
+
+## 2. Item-by-Item Verification of the 8 `v5` Text/Table/Provenance Items
+
+1. **Item 1 (`paper/supplement.tex` Section S1 & Table S1 `\label{tab:supp_hyperparams}`, lines 65–95):** **VERIFIED FIXED.**
+   - `alpha_coh` is set to `$1.00$`, `alpha_complex_boost` ($w_{\text{part}}$) is set to `$0.85$` (with `$0.65\,w_{\text{part}} = 0.5525$` for $N_{\text{strong}} \ge 2$ documented in the role column), and `alpha_gap_ctx` is set to `$1.50$` (with the fixed co-operonic complex bonus `complexOperonPartnerWeight = 0.95` documented in Section S1 line 65).
+   - `alpha_complex_penalty = 0.75`, `alpha_cons = 3.00`, and `alpha_anat_penalty = 3.50` are listed as positive magnitudes with explicit sign-convention notes (`applied as -0.75`, `applied as -3.00`, `applied as -3.50`) in both Section S1 (line 65) and Table S1 (lines 79–81).
+2. **Item 2 (`paper/main.tex` line 126, per-genome `A9 - A1` CAFA $F_{\max}$ deltas):** **VERIFIED FIXED.**
+   - Line 126 states `"decreasing by $0.0005$--$0.0036$ across 8 of 9 genomes and increasing by $+0.0067$ on \textit{E.~coli} K-12"`, matching `results/pillar1_2_ablation_per_genome.tsv` exactly.
+3. **Item 3 (`paper/main.tex` lines 126, 128, four `A7`/`A9` sample s.d. values):** **VERIFIED FIXED.**
+   - Line 126 reports experimental-only micro $F_{\max} = 0.2847 \pm 0.0832$ and experimental-only CAFA $F_{\max} = 0.2366 \pm 0.0928$.
+   - Line 128 reports $C_{\text{ess}} = 0.9479 \pm 0.0716$ and $C_{\text{cplx}} = 0.8852 \pm 0.1256$, matching `results/pillar1_2_ablation_per_genome.tsv` (`ddof=1`) to 4 decimal places.
+4. **Item 4 (`paper/main.tex` Table 5, lines 306, 318–319, non-*E. coli* Complex Coherence):** **VERIFIED FIXED.**
+   - Lines 318–319 report the case-weighted Complex Coherence `0.7047` across the 145 non-*E. coli* K-12 instances (matching the case-weighted convention of the other four columns), and the caption at line 306 explicitly states both `0.7047` (case-weighted) and `0.7016` (unweighted across the 5 species).
+5. **Item 5 (`paper/main.tex` Discussion line 417, ancestral GO relaxations):** **VERIFIED FIXED.**
+   - Line 417 states `"proposing a 3-seed mean of $13.7$ valid ancestral GO relaxations across the 120 anomalies ($15, 12,$ and $14$ across seeds $42, 43,$ and $44$; $2/15$ real conflicts and $11/15$ cross-clade traps relaxed, and $13/15$ real conflicts demoted at seed $42$)"`, reconciling the 3-seed total relaxation mean (`13.7`) with the seed-42 breakdown in Section 2.5 (`paper/main.tex:387`).
+6. **Item 6 (`results/PROVENANCE_MAP.md` table labels, column headers, and runtime archive):** **VERIFIED FIXED.**
+   - All Supplementary Table numbers and labels (`Tables S1–S4`, `Table S5 (tab:supp_bigg)`, `Table S6 (tab:supp_bacdive_cv)`, `Tables S7–S8 (tab:supp_multiseed, tab:supp_extremophile)`) match `paper/supplement.tex` 100%.
+   - Row 15 lists the exact 13 column headers of `results/all_8_scenarios_sota_iterative_runtime_memory.tsv` (`scenario`, `cohort`, `split_regime`, `method`, `iterations`, `primary_metric_name`, `primary_metric`, `secondary_metric_name`, `secondary_metric`, `ec_holdout125_fmax`, `violations_or_padding`, `runtime_sec_per_genome`, `peak_ram_mb`), and Rows 10–11 cite `results/all_8_scenarios_sota_iterative_runtime_memory.tsv` as the source of the `313.8 s/genome` and `18.0 s` runtime figures and the Table 4 runtime column.
+7. **Item 7 (`paper/response_round3_science_code.md` Part I Item 3, Part IV Item 13, and Part V):** **VERIFIED FIXED.**
+   - Line 3 and line 148 state `78 Spock spec files / 80 JUnit XML reports, 433 tests, 0 failures, 0 errors, 2 skipped`.
+   - Line 22 (Part I Item 3) reports the exact `Price-149` dataset macro/micro $F_{\max}$ values matching `results/pillar2_price149_all6_real.tsv` and `paper/main.tex:226`, and Part V (lines 152–170) documents the resolution of all 8 Fable `v5` items.
+8. **Item 8 (Minor provenance items `8a–8d` across `paper/main.tex` lines 132, 136, 224, 232, 580 and `results/PROVENANCE_MAP.md`):** **VERIFIED FIXED.**
+   - **(8a)** `paper/main.tex` lines 224 and 232 and `results/PROVENANCE_MAP.md` lines 10–11 explicitly cite `results/all_8_scenarios_sota_iterative_runtime_memory.tsv` for the `313.8 s/genome` figure and the Table 4 runtime column.
+   - **(8b)** `paper/main.tex` line 136 and `results/PROVENANCE_MAP.md` line 8 explicitly state that the `16,125` protein–aspect cohort decomposition (`4,712` MF, `5,444` BP, `5,969` CC) in `results/scenario1_cafa_temporal_holdout_real.tsv` is transcribed from the cluster evaluation archive over the `24,278` holdout GO annotations in `suite1_cafa_temporal_manifest.tsv`.
+   - **(8c)** The unarchived `\pm 0.086` s.d. has been removed at `paper/main.tex` line 132 (`0.8180`).
+   - **(8d)** `paper/main.tex` line 580 explicitly qualifies the threshold grid as `$\theta \in \{0.01, \dots, 0.99\}$, or $\theta \in \{0.10, 0.20, \dots, 0.90\}$ in the eukaryotic anatomical perturbation suite \texttt{run\_pillar3\_eukaryotic\_anatomy.py:508}`.
