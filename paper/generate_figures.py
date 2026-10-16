@@ -99,8 +99,8 @@ def save_fig(fig, stem: str):
 # Figure 1: Unified 3-Stage Architecture of GSPA
 # =====================================================================
 def generate_figure1():
-    fig, ax = plt.subplots(figsize=(13.2, 6.6))
-    ax.set_xlim(0, 102)
+    fig, ax = plt.subplots(figsize=(13.8, 6.6))
+    ax.set_xlim(0, 109)
     ax.set_ylim(0, 54)
     ax.axis("off")
 
@@ -132,10 +132,10 @@ def generate_figure1():
             is_bold = line.startswith("*")
             clean = line.lstrip("*")
             ax.text(
-                x + 1.0, top_y - idx * 2.02,
+                x + 0.9, top_y - idx * 2.02,
                 clean,
                 ha="left", va="top",
-                fontsize=7.55,
+                fontsize=7.35,
                 fontweight="bold" if is_bold else "normal",
                 color="#1F2937",
             )
@@ -155,20 +155,20 @@ def generate_figure1():
             ax.text(
                 tx, ty,
                 label, ha="center", va="center",
-                fontsize=7.5, fontweight="bold", color="#34495E",
-                bbox=dict(boxstyle="round,pad=0.15", facecolor="#FFFFFF", edgecolor="none", alpha=0.85),
+                fontsize=7.3, fontweight="bold", color="#34495E",
+                bbox=dict(boxstyle="round,pad=0.10", facecolor="#FFFFFF", edgecolor="none", alpha=0.92),
             )
 
     # Top Title Banner
     ax.text(
-        51, 52.0,
+        54.5, 52.0,
         "GSPA v2.1.0: Unified Four-Stage Genome-Scale Protein Function Annotation Architecture",
         ha="center", va="center", fontsize=12, fontweight="bold", color=PALETTE["navy"],
     )
 
     # Column 1: Multi-Evidence Inputs & Genome Context
     draw_box(
-        1.0, 26.5, 20.5, 23.0,
+        0.8, 26.5, 20.8, 23.0,
         "1A. Stage 0 Evidence",
         [
             "*Homology & Domain Channels:",
@@ -177,19 +177,19 @@ def generate_figure1():
             "*Structure & PLM Channels:",
             "• ESM-2 / ProtT5 kNN + CLEAN",
             "• DeepGOZero/SE + ProteInfer",
-            "• FoldSeek / DeepFRI Structure",
-            "*Empirical Isotonic Calibration",
+            "• FoldSeek / ProstT5 Structure",
+            "*Platt Logistic Calibration",
         ],
         fc=PALETTE["navy"], ec=PALETTE["navy"],
     )
 
     draw_box(
-        1.0, 1.5, 20.5, 22.5,
+        0.8, 1.5, 20.8, 22.5,
         "1B. Whole-Genome Context",
         [
             "*Genomic Coordinates (GFF3):",
             "• Co-directional Operon Calls",
-            "*Metabolic Network (gapseq/BiGG):",
+            "*Metabolic Network (gapseq/SEED):",
             "• Draft Stoichiometric Gaps",
             "• KEGG Modules & MetaCyc",
             "*Taxon & Anatomy Ontologies:",
@@ -201,24 +201,24 @@ def generate_figure1():
 
     # Column 2: Stage 1 Iterative Bayesian Integration
     draw_box(
-        26.0, 9.5, 24.5, 40.0,
+        27.4, 9.5, 24.8, 40.0,
         "Stage 1: Bayesian Refiner",
         [
             "*Log-Odds Fixed-Point Update (k=1..6):",
-            "  L(p,f) = L_0(p,f) + Σ α_m B_m(p,f)",
+            "  L(p,f) = L₀(p,f) + Σ w_m B_m(p,f)",
             "",
             "*Six Genome-Scale Priors:",
-            "• EssentialityPrior (+α_ess):",
+            "• EssentialityPrior (+α_ess = 1.5):",
             "  Universal/domain core GO categories",
-            "• CoherencePrior (+α_coh, -β_single):",
+            "• CoherencePrior (+α_coh, −w_sing):",
             "  Pathway & heteromeric complex support",
-            "• ConsistencyPrior (-α_cons):",
-            "  SAT4J Xplain minimal UNSAT cores",
-            "• AnatomicalPrior (-α_anat, +α_boost):",
+            "• ConsistencyPrior (−α_cons = −3.0):",
+            "  SAT4J minimal UNSAT cores",
+            "• AnatomicalPrior (−α_anat, +α_boost):",
             "  Uberon/PO/CL cross-product bridge",
-            "• GapFillingPrior + RLGC S2:",
+            "• GapFillingPrior + RLGC Kernel:",
             "  Reaction-local genomic context + PLM",
-            "• GenomicContextPrior (+α_operon):",
+            "• GenomicContextPrior (+α_ctx = 1.0):",
             "  Co-operonic pathway/complex boost",
         ],
         fc=PALETTE["teal"], ec=PALETTE["teal"],
@@ -226,7 +226,7 @@ def generate_figure1():
 
     # Column 3: Stage 2 Symbolic SAT & Stoichiometric Enforcement
     draw_box(
-        55.0, 26.0, 21.5, 23.5,
+        58.0, 26.0, 21.8, 23.5,
         "Stage 2A/2B: Symbolic & pFBA",
         [
             "*2A. Deterministic Ontology Gate:",
@@ -236,7 +236,7 @@ def generate_figure1():
             "  nearest valid GO ancestor a*",
             "*2B. StoichiometricLocusRefiner:",
             "• Positive-cost LP + pFBA flux",
-            "  certification (|v_j| > 10^-6)",
+            "  certification (|v_j| > 10⁻⁶)",
             "• Outer feedback ΔL_FBA to Stage 1",
         ],
         fc=PALETTE["orange"], ec=PALETTE["orange"], title_color="#111111",
@@ -244,7 +244,7 @@ def generate_figure1():
 
     # Column 3 Bottom: Output & GAEF Evaluator
     draw_box(
-        55.0, 1.5, 21.5, 21.0,
+        58.0, 1.5, 21.8, 21.0,
         "Output & GAEF Audit",
         [
             "*Calibrated Proteome Output:",
@@ -253,27 +253,27 @@ def generate_figure1():
             "• Essential Completeness (C_ess)",
             "• Pathway & Complex Coherence",
             "• Taxon/Anatomical Consistency",
-            "• Composite Quality Score",
+            "• Composite Structural Score",
         ],
         fc=PALETTE["navy"], ec=PALETTE["navy"],
     )
 
     # Column 4: Stage 3 Optional Neuro-Symbolic Agentic Layer
     draw_box(
-        81.0, 9.5, 20.0, 40.0,
+        85.8, 9.5, 22.0, 40.0,
         "Stage 3: GSPA-Agent",
         [
             "*Selective Anomaly Trigger:",
             "• Inspects 1.8% mean (<2.5% max)",
-            "• PATHWAY_GAP & COMPLEX",
-            "• BORDERLINE_ESSENTIAL",
-            "• BORDERLINE_CONFLICT",
+            "• Pathway Gap & Complex Subunit",
+            "• Borderline Essential Function",
+            "• Borderline Taxon/Anat Conflict",
             "",
-            "*Tool-Using Local LLM:",
-            "• inspect_operon_neighborhood",
-            "• inspect_pathway_or_complex",
-            "• query_protein_evidence",
-            "• check_symbolic_constraints",
+            "*Tool-Using Local LLM (Qwen 27B):",
+            "• Operon neighborhood inspection",
+            "• Pathway & complex gap inspection",
+            "• Per-protein evidence lookup",
+            "• Symbolic constraint checker",
             "",
             "*Symbolic Guardrail Gate:",
             "• Blocks hallucinated GO/EC IDs",
@@ -283,14 +283,14 @@ def generate_figure1():
         fc=PALETTE["vermilion"], ec=PALETTE["vermilion"],
     )
 
-    # Connecting arrows with clean whitespace label placement
-    draw_arrow(21.8, 38.0, 25.7, 35.0, "Claims", lx=23.7, ly=38.3)
-    draw_arrow(21.8, 13.0, 25.7, 22.0, "Priors", lx=23.7, ly=15.0)
-    draw_arrow(50.8, 35.0, 54.7, 36.5, "Posteriors", lx=52.8, ly=38.0)
-    draw_arrow(54.7, 30.0, 50.8, 28.5, "ΔL_FBA", lx=52.8, ly=26.8)
-    draw_arrow(65.7, 25.7, 65.7, 22.8, "Enforced", lx=70.2, ly=24.3)
-    draw_arrow(76.8, 38.0, 80.7, 38.0, "Anomalies", lx=78.8, ly=40.0)
-    draw_arrow(80.7, 18.0, 76.8, 15.0, "Guarded", lx=78.8, ly=14.3)
+    # Connecting arrows with generous whitespace label placement
+    draw_arrow(21.9, 38.0, 27.1, 35.5, "Claims", lx=24.5, ly=38.6)
+    draw_arrow(21.9, 13.5, 27.1, 21.0, "Priors", lx=24.5, ly=19.8)
+    draw_arrow(52.5, 36.0, 57.7, 36.8, "Posteriors", lx=55.1, ly=38.5)
+    draw_arrow(57.7, 30.0, 52.5, 29.0, "ΔL_FBA", lx=55.1, ly=27.1)
+    draw_arrow(68.9, 25.7, 68.9, 22.8, "Enforced", lx=73.4, ly=24.3)
+    draw_arrow(80.1, 38.0, 85.5, 38.0, "Anomalies", lx=82.8, ly=40.0)
+    draw_arrow(85.5, 17.5, 80.1, 15.0, "Guarded", lx=82.8, ly=14.0)
 
     save_fig(fig, "fig1_architecture")
 
@@ -344,7 +344,17 @@ def generate_figure2():
     ax = axes[0, 1]
     add_panel_label(ax, "b")
     genomes = ["ecoli", "bsubtilis", "hpylori", "mgenitalium", "mjannaschii", "mtb", "paeruginosa", "synechocystis", "ecolo157"]
-    g_names = ["E. coli K-12*", "B. subtilis", "H. pylori", "M. genitalium", "M. jannaschii", "M. tuberculosis", "P. aeruginosa", "Synechocystis", "E. coli O157"]
+    g_names = [
+        r"$\it{E.\ coli}$ K-12*",
+        r"$\it{B.\ subtilis}$",
+        r"$\it{H.\ pylori}$",
+        r"$\it{M.\ genitalium}$",
+        r"$\it{M.\ jannaschii}$",
+        r"$\it{M.\ tuberculosis}$",
+        r"$\it{P.\ aeruginosa}$",
+        r"$\it{Synechocystis}$",
+        r"$\it{E.\ coli}$ O157",
+    ]
     a1_by_g = {r["genome"]: float(r["composite_score"]) for r in per_genome_rows if r["config"] == "A1_noisy_or"}
     a9_by_g = {r["genome"]: float(r["composite_score"]) for r in per_genome_rows if r["config"] == "A9_stage2_relax"}
 
@@ -361,8 +371,8 @@ def generate_figure2():
     ax.set_yticklabels(g_names)
     ax.set_xlim(0.70, 0.96)
     ax.set_ylim(-0.6, 10.6)
-    ax.set_xlabel("GAEF Composite Quality Score (*E. coli K-12 calibration reference)")
-    ax.set_title("Per-Genome GAEF Gain (8 Non-E. coli Mean: 0.843→0.860)")
+    ax.set_xlabel(r"GAEF Composite Quality Score (*$\it{E.\ coli}$ K-12 calibration reference)")
+    ax.set_title(r"Per-Genome GAEF Gain (8 Non-$\it{E.\ coli}$ Mean: 0.843→0.860)")
     ax.grid(True, axis="x")
     ax.legend(loc="upper right", frameon=True, fontsize=7.6)
 
@@ -398,17 +408,17 @@ def generate_figure2():
     panel_lookup = {(r["panel"], r["method"]): r for r in panel_rows}
     panel_items = [
         ("Panel13_Prok11", "metagenomic-deepFRI (Bezshapkin et al. 2026)", "metagenomic-deepFRI\n(11-prok, 2026)"),
+        ("Panel9_Sub9", "gLM / gLM2 Genomic LM (Hwang et al. 2024)", "gLM / gLM2\n(9-genome, 2024/25)"),
+        ("Panel21_All21", "ProteInfer (Sanderson et al. 2023)", "ProteInfer\n(21-genome, 2023)"),
+        ("Panel21_All21", "ESM2-DeepGOPlus (2024)", "ESM2-DeepGOPlus\n(21-genome, 2024)"),
+        ("Panel21_All21", "InterProScan 5.72", "InterProScan 5.72\n(21-genome panel)"),
+        ("Panel21_All21", "FoldSeek + ProstT5 3Di (2024)", "FoldSeek+ProstT5\n(21-genome, 2024)"),
+        ("Panel21_All21", "DIAMOND-BLASTp", "DIAMOND-BLASTp\n(21-genome panel)"),
+        ("Panel21_All21", "ESM-2 kNN (Lin et al. 2023)", "ESM-2 kNN\n(21-genome, 2023)"),
+        ("Panel21_All21", "GSPA Stage 1+2 (3-Channel Core)", "GSPA Stage 1+2\n(21-genome, 3-ch)"),
         ("Panel13_Prok11", "InterProScan 5.72", "InterProScan 5.72\n(11-prok panel)"),
         ("Panel13_Prok11", "NCBI PGAP (Li et al. 2021)", "NCBI PGAP\n(11-prok, 2021)"),
         ("Panel13_Prok11", "GSPA Stage 1+2 (3-Channel Full)", "GSPA Stage 1+2\n(11-prok, 3-ch)"),
-        ("Panel21_All21", "FoldSeek + ProstT5 3Di (2024)", "FoldSeek+ProstT5\n(21-genome, 2024)"),
-        ("Panel21_All21", "InterProScan 5.72", "InterProScan 5.72\n(21-genome panel)"),
-        ("Panel21_All21", "ESM2-DeepGOPlus (2024)", "ESM2-DeepGOPlus\n(21-genome, 2024)"),
-        ("Panel21_All21", "ProteInfer (Sanderson et al. 2023)", "ProteInfer\n(21-genome, 2023)"),
-        ("Panel21_All21", "DIAMOND-BLASTp", "DIAMOND-BLASTp\n(21-genome panel)"),
-        ("Panel21_All21", "ESM-2 kNN (Lin et al. 2023)", "ESM-2 kNN\n(21-genome, 2023)"),
-        ("Panel9_Sub9", "gLM / gLM2 Genomic LM (Hwang et al. 2024)", "gLM / gLM2\n(9-genome, 2024/25)"),
-        ("Panel21_All21", "GSPA Stage 1+2 (3-Channel Core)", "GSPA Stage 1+2\n(21-genome, 3-ch)"),
     ]
     methods_panel = [lbl for _, _, lbl in panel_items]
     micro_fmax = [float(panel_lookup[(p, m)]["go_fmax_micro_all"]) for p, m, _ in panel_items]
@@ -416,17 +426,18 @@ def generate_figure2():
 
     y_m = np.arange(len(methods_panel))
     h_m = 0.38
-    ax.barh(y_m + h_m / 2, micro_fmax, height=h_m, color=PALETTE["blue"], edgecolor=PALETTE["navy"], label="Micro Fmax (All-GOA Propagated)")
-    ax.barh(y_m - h_m / 2, cafa_fmax, height=h_m, color=PALETTE["sky"], edgecolor=PALETTE["blue"], hatch="//", label="CAFA Fmax (All-GOA Propagated)")
+    ax.barh(y_m + h_m / 2, micro_fmax, height=h_m, color=PALETTE["blue"], edgecolor=PALETTE["navy"], label=r"Micro $F_{\max}$ (All-GOA Propagated)")
+    ax.barh(y_m - h_m / 2, cafa_fmax, height=h_m, color=PALETTE["sky"], edgecolor=PALETTE["blue"], hatch="//", label=r"CAFA $F_{\max}$ (All-GOA Propagated)")
     for idx, mv in enumerate(micro_fmax):
         ax.text(mv + 0.008, idx + h_m / 2, f"{mv:.3f}", va="center", fontsize=6.8, fontweight="bold")
     ax.set_yticks(y_m)
-    ax.set_yticklabels(methods_panel, fontsize=7.0)
-    ax.set_xlim(0.0, 0.99)
-    ax.set_xlabel("Ancestor-Propagated GO Fmax Score (11-Prokaryote & 21-Genome Panels)")
+    ax.set_yticklabels(methods_panel, fontsize=6.9)
+    ax.set_xlim(0.0, 1.02)
+    ax.set_ylim(-0.6, 13.8)
+    ax.set_xlabel(r"Ancestor-Propagated GO $F_{\max}$ Score (11-Prokaryote & 21-Genome Panels)")
     ax.set_title("Uniform Ancestor-Propagated Comparison vs. SOTA Annotators")
     ax.grid(True, axis="x")
-    ax.legend(loc="lower right", frameon=True, fontsize=7.2)
+    ax.legend(loc="upper right", ncol=2, frameon=True, facecolor="white", framealpha=0.95, fontsize=6.9)
 
     save_fig(fig, "fig2_pillar1_2_ablation")
 
@@ -473,7 +484,7 @@ def generate_figure3():
     ax.set_xticklabels([lbl for _, lbl in ecoli_methods], fontsize=7.4, rotation=16, ha="right")
     ax.set_ylim(0, 1.18)
     ax.set_ylabel("Enzyme Gene Recovery Rate")
-    ax.set_title("E. coli K-12* LRO Benchmark (n=256 Reactions; Pool Cov. 70.7%)")
+    ax.set_title(r"$\it{E.\ coli}$ K-12* LRO Benchmark (n=256 Reactions; Pool Cov. 70.7%)")
     ax.grid(True, axis="y")
     ax.legend(loc="upper left", frameon=True, fontsize=7.4)
 
@@ -511,7 +522,7 @@ def generate_figure3():
 
     # --- Panel C: Cross-Species B. subtilis (n=144) & Ambiguous LRO (n=50 Unique Proteins) ---
     ax = axes[1, 0]
-    add_panel_label(ax, "c")
+    add_panel_label(ax, "c", x=-0.16, y=1.09)
     bsub_rows = {r["method"].split(" ")[0]: r for r in lro15_rows if r["benchmark_cohort"] == "Bsubtilis_168_LRO_144"}
     bs_base = bsub_rows["GSPA_Strict_Homology_Masked_TrackA"]
     bs_full = bsub_rows["GSPA_Full_M4_RLGC_Coherence_PLM"]
@@ -525,9 +536,9 @@ def generate_figure3():
     agent_mrr = sum(1.0 / p for p in agent_pos) / n_lro50
 
     c_groups = [
-        "B. subtilis 168\n(n=144, Hit@1 All)",
-        "B. subtilis 168\n(n=76, Hit@1 Pool)",
-        "B. subtilis 168\n(n=76, MRR Pool)",
+        r"$\it{B.\ subtilis}$ 168" + "\n(n=144, Hit@1 All)",
+        r"$\it{B.\ subtilis}$ 168" + "\n(n=76, Hit@1 Pool)",
+        r"$\it{B.\ subtilis}$ 168" + "\n(n=76, MRR Pool)",
         "Ambiguous LRO\n(n=50, Hit@1)",
         "Ambiguous LRO\n(n=50, MRR)",
     ]
@@ -546,7 +557,7 @@ def generate_figure3():
     ax.set_xticklabels(c_groups, fontsize=7.5, rotation=14, ha="right")
     ax.set_ylim(0, 1.15)
     ax.set_ylabel("Recovery Score")
-    ax.set_title("Cross-Species B. subtilis (n=144) & Agent LRO Disambiguation (n=50)")
+    ax.set_title(r"Cross-Species $\it{B.\ subtilis}$ (n=144) & Agent LRO (n=50)")
     ax.grid(True, axis="y")
     ax.legend(loc="upper left", frameon=True, fontsize=7.4)
 
@@ -568,7 +579,7 @@ def generate_figure3():
     ax.set_xlim(0, 40)
     ax.set_ylim(-0.6, 10.6)
     ax.set_xlabel("Mean Metabolic Pathway Gaps Resolved per MAG")
-    ax.set_title("Exploratory Dark-Matter Candidates Across 97 MAGs (16 Phyla)")
+    ax.set_title("Candidate Pathway Gaps Resolved Across 97 MAGs (16 Phyla)")
     ax.grid(True, axis="x")
     ax.legend(loc="upper right", frameon=True, fontsize=7.4)
 
@@ -617,7 +628,14 @@ def generate_figure4():
     ax = axes[0, 1]
     add_panel_label(ax, "b")
     g_order = ["ecoli", "bsubtilis", "mtb", "paeruginosa", "ecolo157", "synechocystis"]
-    g_labels = ["E. coli K-12*", "B. subtilis", "M. tuberculosis", "P. aeruginosa", "E. coli O157", "Synechocystis\n(Dispersed Loci)"]
+    g_labels = [
+        r"$\it{E.\ coli}$ K-12*",
+        r"$\it{B.\ subtilis}$",
+        r"$\it{M.\ tuberculosis}$",
+        r"$\it{P.\ aeruginosa}$",
+        r"$\it{E.\ coli}$ O157",
+        r"$\it{Synechocystis}$" + "\n(Dispersed Loci)",
+    ]
     f1_m2 = [float(next(r["f1_at_05"] for r in lso_rows if r["genome"] == g and "CoherencePrior" in r["method"])) for g in g_order]
     f1_m3 = [float(next(r["f1_at_05"] for r in lso_rows if r["genome"] == g and "Operon" in r["method"])) for g in g_order]
     f1_m4 = [float(next(r["f1_at_05"] for r in lso_rows if r["genome"] == g and "Agent" in r["method"])) for g in g_order]
@@ -643,7 +661,14 @@ def generate_figure4():
     # --- Panel C: 6-Eukaryote Cross-Clade Violation Elimination (E1, E2, E3, E4/E5) ---
     ax = axes[1, 0]
     add_panel_label(ax, "c")
-    euk_labels = ["S. cerevisiae\n(Fungi)", "C. elegans\n(Nematoda)", "D. melanogaster\n(Arthropoda)", "P. patens\n(Bryophyta)", "A. thaliana\n(Magnoliopsida)", "M. musculus\n(Mammalia)"]
+    euk_labels = [
+        r"$\it{S.\ cerevisiae}$" + "\n(Fungi)",
+        r"$\it{C.\ elegans}$" + "\n(Nematoda)",
+        r"$\it{D.\ melanogaster}$" + "\n(Arthropoda)",
+        r"$\it{P.\ patens}$" + "\n(Bryophyta)",
+        r"$\it{A.\ thaliana}$" + "\n(Magnoliopsida)",
+        r"$\it{M.\ musculus}$" + "\n(Mammalia)",
+    ]
     v_e1 = [int(r["n_violations_e1_noisy_or"]) for r in anat_rows]
     v_e2 = [int(r["n_violations_e2_go_taxon"]) for r in anat_rows]
     v_e3 = [int(r["n_violations_e3_stage1_anat"]) for r in anat_rows]
@@ -657,10 +682,11 @@ def generate_figure4():
     ax.bar(x_e + 1.5 * w_e, v_e4, width=w_e, color=PALETTE["teal"], label="E4/E5: Stage 2 Symbolic (100% Elim.)")
     for idx, (ve1, ve2, ve3, ve4) in enumerate(zip(v_e1, v_e2, v_e3, v_e4)):
         y_off2 = 52 if ve1 > 900 else 12
-        ax.text(x_e[idx] - 1.65 * w_e, ve1 + 12, str(ve1), ha="center", va="bottom", fontsize=6.6, fontweight="bold")
-        ax.text(x_e[idx] - 0.40 * w_e, ve2 + y_off2, str(ve2), ha="center", va="bottom", fontsize=6.6, fontweight="bold")
+        y_off3 = 52 if (ve3 > 0 and abs(ve2 - ve3) < 40) else 12
+        ax.text(x_e[idx] - 1.65 * w_e, ve1 + 12, str(ve1), ha="center", va="bottom", fontsize=6.5, fontweight="bold")
+        ax.text(x_e[idx] - 0.55 * w_e, ve2 + y_off2, str(ve2), ha="center", va="bottom", fontsize=6.5, fontweight="bold")
         if ve3 > 0:
-            ax.text(x_e[idx] + 0.5 * w_e, ve3 + 12, str(ve3), ha="center", va="bottom", fontsize=6.6, fontweight="bold", color=PALETTE["blue"])
+            ax.text(x_e[idx] + 0.58 * w_e, ve3 + y_off3, str(ve3), ha="center", va="bottom", fontsize=6.5, fontweight="bold", color=PALETTE["blue"])
         ax.text(x_e[idx] + 1.5 * w_e, ve4 + 12, "0", ha="center", va="bottom", fontsize=7.0, fontweight="bold", color=PALETTE["teal"])
     ax.set_xticks(x_e)
     ax.set_xticklabels(euk_labels, rotation=18, ha="right")
@@ -687,11 +713,11 @@ def generate_figure4():
         ax.text(x_e[idx] + w_r, vl + 0.008, f"{gain_rem:+.3f}", ha="center", va="bottom", fontsize=7.0, fontweight="bold", color=PALETTE["navy"])
     ax.set_xticks(x_e)
     ax.set_xticklabels(euk_labels, rotation=18, ha="right")
-    ax.set_ylim(0.55, 1.03)
-    ax.set_ylabel("Ancestor-Propagated Micro Fmax")
+    ax.set_ylim(0.55, 1.14)
+    ax.set_ylabel(r"Ancestor-Propagated CAFA $F_{\max}$")
     ax.set_title("Semantic Relaxation vs. Removal Across 6 Eukaryotes")
     ax.grid(True, axis="y")
-    ax.legend(loc="upper left", frameon=True, fontsize=7.3)
+    ax.legend(loc="upper left", frameon=True, facecolor="white", framealpha=0.95, fontsize=7.2)
 
     save_fig(fig, "fig4_pillar3_complex_anatomy")
 
@@ -705,19 +731,19 @@ def generate_figure5():
     res_c2 = read_jsonl(RESULTS_DIR / "pillar4_resolutions_c2_fast.jsonl")
     res_c3 = read_jsonl(RESULTS_DIR / "pillar4_resolutions_c3_guarded.jsonl")
 
-    fig, axes = plt.subplots(2, 2, figsize=(13.6, 9.2))
-    plt.subplots_adjust(hspace=0.38, wspace=0.30)
+    fig, axes = plt.subplots(2, 2, figsize=(13.6, 9.6))
+    plt.subplots_adjust(hspace=0.45, wspace=0.30)
 
     vs_by_cfg = {r["configuration"]: r for r in vs_rows}
     selected_cfgs = [
-        ("Stage 1 + Stage 2 Deterministic Only", "Config 1:\nStage 1+2\nOnly"),
-        ("Posterior Threshold (>=0.35) + Guardrail", "Threshold\n(>=0.35)\n+ Guardrail"),
-        ("Logistic Regression (5-Fold CV, 3 Pre-Tool Scalars)", "LogReg\n(3 Pre-Tool\nScalars)"),
-        ("GBDT (5-Fold CV, 3 Pre-Tool Scalars)", "GBDT\n(3 Pre-Tool\nScalars)"),
-        ("Stage 3 Agent — Fast 1-Step Mode", "Config 2:\nFast 1-Step\nAgent"),
-        ("Stage 3 Agent — Qwen 27B Without Guardrail", "Config 4:\nQwen 3.8 27B\nNo Guardrail"),
-        ("Stage 3 Agent — Qwen 27B + Guardrail", "Config 3:\nQwen 3.8 27B\n+ Guardrail"),
-        ("GBDT (5-Fold CV) + Guardrail", "GBDT (8-Feat\n5-Fold CV)\n+ Guardrail"),
+        ("Stage 1 + Stage 2 Deterministic Only", "C1: Stage 1+2\nOnly"),
+        ("Posterior Threshold (>=0.35) + Guardrail", "Threshold ≥0.35\n+ Guardrail"),
+        ("Logistic Regression (5-Fold CV, 3 Pre-Tool Scalars)", "LogReg (3-Feat\nPre-Tool CV)"),
+        ("GBDT (5-Fold CV, 3 Pre-Tool Scalars)", "GBDT (3-Feat\nPre-Tool CV)"),
+        ("Stage 3 Agent — Fast 1-Step Mode", "C2: Fast 1-Step\nAgent"),
+        ("Stage 3 Agent — Qwen 27B Without Guardrail", "C4: Qwen 27B\nNo Guardrail"),
+        ("Stage 3 Agent — Qwen 27B + Guardrail", "C3: Qwen 27B\n+ Guardrail"),
+        ("GBDT (5-Fold CV) + Guardrail", "GBDT (8-Feat\nPost-Tool CV)"),
     ]
     cfg_short = [lbl for _, lbl in selected_cfgs]
     prec = [float(vs_by_cfg[k]["precision"]) * 100.0 for k, _ in selected_cfgs]
@@ -737,7 +763,7 @@ def generate_figure5():
     for idx in range(1, len(cfg_short)):
         ax.text(x[idx] + 0.5 * w, f1[idx] + 1.5, f"{f1[idx]:.1f}%", ha="center", va="bottom", fontsize=6.2, fontweight="bold", color=PALETTE["navy"])
     ax.set_xticks(x)
-    ax.set_xticklabels(cfg_short, fontsize=6.3)
+    ax.set_xticklabels(cfg_short, fontsize=6.7, rotation=24, ha="right")
     ax.set_ylim(0, 125)
     ax.set_ylabel("Performance on 120 Anomalies (%)")
     ax.set_title("De-Identified Stage 3 Resolution vs. ML Baselines (n = 120)")
@@ -767,7 +793,7 @@ def generate_figure5():
         ax.text(b.get_x() + b.get_width() / 2, v + 0.12, lbl, ha="center", va="bottom", fontsize=6.4, fontweight="bold",
                 color=PALETTE["vermilion"] if c > 0 else PALETTE["teal"])
     ax.set_xticks(x)
-    ax.set_xticklabels(cfg_short, fontsize=6.3)
+    ax.set_xticklabels(cfg_short, fontsize=6.7, rotation=24, ha="right")
     ax.set_ylim(0, 4.0)
     ax.set_ylabel("Accepted Taxon/Anatomical Violation Rate (%)")
     ax.set_title("Symbolic Guardrail Eliminates Cross-Clade Trap Violations")
@@ -775,7 +801,7 @@ def generate_figure5():
 
     # --- Panel C: 50 Unique-Protein Ambiguous LRO Metabolic Gap Re-Ranking ---
     ax = axes[1, 0]
-    add_panel_label(ax, "c")
+    add_panel_label(ax, "c", x=-0.16, y=1.09)
     rlgc_pos = [int(r["rlgc_position"]) for r in lro_rows]
     agent_pos = [int(r["agent_position"]) for r in lro_rows]
     n_lro = len(lro_rows)
@@ -791,7 +817,7 @@ def generate_figure5():
     x_r = np.arange(len(ranks))
     w_r = 0.35
     b_r1 = ax.bar(x_r - w_r / 2, rlgc_counts, width=w_r, color=PALETTE["orange"], edgecolor="#111111", hatch="//",
-                  label=f"Stage 1 RLGC S2 Alone (Hit@1 = {rlgc_h1:.1f}%, MRR = {rlgc_mrr:.3f})")
+                  label=f"Stage 1 RLGC Alone (Hit@1 = {rlgc_h1:.1f}%, MRR = {rlgc_mrr:.3f})")
     b_r2 = ax.bar(x_r + w_r / 2, agent_counts, width=w_r, color=PALETTE["teal"], edgecolor="#111111",
                   label=f"Stage 3 Agent Re-Ranking (Hit@1 = {agent_h1:.1f}%, MRR = {agent_mrr:.3f})")
     for bars in (b_r1, b_r2):
@@ -802,26 +828,25 @@ def generate_figure5():
     ax.set_xticks(x_r)
     ax.set_xticklabels([f"Rank {rk}" + (" (Top-1)" if rk == 1 else "") for rk in ranks])
     ax.set_ylim(0, 56)
-    ax.set_ylabel("Number of Unique LRO Metabolic Gaps (out of 50)")
-    ax.set_title("Agentic Disambiguation of 50 Unique Multi-Candidate LRO Gaps")
+    ax.set_ylabel("Unique LRO Metabolic Gaps (of 50)")
+    ax.set_title("Agentic Disambiguation of 50 Multi-Candidate LRO Gaps")
     ax.grid(True, axis="y")
     ax.legend(loc="upper right", frameon=True, fontsize=7.4)
 
     # --- Panel D: Per-Taxon Concurrency-Normalized Wall-Clock Latency (Read from JSONL) ---
     ax = axes[1, 1]
-    add_panel_label(ax, "d")
+    add_panel_label(ax, "d", x=-0.16, y=1.09)
     taxon_order = [
-        ("NCBITaxon_562", "E. coli K-12*"),
-        ("NCBITaxon_1423", "B. subtilis"),
-        ("NCBITaxon_287", "P. aeruginosa"),
-        ("NCBITaxon_1773", "M. tuberculosis"),
-        ("NCBITaxon_4932", "S. cerevisiae"),
-        ("NCBITaxon_6239", "C. elegans"),
-        ("NCBITaxon_3702", "A. thaliana"),
+        ("NCBITaxon_562", r"$\it{E.\ coli}$ K-12*"),
+        ("NCBITaxon_1423", r"$\it{B.\ subtilis}$"),
+        ("NCBITaxon_287", r"$\it{P.\ aeruginosa}$"),
+        ("NCBITaxon_1773", r"$\it{M.\ tuberculosis}$"),
+        ("NCBITaxon_4932", r"$\it{S.\ cerevisiae}$"),
+        ("NCBITaxon_6239", r"$\it{C.\ elegans}$"),
+        ("NCBITaxon_3702", r"$\it{A.\ thaliana}$"),
     ]
     taxa_labels = [lbl for _, lbl in taxon_order]
     bench_anoms = {r["anomaly_id"]: r["organism_taxon"] for r in read_jsonl(RESULTS_DIR / "pillar4_agent_benchmark_120.jsonl")}
-    # Wall-clock latency per anomaly under 8-way async concurrency (HTTP latency / 8.0 concurrency factor)
     c2_scale = 1.0 / 8.0
     c3_scale = 1.0 / 8.0
     lat_fast = []
@@ -840,7 +865,6 @@ def generate_figure5():
     c3_tools = float(vs_by_cfg["Stage 3 Agent — Qwen 27B + Guardrail"]["mean_tool_calls"])
 
     x_t = np.arange(len(taxa_labels))
-    w_t = np.arange(len(taxa_labels))
     w_bar = 0.34
     ax.bar(x_t - w_bar / 2, lat_fast, width=w_bar, color=PALETTE["sky"], edgecolor=PALETTE["blue"], hatch="//",
            label=f"Config 2: Fast 1-Step ({c2_lat:.2f}s wall-clock / {c2_http:.1f}s HTTP, {c2_tools:.2f} tools)")
@@ -851,8 +875,8 @@ def generate_figure5():
     ax.set_xticks(x_t)
     ax.set_xticklabels(taxa_labels, rotation=25, ha="right")
     ax.set_ylim(0, 6.2)
-    ax.set_ylabel("Wall-Clock Time / Anomaly at 8× Concurrency (s)")
-    ax.set_title("Scalable Multi-Turn Latency Across 7 Taxa (1.8% Mean Loci Inspected)")
+    ax.set_ylabel("Wall-Clock Latency / Anomaly (s)")
+    ax.set_title("Multi-Turn Latency Across 7 Taxa (1.8% Mean Loci)")
     ax.grid(True, axis="y")
     ax.legend(loc="upper right", frameon=True, fontsize=7.1)
 

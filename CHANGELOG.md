@@ -13,7 +13,7 @@ user-visible deltas; for measured impact, follow the cross-references.
 ## [2.1.0] - 2026-10-14
 
 ### Added
-- **Stage 2B Flux-Certified Stoichiometric Locus Refiner (`StoichiometricLocusRefiner`, `--enable-stage2b-fba`)**:
+- **Stage 2B Flux-Certified Stoichiometric Locus Refiner (`StoichiometricLocusRefiner`, `--enable-fba-refiner`)**:
   - Implemented `GprMechanismCompiler`, `SparseRoleAggregator` (Top-$M$ isozyme OR and geometric-mean subunit AND), positive-cost LP/MILP repair + two-step lexicographic parsimonious FBA (`pFBA`) in HiGHS (`scripts/stoichiometric_locus_refiner.py`), and `LocusResponsibilityUpdater` ($r_{j,u}(p) \propto w_{j,u}(p)$ with explicit unassigned/novel gene hypothesis $h_\varnothing$).
   - Audited across 108 bacterial metabolic reconstructions (`results/pillar2_invariant_audit_summary.tsv`), eliminating the `68.62%` uncertified zero-flux reaction padding of negative-cost MILP gap-filling (`METEOR v8`: `215.02 / 313.35` zero-flux additions/genome vs. `StoichiometricLocusRefiner`: `0.0 / 5.70 = 0.0%` padding, `100.0%` flux-certified, `2.29` strictly FVA-essential at $\le 1.01 C^*$, `1.96` strictly knockout-essential at $\le 1.10 C^*$).
 - **Multi-Channel Homology Masking (`Protocol H`), Out-of-Clade Generalization (`Protocol D`), and 8 Immutable Benchmark Suites (`benchmark/manifests/`)**:

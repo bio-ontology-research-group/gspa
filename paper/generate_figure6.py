@@ -91,7 +91,7 @@ def generate_figure6():
 
     categories = [
         "Added Rxns\n(Mean / Genome)",
-        "Flux-Certified\nAdded (|v|>1e-6)",
+        "Flux-Certified\n" + r"Added ($|v_j|>10^{-6}$)",
         "Zero-Flux\nPadding Rxns",
         "Imbalanced\nActive Rxns",
     ]
@@ -175,7 +175,7 @@ def generate_figure6():
     ax_b.set_ylim(0, 0.78)
     ax_b.set_xticks(x_b)
     ax_b.set_xticklabels([lbl for _, lbl in baselines], fontsize=7.8, fontweight="bold")
-    ax_b.set_ylabel("Enzyme EC Fmax (Price-149, n=148)")
+    ax_b.set_ylabel(r"Enzyme EC $F_{\max}$ (Price-149, n=148)")
     ax_b.set_title("Price-149 RB-TnSeq Benchmark Across 6 Enzyme Predictors")
     ax_b.grid(axis="y")
     ax_b.legend(loc="upper right", ncol=2, frameon=True, facecolor="white", framealpha=0.95, fontsize=6.8)
@@ -189,7 +189,7 @@ def generate_figure6():
              for r in read_tsv(RESULTS_DIR / "pillar2_lro15_summary.tsv")
              if r["benchmark_cohort"] == "Ecoli_MG1655_Full_414"}
     prot_keys = ["Unfiltered", "Protocol_H_le70", "Protocol_H_le50", "Protocol_H_le30_Dark"]
-    regimes = ["Unfiltered\n(100%)", "Protocol H\n<=70% ID", "Protocol H\n<=50% ID", "Protocol H\n<=30% Dark"]
+    regimes = ["Unfiltered\n(100%)", "Protocol H\n≤70% ID", "Protocol H\n≤50% ID", "Protocol H\n≤30% Dark"]
 
     rlgc_all_pool = [float(lro15[("All_Strata", pk, "RLGC_Kernel_Density_Only")]["hit1_cov"]) for pk in prot_keys]
     gbdt_all_pool = [float(lro15[("All_Strata", pk, "RLGC_Plus_GBDT")]["hit1_cov"]) for pk in prot_keys]
@@ -201,7 +201,7 @@ def generate_figure6():
     ax_c.plot(xc, gbdt_all_pool, "s:", color=PALETTE["orange"], linewidth=1.8, markersize=6, label="RLGC + GBDT (All Strata, Given Pool)")
     ax_c.plot(xc, rlgc_all_pool, "^-.", color=PALETTE["sky"], linewidth=2.0, markersize=6.5, label="RLGC Kernel Only (All Strata, Given Pool)")
     ax_c.plot(xc, gspa_all_total, "D--", color=PALETTE["teal"], linewidth=2.0, markersize=6.5, label="GSPA Full M4 (All Strata, Hit@1 All)")
-    ax_c.plot(xc[:3], gspa_stratumA_pool[:3], "v-", color=PALETTE["purple"], linewidth=2.2, markersize=7.0, label="GSPA Full M4 (Stratum A Core, Given Pool)")
+    ax_c.plot(xc[:3], gspa_stratumA_pool[:3], "v-", color=PALETTE["purple"], linewidth=2.2, markersize=7.0, label="GSPA Full M4 (Stratum A, Pool; n=0 at ≤30%)")
     ax_c.plot(xc, gspa_all_pool, "o-", color=PALETTE["navy"], linewidth=2.5, markersize=7.5, label="GSPA Full M4 (All Strata, Hit@1 Given Pool)")
 
     ax_c.set_ylim(-0.04, 1.34)
