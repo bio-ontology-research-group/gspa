@@ -92,8 +92,10 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
     sols_compact = pickle.load(gzip.open(REF_DIR / "meteor108_solutions_compact.pkl.gz", "rb"))
 
     thresh_repair_json = REF_DIR / "ibex_extracted" / "psb_revision" / "results" / "thresh_gapfill_deadends_summary.json"
-    thresh_repair = json.loads(thresh_repair_json.read_text(encoding="utf-8")) if thresh_repair_json.exists() else {}
-    mean_repair_added = float(thresh_repair.get("n_added_by_repair", {}).get("mean", 81.306))
+    thresh_repair = json.loads(thresh_repair_json.read_text(encoding="utf-8"))
+    mean_repair_added = float(thresh_repair["n_added_by_repair"]["mean"])
+    grow_active = round(float(thresh_repair["n_selected"]["repaired_baseline"]["mean"]), 1)
+    grow_deadend = round(float(thresh_repair["deadends"]["repaired_baseline"]["mean"]), 2)
 
     tve_path = REF_DIR / "meteor_v8_release" / "results" / "toolcompare" / "ablation_thresh_vs_evw.json"
     tve_by_acc = {x["acc"]: x for x in json.loads(tve_path.read_text(encoding="utf-8"))} if tve_path.exists() else {}
@@ -171,6 +173,8 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "organism_id": gca,
             "gram": gram,
             "n_core_rxns": n_base_sel,
+            "base_imbalanced_active": int(base_dpz["mass_imbal"]),
+            "base_deadend_active": int(base_dpz["deadends"]),
             "meteor_n_active_total": n_active_y,
             "meteor_n_flux_carrying_total": n_flux_y,
             "meteor_n_zero_flux_active": n_zero_flux_y,
@@ -292,8 +296,8 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "mean_flux_certified_added": 0.0,
             "mean_uncertified_padding": 0.0,
             "uncertified_padding_pct": 0.0,
-            "mean_imbalanced_added_or_active": 2621.7,
-            "mean_deadend_active": 9.75,
+            "mean_imbalanced_added_or_active": round(float(np.mean([r["base_imbalanced_active"] for r in audit_rows])), 1),
+            "mean_deadend_active": round(float(np.mean([r["base_deadend_active"] for r in audit_rows])), 2),
             "lp_biomass_feasible_pct": 0.0,
         })
         writer.writerow({
@@ -313,15 +317,15 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         writer.writerow({
             "method": "Grow-Support Threshold Repair (Positive-Cost LP)",
             "n_genomes": len(audit_rows),
-            "mean_active_rxns": 2584.8,
+            "mean_active_rxns": grow_active,
             "mean_flux_carrying_active": round(m_flx_tot, 1),
-            "mean_zero_flux_active": round(2584.8 - m_flx_tot, 1),
+            "mean_zero_flux_active": round(grow_active - m_flx_tot, 1),
             "mean_added_rxns": round(mean_repair_added, 2),
             "mean_flux_certified_added": round(mean_repair_added, 2),
             "mean_uncertified_padding": 0.0,
             "uncertified_padding_pct": 0.0,
             "mean_imbalanced_added_or_active": 0.0,
-            "mean_deadend_active": 2.23,
+            "mean_deadend_active": grow_deadend,
             "lp_biomass_feasible_pct": 100.0,
         })
         s_act = float(np.mean([r["n_core_rxns"] + r["slr_n_added"] for r in audit_rows]))
@@ -520,12 +524,7 @@ def run_price149_all6_evaluation() -> Path:
     """
     print("[2C] Running 100%-Blind Price-149 Evaluation across all 6 SOTA EC Baselines...")
     eval_price149_real_all6.main()
-    real_all6 = RESULTS_DIR / "pillar2_price149_all6_real.tsv"
-    real_strat = RESULTS_DIR / "pillar2_price149_stratum_real.tsv"
-    out_strat = RESULTS_DIR / "pillar2_price149_by_stratum.tsv"
-    if real_strat.exists():
-        out_strat.write_text(real_strat.read_text(encoding="utf-8"), encoding="utf-8")
-    return real_all6
+    return RESULTS_DIR / "pillar2_price149_all6_real.tsv"
 
 
 def main():

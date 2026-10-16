@@ -14,7 +14,7 @@ Constructs:
      * All gene symbols are masked ("uncharacterized").
      * Every candidate in `candidate_pids` is populated by the same symmetric lookup
        `_build_candidate_from_proteome_store(...)` without any truth-conditioned branching.
-     * Candidate order is sorted lexicographically by `protein_id`.
+     * Candidate order is deterministically hash-ordered by `md5(f"{anomaly_id}:{protein_id}")`.
 
 2. results/pillar4_lro_50_cases.jsonl:
    - 50 unique-protein Leave-Reaction-Out (LRO) metabolic gap cases from `cases_mg1655_all.tsv`

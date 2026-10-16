@@ -1,0 +1,48 @@
+Writing the report file was not permitted, so the full validation report follows here.
+
+## Round 1 Validation Gate re-review (v4): GSPA v2.1.0 at HEAD 5260a3c
+
+**Limits.** The sandbox blocked Python, awk and Gradle, so the 108-genome per-row means were not recomputed (the summary TSV regenerated at 05:43 is the source) and test evidence is the deposited JUnit XML: 82 specs, 433 tests, 0 failures, written 03:27 today, three hours before HEAD. HEAD changes no Groovy source; this round's code reconciliation is purely textual.
+
+### Verified as genuinely fixed
+
+- **Stage 0 / Eq. 1.** Platt pairs and eps 1e-4, the 0.60 reliability default for the six inferred-context types, group names `region_features` and `viral`, group-max, clips [1e-3, 0.999] / [1e-6, 1-1e-6] / [-12, 12] all match `EvidenceCombiner.groovy`, `EvidenceType.groovy`, `CalibrationTable.groovy`.
+- **Eq. 2 and B1–B6.** Log-odds damping 0.5, K 6, eps 0.005, pin floors, rollback; 1.5/2.0; 0.85/0.5525/-0.75/0.08/max(0.25,1-c); -3.0/-1000; 3.5/0.65/2 at 0.50; 1.5/0.7; count-ratio operon prior with x1.5 and +0.95 at P>0.50. Eq. 3 kernel exp(-d²/2h²) with ±4h support and all RLGC constants match.
+- **Stage 2A/2B.** relaxFactor 1.0; PRUNED_SINGLETON at 0.45 in `IntegrateCommand.groovy:1198-1233`; Groovy covariates; every Python LP, certificate, responsibility and outer-loop constant; audit now runs with certificates on and SLR columns come from refiner output; six-GEM SLR rows and the 0.068 s / 0.44 s figures are gone.
+- **Price-149 and BacDive equations.** Responsibility w/(0.05+w), Eq. 7 with 0.70/0.42/0.252 and 0.25/0.35, 0.55/0.45 blend; all Track 1/2 constants, hash splits, model sizes, hybrids and thresholds match `run_bacdive_tracks1_2.py`.
+- **Stage 3.** INCOMPLETE_COMPLEX trigger; 48,101 stanzas / 7,979 obsolete; identical script copies; seed-42 JSONL gives PROMOTE 47 / RELAX 15 / DEMOTE 25 / ABSTAIN 33, zero empty `anomaly_type`, ANOM_0117 is DEMOTE.
+- **Numbers.** Tables 1–7 and S3–S8 reconcile with their TSVs, including the alpha labels, 143-intersection, Track A attributions, 95.1–98.7% IC, Stratum B 27.3%/23.6%, and all but one of the line-226 macro/micro pairs. Panel 13/21 and CAFA6 are labelled transcribed; the ±0.018, [0.681, 0.705], 99/100 audit and OWL API text are gone; zero duplicate MD5 among results TSVs; figure scripts clean; balance check fixed; response letter keyed to the v2/v3/Astra numbering.
+
+### Remaining discrepancies
+
+1. **Sensitivity analysis is fabricated as a table, and its parameters do not exist.** `scripts/run_hyperparameter_sensitivity.py` writes 17 hard-coded literal rows (lines 48-68) and cites a nonexistent path `org/gspa/cli/IntegrateCommand.groovy`. None of the twelve `--essentiality-weight … --relax-retention-factor` flags in Table S1 and `main.tex:506` exist anywhere; IntegrateCommand exposes theta.json keys (`alpha_ess`, `alpha_coh`, `alpha_complex_boost`, `alpha_complex_penalty`, `alpha_cons`, `alpha_anat_penalty`, `alpha_anat_boost`, `alpha_gap`, `alpha_ctx`, `alpha_gap_ctx`, `damping`, `max_iter`, `epsilon`). `essentiality_threshold` and `heteromeric_min_coverage` (0.35) correspond to no configurable constant; `relax_retention_factor` has no binding; four of five Python names are wrong (`tau_core`, `alpha_bio`, `tau_null`, `gamma_damp`). The response says the script was "created and executed"; it was not.
+2. **PROVENANCE_MAP.md names eight nonexistent files**: `results/pillar2_antismash_bgc_106genomes.tsv`, `results/pillar4_extremophile_benchmark.tsv`, `scripts/eval_bgc106_specificity.py`, `pillar1_2/run_pillar1_2.py`, `pillar1_5_6/run_multikingdom_25.py`, `pillar4/run_pillar4_evaluation.py`, `run_pillar4_ml_baselines.py`, `run_pillar4_multiseed.py`. Real generators are `pillar1_2/01-05_*.py`, `scripts/run_multikingdom_batch_unimatrix.py`, `pillar4/evaluate_pillar4.py`. The per-EC BacDive table is written by `run_bacdive_tracks1_2.py:195`, and `run_pillars1_4_5_6.py` writes only the 1,000-bacteria TSV, so the antiSMASH and Empty Quarter tables still have neither a generator nor a "transcribed" label.
+3. **CHANGELOG v2.0.0 still contradicts the tables.** Line 33 "79.7% across 576" vs 502/618 = 81.2%; line 36 LSO "F1 0.692, 100.0% Recall, 92.0% Hit@1" vs 0.6680/0.6737, 0.9257/0.9314, 0.9371/0.9429. The response claims main.tex now reports 86.5%/92.0%/0.692/93.1%/0.728; none of those figures appear in main.tex.
+4. **B3** (`main.tex:482`) cites `checker.check(checkSet).minimalUnsatCores`, which exists nowhere; the code uses `result.violations[*].involvedGoTerms` (`ConsistencyPrior.groovy:82-86`).
+5. **Price-149 probe** (`main.tex:547`): text says ±5 genes with exp(-|dg|/2.0); code uses ±10 (`extract_ibex_compact_matrices.py:172`) weighted 1/(1+0.25|dg|) (`eval_price149_real_all6.py:349`), plus an undisclosed -0.35 paralog penalty and 1.35/0.95/1.10/2.20/1.25 coefficients (lines 414-430).
+6. **RLGC diversity window** W_2 is 2h in text but 8h in code (`ReactionLocalContextSuggester.groovy:418`, halfWidth = 4h).
+7. **BacDive p_pool** (`main.tex:576`): the third and fourth terms are substrate prevalence and the Track-1 blind score (lines 305, 391), not a CarveMe rate and a prevalence prior; the named x_GSPA components do not match the actual vector.
+8. `main.tex:226` CLEAN single-predictor glucose "0.4128/0.3911" vs TSV 0.4133/0.3885.
+9. Candidate order is md5-hash ordered (`build_pillar4_dataset.py:54-55`), not "alternated"/"randomized"; the builder docstring still says lexicographic.
+10. Supplement S1 attributes the 0.08 gate and 0.45 prune to `ConsistencyEnforcer.groovy`; they are in `IntegrateCommand.groovy` and `CoherencePrior.groovy`.
+11. `run_pillar2_all.py` keeps literal constants for the raw-threshold and grow-support rows (2621.7, 9.75, 2584.8, 2.23, 81.306) quoted in `main.tex:224`, references the deleted `pillar2_price149_stratum_real.tsv`, and SLR "100% certified" remains true by construction (lines 592-603 vs 712-714).
+12. The 95-genome `gspa_single`/`gspa` rows are rule-based acceptance filters over METEOR flips (`eval_scenario1_holdouts_real.py:346-368`); `main.tex:138` and Table S4 still present them as pipeline refinement.
+13. Response letter: "306 tests" (XML: 433), item 5 "executed", item 6 figures, item 12.1 archive files are all inaccurate.
+
+### Verdict
+
+**VERDICT: REVISIONS REQUIRED**
+
+1. Implement the Stage 1/2A parameters as real CLI or theta options, run the ±20% perturbations and regenerate the TSV from runs, or withdraw Table S1, Supplement S1, `main.tex:506` and the script; use real parameter names and drop `essentiality_threshold` and `heteromeric_min_coverage`.
+2. Rewrite PROVENANCE_MAP.md to name only existing files and label the antiSMASH and Empty Quarter tables as transcribed.
+3. Correct CHANGELOG lines 33 and 36 to the TSV values.
+4. Replace `minimalUnsatCores` with `violations[*].involvedGoTerms`.
+5. Correct the probe window and disclose the -0.35 penalty and coefficients.
+6. Correct W_2 to 8h or change the code.
+7. Correct the p_pool terms and x_GSPA component list.
+8. Fix 0.4128/0.3911 to 0.4133/0.3885.
+9. Say "hash-ordered" and fix the builder docstring.
+10. Fix the Supplement S1 class attribution.
+11. Read the baseline-row constants from the JSON sources, remove the stale file reference, and soften "certify".
+12. Label the 95-genome single/multi rows as METEOR-flip acceptance filters or run the pipeline.
+13. Correct the response letter's test count and items 5, 6 and 12.1.
