@@ -62,7 +62,7 @@
 \section{Hyperparameter specification}
 \label{sec:supp_hyperparams}
 
-All 18 configurable pipeline hyperparameters across Stage 1 (13 \texttt{theta.json} keys exposed by \texttt{gspa-cli/src/main/groovy/gspa/cli/IntegrateCommand.groovy} and consumed by \texttt{IterativeRefiner.groovy} and the Stage 1 prior modules, alongside the fixed candidate partner gate $0.08$ in \texttt{CoherencePrior.groovy}, the Stage 2A ancestor relaxation factor \texttt{relaxFactor} $= 1.0$ in \texttt{ConsistencyEnforcer.groovy}, and the Stage 2A obligate-complex singleton prune threshold $0.45$ in \texttt{IntegrateCommand.groovy}) and Stage 2B (5 parameters in \texttt{scripts/stoichiometric\_locus\_refiner.py}, alongside the fixed elemental-imbalance penalty $w_{\text{imb}}=100.0$) were calibrated exclusively on the \textit{Escherichia coli} K-12 MG1655 development proteome and held frozen across all out-of-sample prokaryotic, archaeal, viral, and eukaryotic benchmarks. Supplementary Table~\ref{tab:supp_hyperparams} reports the complete inventory of these 18 configurable hyperparameters, their exact configuration keys, source files, roles in inference, and default values.
+All 18 configurable pipeline hyperparameters across Stage 1 (13 \texttt{theta.json} keys exposed by \texttt{gspa-cli/src/main/groovy/gspa/cli/IntegrateCommand.groovy} and consumed by \texttt{IterativeRefiner.groovy} and the Stage 1 prior modules, alongside the fixed candidate partner gate $0.08$ in \texttt{CoherencePrior.groovy}, the fixed co-operonic complex partner bonus \texttt{complexOperonPartnerWeight} $= 0.95$ in \texttt{GenomicContextPrior.groovy}, the Stage 2A ancestor relaxation factor \texttt{relaxFactor} $= 1.0$ in \texttt{ConsistencyEnforcer.groovy}, and the Stage 2A obligate-complex singleton prune threshold $0.45$ in \texttt{IntegrateCommand.groovy}) and Stage 2B (5 parameters in \texttt{scripts/stoichiometric\_locus\_refiner.py}, alongside the fixed elemental-imbalance penalty $w_{\text{imb}}=100.0$) were calibrated exclusively on the \textit{Escherichia coli} K-12 MG1655 development proteome and held frozen across all out-of-sample prokaryotic, archaeal, viral, and eukaryotic benchmarks. Supplementary Table~\ref{tab:supp_hyperparams} reports the complete inventory of these 18 configurable hyperparameters, their exact configuration keys, source files, roles in inference, and default values (where penalty parameters \texttt{alpha\_complex\_penalty} $= 0.75$, \texttt{alpha\_cons} $= 3.00$, and \texttt{alpha\_anat\_penalty} $= 3.50$ are stored as positive magnitudes and applied with negative sign in log-odds space).
 
 \begin{table}[h!]
   \centering
@@ -74,21 +74,21 @@ All 18 configurable pipeline hyperparameters across Stage 1 (13 \texttt{theta.js
     \textbf{Stage / Module} & \textbf{Symbol} & \textbf{Parameter Key} & \textbf{Source File} & \textbf{Role in Inference} & \textbf{Default Value} \\
     \midrule
     Stage 1 ($B_1$) & $\alpha_{\text{ess}}$ & \texttt{alpha\_ess} & \texttt{EssentialityPrior.groovy} & Unfulfilled essential GO function log-odds boost & $1.50$ \\
-    Stage 1 ($B_2$) & $\alpha_{\text{coh}}$ & \texttt{alpha\_coh} & \texttt{CoherencePrior.groovy} & Active pathway coherence log-odds scale & $0.85$ \\
-    Stage 1 ($B_2$) & $\alpha_{\text{cplx}}^{+}$ & \texttt{alpha\_complex\_boost} & \texttt{CoherencePrior.groovy} & Obligate heteromeric complex partner log-odds boost & $0.5525$ \\
-    Stage 1 ($B_2$) & $\alpha_{\text{cplx}}^{-}$ & \texttt{alpha\_complex\_penalty} & \texttt{CoherencePrior.groovy} & Isolated obligate heteromeric singleton log-odds penalty & $-0.75$ \\
-    Stage 1 ($B_3$) & $\alpha_{\text{cons}}$ & \texttt{alpha\_cons} & \texttt{ConsistencyPrior.groovy} & SAT4J taxonomic conflict log-odds penalty & $-3.00$ \\
-    Stage 1 ($B_4$) & $\alpha_{\text{anat}}^{-}$ & \texttt{alpha\_anat\_penalty} & \texttt{AnatomicalPrior.groovy} & Taxon-forbidden Uberon/PO/CL structure log-odds penalty & $3.50$ \\
-    Stage 1 ($B_4$) & $\alpha_{\text{anat}}^{+}$ & \texttt{alpha\_anat\_boost} & \texttt{AnatomicalPrior.groovy} & Active-structure developmental rescue log-odds boost & $0.65$ \\
+    Stage 1 ($B_2$) & $\alpha_{\text{coh}}$ & \texttt{alpha\_coh} & \texttt{CoherencePrior.groovy} & Active pathway coherence log-odds scale & $1.00$ \\
+    Stage 1 ($B_2$) & $w_{\text{part}}$ & \texttt{alpha\_complex\_boost} & \texttt{CoherencePrior.groovy} & Obligate heteromeric complex partner boost ($0.65\,w_{\text{part}} = 0.5525$ for $N_{\text{strong}}\ge 2$) & $0.85$ \\
+    Stage 1 ($B_2$) & $w_{\text{sing}}$ & \texttt{alpha\_complex\_penalty} & \texttt{CoherencePrior.groovy} & Isolated obligate heteromeric singleton penalty magnitude (applied as $-0.75$) & $0.75$ \\
+    Stage 1 ($B_3$) & $\alpha_{\text{cons}}$ & \texttt{alpha\_cons} & \texttt{ConsistencyPrior.groovy} & SAT4J taxonomic conflict penalty magnitude (applied as $-3.00$) & $3.00$ \\
+    Stage 1 ($B_4$) & $\alpha_{\text{anat}}$ & \texttt{alpha\_anat\_penalty} & \texttt{AnatomicalPrior.groovy} & Taxon-forbidden Uberon/PO/CL structure penalty magnitude (applied as $-3.50$) & $3.50$ \\
+    Stage 1 ($B_4$) & $\alpha_{\text{boost}}$ & \texttt{alpha\_anat\_boost} & \texttt{AnatomicalPrior.groovy} & Active-structure developmental rescue log-odds boost & $0.65$ \\
     Stage 1 ($B_5$) & $\alpha_{\text{gap}}$ & \texttt{alpha\_gap} & \texttt{GapFillingPrior.groovy} & Metabolic pathway hole-filling log-odds boost & $1.50$ \\
     Stage 1 ($B_6$) & $\alpha_{\text{ctx}}$ & \texttt{alpha\_ctx} & \texttt{GenomicContextPrior.groovy} & Co-operonic pathway enrichment log-odds scale & $1.00$ \\
-    Stage 1 ($B_6$) & $\alpha_{\text{gap\_ctx}}$ & \texttt{alpha\_gap\_ctx} & \texttt{GenomicContextPrior.groovy} & Co-operonic metabolic gap bonus log-odds boost & $0.95$ \\
-    Stage 1 (Iter) & $\gamma$ & \texttt{damping} & \texttt{IterativeRefiner.groovy} & Iterative log-odds fixed-point damping weight & $0.50$ \\
-    Stage 1 (Iter) & $K$ & \texttt{max\_iter} & \texttt{IterativeRefiner.groovy} & Maximum Stage 1 message-passing iterations & $6$ \\
-    Stage 1 (Iter) & $\varepsilon$ & \texttt{epsilon} & \texttt{IterativeRefiner.groovy} & Stage 1 probability convergence tolerance & $0.005$ \\
+    Stage 1 ($B_6$) & $\alpha_{\text{gap\_ctx}}$ & \texttt{alpha\_gap\_ctx} & \texttt{GenomicContextPrior.groovy} & Co-operonic metabolic gap multiplier on $\alpha_{\text{ctx}}\,c_O(W)$ & $1.50$ \\
+    Stage 1 (Iter) & $\gamma_{\text{iter}}$ & \texttt{damping} & \texttt{IterativeRefiner.groovy} & Iterative log-odds fixed-point damping weight & $0.50$ \\
+    Stage 1 (Iter) & $K_{\max}$ & \texttt{max\_iter} & \texttt{IterativeRefiner.groovy} & Maximum Stage 1 message-passing iterations & $6$ \\
+    Stage 1 (Iter) & $\epsilon$ & \texttt{epsilon} & \texttt{IterativeRefiner.groovy} & Stage 1 probability convergence tolerance & $0.005$ \\
     Stage 2B (SLR) & $\tau_{\text{core}}$ & \texttt{tau\_core} & \texttt{stoichiometric\_locus\_refiner.py} & Core reaction probability threshold $S_{\text{rxn}}(j)$ & $0.50$ \\
     Stage 2B (SLR) & $\alpha_{\text{bio}}$ & \texttt{alpha\_bio} & \texttt{stoichiometric\_locus\_refiner.py} & Minimum required fraction of $v_{\text{bio}}^{\max}$ in pFBA & $0.10$ \\
-    Stage 2B (SLR) & $\tau_{\text{null}}$ & \texttt{tau\_null} & \texttt{stoichiometric\_locus\_refiner.py} & Unassigned-gene hypothesis $h_\varnothing$ prior mass & $0.05$ \\
+    Stage 2B (SLR) & $\eta_{\text{null}}$ & \texttt{tau\_null} & \texttt{stoichiometric\_locus\_refiner.py} & Unassigned-gene hypothesis $h_\varnothing$ prior mass & $0.05$ \\
     Stage 2B (SLR) & $\gamma_{\text{FBA}}$ & \texttt{gamma\_fba} & \texttt{stoichiometric\_locus\_refiner.py} & Backward locus responsibility log-odds scale & $2.20$ \\
     Stage 2B (SLR) & $\gamma_{\text{damp}}$ & \texttt{gamma\_damp} & \texttt{stoichiometric\_locus\_refiner.py} & Geometric damping decay across outer passes & $0.60$ \\
     \bottomrule
