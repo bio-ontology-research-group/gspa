@@ -709,13 +709,50 @@ class StoichiometricLocusRefiner:
             ens_ind = 1.0 if surv >= 0.80 else (0.65 if surv > 0.0 else 0.0)
             pi_fba[rid] = 0.5 * is_fva + 0.3 * is_ko + 0.2 * ens_ind
 
+        n_flux_certified_repaired = sum(
+            1 for rid in repaired_rxns if abs(pfba_flux_by_rxn.get(rid, 0.0)) > eps_flux
+        )
+        n_uncertified_additions = len(repaired_rxns) - n_flux_certified_repaired
+        uncertified_pct = round(
+            100.0 * n_uncertified_additions / max(len(repaired_rxns), 1), 2
+        )
+        n_imbalanced_repaired = sum(
+            1 for rid in repaired_rxns if self.rxn_to_idx[rid] in self.imbalanced_rxn_indices
+        )
+        # Measure dead-end metabolites touched by repaired reactions in the active stoichiometric subnetwork
+        active_idx_list = sorted(
+            {self.rxn_to_idx[rid] for rid in active_rxns}
+            | {self.rxn_to_idx[rid] for rid in pfba_flux_by_rxn}
+        )
+        if active_idx_list and repaired_rxns:
+            S_act = self.S[:, active_idx_list].tocsr()
+            deadend_mets = {
+                m_i
+                for m_i in range(S_act.shape[0])
+                if (S_act.indptr[m_i + 1] - S_act.indptr[m_i]) == 1
+            }
+            n_deadend_repaired = sum(
+                1
+                for rid in repaired_rxns
+                if any(
+                    m_i in deadend_mets
+                    for m_i in self.S[:, self.rxn_to_idx[rid]].nonzero()[0]
+                )
+            )
+        else:
+            n_deadend_repaired = 0
+
         return {
             "core_bio": float(core_bio),
             "max_univ_bio": float(max_univ_bio),
             "target_bio": float(target_bio),
             "n_core_rxns": len(core_indices),
             "n_repaired_rxns": len(repaired_rxns),
+            "n_flux_certified_repaired": int(n_flux_certified_repaired),
             "n_uncertified_additions": int(n_uncertified_additions),
+            "uncertified_pct": float(uncertified_pct),
+            "n_imbalanced_repaired": int(n_imbalanced_repaired),
+            "n_deadend_repaired": int(n_deadend_repaired),
             "repaired_rxns": sorted(repaired_rxns),
             "repaired_ecs": sorted(repaired_ecs),
             "active_rxns": sorted(active_rxns),

@@ -17,12 +17,6 @@ RESULTS_DIR = ROOT / "results"
 IBEX_DIR = ROOT / "benchmark" / "manifests" / "reference_data" / "ibex_extracted"
 
 
-def _copy_if_exists(src: Path, dst: Path) -> None:
-    if src.exists():
-        dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
-        print(f"Synced {src.name} -> {dst.name}")
-
-
 def build_1000bacteria_tsv() -> None:
     src_json = IBEX_DIR / "annot_eval_1000bacteria_summary.json"
     if not src_json.exists():
@@ -53,9 +47,6 @@ def build_1000bacteria_tsv() -> None:
 
 
 def main() -> None:
-    _copy_if_exists(RESULTS_DIR / "scenario1_cafa_temporal_holdout_real.tsv", RESULTS_DIR / "pillar1_suite1_cafa_temporal.tsv")
-    _copy_if_exists(RESULTS_DIR / "multikingdom_summary_by_domain.tsv", RESULTS_DIR / "pillar1_4_suite2_proteomes25_protocol_H_D.tsv")
-    _copy_if_exists(RESULTS_DIR / "pillar4_agent_evaluation.tsv", RESULTS_DIR / "pillar5_agent_vs_rerankers.tsv")
     build_1000bacteria_tsv()
 
 

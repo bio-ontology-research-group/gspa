@@ -623,17 +623,15 @@ def main():
         },
     ])
 
-    for out_fn in ("pillar2_price149_all6_real.tsv", "pillar2_price149_all6_baselines.tsv", "pillar2_price149_all6_summary.tsv"):
-        with open(RESULTS_DIR / out_fn, "w", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()), delimiter="\t")
-            w.writeheader()
-            w.writerows(summary_rows)
+    with open(RESULTS_DIR / "pillar2_price149_all6_real.tsv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()), delimiter="\t")
+        w.writeheader()
+        w.writerows(summary_rows)
 
-    for out_fn in ("pillar2_price149_stratum_real.tsv", "pillar2_price149_by_stratum.tsv"):
-        with open(RESULTS_DIR / out_fn, "w", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=list(stratum_summary_rows[0].keys()), delimiter="\t")
-            w.writeheader()
-            w.writerows(stratum_summary_rows)
+    with open(RESULTS_DIR / "pillar2_price149_by_stratum.tsv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(stratum_summary_rows[0].keys()), delimiter="\t")
+        w.writeheader()
+        w.writerows(stratum_summary_rows)
 
     if per_protein_rows:
         with open(RESULTS_DIR / "pillar2_price149_per_protein_real.tsv", "w", newline="") as f:

@@ -93,7 +93,7 @@ def generate_figure6():
         "Added Rxns\n(Mean / Genome)",
         "Flux-Certified\n" + r"Added ($|v_j|>10^{-6}$)",
         "Zero-Flux\nPadding Rxns",
-        "Imbalanced\nActive Rxns",
+        "Imbalanced\nAdded / Active",
     ]
     meteor_vals = [
         float(r_met["mean_added_rxns"]),
@@ -144,7 +144,7 @@ def generate_figure6():
     # -----------------------------------------------------------------
     ax_b = axes[0, 1]
     add_panel_label(ax_b, "b")
-    price_rows = read_tsv(RESULTS_DIR / "pillar2_price149_all6_baselines.tsv")
+    price_rows = read_tsv(RESULTS_DIR / "pillar2_price149_all6_real.tsv")
     baselines = [
         ("CLEAN (2023)", "CLEAN\n(2023)"),
         ("MAPred (2025)", "MAPred\n(2025)"),

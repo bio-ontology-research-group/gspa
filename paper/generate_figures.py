@@ -591,7 +591,7 @@ def generate_figure3():
 # =====================================================================
 def generate_figure4():
     lso_rows = read_tsv(RESULTS_DIR / "pillar3_complex_lso.tsv")
-    anat_rows = read_tsv(RESULTS_DIR / "pillar3_eukaryotic_anatomy.tsv")
+    anat_rows = read_tsv(RESULTS_DIR / "pillar3_eukaryote_anatomy.tsv")
     rel_rows = read_tsv(RESULTS_DIR / "pillar3_relax_vs_remove.tsv")
 
     fig, axes = plt.subplots(2, 2, figsize=(13.6, 9.4))
@@ -885,7 +885,7 @@ def generate_figure5():
 
 def write_pillar3_report():
     lso_rows = read_tsv(RESULTS_DIR / "pillar3_complex_lso.tsv")
-    anat_rows = read_tsv(RESULTS_DIR / "pillar3_eukaryotic_anatomy.tsv")
+    anat_rows = read_tsv(RESULTS_DIR / "pillar3_eukaryote_anatomy.tsv")
     rel_rows = read_tsv(RESULTS_DIR / "pillar3_relax_vs_remove.tsv")
 
     lines = [
@@ -903,7 +903,7 @@ def write_pillar3_report():
 
     lines.extend([
         "",
-        "## 2. Scenario C — Multicellular Eukaryotic Anatomical & Developmental Constraints (`pillar3_eukaryotic_anatomy.tsv`)",
+        "## 2. Scenario C — Multicellular Eukaryotic Anatomical & Developmental Constraints (`pillar3_eukaryote_anatomy.tsv`)",
         "",
         "| Species | Taxon ID | Clade | Proteins | E1 Violations | E2 Direct GO TC Violations | E3 Stage 1 | E4/E5 Stage 2 Violations | E4/E5 Elimination (%) | Borderline Rescued (E3 vs E1) | Rescue Rate (%) |",
         "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",

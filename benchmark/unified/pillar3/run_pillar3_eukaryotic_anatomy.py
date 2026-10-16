@@ -831,10 +831,10 @@ def main():
         print(f"[{spec_id}] CAFA Fmax: E1={cafa_e1['fmax']:.3f} | E4_remove={cafa_e4['fmax']:.3f} | E5_relax={cafa_e5['fmax']:.3f} (Recall: E4={cafa_e4['recall']:.3f} vs E5={cafa_e5['recall']:.3f})")
         print(f"[{spec_id}] Active-Structure Boost: {r_rescued_e3}/{len(borderline_list)} borderline claims rescued ({rate_e3*100:.1f}%) vs E1={r_rescued_e1}")
 
-    # 6. Save pillar3_eukaryote_anatomy.tsv and pillar3_eukaryotic_anatomy.tsv
+    # 6. Save pillar3_eukaryote_anatomy.tsv
     out_dirs = [results_dir] + ([local_results_dir] if local_results_dir and local_results_dir != results_dir else [])
     for odir in out_dirs:
-        for fn in ("pillar3_eukaryote_anatomy.tsv", "pillar3_eukaryotic_anatomy.tsv"):
+        for fn in ("pillar3_eukaryote_anatomy.tsv",):
             anat_tsv = odir / fn
             with open(anat_tsv, "w", encoding="utf-8", newline="") as f:
                 fieldnames = [

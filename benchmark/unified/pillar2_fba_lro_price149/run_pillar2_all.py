@@ -142,14 +142,29 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
 
         slr_res = slr_by_gca[gca]
         slr_added = int(slr_res["n_repaired_rxns"])
+        slr_flux_cert = int(slr_res["n_flux_certified_repaired"])
+        slr_uncert = int(slr_res["n_uncertified_additions"])
+        slr_uncert_pct = float(slr_res["uncertified_pct"])
+        slr_imbal = int(slr_res["n_imbalanced_repaired"])
+        slr_deadend = int(slr_res["n_deadend_repaired"])
         slr_flux_tot = len(slr_res.get("pfba_flux_by_rxn", {}))
         slr_fva_ess = len(slr_res.get("fva_essential_rxns", []))
         slr_ko_ess = len(slr_res.get("ko_essential_rxns", []))
+
         meteor_net_added_over_raw = max(0, n_met_sel - n_base_sel)
-        if gca in tve_by_acc:
-            meteor_flux_added = min(meteor_net_added_over_raw, int(tve_by_acc[gca]["baseline"]["n_gapfill"]))
-        else:
-            meteor_flux_added = min(meteor_net_added_over_raw, max(53, int(round(mean_repair_added * (n_flux_y / 323.9074)))))
+        flx_set = set(int(x) for x in s_vec.get("flux_indices", []))
+        ec_sc = dpz_ec_by_gcf.get(gca, {})
+        non_core_flx = []
+        for r_i in flx_set:
+            if r_i not in refiner.enz_rxn_indices:
+                non_core_flx.append(r_i)
+            else:
+                rid = refiner.allrxns[r_i]
+                ecs = refiner.r2ec.get(rid, [])
+                known = [ec_sc[e] for e in ecs if e in ec_sc]
+                if known and max(known) < 0.50:
+                    non_core_flx.append(r_i)
+        meteor_flux_added = min(meteor_net_added_over_raw, len(non_core_flx))
         meteor_uncert = max(0, meteor_net_added_over_raw - meteor_flux_added)
 
         audit_rows.append({
@@ -166,14 +181,14 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "meteor_imbalanced_active": int(met_dpz["mass_imbal"]),
             "meteor_deadend_active": int(met_dpz["deadends"]),
             "slr_n_added": slr_added,
-            "slr_n_flux_certified_added": slr_added,
+            "slr_n_flux_certified_added": slr_flux_cert,
             "slr_n_fva_essential": slr_fva_ess,
             "slr_n_ko_essential": slr_ko_ess,
             "slr_n_flux_carrying_total": slr_flux_tot,
-            "slr_n_uncertified_padding": int(slr_res.get("n_uncertified_additions", 0)),
-            "slr_uncertified_pct": 0.0,
-            "slr_imbalanced_added": int(slr_res.get("n_imbalanced_repaired", 0)),
-            "slr_deadend_added": 0,
+            "slr_n_uncertified_padding": slr_uncert,
+            "slr_uncertified_pct": slr_uncert_pct,
+            "slr_imbalanced_added": slr_imbal,
+            "slr_deadend_added": slr_deadend,
             "slr_solve_time_sec": round(float(slr_res["solve_time_sec"]), 4),
         })
 
@@ -183,35 +198,21 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         writer.writeheader()
         writer.writerows(audit_rows)
 
-    # Compile the 6-GEM Gold-Standard Reconstruction comparison (CarveMe vs Reconstructor vs METEOR v8 vs GSPA SLR)
+    # Compile the 6-GEM Gold-Standard Reconstruction comparison (CarveMe vs Reconstructor vs METEOR v8)
     tc_dir = REF_DIR / "meteor_v8_release" / "results" / "toolcompare"
     panelb_rxn = json.loads((tc_dir / "panelB_curated6.json").read_text())
     panelb_ec = json.loads((tc_dir / "panelB_ec.json").read_text())
     recon_ec = json.loads((tc_dir / "recon_dpz_ec.json").read_text())
-    tve_ec_by_org = {x["organism"]: x for x in json.loads((tc_dir / "ablation_thresh_vs_evw_ec.json").read_text())}
-    b3_clean_by_org = {x["organism"]: x for x in json.loads((tc_dir / "b3_clean.json").read_text())}
-    b3_enzbert_by_org = {x["organism"]: x for x in json.loads((tc_dir / "b3_enzbert.json").read_text())}
 
     gem_rows = []
     for r_rxn, r_ec, r_rec in zip(panelb_rxn, panelb_ec, recon_ec):
         org = r_rxn["organism"]
         gem = r_rxn["gem"]
-        gcf = r_rxn["gcf"]
-        gem_ec_cnt = int(r_ec["gem_ec"])
-        tve_e = tve_ec_by_org[org]["baseline"]
-        cl_e = b3_clean_by_org[org]["arms"]["baseline"]
-        ez_e = b3_enzbert_by_org[org]["arms"]["baseline"]
-
-        cl_ec_r = round((cl_e["n_ec"] - cl_e["FP"]) / gem_ec_cnt, 3)
-        ez_ec_r = round((ez_e["n_ec"] - ez_e["FP"]) / gem_ec_cnt, 3)
 
         for mname, rxn_p, rxn_r, ec_p, ec_r, grows in [
             ("CarveMe (2018)", r_rxn["carveme"]["P"], r_rxn["carveme"]["R"], r_ec["carveme"]["P"], r_ec["carveme"]["R"], r_rxn["carveme"]["grows"]),
             ("Reconstructor (2023)", None, None, r_rec["P"], r_rec["R"], r_rec["grows"]),
             ("METEOR v8 (2026)", r_rxn["meteor"]["P"], r_rxn["meteor"]["R"], r_ec["meteor"]["P"], r_ec["meteor"]["R"], r_rxn["meteor"]["grows"]),
-            ("GSPA StoichiometricLocusRefiner (DPZ Single-Pred)", None, None, tve_e["P"], tve_e["R"], True),
-            ("GSPA StoichiometricLocusRefiner (CLEAN Single-Pred)", None, None, cl_e["precision"], cl_ec_r, True),
-            ("GSPA StoichiometricLocusRefiner (EnzBERT Single-Pred)", None, None, ez_e["precision"], ez_ec_r, True),
         ]:
             ec_f1 = round(2 * ec_p * ec_r / max(ec_p + ec_r, 1e-9), 4)
             rxn_f1 = round(2 * rxn_p * rxn_r / max(rxn_p + rxn_r, 1e-9), 4) if rxn_p is not None else None
@@ -233,9 +234,6 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         "CarveMe (2018)",
         "Reconstructor (2023)",
         "METEOR v8 (2026)",
-        "GSPA StoichiometricLocusRefiner (DPZ Single-Pred)",
-        "GSPA StoichiometricLocusRefiner (CLEAN Single-Pred)",
-        "GSPA StoichiometricLocusRefiner (EnzBERT Single-Pred)",
     ]:
         m_sub = [r for r in gem_rows if r["method"] == mname and r["organism"] != "MEAN_6GEMS"]
         has_rxn = all(r["rxn_precision"] != "" for r in m_sub)
@@ -259,6 +257,7 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         writer.writerows(gem_rows)
 
     summary_path = RESULTS_DIR / "pillar2_invariant_audit_summary.tsv"
+    b_act = float(np.mean([r["n_core_rxns"] for r in audit_rows]))
     m_act = float(np.mean([r["meteor_n_active_total"] for r in audit_rows]))
     m_flx_tot = float(np.mean([r["meteor_n_flux_carrying_total"] for r in audit_rows]))
     m_zflx = float(np.mean([r["meteor_n_zero_flux_active"] for r in audit_rows]))
@@ -266,6 +265,10 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
     m_flx = float(np.mean([r["meteor_n_flux_certified_added"] for r in audit_rows]))
     m_unc = float(np.mean([r["meteor_n_uncertified_padding"] for r in audit_rows]))
     s_add = float(np.mean([r["slr_n_added"] for r in audit_rows]))
+    s_flx_cert = float(np.mean([r["slr_n_flux_certified_added"] for r in audit_rows]))
+    s_unc = float(np.mean([r["slr_n_uncertified_padding"] for r in audit_rows]))
+    s_imbal = float(np.mean([r["slr_imbalanced_added"] for r in audit_rows]))
+    s_dead = float(np.mean([r["slr_deadend_added"] for r in audit_rows]))
 
     with open(summary_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(
@@ -282,9 +285,9 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         writer.writerow({
             "method": "Raw Sequence Threshold (DeepProZyme >= 0.5)",
             "n_genomes": len(audit_rows),
-            "mean_active_rxns": 2809.5,
+            "mean_active_rxns": round(b_act, 1),
             "mean_flux_carrying_active": 0.0,
-            "mean_zero_flux_active": 2809.5,
+            "mean_zero_flux_active": round(b_act, 1),
             "mean_added_rxns": 0.0,
             "mean_flux_certified_added": 0.0,
             "mean_uncertified_padding": 0.0,
@@ -330,11 +333,11 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "mean_flux_carrying_active": round(s_flx_tot, 1),
             "mean_zero_flux_active": round(round(s_act, 1) - round(s_flx_tot, 1), 1),
             "mean_added_rxns": round(s_add, 2),
-            "mean_flux_certified_added": round(s_add, 2),
-            "mean_uncertified_padding": 0.0,
-            "uncertified_padding_pct": 0.0,
-            "mean_imbalanced_added_or_active": 0.0,
-            "mean_deadend_active": 0.0,
+            "mean_flux_certified_added": round(s_flx_cert, 2),
+            "mean_uncertified_padding": round(s_unc, 2),
+            "uncertified_padding_pct": round(100.0 * s_unc / max(s_add, 1e-6), 2),
+            "mean_imbalanced_added_or_active": round(s_imbal, 2),
+            "mean_deadend_active": round(s_dead, 2),
             "lp_biomass_feasible_pct": 100.0,
         })
     print(f"[2A] Wrote 108-genome audit to {out_path.name} and 6-GEM comparison to {gem_out.name}")
@@ -513,20 +516,16 @@ def run_15_genome_stratified_lro(refiner: StoichiometricLocusRefiner) -> Path:
 def run_price149_all6_evaluation() -> Path:
     """
     Experiment 2C: Execute 100% blind evaluation of Price-149 across all 6 SOTA EC baselines
-    via `scripts/eval_price149_real_all6.py` and copy to `pillar2_price149_all6_baselines.tsv`
-    and `pillar2_price149_by_stratum.tsv`.
+    via `scripts/eval_price149_real_all6.py`.
     """
     print("[2C] Running 100%-Blind Price-149 Evaluation across all 6 SOTA EC Baselines...")
     eval_price149_real_all6.main()
     real_all6 = RESULTS_DIR / "pillar2_price149_all6_real.tsv"
     real_strat = RESULTS_DIR / "pillar2_price149_stratum_real.tsv"
-    out_all6 = RESULTS_DIR / "pillar2_price149_all6_baselines.tsv"
     out_strat = RESULTS_DIR / "pillar2_price149_by_stratum.tsv"
-    if real_all6.exists():
-        out_all6.write_text(real_all6.read_text(encoding="utf-8"), encoding="utf-8")
     if real_strat.exists():
         out_strat.write_text(real_strat.read_text(encoding="utf-8"), encoding="utf-8")
-    return out_all6
+    return real_all6
 
 
 def main():

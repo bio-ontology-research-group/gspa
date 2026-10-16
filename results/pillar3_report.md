@@ -33,7 +33,7 @@
 | `ALL (Weighted Mean)` | Stage 1 Coherence + Operon Context | 175 | 0.9371 | 0.9257 | 0.5951 | 0.6680 | 0.7170 |
 | `ALL (Weighted Mean)` | Stage 1 + Stage 2 + Stage 3 Agent | 175 | 0.9429 | 0.9314 | 0.6009 | 0.6737 | 0.7170 |
 
-## 2. Scenario C — Multicellular Eukaryotic Anatomical & Developmental Constraints (`pillar3_eukaryotic_anatomy.tsv`)
+## 2. Scenario C — Multicellular Eukaryotic Anatomical & Developmental Constraints (`pillar3_eukaryote_anatomy.tsv`)
 
 | Species | Taxon ID | Clade | Proteins | E1 Violations | E2 Direct GO TC Violations | E3 Stage 1 | E4/E5 Stage 2 Violations | E4/E5 Elimination (%) | Borderline Rescued (E3 vs E1) | Rescue Rate (%) |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
