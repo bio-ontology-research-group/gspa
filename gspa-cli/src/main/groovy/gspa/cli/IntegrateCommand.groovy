@@ -1217,9 +1217,21 @@ class IntegrateCommand implements Runnable {
                 if (activeKeys.size() == 1 && candKeys.isEmpty()) {
                     def singleProv = integrated.provenance[activeKeys[0]]
                     if (singleProv != null && singleProv.finalProbability > 0.45d) {
+                        double beforeProb = singleProv.finalProbability
                         singleProv.finalProbability = 0.45d
                         singleProv.finalLogOdds = CalibrationTable.probToLogOdds(0.45d)
                         singleProv.priorContributions['stage2_singleton_prune'] = -0.5d
+                        report.record(new EnforcementAction(
+                            dimension: 'coherence',
+                            action: 'PRUNED_SINGLETON',
+                            contigId: 'contig_1',
+                            proteinId: singleProv.proteinId,
+                            term: goId,
+                            reason: 'obligate heteromer singleton without partner candidate (>=0.08)',
+                            basis: 'complexClassification=n',
+                            scoreBefore: beforeProb,
+                            scoreAfter: 0.45d
+                        ))
                         integrated.annotations.annotations.removeAll {
                             it.type == AnnotationType.GO && it.value == goId && singleProv.proteinId == (it.metaClass.respondsTo(it, 'getProteinId') ? it.proteinId : singleProv.proteinId)
                         }

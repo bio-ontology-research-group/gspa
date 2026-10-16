@@ -402,6 +402,36 @@ def evaluate_tabular_ml_baselines(
     return ml_eval_metrics, ml_lro_rows
 
 
+def _strip_eval_keys_from_record(rec: Dict[str, Any]) -> Dict[str, Any]:
+    drop_keys = {
+        "true_protein_id",
+        "expected_action",
+        "expected_protein_id",
+        "expected_function_id",
+        "ground_truth_label",
+        "is_cross_clade_trap",
+        "rlgc_baseline_rank",
+        "rlgc_ordered_pids",
+        "rlgc_ordered_qs",
+        "is_true_target",
+    }
+    clean = {
+        k: v
+        for k, v in rec.items()
+        if k not in drop_keys and not k.startswith(("expected_", "ground_truth", "true_", "is_true_"))
+    }
+    if "candidates" in clean and isinstance(clean["candidates"], list):
+        clean["candidates"] = [
+            {
+                ck: cv
+                for ck, cv in cand.items()
+                if ck not in drop_keys and not ck.startswith(("expected_", "ground_truth", "true_", "is_true_"))
+            }
+            for cand in clean["candidates"]
+        ]
+    return clean
+
+
 def run_sidecar(
     anomalies_file: Path,
     out_file: Path,
@@ -413,10 +443,18 @@ def run_sidecar(
     seed: int = 42,
     temperature: float = 0.0,
 ) -> None:
-    """Invokes benchmark/agent/run_gspa_agent.py via uv run python."""
+    """Invokes benchmark/agent/run_gspa_agent.py via uv run python on a ground-truth-stripped JSONL input."""
+    stripped_file = out_file.parent / f".stripped_{anomalies_file.name}"
+    with open(anomalies_file, "r", encoding="utf-8") as fin, open(stripped_file, "w", encoding="utf-8") as fout:
+        for line in fin:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            fout.write(json.dumps(_strip_eval_keys_from_record(json.loads(line))) + "\n")
+
     cmd = [
         "uv", "run", "python", str(SIDECAR_SCRIPT),
-        "--anomalies", str(anomalies_file),
+        "--anomalies", str(stripped_file),
         "--out", str(out_file),
         "--api-base", api_base,
         "--model", model,
@@ -430,7 +468,11 @@ def run_sidecar(
 
     print(f"  Running sidecar: {' '.join(cmd)}")
     t0 = time.time()
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True)
+    finally:
+        if stripped_file.exists():
+            stripped_file.unlink()
     elapsed = time.time() - t0
     if res.returncode != 0:
         print(f"  [ERROR] Sidecar failed ({res.returncode}): {res.stderr}", file=sys.stderr)

@@ -61,4 +61,41 @@ class StoichiometricLocusRefinerSpec extends Specification {
         Math.abs(integrated.provenanceFor('b0001', AnnotationType.EC, 'EC:2.6.1.57').finalProbability - 0.78d) < 1e-5d
         integrated.provenanceFor('b0001', AnnotationType.EC, 'EC:2.6.1.57').priorContributions.containsKey('fba_locus_refiner')
     }
+
+    def "IterativeRefiner applies damping directly in log-odds space and ConsistencyEnforcer defaults to relaxFactor 1.0"() {
+        given:
+        def combiner = new gspa.integration.EvidenceCombiner()
+        def refiner = new gspa.integration.IterativeRefiner(combiner)
+        def enforcer = new gspa.metrics.ConsistencyEnforcer()
+
+        expect:
+        Math.abs(refiner.damping - 0.5d) < 1e-9d
+        refiner.maxIter == 6
+        Math.abs(refiner.epsilon - 0.005d) < 1e-9d
+        Math.abs(enforcer.relaxFactor - 1.0d) < 1e-9d
+    }
+
+    def "StoichiometricLocusRefiner extracts gene EC scores and aggregates role probabilities via SparseRoleAggregator"() {
+        given:
+        def integrated = new IntegratedAnnotationSet()
+        integrated.put(
+            new ClaimProvenance(
+                functionKey: 'b0001|EC|EC:1.1.1.1',
+                proteinId: 'b0001',
+                likelihoodLogOdds: 1.386d,
+                finalLogOdds: 1.386d,
+                finalProbability: 0.80d
+            ),
+            new Annotation(type: AnnotationType.EC, value: 'EC:1.1.1.1', score: 0.80d, source: 'test')
+        )
+        def refiner = new StoichiometricLocusRefiner(topM: 3, tauSub: 0.25d)
+
+        when:
+        def geneEc = refiner.extractGeneEcScores(integrated)
+        def roleProbs = refiner.aggregator.aggregateRoleProbabilities(geneEc)
+
+        then:
+        geneEc['b0001']['1.1.1.1'] == 0.80d
+        Math.abs(roleProbs['1.1.1.1'] - 0.80d) < 1e-4d
+    }
 }

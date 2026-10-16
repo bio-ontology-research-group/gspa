@@ -52,6 +52,20 @@ class SymbolicGuardrail:
     and deterministic/supervised comparators.
     """
 
+    TAXON_ALIASES: Dict[str, str] = {
+        "bacteria": "NCBITaxon_2",
+        "archaea": "NCBITaxon_2157",
+        "eukaryote": "NCBITaxon_2759",
+        "eukaryota": "NCBITaxon_2759",
+        "fungi": "NCBITaxon_4751",
+        "yeast": "NCBITaxon_4751",
+        "metazoa": "NCBITaxon_33208",
+        "viridiplantae": "NCBITaxon_33090",
+        "plant": "NCBITaxon_33090",
+        "virus": "NCBITaxon_10239",
+        "viruses": "NCBITaxon_10239",
+    }
+
     def __init__(self, resources_dir: Path = RESOURCES_DIR, go_obo_path: Optional[Path] = None) -> None:
         self.parents: Dict[str, Set[str]] = {}
         self.disjoint: Dict[str, Set[str]] = {}
@@ -64,155 +78,192 @@ class SymbolicGuardrail:
         self.go_parents: Dict[str, Set[str]] = {}
         self.go_labels: Dict[str, str] = {}
         self.known_go_terms: Set[str] = set()
+        self.known_taxa: Set[str] = set()
+        self.resources_loaded: bool = False
         self._lineage_cache: Dict[str, Set[str]] = {}
         self._go_anc_cache: Dict[str, Set[str]] = {}
         self._anat_anc_cache: Dict[str, Set[str]] = {}
-        self._load(resources_dir, go_obo_path or DEFAULT_GO_OBO)
+        resolved_obo = DEFAULT_GO_OBO if go_obo_path is None else go_obo_path
+        self._load(resources_dir, resolved_obo)
 
     def _add_disjoint(self, a: str, b: str) -> None:
         self.disjoint.setdefault(a, set()).add(b)
         self.disjoint.setdefault(b, set()).add(a)
 
+    @classmethod
+    def normalize_taxon(cls, raw: str) -> str:
+        t = (raw or "").strip()
+        if not t:
+            return ""
+        low = t.lower()
+        if low in cls.TAXON_ALIASES:
+            return cls.TAXON_ALIASES[low]
+        if t.startswith("NCBITaxon:"):
+            return "NCBITaxon_" + t[len("NCBITaxon:") :].strip()
+        if t.isdigit():
+            return "NCBITaxon_" + t
+        return t
+
     def _load(self, resources_dir: Path, go_obo_path: Optional[Path]) -> None:
+        if resources_dir is None or not resources_dir.exists():
+            self.resources_loaded = False
+            return
+
         hier_path = resources_dir / "taxon-constraints" / "ncbi-taxon-hierarchy.tsv"
-        unions: Dict[str, List[str]] = {}
-        if hier_path.exists():
-            with open(hier_path, "r", encoding="utf-8") as fh:
+        tc_path = resources_dir / "taxon-constraints" / "go-taxon-constraints.tsv"
+        labels_path = resources_dir / "taxon-constraints" / "ncbi-taxon-labels.tsv"
+        anat_hier_path = resources_dir / "anatomical-constraints" / "uberon-po-hierarchy.tsv"
+        anat_tc_path = resources_dir / "anatomical-constraints" / "uberon-po-taxon-constraints.tsv"
+        go_anat_path = resources_dir / "anatomical-constraints" / "go-anatomical-constraints.tsv"
+
+        required_files = [hier_path, tc_path, anat_hier_path, anat_tc_path, go_anat_path]
+        if any(not p.exists() for p in required_files):
+            self.resources_loaded = False
+            return
+
+        with open(hier_path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("Term\t"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) < 3:
+                    continue
+                t, rel, other = parts[0].strip(), parts[1].strip(), parts[2].strip()
+                self.known_taxa.add(t)
+                self.known_taxa.add(other)
+                if rel == "is_a":
+                    self.parents.setdefault(t, set()).add(other)
+                elif rel == "disjoint_from":
+                    self._add_disjoint(t, other)
+                elif rel == "union_of":
+                    # OWL/OBO union_of asserts that each constituent member clade `other`
+                    # is a subclass of the union taxon `t` (without assuming pairwise disjointness).
+                    self.parents.setdefault(other, set()).add(t)
+
+        if labels_path.exists():
+            with open(labels_path, "r", encoding="utf-8") as fh:
                 for line in fh:
                     line = line.strip()
-                    if not line or line.startswith("#") or line.startswith("Term\t"):
+                    if not line or line.startswith("#") or line.startswith("Taxon_ID\t"):
                         continue
                     parts = line.split("\t")
-                    if len(parts) < 3:
-                        continue
-                    t, rel, other = parts[0].strip(), parts[1].strip(), parts[2].strip()
-                    if rel == "is_a":
-                        self.parents.setdefault(t, set()).add(other)
-                    elif rel == "disjoint_from":
-                        self._add_disjoint(t, other)
-                    elif rel == "union_of":
-                        # In ncbi-taxon-hierarchy.tsv, union_of links a union taxon (e.g. NCBITaxon_union_...)
-                        # to its constituent member clades (which are disjoint clades in GO taxon constraints,
-                        # and each member is_a the union taxon).
-                        self.parents.setdefault(other, set()).add(t)
-                        unions.setdefault(t, []).append(other)
-        for members in unions.values():
-            for i in range(len(members)):
-                for j in range(i + 1, len(members)):
-                    self._add_disjoint(members[i], members[j])
+                    if parts:
+                        self.known_taxa.add(parts[0].strip())
 
         # Load direct GO taxon constraints (supports both 3-column GO_ID\tConstraint_Type\tTaxon_ID
         # and 4-column GO_ID\tGO_Label\tConstraint_Type\tTaxon_ID formats)
-        tc_path = resources_dir / "taxon-constraints" / "go-taxon-constraints.tsv"
-        if tc_path.exists():
-            with open(tc_path, "r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line or line.startswith("#") or line.startswith("GO_ID\t"):
-                        continue
-                    parts = line.split("\t")
-                    if len(parts) == 3:
+        with open(tc_path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("GO_ID\t"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) == 3:
+                    go_id, ctype, tax_id = parts[0].strip(), parts[1].strip(), parts[2].strip()
+                elif len(parts) >= 4:
+                    if parts[1].strip() in ("only_in_taxon", "never_in_taxon", "RO:0002160", "RO:0002161"):
                         go_id, ctype, tax_id = parts[0].strip(), parts[1].strip(), parts[2].strip()
-                    elif len(parts) >= 4:
-                        if parts[1].strip() in ("only_in_taxon", "never_in_taxon", "RO:0002160", "RO:0002161"):
-                            go_id, ctype, tax_id = parts[0].strip(), parts[1].strip(), parts[2].strip()
-                        else:
-                            go_id, ctype, tax_id = parts[0].strip(), parts[2].strip(), parts[3].strip()
                     else:
-                        continue
-                    tax_id = tax_id.replace("NCBITaxon:", "NCBITaxon_")
-                    self.known_go_terms.add(go_id)
-                    if ctype in ("only_in_taxon", "RO:0002160"):
-                        self.only_in.setdefault(go_id, set()).add(tax_id)
-                    elif ctype in ("never_in_taxon", "RO:0002161"):
-                        self.never_in.setdefault(go_id, set()).add(tax_id)
+                        go_id, ctype, tax_id = parts[0].strip(), parts[2].strip(), parts[3].strip()
+                else:
+                    continue
+                tax_id = tax_id.replace("NCBITaxon:", "NCBITaxon_")
+                self.known_go_terms.add(go_id)
+                self.known_taxa.add(tax_id)
+                if ctype in ("only_in_taxon", "RO:0002160"):
+                    self.only_in.setdefault(go_id, set()).add(tax_id)
+                elif ctype in ("never_in_taxon", "RO:0002161"):
+                    self.never_in.setdefault(go_id, set()).add(tax_id)
 
         # Load anatomical hierarchy (is_a / part_of / develops_from)
-        anat_hier_path = resources_dir / "anatomical-constraints" / "uberon-po-hierarchy.tsv"
-        if anat_hier_path.exists():
-            with open(anat_hier_path, "r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line or line.startswith("#") or line.startswith("Child_ID\t"):
-                        continue
-                    parts = line.split("\t")
-                    if len(parts) >= 3:
-                        child_id, parent_id = parts[0].strip(), parts[2].strip()
-                        self.anat_parents.setdefault(child_id, set()).add(parent_id)
+        with open(anat_hier_path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("Child_ID\t"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) >= 3:
+                    child_id, parent_id = parts[0].strip(), parts[2].strip()
+                    self.anat_parents.setdefault(child_id, set()).add(parent_id)
 
         # Load anatomical taxon constraints
-        anat_tc_path = resources_dir / "anatomical-constraints" / "uberon-po-taxon-constraints.tsv"
-        if anat_tc_path.exists():
-            with open(anat_tc_path, "r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line or line.startswith("#") or line.startswith("Anatomy_ID\t"):
-                        continue
-                    parts = line.split("\t")
-                    if len(parts) < 4:
-                        continue
-                    anat_id, ctype, tax_id = parts[0].strip(), parts[2].strip(), parts[3].strip()
-                    tax_id = tax_id.replace("NCBITaxon:", "NCBITaxon_")
-                    if ctype == "only_in_taxon":
-                        self.anat_only_in.setdefault(anat_id, set()).add(tax_id)
-                    elif ctype == "never_in_taxon":
-                        self.anat_never_in.setdefault(anat_id, set()).add(tax_id)
+        with open(anat_tc_path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("Anatomy_ID\t"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) < 4:
+                    continue
+                anat_id, ctype, tax_id = parts[0].strip(), parts[2].strip(), parts[3].strip()
+                tax_id = tax_id.replace("NCBITaxon:", "NCBITaxon_")
+                self.known_taxa.add(tax_id)
+                if ctype == "only_in_taxon":
+                    self.anat_only_in.setdefault(anat_id, set()).add(tax_id)
+                elif ctype == "never_in_taxon":
+                    self.anat_never_in.setdefault(anat_id, set()).add(tax_id)
 
         # Load GO-to-anatomy cross-product constraints and propagate along anatomical ancestors
-        go_anat_path = resources_dir / "anatomical-constraints" / "go-anatomical-constraints.tsv"
-        if go_anat_path.exists():
-            with open(go_anat_path, "r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line or line.startswith("#") or line.startswith("GO_ID\t"):
-                        continue
-                    parts = line.split("\t")
-                    if len(parts) < 6:
-                        continue
-                    go_id, go_lbl, rel_id, rel_lbl, anat_id, anat_lbl = (
-                        parts[0].strip(),
-                        parts[1].strip(),
-                        parts[2].strip(),
-                        parts[3].strip(),
-                        parts[4].strip(),
-                        parts[5].strip(),
-                    )
-                    self.known_go_terms.add(go_id)
-                    self.go_labels.setdefault(go_id, go_lbl)
-                    self.go_anatomy.setdefault(go_id, []).append((rel_id, rel_lbl, anat_id, anat_lbl))
-                    for a_anc in self.anat_ancestors(anat_id):
-                        for tx in self.anat_only_in.get(a_anc, ()):
-                            self.only_in.setdefault(go_id, set()).add(tx)
-                        for tx in self.anat_never_in.get(a_anc, ()):
-                            self.never_in.setdefault(go_id, set()).add(tx)
+        with open(go_anat_path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("GO_ID\t"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) < 6:
+                    continue
+                go_id, go_lbl, rel_id, rel_lbl, anat_id, anat_lbl = (
+                    parts[0].strip(),
+                    parts[1].strip(),
+                    parts[2].strip(),
+                    parts[3].strip(),
+                    parts[4].strip(),
+                    parts[5].strip(),
+                )
+                self.known_go_terms.add(go_id)
+                self.go_labels.setdefault(go_id, go_lbl)
+                self.go_anatomy.setdefault(go_id, []).append((rel_id, rel_lbl, anat_id, anat_lbl))
+                for a_anc in self.anat_ancestors(anat_id):
+                    for tx in self.anat_only_in.get(a_anc, ()):
+                        self.only_in.setdefault(go_id, set()).add(tx)
+                    for tx in self.anat_never_in.get(a_anc, ()):
+                        self.never_in.setdefault(go_id, set()).add(tx)
 
-        # Load GO DAG hierarchy (is_a and part_of) from go-basic.obo if available
-        if go_obo_path and go_obo_path.exists():
-            cur_id: Optional[str] = None
-            is_obs = False
-            with open(go_obo_path, "r", encoding="utf-8") as fh:
-                for raw in fh:
-                    line = raw.strip()
-                    if line == "[Term]":
-                        cur_id = None
-                        is_obs = False
-                    elif line.startswith("[") and line.endswith("]"):
-                        cur_id = None
-                    elif line.startswith("id: GO:"):
-                        cur_id = line[4:].strip()
-                        self.known_go_terms.add(cur_id)
-                    elif cur_id and line.startswith("name: "):
-                        self.go_labels[cur_id] = line[6:].strip()
-                    elif cur_id and line == "is_obsolete: true":
-                        is_obs = True
-                        self.known_go_terms.discard(cur_id)
-                    elif cur_id and not is_obs:
-                        if line.startswith("is_a: GO:"):
-                            parent = line[6:].split("!")[0].strip()
-                            self.go_parents.setdefault(cur_id, set()).add(parent)
-                        elif line.startswith("relationship: part_of GO:"):
-                            parent = line[len("relationship: part_of ") :].split("!")[0].strip()
-                            self.go_parents.setdefault(cur_id, set()).add(parent)
+        # Load GO DAG hierarchy (is_a and part_of) from go-basic.obo
+        if go_obo_path is None or not go_obo_path.exists():
+            self.resources_loaded = False
+            return
+
+        cur_id: Optional[str] = None
+        is_obs = False
+        with open(go_obo_path, "r", encoding="utf-8") as fh:
+            for raw in fh:
+                line = raw.strip()
+                if line == "[Term]":
+                    cur_id = None
+                    is_obs = False
+                elif line.startswith("[") and line.endswith("]"):
+                    cur_id = None
+                elif line.startswith("id: GO:"):
+                    cur_id = line[4:].strip()
+                    self.known_go_terms.add(cur_id)
+                elif cur_id and line.startswith("name: "):
+                    self.go_labels[cur_id] = line[6:].strip()
+                elif cur_id and line == "is_obsolete: true":
+                    is_obs = True
+                    self.known_go_terms.discard(cur_id)
+                elif cur_id and not is_obs:
+                    if line.startswith("is_a: GO:"):
+                        parent = line[6:].split("!")[0].strip()
+                        self.go_parents.setdefault(cur_id, set()).add(parent)
+                    elif line.startswith("relationship: part_of GO:"):
+                        parent = line[len("relationship: part_of ") :].split("!")[0].strip()
+                        self.go_parents.setdefault(cur_id, set()).add(parent)
+
+        self.resources_loaded = bool(
+            self.parents and self.disjoint and self.known_go_terms and self.known_taxa and self.go_parents
+        )
 
     def anat_ancestors(self, anat_id: str) -> Set[str]:
         if anat_id in self._anat_anc_cache:
@@ -243,7 +294,7 @@ class SymbolicGuardrail:
         return acc
 
     def lineage(self, taxon: str) -> Set[str]:
-        norm_tax = taxon.replace("NCBITaxon:", "NCBITaxon_").strip()
+        norm_tax = self.normalize_taxon(taxon)
         if norm_tax in self._lineage_cache:
             return self._lineage_cache[norm_tax]
         acc = {norm_tax}
@@ -301,13 +352,19 @@ class SymbolicGuardrail:
         allowed_go_vocab: Optional[Set[str]] = None,
         require_taxon: bool = True,
     ) -> Dict[str, Any]:
+        if not self.resources_loaded:
+            return {
+                "valid": False,
+                "reason": "Symbolic guardrail ontology/taxon resources are missing or incomplete; failing closed.",
+                "violation_type": "MISSING_RESOURCES",
+            }
         if not GO_ID_RE.match(go_id):
             return {
                 "valid": False,
                 "reason": f"Malformed GO identifier '{go_id}' (must match GO:XXXXXXX).",
                 "violation_type": "HALLUCINATED_ID",
             }
-        if self.known_go_terms and go_id not in self.known_go_terms:
+        if go_id not in self.known_go_terms:
             return {
                 "valid": False,
                 "reason": f"GO term '{go_id}' does not exist in the Gene Ontology.",
@@ -322,7 +379,14 @@ class SymbolicGuardrail:
                 }
             return {"valid": True, "reason": "Consistent (no organism taxon asserted).", "violation_type": None}
 
-        norm_org = organism_taxon.replace("NCBITaxon:", "NCBITaxon_").strip()
+        norm_org = self.normalize_taxon(organism_taxon)
+        if norm_org not in self.known_taxa:
+            return {
+                "valid": False,
+                "reason": f"Unrecognized organism_taxon '{organism_taxon}' not present in taxonomy hierarchy; failing closed.",
+                "violation_type": "UNKNOWN_TAXON",
+            }
+
         org_lin = self.lineage(norm_org)
 
         # True-path closure check: check go_id and all of its GO ancestors (is_a / part_of)
@@ -344,7 +408,10 @@ class SymbolicGuardrail:
         Level-order BFS up the GO DAG (is_a / part_of) to find all valid non-root
         ancestors at the minimum valid BFS distance d_min.
         """
-        if not self.go_parents or not organism_taxon:
+        if not self.resources_loaded or not self.go_parents or not organism_taxon:
+            return []
+        norm_org = self.normalize_taxon(organism_taxon)
+        if norm_org not in self.known_taxa:
             return []
         visited = {violating_go}
         current_level = [
@@ -359,7 +426,7 @@ class SymbolicGuardrail:
             for cand in current_level:
                 if cand in GO_ROOTS:
                     continue
-                chk = self.check_go_term(cand, organism_taxon, require_taxon=True)
+                chk = self.check_go_term(cand, norm_org, require_taxon=True)
                 if chk["valid"]:
                     valid_at_level.append(cand)
                 else:
@@ -531,6 +598,29 @@ def call_chat_completion(
     return {}
 
 
+_GROUND_TRUTH_KEYS = {
+    "true_protein_id",
+    "expected_action",
+    "expected_protein_id",
+    "expected_function_id",
+    "ground_truth_label",
+    "is_cross_clade_trap",
+    "rlgc_baseline_rank",
+    "rlgc_ordered_pids",
+    "rlgc_ordered_qs",
+    "is_true_target",
+}
+
+
+def _strip_ground_truth(obj: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        k: v
+        for k, v in obj.items()
+        if k not in _GROUND_TRUTH_KEYS
+        and not k.startswith(("expected_", "ground_truth", "true_", "is_true_"))
+    }
+
+
 def solve_single_anomaly(
     anomaly: Dict[str, Any],
     guardrail: SymbolicGuardrail,
@@ -550,7 +640,9 @@ def solve_single_anomaly(
     org_tax = anomaly.get("organism_taxon", "")
     target_func = anomaly.get("target_function_id") or anomaly.get("target_id", "")
     target_label = anomaly.get("target_function_label") or anomaly.get("target_name", target_func)
-    candidates = anomaly.get("candidates", [])
+    raw_candidates = anomaly.get("candidates", [])
+    candidates = [_strip_ground_truth(c) for c in raw_candidates]
+    clean_context = _strip_ground_truth(anomaly.get("context", {}) or {})
 
     if not candidates:
         return {
@@ -593,7 +685,7 @@ def solve_single_anomaly(
         f"Resolve Anomaly {anom_id} ({anom_type}):\n"
         f"- Organism Taxon: {org_tax or 'unknown'}\n"
         f"- Target Function: {target_func} ({target_label})\n"
-        f"- Context: {json.dumps(anomaly.get('context', {}))}\n"
+        f"- Context: {json.dumps(clean_context)}\n"
         f"- Candidates ({len(candidates)}):\n"
         f"{json.dumps(candidates, indent=2)}\n\n"
         "Inspect evidence or constraints as needed, then call `propose_resolution`. /no_think"
@@ -679,7 +771,7 @@ def solve_single_anomaly(
                         "anomaly_type": anom_type,
                         "target_function_id": target_func,
                         "target_function_label": target_label,
-                        "context": anomaly.get("context", {}),
+                        "context": clean_context,
                     }
                 elif fn_name == "query_protein_evidence":
                     pid = fn_args.get("protein_id", "")
@@ -788,9 +880,9 @@ def solve_single_anomaly(
                         guardrail_status = "REJECTED"
                         guardrail_note = chk_rel["reason"]
                         action = "ABSTAIN"
-                    elif guardrail.go_parents and func_id not in ancs:
+                    elif not guardrail.go_parents or func_id not in ancs:
                         guardrail_status = "REJECTED"
-                        guardrail_note = f"Proposed RELAX target {func_id} is not an ancestor of {target_func}."
+                        guardrail_note = f"Proposed RELAX target {func_id} is not a verified ancestor of {target_func}."
                         action = "ABSTAIN"
 
     return {

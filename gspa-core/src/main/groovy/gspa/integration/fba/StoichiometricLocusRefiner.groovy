@@ -116,6 +116,7 @@ class StoichiometricLocusRefiner {
 
         aggregator.topM = topM
         aggregator.tauSub = tauSub
+        Map<String, Double> roleProbs = aggregator.aggregateRoleProbabilities(geneEcScores)
 
         File tmpDir = workDir ?: File.createTempDir('gspa_fba_', '')
         tmpDir.mkdirs()
@@ -126,6 +127,7 @@ class StoichiometricLocusRefiner {
         ObjectMapper mapper = new ObjectMapper()
         Map<String, Object> payload = [
             gene_ec_scores                 : geneEcScores,
+            role_probs                     : roleProbs,
             rlgc_bf_by_gene_ec             : covariates.rlgc_bf_by_gene_ec,
             operon_partner_boost_by_gene_ec: covariates.operon_partner_boost_by_gene_ec,
             plm_sim_by_gene_ec             : covariates.plm_sim_by_gene_ec,

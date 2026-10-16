@@ -1,0 +1,96 @@
+Four audit agents are still running (Stage 0/1 equations, Stage 2A/2B, Stage 3 agent, Pillar 2 metabolism). I have no further independent checks to run that would not duplicate their work, so I'll assemble the verdict as soon as their reports arrive.
+
+Those three claims check out (certificates disabled in both benchmark callers, relax factor fixed at 1.0, Uberon only/never split is 4,767/3,564 not 6,230/2,101). Waiting on the Stage 0/1, Stage 3, and Pillar 2 audits before writing the verdict.
+
+Both claims confirmed: all 15 non-trap "conflicts" target universally valid terms (protein binding, DNA binding, transferase activity) with expected relaxation equal to the original term, and max Bayes factor alone scores 45/50 on LRO-50 with lexicographic candidate order in all 50 cases. Two audits remain (Stage 0/1 equations and Pillar 2 metabolism).
+
+Confirmed: the Stage 0/1 prior classes are byte-identical to the v2.0.0 release, and main.tex states α₂ = 1.5, α₄ = 4.0, α_boost = 1.10, N_struct = 3, α₅ = 1.2 where the code has 1.0, 3.5, 0.65, 2, 1.5. One audit remains (Pillar 2 metabolism); I'll finalise once it reports.
+
+Still waiting on the Pillar 2 metabolism audit (Price-149, LRO, 108-genome audit, six GEMs, antiSMASH, CAFA provenance). Everything else is in hand.
+
+# GSPA v2.1.0 Round 1 Validation Gate — re-review
+
+Scope: HEAD `a7f6875` (tagged `v2.1.0`), working tree clean apart from this report file. I read the three review files and the response letter, then verified claims directly in the Groovy and Python sources, the result TSVs, `paper/main.tex`, and `paper/supplement.tex`. Five subsystem audits ran in parallel and every consequential finding below was re-checked by me in the files. A fresh `./gradlew clean test` was run.
+
+## What has been genuinely fixed
+
+- **Build and release.** 304 gspa-core and 127 gspa-predictors tests pass with zero failures (the 15 SAT-checker failures are gone). Version is 2.1.0, tag `v2.1.0` points at HEAD, and all 64 `results/` files are tracked.
+- **Constraint-table counts.** 26,911 / 2,715 / 8,331 / 7,722 / 1,818 rows and 30 relations now match the shipped TSVs in both main text and supplement.
+- **Stage 3 guardrail.** The 3-column parser bug is fixed; the guardrail now loads 13,951 only_in and 7,458 never_in terms, uses the GO and anatomy closures, verifies RELAX targets are ancestors, rejects missing taxonomy, and the LRO reranking evaluator reconstructs the permuted list before computing rank. A seed is sent and three seed runs are deposited.
+- **Stage 2A.** Multi-parent nearest-valid-ancestor search returns all minimal valid non-root ancestors with a cache keyed on the forbidden set; Stage 2A now runs before Stage 2B.
+- **Stage 2B.** Mass-balance and stoichiometry key bugs are fixed; a genuine two-step pFBA (full domain in step 2, HiGHS 1e-9, δ = 1e-6, ε_flux = 1e-6) and FVA/KO/perturbation certificates exist; GPR DNF aggregation now returns 0.2 for `(A AND B) OR C` with 0.9/0.01/0.2.
+- **Benchmarks.** The anatomy script no longer augments truth or reads the E4 ledger, E2 is executed, LSO uses six candidates with 1/6 chance and a label-free trigger, M4 runs Stage 2, Price-149 single-predictor arms no longer blend sibling predictors, the 3,100-genome runner no longer draws random scores, Track B centroids exclude the target genome, and CAFA6/H-D Python literals were removed from the aggregation scripts.
+- **Numbers that reconcile.** Table 1 cells, Table 2, Table 3, Table 4 (all cells, urease BAcc now 0.7294/0.7184), Table 5 aggregate cells, most Table 6 cells, Table 7 headline P/R/F1/accuracy and all three seeds, Supplement S1, S3, S4, S5, S6, the multiseed half of S7, the 88-proteome domain means, runtime ranges, and the Wilcoxon p-values for GAEF, consistency, pathway coherence, and the CAFA direction (0.1289, decreasing in 8 of 9 genomes) all match their TSVs.
+
+## Remaining discrepancies
+
+**The response letter does not describe this repository.** It cites `org/gspa/...` packages, methods (`extractDonorId`, `combineProbabilitiesWithDonors`, `unpenalizedFinalProbabilities`, `pruneHeteromericSingletons`, `findNearestValidAncestors`, `taxonIsOrDescendsFrom`, `findDirectViolatingTerms`), four Spock test files, a `StoichiometricConfig.enable_fva_ko_weights` flag, and four scripts (`audit_108_invariants_real.py`, `eval_hyperparam_sensitivity_non_ecoli.py`, `eval_antismash_bgc_specificity.py`, `eval_bacdive_real.py`) that exist nowhere in the tree or git history. Its Price-149, antiSMASH, and BacDive numbers differ from both the TSVs and the manuscript. The git diff shows `EvidenceCombiner`, `CalibrationTable`, `IterativeRefiner`, and five of six prior classes are byte-identical to v2.0.0.
+
+**Methods equations still do not match the code (Section 4).**
+
+- Stage 0: no isotonic knots or interpolation exist in `CalibrationTable.groovy` (fixed Platt sigmoids only); no GO evidence-code weights exist in the Stage 0 path (the combiner uses per-evidence-type reliabilities with different values; `EvidenceType.groovy` holds no weights); the donor exponent ρ = 1/√n_don is not implemented in Groovy or any Python runner; Eq. 1 has no upward-DAG product; group composition and clamps are misdescribed.
+- Eq. 2: damping is applied in log-odds space, not the probability-space convex combination written; no upward max-propagation or descendant capping exists in the loop; the "K_max = 20 undamped, 1e-3" Python variant does not exist (Python runners use three damped passes).
+- B1: flat +1.5 over the uncovered-essential subtree; no 0.05 floor, rank, M_ess = 3, geometric decay, or (1 − P_max) factor.
+- B2: α₂ = 1.0 in code vs 1.5 in text; singleton penalty 0.75 vs β_single = 1.2; no θ_coh = 0.70 ramp, |C| ≥ 3 rule, 2-step rule, or θ_het = 0.35; an undocumented process-coherence term exists.
+- B3: SAT runs on the genome-wide set at P > 0.5, not per protein at ≥ 0.20; flat −3.0 penalty, no 1.5/1.0 MUS weighting.
+- B4: code has 3.5 / 0.65 / 2 proteins / 0.50; text says 4.0 / 1.10 / 3 / 0.60 with gates that do not exist. The supplement Table S1 agrees with the code and contradicts main.tex.
+- B5 / Eq. 3: α₅ = 1.5 vs 1.2; none of q_cat, tanh, S_Pfam, S_ESM2, K_gap, w_seq/w_BF/w_dom/w_PLM, ±5-gene kernel, or ε_bf exist; the suggester uses a 5,000 bp Gaussian field and runs after refinement.
+- B6: no distance term, exp(−d/75), candidate gate, or cap; the prior uses an operon-member count ratio.
+- Eq. 4: `relaxFactor` is 1.0 and never overridden, so γ_relax = 0.95 appears nowhere; no P ≥ 0.50 gate exists (every provenance entry is enforced); the heteromeric singleton rule implemented in `IntegrateCommand.groovy` is "no second candidate for the same term", not "partner coverage < 0.35", and is not written to the ledger.
+- Eq. 5 is correct only when a GPR exists; 7 of 47,880 reactions carry an AND clause, so subunit conjunction is practically inactive; the Groovy DNF classes are dead code.
+- Eq. 6 covariates: Groovy passes heuristic proxies (exp(gap prior/1.5), clipped prior sum, raw PLM-source score); the benchmark scripts never call attribution.
+- Eq. 7 exists nowhere; `refine_iterative` is uncalled and uses a different recursion; Price-149 "Iter 1–3" are closed-form log-odds mixtures around a single LP solve.
+- w_imb is 100 in code vs 25 in text, plus an undocumented hard exclusion of imbalanced candidates; KO certificate is a disjunction, not the stated conjunction; ω_ens is three-valued from five solves.
+- "100% certified" is tautological: `n_uncertified_additions` counts additions with |v| > ε among those already defined by |v| > ε.
+- Eq. 8 matches `QualityReport.groovy` apart from undocumented renormalisation.
+
+**Benchmark construction and provenance.**
+
+- The 108-genome audit and Price-149 both call the refiner with `compute_certificates=False`, so the "18.01 s/genome with full FVA/KO/perturbation certification" claim (abstract, Discussion, Section 2.2) was timed without certificates. The audit's SLR flux-carrying column copies METEOR's 446.4, imbalanced/dead-end are constants, the raw-threshold and grow-support rows are hard-coded, and METEOR's flux-carrying additions are a borrowed ablation count, not FBA on METEOR solutions.
+- Six-GEM "GSPA SLR" rows are METEOR precision/recall rescaled by ratios with `fba_grows=True` constant, not an SLR run scored against BiGG.
+- The METEOR LRO row is still a copy of the sequence-only ranking.
+- 95-genome `gspa_single` and `gspa` rows are still METEOR flips accepted by a rule or by majority vote; Holdout-125 rows are additive heuristics. No GSPA pipeline is executed.
+- Stage 3 features are copied from an untracked 24,146-line bundle with no generator. Max Bayes factor alone gives 45/50 on LRO-50; the shipped ESM-2 cosines differ from the bundle's real values in 194/194 candidates; candidate order is lexicographic in 120/120 and 50/50 cases, contradicting "alternated" and "randomized". All 15 "real cross-clade conflicts" target protein binding, DNA binding, or transferase activity, which are valid in every taxon, with expected relaxation equal to the original term. Three of the 15 traps are not forbidden by any bundled constraint.
+- The "endogenous homology transfer" regime is still each protein's own GO terms with uniform(0.80, 0.95) scores; no script produces `pillar3_eukaryote_endogenous_vs_injected.tsv`.
+- BacDive Methods formulas, model sizes, hybrid composition, baseline features, split, and Track 2 ψ do not match `run_bacdive_tracks1_2.py`; a train-tuned Track 2 threshold is undisclosed; tool runtimes are literals.
+- Panel 13/21 SOTA table contradicts the only raw data in the repo: `panel_all.tsv` gives ProteInfer 0.5804/0.5299, ESM2-DeepGOPlus 0.3363/0.3312, CLEAN EC 0.7649/0.7742 versus 0.7950/0.7540, 0.7420/0.6950, 0.8530/0.8590. The text claims the table was "compiled from" that archive. The 1,000-genome InterProScan F_max is the InterPro MLP value.
+- No generating script exists for: panel13_21 SOTA, CAFA6 prospective summary, hyperparameter sensitivity (28 parameter names have zero hits in any source file), antiSMASH specificity, Empty Quarter vignette, endogenous-vs-injected, metabolism LRO copy, runtime table for 8 scenarios. Protocol H/D and pillar5 TSVs are byte copies of other TSVs.
+- The extraction is `scripts/extract_anatomical_and_taxon_constraints.py`; `ExtractAnatomicalConstraints.groovy` (main.tex) and "OWL API and ELK reasoner" with path `resources/org/gspa/constraints/` (supplement) do not exist. No 99/100 manual-audit artefact exists.
+
+**Numbers that do not match.**
+
+- Table 1 text: experimental-only s.d. 0.1038 / 0.1489 match neither ddof (0.0853 / 0.0947 sample); C_ess gains are M. genitalium +0.0312 and M. jannaschii +0.0400, not H. pylori +0.0706 and M. genitalium +0.0010; C_cplx gains are E. coli K-12 and O157:H7, not B. subtilis; "isotonic calibration" still appears at line 128.
+- CAFA6: TSV has MF/BP/CC = 298/415/384; text says 318/389/294; "±0.018" and 412 NK have no source. The 16,125 cohort has no manifest selection (24,505 rows across six regimes).
+- 88 proteomes: Bacteria CI recomputes to [+0.0014, +0.0029], not [+0.0011, +0.0033]; Archaea and Eukarya CIs include zero yet "consistent gains across all four domains" is claimed. 1,000-genome GSPA F_max is 0.6938 in the TSV, 0.6937 in text, and the JSON mixes Iter-1 BP with Iter-3 MF/CC.
+- Supplement Table S7 Empty Quarter per-isolate rows disagree with every per-isolate value in `pillar6_empty_quarter_vignette.tsv` (e.g. EQ_01 0.8800/0.9100/0.9720 and 5/6 vs TSV 0.881/0.912/0.968 and 6/5); only the means agree.
+- Uberon/PO/CL split is 4,767 only_in / 3,564 never_in, not 6,230 / 2,101.
+- Table 6: E3 species-mean elimination is 80.68%, not 80.97%/81.0%; IC retention is 95.1–98.7%, not 96.0–98.8%; endogenous E2/E3 102.7/126.7 have no source column; endogenous deltas labelled Iter 3 are Iter-1 values and M. musculus (which decreases) is omitted; "q_e ≥ 0.99" vs script cap 0.95; α₄ = 4.0 vs code 3.5.
+- Table 7 text: decomposition 49+32+15+14 = 110 (should be 33/36 decoys); real-conflict actions at seed 42 are 13 DEMOTE / 1 RELAX / 1 ABSTAIN, not 9 relax + 6 demote (the relaxations are on traps); seed 42 blocks 14/15 traps with one trap promoted; Config 4 promotes two traps. RLGC Hit@3 is 39/50 = 78%, not 86%. The 1.84% trigger rate has no artefact. Feature names in the text do not match `evaluate_pillar4.py`.
+- Discussion: "23.44% (Track A LRO)" is the No-PLM row (Track A is 0.1133); multi-predictor gain is "+0.0518" in the Abstract and "+0.0528" in the Discussion; Table 3 DPZ "Single Δ Top-1 +0" vs 49 → 48. BacDive strain counts 529 / 3,017 vs 791 / 3,170 distinct strains in the data files. 95-genome "p < 10⁻¹⁴" is 7.4e-13 for 99/22. Price-149 "cognate substrate" is now a fixed glucose exchange for all 149 rows while the text still describes cognate assay-substrate probing. Qwen3.8 is cited as the Qwen2.5 report and CHANGELOG says Qwen2.5-32B.
+
+## VERDICT: REVISIONS REQUIRED
+
+1. Replace the response letter with an issue-by-issue disposition referencing files, methods, tests, and scripts that exist at `v2.1.0`; remove every nonexistent path, symbol, and number.
+2. Either implement isotonic knots, evidence-code weights, ρ = 1/√n_don, and upward DAG pooling, or rewrite Stage 0 as Platt sigmoid + group-max + across-group Noisy-OR with the actual group composition and clamps.
+3. Rewrite Eq. 2 as the log-odds damped update actually used; delete the propagation/capping sentence and the Python "K_max = 20" claim, or implement them.
+4. Rewrite B1–B6 to the implemented functional forms and constants (α₂ 1.0, singleton 0.75, α₄ 3.5, α_boost 0.65, 2 proteins at 0.50, α₅ 1.5; flat boosts; count-ratio operon prior), or change the code and re-run Suites 1–2; make main.tex and Table S1 agree.
+5. Eq. 3: describe the density-field suggester actually shipped (5,000 bp bandwidth, post-refinement) or implement the written score.
+6. Eq. 4: set `relaxFactor` to 0.95 or state γ = 1.0; implement the P ≥ 0.50 gate or remove it; describe the singleton rule as implemented and log it to the ledger.
+7. Stage 2B: set w_imb to 25 or state 100 plus hard exclusion; correct the KO condition and ω_ens description; state the domain pruning to the METEOR-108 support skeleton, the 0.1 biomass floor, and the 36-exchange medium union; delete Eq. 7 or implement and call it; describe Price-149 "iterations" as closed-form mixtures around one LP; pass real BF_operon, C_syn, S_ESM2 or drop β₂–β₄.
+8. Re-run the 108-genome audit and Price-149 with `compute_certificates=True`, measure METEOR flux by FBA on METEOR solutions, remove constant and borrowed columns, and define "certified" so that it can fail.
+9. Re-score six-GEM SLR rows from actual SLR output against BiGG, or remove them.
+10. Run METEOR on LRO or delete the row; fix the Discussion's Track A attribution.
+11. Replace the 95-genome and Holdout-125 heuristic rows with pipeline runs, or label them as METEOR-flip filters.
+12. Stage 3: commit the generator for the candidate bundle, derive features (BF, operon membership, ESM-2 cosine, neighbours) from real GSPA output without label dependence, randomise candidate order, replace the 15 "real conflicts" with terms that are actually forbidden in the host taxon, replace or drop the 3 non-forbidden traps, store full transcripts, and correct the decomposition, relax/demote, trap, Hit@3, and feature-name text; add an artefact for the 1.84% trigger rate.
+13. Anatomy: implement real homology transfer for the endogenous regime and commit its script, add the endogenous E2/E3 columns, correct 80.68%, 95.1–98.7%, Iter-3 deltas, M. musculus, q_e cap, and α₄.
+14. BacDive: rewrite Methods to the implemented Track 1/Track 2 formulas, models, hybrid, features, and hash split; disclose the tuned Track 2 threshold; correct strain counts; measure or remove tool runtimes; remove the nonexistent script path from main.tex.
+15. Regenerate the 13/21-panel SOTA table from `panel_all.tsv` or deposit the archive that yields 0.7950/0.7420/0.8530 with its script; relabel the 1,000-genome InterProScan row.
+16. Commit generating scripts for CAFA6, sensitivity (with parameter names that exist in the code), antiSMASH, Empty Quarter, endogenous-vs-injected, and the 8-scenario runtime table, or remove those results; stop shipping byte-copied TSVs under different names; fix PROVENANCE_MAP column names.
+17. CAFA6: reconcile aspect counts (298/415/384), NK count, and the ±0.018; CAFA temporal: deposit a selection manifest for 16,125 and report regimes separately.
+18. Table 1 text: correct the experimental-only s.d., the C_ess and C_cplx per-genome attributions, and remove "isotonic calibration".
+19. Correct the Bacteria CI, qualify Archaea/Eukarya gains whose CIs include zero, and reconcile 0.6937/0.6938.
+20. Regenerate Supplement Table S7 per-isolate rows from the TSV (or vice versa) and deposit isolate accessions.
+21. Correct the Uberon/PO/CL only_in/never_in split, the extraction script name and method, and the supplement resource path; deposit the 100-pair manual audit or remove the claim.
+22. Fix the Qwen citation and CHANGELOG model name.
+23. Reconcile +0.0518 vs +0.0528, DPZ "+0" vs −1, the "cognate substrate" wording, and the p < 10⁻¹⁴ claim.
+24. Document that Stage 2A and 2B are opt-in flags, that relaxed ancestors are not propagated upward, and that Stage 2B math runs only in the Python sidecar with the Groovy DNF classes unused.

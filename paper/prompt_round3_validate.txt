@@ -1,26 +1,27 @@
 You are conducting the Round 1 Validation Gate (re-review) of the GSPA v2.1.0 project (codebase, methods, equations, algorithms, benchmark scripts, empirical results, `paper/main.tex`, and `paper/supplement.tex`).
 
 Please inspect:
-1. The initial independent technical/scientific reviews and first-pass validation checklist:
+1. The initial independent technical/scientific reviews and first-pass & second-pass validation reports:
    - `paper/review_round3_fable_science_code.txt`
    - `paper/review_round3_astra_science_code.txt`
    - `paper/review_round3_astra_validation.txt`
-2. The authors' point-by-point response letter:
+   - `paper/review_round3_astra_validation_v2.txt`
+   - `paper/review_round3_fable_validation_v2.txt`
+2. The authors' point-by-point response letter addressing all validation findings:
    - `paper/response_round3_science_code.md`
 3. The actual source code, unit tests, benchmark scripts, results tables, and manuscript in the repository:
-   - `gspa-core/src/main/groovy/gspa/integration/BayesianRefiner.groovy` and `gspa-core/src/main/groovy/gspa/integration/prior/*.groovy`
-   - `gspa-core/src/main/groovy/gspa/metrics/ConsistencyEnforcer.groovy` and `QualityReport.groovy`
+   - `gspa-core/src/main/groovy/gspa/integration/EvidenceCombiner.groovy`, `gspa-core/src/main/groovy/gspa/integration/CalibrationTable.groovy`, `gspa-core/src/main/groovy/gspa/integration/EvidenceType.groovy`, `gspa-core/src/main/groovy/gspa/integration/IterativeRefiner.groovy`, `gspa-core/src/main/groovy/gspa/integration/ConsistencyEnforcer.groovy`, and `gspa-core/src/main/groovy/gspa/integration/priors/*.groovy`
    - `gspa-core/src/main/groovy/gspa/ontology/GoOntology.groovy`, `TaxonConstraints.groovy`, `AnatomicalConstraints.groovy`, and `SatConsistencyChecker.groovy`
-   - `gspa-core/src/main/groovy/gspa/integration/fba/StoichiometricLocusRefiner.groovy` and `gspa-core/src/test/groovy/gspa/integration/fba/StoichiometricLocusRefinerTest.groovy`
+   - `gspa-core/src/main/groovy/gspa/integration/fba/StoichiometricLocusRefiner.groovy`, `GprMechanismCompiler.groovy`, `SparseRoleAggregator.groovy`, `LocusResponsibilityUpdater.groovy`, and `gspa-core/src/test/groovy/gspa/integration/fba/StoichiometricLocusRefinerSpec.groovy`
    - `gspa-cli/src/main/groovy/gspa/cli/IntegrateCommand.groovy`
    - `benchmark/agent/run_gspa_agent.py` and `gspa-core/src/main/resources/agent/run_gspa_agent.py`
    - `scripts/stoichiometric_locus_refiner.py`, `scripts/eval_scenario1_holdouts_real.py`, `scripts/eval_price149_real_all6.py`
-   - `benchmark/unified/pillar3/run_pillar3_eukaryotic_anatomy.py`, `benchmark/unified/pillar3/run_pillar3_complex_lso.py`
+   - `benchmark/unified/pillar2_fba_lro_price149/run_pillar2_all.py`, `benchmark/unified/pillar3_bacdive/run_bacdive_tracks1_2.py`, `benchmark/unified/pillar3/run_pillar3_eukaryotic_anatomy.py`, `benchmark/unified/pillar3/run_pillar3_complex_lso.py`
    - `benchmark/unified/pillar4/build_pillar4_dataset.py`, `benchmark/unified/pillar4/evaluate_pillar4.py`
-   - `results/*.tsv`, `results/PROVENANCE_MAP.md`, `paper/main.tex`, `paper/supplement.tex`, `paper/generate_figures.py`, and `paper/generate_figure6.py`
+   - `results/*.tsv`, `results/PROVENANCE_MAP.md`, `CHANGELOG.md`, `paper/main.tex`, `paper/supplement.tex`, `paper/generate_figures.py`, and `paper/generate_figure6.py`
 
 Verify empirically by reading the actual files whether:
-- Every critical, major, and minor issue raised in `paper/review_round3_fable_science_code.txt`, `paper/review_round3_astra_science_code.txt`, and `paper/review_round3_astra_validation.txt` has been genuinely fixed in the code, benchmarks, `results/*.tsv`, `paper/main.tex`, and `paper/supplement.tex`.
+- Every critical, major, and minor issue raised in `paper/review_round3_fable_science_code.txt`, `paper/review_round3_astra_science_code.txt`, `paper/review_round3_astra_validation.txt`, `paper/review_round3_astra_validation_v2.txt`, and `paper/review_round3_fable_validation_v2.txt` has been genuinely fixed in the code, benchmarks, `results/*.tsv`, `results/PROVENANCE_MAP.md`, `CHANGELOG.md`, `paper/main.tex`, and `paper/supplement.tex`.
 - All equations in `paper/main.tex` (Section 4 Methods) accurately match the implementation in Groovy and Python.
 - All numbers in `paper/main.tex` (Abstract, Results Tables 1–8, text, Discussion) and `paper/supplement.tex` (Tables S1–S7) accurately match `results/*.tsv`.
 

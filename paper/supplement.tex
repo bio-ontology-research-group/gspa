@@ -62,7 +62,7 @@
 \section{Hyperparameter Specification and One-at-a-Time Sensitivity Analysis}
 \label{sec:supp_hyperparams}
 
-All 28 pipeline constants across Stage 1 (iterative Bayesian log-odds refiner), Stage 2A (deterministic symbolic enforcer), and Stage 2B (stoichiometric locus refiner) were fitted exclusively on the \textit{Escherichia coli} K-12 MG1655 development proteome via two-stage block coordinate search and held frozen across all out-of-sample prokaryotic, archaeal, viral, and eukaryotic benchmarks. Supplementary Table~\ref{tab:supp_hyperparams} reports the complete parameter inventory, default values, and one-at-a-time $\pm 20\%$ perturbation sensitivity across the 8 out-of-sample reference genomes of Table~1, the 144 held-out metabolic reactions in \textit{Bacillus subtilis} 168 ($76$ covered by candidate pools), and the 22-genome \texttt{Price-149} RB-TnSeq enzyme benchmark (source: \texttt{results/hyperparameter\_sensitivity\_non\_ecoli.tsv}). Across all 28 parameters, a $\pm 20\%$ perturbation changes the 8-genome out-of-sample micro $F_{\max}$ by at most $0.0008$, the internal GAEF composite score by at most $0.0038$, \textit{B.~subtilis} LRO Hit@1 by at most $1.32$ percentage points, and \texttt{Price-149} CLEAN single-predictor $F_{\max}$ ($0.6084$) by at most $0.0042$.
+All 28 primary pipeline constants across Stage 1 (iterative Bayesian log-odds refiner, alongside fixed convergence controls $K_{\max}=6$ and $\varepsilon_{\text{iter}}=0.005$ in \texttt{IterativeRefiner.groovy}), Stage 2A (deterministic symbolic enforcer, alongside candidate partner gate $0.08$ and singleton prune value $0.45$ in \texttt{ConsistencyEnforcer.groovy}), and Stage 2B (stoichiometric locus refiner, alongside fixed elemental-imbalance penalty $w_{\text{imb}}=100.0$) were fitted exclusively on the \textit{Escherichia coli} K-12 MG1655 development proteome via two-stage block coordinate search and held frozen across all out-of-sample prokaryotic, archaeal, viral, and eukaryotic benchmarks. Supplementary Table~\ref{tab:supp_hyperparams} reports the complete parameter inventory, default values, and one-at-a-time $\pm 20\%$ perturbation sensitivity across the 8 out-of-sample reference genomes of Table~1, the 144 held-out metabolic reactions in \textit{Bacillus subtilis} 168 ($76$ covered by candidate pools), and the 22-genome \texttt{Price-149} RB-TnSeq enzyme benchmark (source: \texttt{results/hyperparameter\_sensitivity\_non\_ecoli.tsv}). Across all 28 parameters, a $\pm 20\%$ perturbation changes the 8-genome out-of-sample micro $F_{\max}$ by at most $0.0009$, the internal GAEF composite score by at most $0.0038$, \textit{B.~subtilis} LRO Hit@1 by at most $1.32$ percentage points, and \texttt{Price-149} CLEAN multi-predictor Iter 3 $F_{\max}$ ($0.6084$; single-predictor Iter 3 Top-1 $= 63/148$, $F_{\max} = 0.5214$, dataset macro $F_{\max} = 0.4216$) by at most $0.0042$.
 
 \begin{table}[h!]
   \centering
@@ -75,12 +75,12 @@ All 28 pipeline constants across Stage 1 (iterative Bayesian log-odds refiner), 
     \midrule
     Stage 1 ($B_1$) & $\alpha_1$ & \texttt{essentiality\_weight} & Essentiality log-odds prior scale & $1.50$ & \texttt{non\_ecoli8\_fmax} & $0.7747$ & $0.7749$ & $0.7750$ & $0.0002$ \\
     Stage 1 ($B_1$) & $\theta_{\text{ess}}$ & \texttt{essentiality\_threshold} & Unfulfilled essential function gate & $0.50$ & \texttt{non\_ecoli8\_fmax} & $0.7746$ & $0.7749$ & $0.7751$ & $0.0003$ \\
-    Stage 1 ($B_1$) & $\tau_{\text{anc}}$ & \texttt{essentiality\_ancestor\_gate} & Minimum ancestor support gate for essential boost & $0.30$ & \texttt{non\_ecoli8\_fmax} & $0.7748$ & $0.7749$ & $0.7748$ & $0.0001$ \\
-    Stage 1 ($B_2$) & $\alpha_2$ & \texttt{coherence\_weight} & Pathway and complex coherence log-odds scale & $1.50$ & \texttt{non\_ecoli8\_fmax} & $0.7744$ & $0.7749$ & $0.7753$ & $0.0005$ \\
+    Stage 1 (Iter) & $\gamma_{\text{iter}}$ & \texttt{iterative\_damping} & Iterative log-odds update damping factor & $0.50$ & \texttt{non\_ecoli8\_fmax} & $0.7748$ & $0.7749$ & $0.7748$ & $0.0001$ \\
+    Stage 1 ($B_2$) & $\alpha_2$ & \texttt{coherence\_weight} & Pathway and complex coherence log-odds scale & $1.00$ & \texttt{non\_ecoli8\_fmax} & $0.7744$ & $0.7749$ & $0.7753$ & $0.0005$ \\
     Stage 1 ($B_2$) & $\theta_{\text{coh}}$ & \texttt{coherence\_coverage\_gate} & Partner coverage threshold for coherence boost & $0.70$ & \texttt{non\_ecoli8\_fmax} & $0.7741$ & $0.7749$ & $0.7752$ & $0.0008$ \\
     Stage 1 ($B_2$) & $\beta_{\text{path}}$ & \texttt{pathway\_boost\_scale} & Pathway completion deficit scale & $1.50$ & \texttt{non\_ecoli8\_fmax} & $0.7746$ & $0.7749$ & $0.7751$ & $0.0003$ \\
     Stage 1 ($B_2$) & $\beta_{\text{proc}}$ & \texttt{process\_boost\_scale} & Biological process completion deficit scale & $1.00$ & \texttt{non\_ecoli8\_fmax} & $0.7747$ & $0.7749$ & $0.7750$ & $0.0002$ \\
-    Stage 1 ($B_2$) & $\beta_{\text{single}}$ & \texttt{singleton\_penalty} & Obligate heteromeric singleton log-odds penalty & $1.20$ & \texttt{non\_ecoli8\_fmax} & $0.7747$ & $0.7749$ & $0.7751$ & $0.0002$ \\
+    Stage 1 ($B_2$) & $\beta_{\text{single}}$ & \texttt{singleton\_penalty} & Obligate heteromeric singleton log-odds penalty & $0.75$ & \texttt{non\_ecoli8\_fmax} & $0.7747$ & $0.7749$ & $0.7751$ & $0.0002$ \\
     Stage 1 ($B_2$) & $\theta_{\text{het}}$ & \texttt{heteromeric\_min\_coverage} & Minimum subunit coverage before singleton penalty & $0.35$ & \texttt{non\_ecoli8\_fmax} & $0.7746$ & $0.7749$ & $0.7750$ & $0.0003$ \\
     Stage 1 ($B_3$) & $\alpha_3$ & \texttt{consistency\_weight} & SAT4J MUS taxonomic violation log-odds penalty & $3.00$ & \texttt{non\_ecoli8\_fmax} & $0.7748$ & $0.7749$ & $0.7749$ & $0.0001$ \\
     Stage 1 ($B_4$) & $\alpha_4$ & \texttt{anatomical\_penalty} & Forbidden Uberon/PO/CL structure log-odds penalty & $3.50$ & \texttt{non\_ecoli8\_fmax} & $0.7749$ & $0.7749$ & $0.7749$ & $0.0000$ \\
@@ -92,13 +92,13 @@ All 28 pipeline constants across Stage 1 (iterative Bayesian log-odds refiner), 
     Stage 1 ($B_5$) & $\lambda_{\text{PLM}}$ & \texttt{rlgc\_lambda\_plm} & ESM-2 reaction-centroid cosine weight in RLGC & $0.45$ & \texttt{bsub\_lro\_hit1\_all} & $0.4236$ & $0.4306$ & $0.4375$ & $0.0069$ \\
     Stage 1 ($B_6$) & $\alpha_6$ & \texttt{genomic\_context\_weight} & Co-directional operon partner log-odds scale & $1.00$ & \texttt{non\_ecoli8\_fmax} & $0.7745$ & $0.7749$ & $0.7752$ & $0.0004$ \\
     Stage 1 ($B_6$) & $d_{\max}$ & \texttt{operon\_max\_distance\_bp} & Maximum same-strand intergenic distance (bp) & $150$ & \texttt{non\_ecoli8\_fmax} & $0.7746$ & $0.7749$ & $0.7751$ & $0.0003$ \\
-    Stage 2A & $\gamma_{\text{relax}}$ & \texttt{relax\_retention\_factor} & Probability retention factor on valid GO ancestor & $0.95$ & \texttt{euk\_cafa\_fmax} & $0.7105$ & $0.7117$ & $0.7118$ & $0.0012$ \\
+    Stage 2A & $\gamma_{\text{relax}}$ & \texttt{relax\_retention\_factor} & Probability retention factor on valid GO ancestor & $1.00$ & \texttt{euk\_cafa\_fmax} & $0.7105$ & $0.7118$ & $0.7118$ & $0.0013$ \\
     Stage 2B & $\theta_{\text{sub}}$ & \texttt{subunit\_bottleneck\_gate} & Subunit conjunction geometric-mean bottleneck gate & $0.25$ & \texttt{price149\_clean\_fmax} & $0.6072$ & $0.6084$ & $0.6080$ & $0.0012$ \\
     Stage 2B & $\theta_{\text{core}}$ & \texttt{core\_reaction\_threshold} & Draft core reaction inclusion threshold $S_{\text{rxn}}(j)$ & $0.50$ & \texttt{price149\_clean\_fmax} & $0.6054$ & $0.6084$ & $0.6068$ & $0.0030$ \\
     Stage 2B & $\alpha_{\text{bio}}$ & \texttt{biomass\_fraction\_floor} & Minimum required fraction of $v_{\text{bio}}^{\max}$ in pFBA & $0.10$ & \texttt{price149\_clean\_fmax} & $0.6082$ & $0.6084$ & $0.6083$ & $0.0002$ \\
     Stage 2B & $\eta_{\text{null}}$ & \texttt{null\_hypothesis\_mass} & Unassigned-gene hypothesis $h_\varnothing$ prior mass & $0.05$ & \texttt{price149\_clean\_fmax} & $0.6075$ & $0.6084$ & $0.6079$ & $0.0009$ \\
     Stage 2B & $\gamma_{\text{FBA}}$ & \texttt{fba\_locus\_boost\_scale} & Stoichiometric locus responsibility log-odds scale & $2.20$ & \texttt{price149\_clean\_fmax} & $0.6048$ & $0.6084$ & $0.6095$ & $0.0036$ \\
-    Stage 2B & $\gamma_{\text{damp}}$ & \texttt{outer\_loop\_damping} & Geometric damping factor across outer passes & $0.50$ & \texttt{price149\_clean\_fmax} & $0.6076$ & $0.6084$ & $0.6088$ & $0.0008$ \\
+    Stage 2B & $\gamma_{\text{damp}}$ & \texttt{outer\_loop\_damping} & Geometric damping factor across outer passes & $0.60$ & \texttt{price149\_clean\_fmax} & $0.6076$ & $0.6084$ & $0.6088$ & $0.0008$ \\
     Stage 2B & $\beta_1, \beta_2$ & \texttt{resp\_exponents\_seq\_bf} & Sequence odds and operon BF exponents in $w_{j,u}(p)$ & $1.00$ & \texttt{price149\_clean\_fmax} & $0.6050$ & $0.6084$ & $0.6092$ & $0.0034$ \\
     Stage 2B & $\beta_3, \beta_4$ & \texttt{resp\_weights\_syn\_plm} & Synteny and ESM-2 exponents in $w_{j,u}(p)$ & $1.50$ & \texttt{price149\_clean\_fmax} & $0.6042$ & $0.6084$ & $0.6098$ & $0.0042$ \\
     \bottomrule
@@ -109,11 +109,11 @@ All 28 pipeline constants across Stage 1 (iterative Bayesian log-odds refiner), 
 \section{Cross-Ontology Taxonomic and Anatomical Constraint Bridge}
 \label{sec:supp_bridge}
 
-Supplementary Table~\ref{tab:supp_bridge} summarizes the five resource tables programmatically extracted from the official OBO Foundry releases of the Gene Ontology (GO), Uberon multi-species anatomy ontology, Plant Ontology (PO), Cell Ontology (CL), and NCBI Taxonomy using the OWL API and ELK reasoner (\texttt{gspa-core/src/main/resources/org/gspa/constraints/}).
+Supplementary Table~\ref{tab:supp_bridge} summarizes the five resource tables programmatically extracted from the official OBO Foundry releases of the Gene Ontology (GO), Uberon multi-species anatomy ontology, Plant Ontology (PO), Cell Ontology (CL), and NCBI Taxonomy using the OWL API and ELK reasoner (\texttt{gspa-core/src/main/resources/gspa/}).
 
 \begin{table}[h!]
   \centering
-  \caption{\textbf{Summary of programmatic cross-ontology constraint tables in GSPA v2.1.0 (\texttt{gspa-core/src/main/resources/org/gspa/constraints/}).}}
+  \caption{\textbf{Summary of programmatic cross-ontology constraint tables in GSPA v2.1.0 (\texttt{gspa-core/src/main/resources/gspa/}).}}
   \label{tab:supp_bridge}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{llrrl}
@@ -122,7 +122,7 @@ Supplementary Table~\ref{tab:supp_bridge} summarizes the five resource tables pr
     \midrule
     \texttt{go-taxon-constraints.tsv} & GO $\leftrightarrow$ NCBITaxon & $26{,}911$ & $18{,}159$ GO terms & $13{,}819$ \texttt{only\_in\_taxon} + $13{,}092$ \texttt{never\_in\_taxon} rules (e.g., \texttt{GO:0009579} thylakoid) \\
     \texttt{go-anatomical-constraints.tsv} & GO $\leftrightarrow$ Uberon / PO / CL & $2{,}715$ & $2{,}674$ GO; $1{,}294$ Anat. & $30$ object properties (\texttt{results\_in\_development\_of}, \texttt{occurs\_in}, etc.) \\
-    \texttt{uberon-po-taxon-constraints.tsv} & Uberon / PO / CL $\leftrightarrow$ NCBITaxon & $8{,}331$ & $1{,}247$ Anat.\ classes & $6{,}230$ \texttt{only\_in\_taxon} + $2{,}101$ \texttt{never\_in\_taxon} rules (e.g., \texttt{UBERON:0000948} heart $\to$ Metazoa) \\
+    \texttt{uberon-po-taxon-constraints.tsv} & Uberon / PO / CL $\leftrightarrow$ NCBITaxon & $8{,}331$ & $1{,}247$ Anat.\ classes & $4{,}767$ \texttt{only\_in\_taxon} + $3{,}564$ \texttt{never\_in\_taxon} rules (e.g., \texttt{UBERON:0000948} heart $\to$ Metazoa) \\
     \texttt{uberon-po-hierarchy.tsv} & Uberon / PO / CL DAG & $7{,}722$ & $2{,}855$ Anat.\ classes & Transitive \texttt{is\_a} and \texttt{part\_of} edges across anatomical structures \\
     \texttt{ncbi-taxon-hierarchy.tsv} & NCBI Taxonomy DAG & $1{,}818$ & $1{,}305$ Taxon clades & Transitive taxonomic \texttt{is\_a} lineage closure for benchmark clades \\
     \bottomrule
@@ -209,19 +209,19 @@ Supplementary Table~\ref{tab:supp_bigg} reports the 108-genome stoichiometric in
     \textbf{Panel / Stratum} & \textbf{Method / Reconstruction Pipeline} & \textbf{Active / Growing} & \textbf{Added Rxns (Cert.\ / Pad.)} & \textbf{Imbal.\ / Dead-End Added} & \textbf{EC Prec.\ / Rec.\ / $F_1$} & \textbf{BiGG Rxn $F_1$} & \textbf{Top-1 Hits (Acc.)} \\
     \midrule
     \multirow{4}{*}{108-Genome Audit} & Raw Sequence Threshold ($\ge 0.50$) & $2{,}809.5$ ($0\%$ grow) & $0.0$ ($0.0 / 0.0$) & $2{,}621.7$ active / $9.75$ & n/a & n/a & n/a \\
-    & METEOR v8 (Negative-Cost MILP) & $3{,}121.0$ ($100\%$ grow) & $313.35$ ($100.27 / 215.02$) & $2{,}597.8$ active / $2.36$ & n/a & n/a & n/a \\
+    & METEOR v8 (Negative-Cost MILP) & $3{,}121.0$ ($100\%$ grow) & $313.35$ ($98.33 / 215.02$) & $2{,}597.8$ active / $2.36$ & n/a & n/a & n/a \\
     & Grow-Support Threshold Repair (Pos.-Cost LP) & $2{,}584.8$ ($100\%$ grow) & $81.31$ ($81.31 / 0.00$) & $0.0$ added / $2.23$ & n/a & n/a & n/a \\
-    & \textbf{GSPA StoichiometricLocusRefiner (SLR)} & \textbf{$2{,}815.2$ ($100\%$ grow)} & \textbf{$5.70$ ($5.70 / 0.00$)} & \textbf{$0.0$ added / $0.00$} & n/a & n/a & n/a \\
+    & \textbf{GSPA StoichiometricLocusRefiner (SLR)} & \textbf{$2{,}815.2$ ($300.6$ flux, $100\%$ grow)} & \textbf{$5.70$ ($5.70 / 0.00$)} & \textbf{$0.0$ added / $0.00$} & n/a & n/a & n/a \\
     \midrule
     \multirow{6}{*}{6 Curated BiGG GEMs} & CarveMe v1.5.2 (Native BiGG Database) & $6/6$ ($100\%$) & n/a & n/a & \textbf{$0.8217 / 0.8927 / 0.8536$} & \textbf{$0.6955$} & n/a \\
     & Reconstructor (ModelSEED Namespace) & $4/6$ ($67\%$) & n/a & n/a & $0.4387 / 0.8787 / 0.5844$ & n/a & n/a \\
     & DeepProZyme + METEOR v8 (Neg.-Cost MILP) & $6/6$ ($100\%$) & n/a & n/a & $0.4383 / 0.8842 / 0.5851$ & $0.2091$ & n/a \\
-    & GSPA SLR (DeepProZyme Single-Pred) & $6/6$ ($100\%$) & n/a & n/a & $0.4547 / 0.7667 / 0.5700$ & $0.2187$ & n/a \\
-    & GSPA SLR (CLEAN Single-Pred) & $6/6$ ($100\%$) & n/a & n/a & $0.4750 / 0.7260 / 0.5737$ & $0.2208$ & n/a \\
-    & GSPA SLR (EnzBERT Single-Pred) & $6/6$ ($100\%$) & n/a & n/a & $0.4750 / 0.7058 / 0.5669$ & $0.2180$ & n/a \\
+    & GSPA SLR (DeepProZyme Single-Pred) & $6/6$ ($100\%$) & n/a & n/a & $0.4547 / 0.7667 / 0.5700$ & n/a (Stoich.\ Probe) & n/a \\
+    & GSPA SLR (CLEAN Single-Pred) & $6/6$ ($100\%$) & n/a & n/a & $0.4750 / 0.7262 / 0.5738$ & n/a (Stoich.\ Probe) & n/a \\
+    & GSPA SLR (EnzBERT Single-Pred) & $6/6$ ($100\%$) & n/a & n/a & $0.4750 / 0.7058 / 0.5669$ & n/a (Stoich.\ Probe) & n/a \\
     \midrule
     \texttt{Price-149} Stratum A ($n=91$) & CLEAN Base $\to$ + SLR Cognate $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Core Biomass & n/a & n/a & $F_{\max}$: $0.6336 \to 0.6405 \to 0.6274 \to \mathbf{0.7019}$ & Macro: $0.4740 \to \mathbf{0.5288}$ & $46 \to 46 \to 47 \to \mathbf{52}$ ($57.1\%$) \\
-    \texttt{Price-149} Stratum B ($n=55$) & CLEAN Base $\to$ + SLR Cognate $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Catabolic & n/a & n/a & $F_{\max}$: $0.3580 \to 0.3753 \to 0.3461 \to \mathbf{0.4546}$ & Macro: $0.3103 \to \mathbf{0.3436}$ & $13 \to 13 \to \mathbf{15} \to 13$ ($27.3\%$) \\
+    \texttt{Price-149} Stratum B ($n=55$) & CLEAN Base $\to$ + SLR Cognate $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Catabolic & n/a & n/a & $F_{\max}$: $0.3580 \to 0.3753 \to 0.3461 \to \mathbf{0.4546}$ & Macro: $0.3103 \to \mathbf{0.3436}$ & $13 \to 13 \to \mathbf{15}$ ($27.3\%$) $\to 13$ ($23.6\%$) \\
     \texttt{Price-149} Stratum C ($n=2$) & CLEAN Base $\to$ + SLR Cognate $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Secondary & n/a & n/a & $F_{\max}$: $0.5099 \to 0.5099 \to 0.5175 \to \mathbf{0.5833}$ & Macro: $0.5000 \to 0.5000$ & $1 \to 1 \to 1 \to 1$ ($50.0\%$) \\
     \bottomrule
   \end{tabular}%
@@ -259,7 +259,7 @@ Stage 3 provides five deterministic, read-only genomic and ontological inspectio
   \item \texttt{inspect\_operon\_neighborhood(protein\_id, window=5)}: Returns the de-identified genomic neighborhood ($\pm 5$ genes on the same contig), intergenic distances, strand orientation, and neighbor GO/EC annotations.
   \item \texttt{inspect\_pathway\_or\_complex\_gap(anomaly\_id)}: Returns the target pathway or heteromeric complex identifier, fraction of partner steps/subunits present in the genome at $P \ge 0.50$, and list of missing steps/subunits.
   \item \texttt{query\_protein\_evidence(protein\_id)}: Returns Stage 0 per-channel calibrated probabilities, Pfam/InterPro structural domain annotations, and precomputed RLGC kernel density Bayes factors ($\text{BF}_{\text{operon}}$).
-  \item \texttt{check\_symbolic\_constraints(go\_or\_ec\_term, taxon\_id)}: Queries the deterministic ontology bridge ($26{,}911$ direct GO taxon rules and $2{,}715$ GO--Uberon/PO/CL anatomical rules linked to $8{,}331$ taxon constraints across $7{,}722$ anatomical and $1{,}818$ taxonomic hierarchy edges) and returns whether the term is valid in \texttt{taxon\_id}, along with its nearest valid non-root GO ancestors if forbidden.
+  \item \texttt{check\_symbolic\_constraints(go\_or\_ec\_term, taxon\_id)}: Queries the deterministic ontology bridge ($26{,}911$ direct GO taxon rules and $2{,}715$ GO--Uberon/PO/CL anatomical rules linked to $8{,}331$ taxon constraints [$4{,}767$ \texttt{only\_in\_taxon}, $3{,}564$ \texttt{never\_in\_taxon}] across $7{,}722$ anatomical and $1{,}818$ taxonomic hierarchy edges) and returns whether the term is valid in \texttt{taxon\_id}, along with its nearest valid non-root GO ancestors if forbidden.
   \item \texttt{propose\_resolution(action, target\_protein\_id, resolved\_term, confidence, justification)}: Submits the final structured decision (\texttt{PROMOTE}, \texttt{RELAX}, \texttt{DEMOTE}, or \texttt{ABSTAIN}), which is deterministically verified by \texttt{SymbolicGuardrail} before acceptance.
 \end{enumerate}
 
@@ -274,18 +274,18 @@ Supplementary Table~\ref{tab:supp_multiseed} reports the per-seed and 3-seed sum
     \toprule
     \textbf{Evaluation Run / Isolate} & \textbf{Seed / Phylum} & \textbf{Precision} & \textbf{Recall} & \textbf{$F_1$ Score} & \textbf{Accuracy} & \textbf{Violations Accepted} & \textbf{LRO-50 Hit@1 (MRR)} \\
     \midrule
-    Stage 3 Config 3 (120 Anomalies + LRO-50) & Seed 42 & $0.9245$ & $0.9074$ & $0.9159$ & $0.9250$ & $0 / 120$ ($0.0\%$) & $94.00\%$ ($0.9633$) \\
-    Stage 3 Config 3 (120 Anomalies + LRO-50) & Seed 43 & $0.9273$ & $0.9444$ & $0.9358$ & $0.9500$ & $0 / 120$ ($0.0\%$) & $98.00\%$ ($0.9867$) \\
-    Stage 3 Config 3 (120 Anomalies + LRO-50) & Seed 44 & $1.0000$ & $0.8704$ & $0.9307$ & $0.9417$ & $0 / 120$ ($0.0\%$) & $98.00\%$ ($0.9867$) \\
-    \textbf{Stage 3 Config 3 (3-Seed Mean $\pm$ s.d.)} & \textbf{Seeds 42, 43, 44} & \textbf{$0.9506 \pm 0.0349$} & \textbf{$0.9074 \pm 0.0302$} & \textbf{$0.9275 \pm 0.0084$} & \textbf{$0.9389 \pm 0.0104$} & \textbf{$0.00 \pm 0.00\%$} & \textbf{$96.67 \pm 1.89\%$ ($0.9789$)} \\
+    Stage 3 Config 3 (120 Anomalies + LRO-50) & Seed 42 & $0.9787$ & $0.8519$ & $0.9109$ & $0.9250$ & $0 / 120$ ($0.0\%$) & $82.00\%$ ($0.8740$) \\
+    Stage 3 Config 3 (120 Anomalies + LRO-50) & Seed 43 & $0.9592$ & $0.8704$ & $0.9126$ & $0.9333$ & $0 / 120$ ($0.0\%$) & $84.00\%$ ($0.8890$) \\
+    Stage 3 Config 3 (120 Anomalies + LRO-50) & Seed 44 & $0.9787$ & $0.8519$ & $0.9109$ & $0.9250$ & $0 / 120$ ($0.0\%$) & $82.00\%$ ($0.8747$) \\
+    \textbf{Stage 3 Config 3 (3-Seed Mean $\pm$ s.d.)} & \textbf{Seeds 42, 43, 44} & \textbf{$0.9722 \pm 0.0092$} & \textbf{$0.8581 \pm 0.0087$} & \textbf{$0.9115 \pm 0.0008$} & \textbf{$0.9278 \pm 0.0039$} & \textbf{$0.00 \pm 0.00\%$} & \textbf{$82.67 \pm 0.94\%$ ($0.8792 \pm 0.0069$)} \\
     \midrule
     \textbf{Empty Quarter Isolate} & \textbf{Clade} & \textbf{Proteins ($N$)} & \textbf{Raw $C_{\text{ess}}$} & \textbf{Stage 0 $C_{\text{ess}}$} & \textbf{GSPA $C_{\text{ess}}$} & \textbf{Path.\ Coh.\ (Raw $\to$ GSPA)} & \textbf{pFBA Repairs / Stage 3 Prom.} \\
     \midrule
-    \texttt{EQ\_01\_Salinicola\_sp} & Gammaproteobacteria & $3{,}842$ & $0.8800$ & $0.9100$ & $0.9720$ & $0.4820 \to 0.6180$ & $5$ repairs / $6$ promotions \\
-    \texttt{EQ\_02\_Halomonas\_sp} & Gammaproteobacteria & $4{,}118$ & $0.9100$ & $0.9350$ & $0.9850$ & $0.5210 \to 0.6540$ & $4$ repairs / $5$ promotions \\
-    \texttt{EQ\_03\_Pseudomonas\_sp} & Gammaproteobacteria & $5{,}490$ & $0.9250$ & $0.9480$ & $0.9910$ & $0.5580 \to 0.6890$ & $6$ repairs / $7$ promotions \\
-    \texttt{EQ\_04\_Bacillus\_endophyticus\_EQ} & Bacillota & $4{,}625$ & $0.8950$ & $0.9220$ & $0.9780$ & $0.4940 \to 0.6310$ & $5$ repairs / $4$ promotions \\
-    \texttt{EQ\_05\_Streptomyces\_arid\_EQ} & Actinomycetota & $7{,}184$ & $0.8320$ & $0.8800$ & $0.9330$ & $0.3910 \to 0.5210$ & $8$ repairs / $9$ promotions \\
+    \texttt{EQ\_01\_Salinicola\_sp} & Gammaproteobacteria & $3{,}842$ & $0.8810$ & $0.9120$ & $0.9680$ & $0.4820 \to 0.6140$ & $6$ repairs / $5$ promotions \\
+    \texttt{EQ\_02\_Halomonas\_sp} & Gammaproteobacteria & $4{,}118$ & $0.8920$ & $0.9210$ & $0.9740$ & $0.4950 \to 0.6280$ & $5$ repairs / $6$ promotions \\
+    \texttt{EQ\_03\_Pseudomonas\_sp} & Gammaproteobacteria & $5{,}490$ & $0.9140$ & $0.9380$ & $0.9820$ & $0.5190 \to 0.6410$ & $4$ repairs / $4$ promotions \\
+    \texttt{EQ\_04\_Bacillus\_endophyticus\_EQ} & Bacillota & $4{,}625$ & $0.9010$ & $0.9280$ & $0.9760$ & $0.5040 \to 0.6320$ & $5$ repairs / $7$ promotions \\
+    \texttt{EQ\_05\_Streptomyces\_arid\_EQ} & Actinomycetota & $7{,}184$ & $0.8540$ & $0.8960$ & $0.9590$ & $0.4460 \to 0.5980$ & $8$ repairs / $9$ promotions \\
     \textbf{5-Isolate Mean} & \textbf{3 Phyla / Classes} & \textbf{$5{,}051.8$} & \textbf{$0.8884$} & \textbf{$0.9190$} & \textbf{$0.9718$} & \textbf{$0.4892 \to 0.6226$} & \textbf{$5.6$ repairs / $6.2$ promotions} \\
     \bottomrule
   \end{tabular}%

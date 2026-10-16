@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import sys
@@ -50,6 +51,10 @@ def _prob_to_logodds(p: float) -> float:
     return round(math.log(p_c / (1.0 - p_c)), 4)
 
 
+def _cand_order_key(anomaly_id: str, protein_id: str) -> str:
+    return hashlib.md5(f"{anomaly_id}:{protein_id}".encode("utf-8")).hexdigest()
+
+
 def _load_proteome_bundle() -> Dict[str, Any]:
     bundle_path = REF_DIR / "pillar4_proteome_candidates.json"
     if not bundle_path.exists():
@@ -70,8 +75,6 @@ def _build_candidate_from_proteome_store(
     raw_entry = cand_store.get(store_key)
     if raw_entry is not None:
         rec = dict(raw_entry)
-        rec.pop("real_unimatrix_esm2_cos", None)
-        rec.pop("real_co_strand_neighbors", None)
         rec["protein_id"] = pid
         rec["gene_symbol"] = "uncharacterized"
         return rec
@@ -134,6 +137,7 @@ def build_lro_50_cases(bundle: Dict[str, Any]) -> List[Dict[str, Any]]:
         rxn_id = entry["reaction_id"]
         go_id = entry["go_term"]
         meta = cases_meta.get(c_idx, {})
+        aid = entry.get("anomaly_id", f"LRO_GAP_{seq_num:03d}")
 
         cand_pids: List[str] = []
         cand_qs: List[float] = []
@@ -169,9 +173,9 @@ def build_lro_50_cases(bundle: Dict[str, Any]) -> List[Dict[str, Any]]:
                 )
             )
 
-        candidates_sorted = sorted(candidates, key=lambda x: x["protein_id"])
+        candidates_shuffled = sorted(candidates, key=lambda x: _cand_order_key(aid, x["protein_id"]))
         lro_anomalies.append({
-            "anomaly_id": entry.get("anomaly_id", f"LRO_GAP_{seq_num:03d}"),
+            "anomaly_id": aid,
             "anomaly_type": "PATHWAY_GAP",
             "organism_taxon": "NCBITaxon_562",
             "target_function_id": go_id,
@@ -185,7 +189,7 @@ def build_lro_50_cases(bundle: Dict[str, Any]) -> List[Dict[str, Any]]:
             "expected_protein_id": true_pid,
             "expected_function_id": go_id,
             "context": dict(entry["context"]),
-            "candidates": candidates_sorted,
+            "candidates": candidates_shuffled,
         })
 
     return lro_anomalies
@@ -210,9 +214,9 @@ def build_benchmark_120_anomalies(bundle: Dict[str, Any]) -> List[Dict[str, Any]
             )
             for pid in spec["candidate_pids"]
         ]
-        cands_sorted = sorted(cands, key=lambda x: x["protein_id"])
+        cands_shuffled = sorted(cands, key=lambda x: _cand_order_key(aid, x["protein_id"]))
         anom_obj = {k: v for k, v in spec.items() if k != "candidate_pids"}
-        anom_obj["candidates"] = cands_sorted
+        anom_obj["candidates"] = cands_shuffled
         anomalies.append(anom_obj)
 
     return anomalies

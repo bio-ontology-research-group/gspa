@@ -204,7 +204,7 @@ def generate_figure1():
         26.0, 9.5, 24.5, 40.0,
         "Stage 1: Bayesian Refiner",
         [
-            "*Log-Odds Fixed-Point Update (k=1..3):",
+            "*Log-Odds Fixed-Point Update (k=1..6):",
             "  L(p,f) = L_0(p,f) + Σ α_m B_m(p,f)",
             "",
             "*Six Genome-Scale Priors:",
@@ -236,7 +236,7 @@ def generate_figure1():
             "  nearest valid GO ancestor a*",
             "*2B. StoichiometricLocusRefiner:",
             "• Positive-cost LP + pFBA flux",
-            "  certification (|v_j| > 10^-7)",
+            "  certification (|v_j| > 10^-6)",
             "• Outer feedback ΔL_FBA to Stage 1",
         ],
         fc=PALETTE["orange"], ec=PALETTE["orange"], title_color="#111111",
@@ -653,7 +653,7 @@ def generate_figure4():
     w_e = 0.21
     ax.bar(x_e - 1.5 * w_e, v_e1, width=w_e, color=PALETTE["vermilion"], label="E1: Unconstrained Noisy-OR")
     ax.bar(x_e - 0.5 * w_e, v_e2, width=w_e, color=PALETTE["orange"], hatch="//", label="E2: Direct GO Taxon Constraints Only")
-    ax.bar(x_e + 0.5 * w_e, v_e3, width=w_e, color=PALETTE["sky"], edgecolor=PALETTE["blue"], label="E3: Stage 1 Soft Prior (86.1% Mean / 95.5% Pooled Elim.)")
+    ax.bar(x_e + 0.5 * w_e, v_e3, width=w_e, color=PALETTE["sky"], edgecolor=PALETTE["blue"], label="E3: Stage 1 Soft Prior (80.7% Mean / 47.6% Pooled Elim.)")
     ax.bar(x_e + 1.5 * w_e, v_e4, width=w_e, color=PALETTE["teal"], label="E4/E5: Stage 2 Symbolic (100% Elim.)")
     for idx, (ve1, ve2, ve3, ve4) in enumerate(zip(v_e1, v_e2, v_e3, v_e4)):
         y_off2 = 52 if ve1 > 900 else 12
@@ -688,7 +688,7 @@ def generate_figure4():
     ax.set_xticks(x_e)
     ax.set_xticklabels(euk_labels, rotation=18, ha="right")
     ax.set_ylim(0.55, 1.03)
-    ax.set_ylabel("Ancestor-Propagated CAFA Fmax")
+    ax.set_ylabel("Ancestor-Propagated Micro Fmax")
     ax.set_title("Semantic Relaxation vs. Removal Across 6 Eukaryotes")
     ax.grid(True, axis="y")
     ax.legend(loc="upper left", frameon=True, fontsize=7.3)

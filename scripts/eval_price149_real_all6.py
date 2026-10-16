@@ -21,14 +21,15 @@ EVALUATION MODES REPORTED SEPARATELY:
   - Single-Predictor Arms (using strictly the single predictor's scores, with zero cross-predictor ensemble):
     * Baseline
     * + METEOR v8 (Iter 1), + METEOR v8 (Iter 2)
-    * + GSPA SLR (Minimal Glucose) [condition-blind]
-    * + GSPA SLR (Cognate Substrate) [assay-medium]
+    * + GSPA SLR (Minimal Glucose) [condition-blind minimal-glucose LP repair]
+    * + GSPA SLR (Cognate Substrate) [condition-blind S-matrix 1-hop/2-hop stoichiometric local-context reaction probe + minimal-glucose LP]
     * + GSPA Single-Pred (Minimal Glucose) [condition-blind: single predictor + operon + pathway + minimal-glucose SLR]
-    * + GSPA Single-Pred (Cognate Substrate) [assay-medium: single predictor + operon + pathway + cognate-substrate SLR]
+    * + GSPA Single-Pred (Cognate Substrate) [condition-blind: single predictor + operon + pathway + S-matrix local-context reaction probe]
   - Multi-Predictor Stage 1 Noisy-OR + GSPA Arms (explicitly labeled as multi-evidence integration):
     * + Stage 1 Noisy-OR Ensemble (Sequence Only)
     * + Full GSPA Multi-Pred (Minimal Glucose) [condition-blind]
-    * + Full GSPA (Iter 1), + Full GSPA (Iter 2), + Full GSPA (Iter 3) [assay-medium]
+    * + Full GSPA (Iter 1), + Full GSPA (Iter 2), + Full GSPA (Iter 3) [single-predictor damped outer loop t=1,2,3]
+    * + Full GSPA Multi-Pred (Iter 3) [multi-predictor Noisy-OR + damped outer loop t=3]
 """
 
 import csv

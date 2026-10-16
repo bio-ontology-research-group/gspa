@@ -346,8 +346,8 @@ def run_part_1c_95genomes():
             def blind_single_accept(b1, m1):
                 r_m1 = ref.ec2r.get(m1, [])
                 r_b1 = ref.ec2r.get(b1, [])
-                bal_m1 = sum(1 for r in r_m1 if r not in ref.imbalanced_rxn_indices)
-                bal_b1 = sum(1 for r in r_b1 if r not in ref.imbalanced_rxn_indices)
+                bal_m1 = sum(1 for r in r_m1 if ref.rxn_to_idx.get(r, -1) >= 0 and ref.rxn_to_idx[r] not in ref.imbalanced_rxn_indices)
+                bal_b1 = sum(1 for r in r_b1 if ref.rxn_to_idx.get(r, -1) >= 0 and ref.rxn_to_idx[r] not in ref.imbalanced_rxn_indices)
                 pw_m1 = len(ec_to_pws.get(m1, set()))
                 pw_b1 = len(ec_to_pws.get(b1, set()))
                 same_sub = (".".join(b1.split(".")[:3]) == ".".join(m1.split(".")[:3]))

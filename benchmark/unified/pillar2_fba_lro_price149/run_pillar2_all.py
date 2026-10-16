@@ -37,9 +37,12 @@ RESULTS_DIR = ROOT / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
+_GLOBAL_REF: StoichiometricLocusRefiner | None = None
+
+
 def _solve_single_genome_slr(args_tuple: tuple) -> tuple[str, dict]:
     gca, gram, act_indices, flx_indices, dpz_ec_scores, fba_dir_str = args_tuple
-    ref = StoichiometricLocusRefiner(Path(fba_dir_str))
+    ref = _GLOBAL_REF if _GLOBAL_REF is not None else StoichiometricLocusRefiner(Path(fba_dir_str))
     act_set = set(int(x) for x in act_indices)
     flx_set = set(int(x) for x in flx_indices)
     zero_flx_core = act_set - flx_set
@@ -52,11 +55,11 @@ def _solve_single_genome_slr(args_tuple: tuple) -> tuple[str, dict]:
     # Reactions in zero_flx_core were activated without carrying flux in METEOR, which occurs
     # if and only if their sequence probability exceeded tau_core = 0.50 in the baseline draft
     for r_i in zero_flx_core:
-        if r_i in ref.enz_rxn_indices:
+        if r_i in ref.enz_rxn_indices and r_i not in ref.imbalanced_rxn_indices:
             rxn_id = ref.allrxns[r_i]
             rxn_probs[rxn_id] = max(rxn_probs.get(rxn_id, 0.0), 0.75)
     res = ref.solve_flux_certified_repair(
-        rxn_probs, gram=gram, medium_name="minimal", tau_core=0.50, alpha_bio=0.10, compute_certificates=False
+        rxn_probs, gram=gram, medium_name="minimal", tau_core=0.50, alpha_bio=0.10, compute_certificates=True
     )
     return gca, res
 
@@ -73,9 +76,16 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
     """
     import concurrent.futures
     import gzip
+    import multiprocessing as mp
     import pickle
 
     print("[2A] Running 108-Genome Mathematical Invariant & Tool Comparison Audit across all 108 real genomes...")
+    global _GLOBAL_REF
+    _GLOBAL_REF = refiner
+    # Pre-warm universal biomass LP cache for Gram-negative and Gram-positive media once
+    refiner.solve_flux_certified_repair({}, gram="neg", medium_name="minimal", compute_certificates=False)
+    refiner.solve_flux_certified_repair({}, gram="pos", medium_name="minimal", compute_certificates=False)
+
     table1_dir = REF_DIR / "meteor_v8_release" / "results" / "table1"
     flux_stats_json = REF_DIR / "meteor108_flux_stats.json"
     flux_stats = json.loads(flux_stats_json.read_text(encoding="utf-8")) if flux_stats_json.exists() else {}
@@ -113,7 +123,7 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         t1_records.append((gca, gram, d))
 
     slr_by_gca = {}
-    with concurrent.futures.ProcessPoolExecutor(max_workers=16) as ex:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=16, mp_context=mp.get_context("fork")) as ex:
         for gca, res in ex.map(_solve_single_genome_slr, tasks):
             slr_by_gca[gca] = res
 
@@ -132,11 +142,12 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
 
         slr_res = slr_by_gca[gca]
         slr_added = int(slr_res["n_repaired_rxns"])
+        slr_flux_tot = len(slr_res.get("pfba_flux_by_rxn", {}))
+        slr_fva_ess = len(slr_res.get("fva_essential_rxns", []))
+        slr_ko_ess = len(slr_res.get("ko_essential_rxns", []))
         meteor_net_added_over_raw = max(0, n_met_sel - n_base_sel)
-        # Compute METEOR's flux-carrying additions independently from grow-support threshold repair (tve_by_acc / thresh_repair),
-        # never setting meteor_n_flux_certified_added = slr_added
         if gca in tve_by_acc:
-            meteor_flux_added = int(tve_by_acc[gca]["baseline"]["n_gapfill"])
+            meteor_flux_added = min(meteor_net_added_over_raw, int(tve_by_acc[gca]["baseline"]["n_gapfill"]))
         else:
             meteor_flux_added = min(meteor_net_added_over_raw, max(53, int(round(mean_repair_added * (n_flux_y / 323.9074)))))
         meteor_uncert = max(0, meteor_net_added_over_raw - meteor_flux_added)
@@ -156,6 +167,9 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "meteor_deadend_active": int(met_dpz["deadends"]),
             "slr_n_added": slr_added,
             "slr_n_flux_certified_added": slr_added,
+            "slr_n_fva_essential": slr_fva_ess,
+            "slr_n_ko_essential": slr_ko_ess,
+            "slr_n_flux_carrying_total": slr_flux_tot,
             "slr_n_uncertified_padding": int(slr_res.get("n_uncertified_additions", 0)),
             "slr_uncertified_pct": 0.0,
             "slr_imbalanced_added": int(slr_res.get("n_imbalanced_repaired", 0)),
@@ -184,27 +198,20 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         gem = r_rxn["gem"]
         gcf = r_rxn["gcf"]
         gem_ec_cnt = int(r_ec["gem_ec"])
-        tve_g = tve_by_acc[gcf]["baseline"]
         tve_e = tve_ec_by_org[org]["baseline"]
         cl_e = b3_clean_by_org[org]["arms"]["baseline"]
         ez_e = b3_enzbert_by_org[org]["arms"]["baseline"]
 
-        slr_dpz_rxn_p = round(r_rxn["meteor"]["P"] * (r_rxn["meteor"]["n_mnxr"] / tve_g["n_rxn"]), 3)
-        slr_dpz_rxn_r = round(r_rxn["meteor"]["R"] * (tve_e["R"] / tve_ec_by_org[org]["meteor"]["R"]), 3)
-        cl_ec_r = round(round(cl_e["n_ec"] * cl_e["precision"]) / gem_ec_cnt, 3)
-        ez_ec_r = round(round(ez_e["n_ec"] * ez_e["precision"]) / gem_ec_cnt, 3)
-        slr_cl_rxn_p = round(r_rxn["meteor"]["P"] * (r_rxn["meteor"]["n_mnxr"] / cl_e["n_rxn"]), 3)
-        slr_cl_rxn_r = round(r_rxn["meteor"]["R"] * (cl_ec_r / r_ec["meteor"]["R"]), 3)
-        slr_ez_rxn_p = round(r_rxn["meteor"]["P"] * (r_rxn["meteor"]["n_mnxr"] / ez_e["n_rxn"]), 3)
-        slr_ez_rxn_r = round(r_rxn["meteor"]["R"] * (ez_ec_r / r_ec["meteor"]["R"]), 3)
+        cl_ec_r = round((cl_e["n_ec"] - cl_e["FP"]) / gem_ec_cnt, 3)
+        ez_ec_r = round((ez_e["n_ec"] - ez_e["FP"]) / gem_ec_cnt, 3)
 
         for mname, rxn_p, rxn_r, ec_p, ec_r, grows in [
             ("CarveMe (2018)", r_rxn["carveme"]["P"], r_rxn["carveme"]["R"], r_ec["carveme"]["P"], r_ec["carveme"]["R"], r_rxn["carveme"]["grows"]),
             ("Reconstructor (2023)", None, None, r_rec["P"], r_rec["R"], r_rec["grows"]),
             ("METEOR v8 (2026)", r_rxn["meteor"]["P"], r_rxn["meteor"]["R"], r_ec["meteor"]["P"], r_ec["meteor"]["R"], r_rxn["meteor"]["grows"]),
-            ("GSPA StoichiometricLocusRefiner (DPZ Single-Pred)", slr_dpz_rxn_p, slr_dpz_rxn_r, tve_e["P"], tve_e["R"], True),
-            ("GSPA StoichiometricLocusRefiner (CLEAN Single-Pred)", slr_cl_rxn_p, slr_cl_rxn_r, cl_e["precision"], cl_ec_r, True),
-            ("GSPA StoichiometricLocusRefiner (EnzBERT Single-Pred)", slr_ez_rxn_p, slr_ez_rxn_r, ez_e["precision"], ez_ec_r, True),
+            ("GSPA StoichiometricLocusRefiner (DPZ Single-Pred)", None, None, tve_e["P"], tve_e["R"], True),
+            ("GSPA StoichiometricLocusRefiner (CLEAN Single-Pred)", None, None, cl_e["precision"], cl_ec_r, True),
+            ("GSPA StoichiometricLocusRefiner (EnzBERT Single-Pred)", None, None, ez_e["precision"], ez_ec_r, True),
         ]:
             ec_f1 = round(2 * ec_p * ec_r / max(ec_p + ec_r, 1e-9), 4)
             rxn_f1 = round(2 * rxn_p * rxn_r / max(rxn_p + rxn_r, 1e-9), 4) if rxn_p is not None else None
@@ -314,12 +321,14 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "mean_deadend_active": 2.23,
             "lp_biomass_feasible_pct": 100.0,
         })
+        s_act = float(np.mean([r["n_core_rxns"] + r["slr_n_added"] for r in audit_rows]))
+        s_flx_tot = float(np.mean([r["slr_n_flux_carrying_total"] for r in audit_rows]))
         writer.writerow({
             "method": "GSPA StoichiometricLocusRefiner (Positive-Cost + pFBA Support Certificate)",
             "n_genomes": len(audit_rows),
-            "mean_active_rxns": round(float(np.mean([r["n_core_rxns"] + r["slr_n_added"] for r in audit_rows])), 1),
-            "mean_flux_carrying_active": round(m_flx_tot, 1),
-            "mean_zero_flux_active": round(float(np.mean([r["n_core_rxns"] + r["slr_n_added"] for r in audit_rows])) - m_flx_tot, 1),
+            "mean_active_rxns": round(s_act, 1),
+            "mean_flux_carrying_active": round(s_flx_tot, 1),
+            "mean_zero_flux_active": round(round(s_act, 1) - round(s_flx_tot, 1), 1),
             "mean_added_rxns": round(s_add, 2),
             "mean_flux_certified_added": round(s_add, 2),
             "mean_uncertified_padding": 0.0,

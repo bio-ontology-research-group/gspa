@@ -91,7 +91,7 @@ def generate_figure6():
 
     categories = [
         "Added Rxns\n(Mean / Genome)",
-        "Flux-Certified\nAdded (|v|>1e-7)",
+        "Flux-Certified\nAdded (|v|>1e-6)",
         "Zero-Flux\nPadding Rxns",
         "Imbalanced\nActive Rxns",
     ]
@@ -164,7 +164,7 @@ def generate_figure6():
     wb = 0.165
     ax_b.bar(x_b - 2 * wb, base_fmax, wb, label="Baseline Predictor", color=PALETTE["grey"])
     ax_b.bar(x_b - wb, meteor_fmax, wb, label="+ METEOR v8 (Single-Pred)", color=PALETTE["orange"], hatch="//")
-    ax_b.bar(x_b, slr_cog_fmax, wb, label="+ GSPA SLR (Cognate)", color=PALETTE["sky"])
+    ax_b.bar(x_b, slr_cog_fmax, wb, label="+ GSPA SLR (Stoich. Probe)", color=PALETTE["sky"])
     ax_b.bar(x_b + wb, gspa_single_fmax, wb, label="+ GSPA Single-Pred (Iter 3)", color=PALETTE["teal"])
     bars_g = ax_b.bar(x_b + 2 * wb, gspa_multi_fmax, wb, label="+ GSPA Multi-Pred (Iter 3)", color=PALETTE["navy"])
 
