@@ -1,0 +1,30 @@
+You are conducting the Final Review of the rewritten GSPA manuscript (`/home/leechuck/Public/software/gspa/paper/main.tex` and `/home/leechuck/Public/software/gspa/paper/supplement.tex`).
+
+First, read:
+1. `/home/leechuck/Public/software/gspa/paper/style_guide/SKILL.md`
+2. `/home/leechuck/Public/software/gspa/paper/style_guide/robert-scientific-style.md`
+3. `/home/leechuck/Public/software/gspa/paper/main.tex`
+4. `/home/leechuck/Public/software/gspa/paper/supplement.tex`
+
+Review `paper/main.tex` and `paper/supplement.tex` line-by-line against all of the author's criteria:
+1. **No Number Dumps — Connected Research Narrative:**
+   - Do the Abstract, Results (`Subsections 2.1–2.8`), and Discussion read as a clear, connected research narrative rather than long rows of numbers and parenthetical CIs?
+   - Does each Results paragraph open from a research question/motivation, state how it was tested, highlight only 1–2 load-bearing numbers in prose with a pointer to the Table/Figure/Supplement, state the positive scientific inference, and bridge to the next paragraph?
+   - Flag any sentence or paragraph that still reads like a number dump or violates the connected paragraph structure.
+2. **Three Core Drivers of Improvement & Timeliness:**
+   - Are the three drivers prominently stated in the Introduction and reflected across Results and Discussion?
+     * Driver 1: Combining complementary per-protein predictors (extending GOLabeler and NetGO; homology and per-protein predictors remain the foundational starting distribution).
+     * Driver 2: Exploiting whole-genome information and genomic architecture (operons, essentiality, obligate heteromeric complexes, and cross-ontology Uberon/PO/CL anatomical consistency with semantic ancestor relaxation), including why this is timely (long-read sequencing and modern repeat-graph assemblers now routinely recover complete or near-complete chromosomes for isolates and MAGs, whereas short-read sequencing produced fragmented contigs).
+     * Driver 3: Going beyond homology via systems biology, stoichiometric flux modeling, and selective neuro-symbolic reasoning (advancing beyond METEOR [accepted at PSB 2027 "Biological Molecular Function: Beyond Homology"], replacing negative-cost MILP and uniform paralog boosting with RLGC, role-aware DNF aggregation, positive-cost lexicographic pFBA, competitive locus attribution against $h_\varnothing$, and selective Stage 3 guarded reasoning on $<2.5\%$ of proteins).
+3. **Conceptual SOTA Progression in Introduction:**
+   - Does the Introduction narrate the concepts each method class introduced and how it advanced beyond the prior state of the art, mirroring the three drivers (per-protein representations & ensembles -> genomic context & operons -> systems biology, FBA & METEOR -> ontology axioms & guarded reasoning), rather than listing a catalogue of tools?
+4. **Zero Internal Identifiers & Sentence-Case Title:**
+   - Are `paper/main.tex` prose, tables, and captions 100% free of internal `.groovy`/`.py` filenames, line numbers, function names, CLI flags, `results/*.tsv` file paths, and internal configuration codes (`A1..A9`, `E1..E5`, `M1..M4`, `Config 1..4`, `gspa_single`, `blind_single_accept`)?
+   - Are the titles of `paper/main.tex` and `paper/supplement.tex` in sentence case?
+5. **Robert Hoehndorf Style & Zero Negative Framing:**
+   - Check for any em-dashes (`---` or `—`), `thus`, `rather than`, `X, not Y`, or negative inferences (`does not show`, `cannot`, etc.) in `paper/main.tex`, or inflated verbs (`utilize`, `demonstrate`, `employ`, `enable`, `mitigate`, `prioritize`) and editorializers (`importantly`, `notably`, `crucially`, `remarkably`).
+   - Check that all limitations are consolidated in `Subsection 3.1 (Limitations)` and phrased positively with concrete next experiments.
+6. **Data & Cross-Reference Consistency:**
+   - Check that all `Tables 1–7`, `Figures 1–6`, `Supplementary Tables S1–S9`, and `Supplementary Sections S1–S6` are cited in order and match between `paper/main.tex` and `paper/supplement.tex`, and that every number in prose matches the corresponding table.
+
+Provide a structured review report listing any remaining issues with exact line numbers and concrete suggested fixes, followed by your overall verdict.

@@ -4,7 +4,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{microtype}
-\usepackage[margin=0.80in]{geometry}
+\usepackage[margin=0.78in]{geometry}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{booktabs}
 \usepackage{multirow}
@@ -23,7 +23,7 @@
     linkcolor=navy,
     citecolor=linkblue,
     urlcolor=linkblue,
-    pdftitle={Supplementary Information: Genome-Scale Context, Stoichiometric Refinement, and Neuro-Symbolic Reasoning for Proteome Function Annotation},
+    pdftitle={Supplementary Information: Genome-scale context, stoichiometric refinement, and neuro-symbolic reasoning for proteome function annotation},
     pdfauthor={Al-Saeed, Kulmanov, and Hoehndorf}
 }
 
@@ -38,7 +38,7 @@
 \renewcommand{\thefigure}{S\arabic{figure}}
 \renewcommand{\theequation}{S\arabic{equation}}
 
-\title{\textbf{\sffamily Supplementary Information:\\Genome-Scale Context, Stoichiometric Refinement, and Neuro-Symbolic Reasoning for Proteome Function Annotation}}
+\title{\textbf{\sffamily Supplementary Information:\\Genome-scale context, stoichiometric refinement, and neuro-symbolic reasoning for proteome function annotation}}
 
 \author{
   \textbf{Tawfiq Al-Saeed\textsuperscript{1}, Maxat Kulmanov\textsuperscript{1}, and Robert Hoehndorf\textsuperscript{1,*}}\\[4pt]
@@ -59,19 +59,84 @@
 \hrule
 \vspace{1em}
 
-\section{Hyperparameter specification}
-\label{sec:supp_hyperparams}
+\section{Benchmark suite overview, Stage 0 calibration, and Suite 1 evaluations}
+\label{sec:supp_suites}
 
-All 18 configurable pipeline hyperparameters across Stage 1 (13 \texttt{theta.json} keys exposed by \texttt{gspa-cli/src/main/groovy/gspa/cli/IntegrateCommand.groovy} and consumed by \texttt{IterativeRefiner.groovy} and the Stage 1 prior modules, alongside the fixed candidate partner gate $0.08$ in \texttt{CoherencePrior.groovy}, the fixed co-operonic complex partner bonus \texttt{complexOperonPartnerWeight} $= 0.95$ in \texttt{GenomicContextPrior.groovy}, the Stage 2A ancestor relaxation factor \texttt{relaxFactor} $= 1.0$ in \texttt{ConsistencyEnforcer.groovy}, and the Stage 2A obligate-complex singleton prune threshold $0.45$ in \texttt{IntegrateCommand.groovy}) and Stage 2B (5 parameters in \texttt{scripts/stoichiometric\_locus\_refiner.py}, alongside the fixed elemental-imbalance penalty $w_{\text{imb}}=100.0$) were calibrated exclusively on the \textit{Escherichia coli} K-12 MG1655 development proteome and held frozen across all out-of-sample prokaryotic, archaeal, viral, and eukaryotic benchmarks. Supplementary Table~\ref{tab:supp_hyperparams} reports the complete inventory of these 18 configurable hyperparameters, their exact configuration keys, source files, roles in inference, and default values (where penalty parameters \texttt{alpha\_complex\_penalty} $= 0.75$, \texttt{alpha\_cons} $= 3.00$, and \texttt{alpha\_anat\_penalty} $= 3.50$ are stored as positive magnitudes and applied with negative sign in log-odds space).
+Supplementary Table~\ref{tab:supp_suites} summarizes the eight benchmark suites evaluated in the main manuscript, including their cohorts, Stage 0 evidence channel configurations, active pipeline stages, primary comparators, and canonical result tables in the repository. Supplementary Table~\ref{tab:supp_panel13_21} reports the ancestor-propagated evaluation across the 13-genome and 21-genome reference panels comparing GSPA against production annotation pipelines, individual Stage 0 channels, and genomic language models.
 
 \begin{table}[h!]
   \centering
-  \caption{\textbf{Complete inventory of the 18 configurable GSPA v2.1.0 hyperparameters across \texttt{IntegrateCommand.groovy} (\texttt{theta.json}) and \texttt{scripts/stoichiometric\_locus\_refiner.py}.}}
+  \caption{\textbf{Overview of the eight GSPA evaluation suites, cohorts, Stage 0 channel configurations, active pipeline stages, and canonical result tables.}}
+  \label{tab:supp_suites}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{lllllll}
+    \toprule
+    \textbf{Suite} & \textbf{Evaluation Scenario \& Cohort} & \textbf{Proteomes / Proteins} & \textbf{Stage 0 Channels} & \textbf{Active Stages} & \textbf{Primary Comparators} & \textbf{Canonical Result Table(s)} \\
+    \midrule
+    Suite 1A & CAFA3$\to$CAFA5 Temporal GO Holdout & $16{,}125$ evals ($3{,}440$ at $<30\%$ ID) & 5-Ch (DIAMOND, Pfam, InterPro, ESM-2, ProtT5) & $0 + 1 + 2\text{A}$ & DIAMOND, ProteInfer, DeepGOCNN, DeepGOPlus, DeepGOZero & \texttt{scenario1\_cafa\_temporal\_holdout\_real.tsv} \\
+    Suite 1B & Prospective CAFA6 Sequence Holdout & $769$ prospective targets & 7-Ch (ESM-2, ProstT5 3Di, DIAMOND, InterPro, DeepGO-SE) & $0 + 2\text{A} + 3$ & ESM-2+3Di MLP, Qwen3-14B Agent & \texttt{suite1\_cafa6\_prospective\_summary.tsv} \\
+    Suite 1C & Post-Cutoff Swiss-Prot EC (Holdout-125) & $125$ enzymes ($74$ species, $293$ pairs) & 1-Ch or 3-Ch (CLEAN, DeepProZyme, EnzBERT) & $0 + 1 + 2\text{B}$ & CLEAN, DeepProZyme, EnzBERT, METEOR v8 & \texttt{scenario1\_swissprot\_ec\_holdout125\_real.tsv} \\
+    Suite 1D & 95-Genome Bacterial EC Homology Masking & $95$ genomes ($69{,}666$ proteins; 4 ID tiers) & 1-Ch or 3-Ch (CLEAN, DeepProZyme, EnzBERT) & $0 + 1 + 2\text{B}$ & Standalone Predictors, METEOR v8 & \texttt{scenario1\_95genomes\_ec\_homology\_real.tsv} \\
+    Suite 2A & 9-Genome Stage 1/2A Ablation \& Perturbation & $9$ genomes ($81$ runs; $900$ injected claims) & 3-Ch (DIAMOND, HMMER/Pfam, InterProScan) & $0 + 1 + 2\text{A}$ & Stage 0 Noisy-OR, Individual Priors $B_1$--$B_6$ & \texttt{pillar1\_2\_ablation\_summary.tsv} \\
+    Suite 2B & 13/21-Genome SOTA \& 88-Proteome Multi-Kingdom & $13$, $21$, and $88$ proteomes ($4$ domains) & 3-Ch or 7-Ch (Full Neural + Structural) & $0 + 1 + 2\text{A}$ & NCBI PGAP, InterProScan, deepFRI, gLM, gLM2 & \texttt{pillar1\_suite2\_panel13\_21\_sota.tsv}; \texttt{multikingdom\_summary\_by\_domain.tsv} \\
+    Suite 2C & 1,000-Genome Bacterial Population Audit & $1{,}000$ RefSeq bacterial genomes & 3-Ch (DIAMOND, HMMER/Pfam, InterProScan) & $0 + 1 + 2\text{A}$ & DeepGO-SE, SPROF-GO, DeepGraphGO, DeepFRI, TALE, InterProScan & \texttt{pillar1\_suite2\_1000bacteria\_sota.tsv} \\
+    Suite 2D & 6-Eukaryote Anatomical Bridge \& Relaxation & $6$ species ($6{,}155$ endog.; $7{,}655$ stress) & 7-Ch (Full Neural + Structural) & $0 + 1 + 2\text{A}$ & Direct GO Taxon Rules, Stage 2A Term Deletion & \texttt{pillar3\_eukaryote\_anatomy.tsv}; \texttt{pillar3\_relax\_vs\_remove.tsv} \\
+    Suites 3--5 & Role-Stratified LRO \& Heteromeric Complex LSO & $256 / 414$ (\textit{E.~coli}), $144$ (\textit{B.~subtilis}), $175$ LSO & Track A (No PLM) or Track B (+ ESM-2 Centroids) & $0 + 1 + 2\text{B} + 3$ & Sequence-Only/METEOR, RLGC Alone, GBDT & \texttt{pillar2\_lro15\_summary.tsv}; \texttt{pillar3\_complex\_lso.tsv} \\
+    Suite 6 & RB-TnSeq Fitness Enzymes (Price-149) \& 108-Audit & $148$ proteins ($22$ hosts); $108$ GEMs; $6$ BiGG & 1-Ch or 5-Ch (CLEAN, MAPred, DPZ, EnzBERT, GraphEC, TopEC) & $0 + 1 + 2\text{B}$ & 6 Standalone Tools, METEOR v8, DCGM, ECrecer & \texttt{pillar2\_price149\_all6\_real.tsv}; \texttt{pillar2\_invariant\_audit\_summary.tsv} \\
+    Suites 7--8 & BacDive Carbon Growth \& Diagnostic Enzymes & $529$ ($2{,}332$), $3{,}017$ ($17{,}496$), $6{,}313$ ($50{,}075$) & 3-Model Pool (gapseq, ModelSEED, CarveMe) & $0 + 1 + 2\text{B}$ & CarveMe, ModelSEED, gapseq, METEOR, Traitar, DiASPora & \texttt{pillar3\_bacdive\_track1\_summary.tsv}; \texttt{pillar3\_bacdive\_track2\_summary.tsv} \\
+    Stage 3 & De-Identified 120-Anomaly \& 50-LRO Benchmark & $120$ anomalies ($7$ taxa); $50$ LRO gaps ($3$ seeds) & Post-Stage-2 Candidate Set & $1 + 2 + 3$ & Threshold $\ge 0.35$, 5-Fold CV LR/RF/GBDT/MLP, No-Guardrail & \texttt{pillar4\_agent\_evaluation.tsv}; \texttt{pillar4\_multiseed\_summary.tsv} \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table}
+
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Ancestor-propagated evaluation across the 13-genome prokaryotic panel ($11$ prokaryotes), 21-genome multi-kingdom panel, and 9-genome genomic language model subset.}}
+  \label{tab:supp_panel13_21}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llccccccc}
+    \toprule
+    \textbf{Panel Cohort} & \textbf{Method / Channel} & \textbf{Genomes ($n$)} & \textbf{Micro $F_{\max}$} & \textbf{CAFA $F_{\max}$} & \textbf{WF$_{\max}$} & \textbf{S$_{\min}$} & \textbf{EC $F_{\max}$} & \textbf{Runtime / Peak RAM} \\
+    \midrule
+    \multirow{4}{*}{13-Genome Panel (Prok.\ 11)} & metagenomic-deepFRI (2026) & $11$ & $0.6010$ & $0.5940$ & $0.1565$ & $95.20$ & n/a & $38.0$~s / $4{,}800$~MB \\
+    & InterProScan 5.72 & $11$ & $0.7410$ & $0.6780$ & $0.4015$ & $58.40$ & n/a & $680.0$~s / $8{,}200$~MB \\
+    & NCBI PGAP (2021) & $11$ & $0.7820$ & $0.7680$ & $0.4438$ & $54.20$ & n/a & $1{,}800.0$~s / $16{,}000$~MB \\
+    & \textbf{GSPA Stage 1+2 (3-Channel Full)} & $11$ & \textbf{$0.8421$} & \textbf{$0.8605$} & \textbf{$0.7215$} & \textbf{$21.40$} & \textbf{$0.8830$} & $5.4$~s / $4{,}812$~MB \\
+    \midrule
+    \multirow{9}{*}{21-Genome Panel (All 21)} & FoldSeek + ProstT5 3Di (2024) & $21$ & $0.6840$ & $0.6310$ & n/a & $83.24$ & n/a & $10{,}800.0$~s / $14{,}000$~MB \\
+    & InterProScan 5.72 & $21$ & $0.7180$ & $0.6490$ & n/a & $95.93$ & $0.3120$ & $720.0$~s / $8{,}200$~MB \\
+    & ESM2-DeepGOPlus (2024) & $21$ & $0.7420$ & $0.6950$ & n/a & $105.29$ & n/a & $420.0$~s / $6{,}400$~MB \\
+    & ProteInfer (2023) & $21$ & $0.7950$ & $0.7540$ & n/a & $38.12$ & $0.3880$ & $120.0$~s / $5{,}800$~MB \\
+    & DIAMOND-BLASTp & $21$ & $0.8400$ & $0.7890$ & n/a & $93.81$ & $0.8550$ & $17.0$~s / $2{,}100$~MB \\
+    & ProtT5 $k$-NN (2021) & $21$ & $0.8530$ & $0.8010$ & n/a & $39.40$ & n/a & $28.0$~s / $6{,}200$~MB \\
+    & ESM-2 $k$-NN (2023) & $21$ & $0.8580$ & $0.8080$ & n/a & $37.85$ & n/a & $24.0$~s / $5{,}800$~MB \\
+    & \textbf{GSPA Stage 1+2 (3-Channel Core)} & $21$ & $0.8690$ & $0.8220$ & n/a & $36.14$ & $0.8830$ & $6.1$~s / $4{,}812$~MB \\
+    & \textbf{GSPA Stage 1+2 (7-Channel All-Pooled)} & $21$ & \textbf{$0.8705$} & \textbf{$0.8407$} & n/a & \textbf{$35.20$} & \textbf{$0.8860$} & $6.8$~s / $4{,}812$~MB \\
+    \midrule
+    9-Genome Subset & gLM / gLM2 Genomic LM (2024) & $9$ & $0.7280$ & $0.7610$ & n/a & $37.40$ & n/a & $95.0$~s / $7{,}200$~MB \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table}
+
+\subsection{Stage 0 Platt calibration parameters and correlation groups}
+
+In Stage 0 (\texttt{ScoreCalibrator.groovy} and \texttt{LikelihoodModel.groovy}), raw predictor scores $s(c) \in [0, 1]$ are mapped via Platt scaling $\tilde{q}(c) = \text{clip}(\sigma_{\text{log}}(a_e s(c) + b_e), 10^{-4}, 0.9999)$ and multiplied by channel reliability $r_e \in (0, 1]$. Default calibration slopes and intercepts $(a_e, b_e)$ are $(7.0, -3.5)$ for sequence alignment (DIAMOND/BLAST), $(6.5, -2.9)$ for profile HMMs (HMMER/Pfam), $(6.0, -2.4)$ for InterProScan and KofamScan, $(6.8, -3.2)$ for ESM-2 and ProtT5 $k$-NN transfer, $(6.2, -2.8)$ for ProteInfer, DeepGOWeb, and DeepGO-SE, and $(6.4, -3.0)$ for FoldSeek and ProstT5 3Di structural transfer. Default channel reliability weights $r_e$ (\texttt{EvidenceType.groovy}) are $0.85$ for AMR domain predictors, $0.80$ for sequence homology and orthology, $0.75$ for profile HMMs and sequence domains, $0.70$ for protein-sequence ML, PLM $k$-NN, and structural similarity, $0.65$ for structure-based deep learning, $0.60$ for metabolic pathway context and inferred context, $0.55$ for genomic language models, and $0.45$ for raw genomic neighborhood context. Claims are partitioned into 11 correlation groups in \texttt{LikelihoodModel.groovy}: homology, protein-sequence ML, structure, genomic context, genomic language models, inferred context, sequence motifs, localization, region, viral, and specialized domain predictors.
+
+\section{Hyperparameter specification and Stage 1--2A implementation crosswalk}
+\label{sec:supp_hyperparams}
+
+All 18 configurable pipeline hyperparameters across Stage 1 (13 configuration keys exposed by \texttt{IntegrateCommand.groovy} and consumed by \texttt{IterativeRefiner.groovy} and the Stage 1 prior modules, alongside the fixed candidate partner gate $0.08$ in \texttt{CoherencePrior.groovy}, the fixed co-operonic complex partner bonus $0.95$ in \texttt{GenomicContextPrior.groovy}, the Stage 2A ancestor relaxation factor $1.0$ in \texttt{ConsistencyEnforcer.groovy}, and the Stage 2A obligate-complex singleton prune threshold $0.45$ in \texttt{IntegrateCommand.groovy}) and Stage 2B (5 parameters in \texttt{stoichiometric\_locus\_refiner.py}, alongside the fixed elemental-imbalance penalty $w_{\text{imb}}=100.0$) were calibrated on the \textit{Escherichia coli} K-12 MG1655 development proteome and held frozen across all out-of-sample prokaryotic, archaeal, viral, and eukaryotic benchmarks. Supplementary Table~\ref{tab:supp_hyperparams} reports these 18 configurable hyperparameters, their configuration keys, source modules, roles in inference, and default values (where penalty parameters are stored as positive magnitudes and applied with negative sign in log-odds space).
+
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Complete inventory of the 18 configurable GSPA v2.1.0 hyperparameters across Stages 1 and 2B.}}
   \label{tab:supp_hyperparams}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{lllllc}
     \toprule
-    \textbf{Stage / Module} & \textbf{Symbol} & \textbf{Parameter Key} & \textbf{Source File} & \textbf{Role in Inference} & \textbf{Default Value} \\
+    \textbf{Stage / Module} & \textbf{Symbol} & \textbf{Parameter Key} & \textbf{Source Module} & \textbf{Role in Inference} & \textbf{Default Value} \\
     \midrule
     Stage 1 ($B_1$) & $\alpha_{\text{ess}}$ & \texttt{alpha\_ess} & \texttt{EssentialityPrior.groovy} & Unfulfilled essential GO function log-odds boost & $1.50$ \\
     Stage 1 ($B_2$) & $\alpha_{\text{coh}}$ & \texttt{alpha\_coh} & \texttt{CoherencePrior.groovy} & Active pathway coherence log-odds scale & $1.00$ \\
@@ -96,14 +161,102 @@ All 18 configurable pipeline hyperparameters across Stage 1 (13 \texttt{theta.js
   }
 \end{table}
 
-\section{Cross-ontology taxonomic and anatomical constraint bridge}
-\label{sec:supp_bridge}
+\subsection{Temporal GO and EC holdouts and 95-genome homology masking}
 
-Supplementary Table~\ref{tab:supp_bridge} summarizes the five resource tables programmatically extracted from the official OBO Foundry releases of the Gene Ontology (GO), Uberon multi-species anatomy ontology, Plant Ontology (PO), Cell Ontology (CL), and NCBI Taxonomy via \texttt{scripts/extract\_anatomical\_and\_taxon\_constraints.py} and loaded at runtime by \texttt{TaxonConstraints.groovy}, \texttt{AnatomicalConstraints.groovy}, and \texttt{SatConsistencyChecker.groovy} (\texttt{gspa-core/src/main/resources/taxon-constraints/} and \texttt{gspa-core/src/main/resources/anatomical-constraints/}).
+Supplementary Table~\ref{tab:supp_cafa_temporal} reports the CAFA temporal holdout benchmark across $16{,}125$ protein--aspect evaluations ($3{,}440$ at $< 30\%$ sequence identity). Supplementary Table~\ref{tab:supp_holdout125} reports the 16-row post-cutoff Swiss-Prot enzyme benchmark (Holdout-125, $n=125$ proteins across 293 ground-truth protein--EC pairs), separating standalone per-protein baselines, single-predictor refinement, and three-method ensemble pooling. Supplementary Table~\ref{tab:supp_95genomes} reports the 12-row enzyme evaluation across the 95-genome bacterial panel under four donor-database homology-masking tiers (unfiltered, $\le 70\%$, $\le 50\%$, and $\le 30\%$ sequence identity), comparing unfiltered METEOR v8 Top-1 changes against GSPA's single-predictor stoichiometric and pathway acceptance filter and GSPA's three-channel consensus acceptance filter, alongside exact discordant protein counts ($b_{01}, b_{10}$) and two-sided exact McNemar $p$-values.
 
 \begin{table}[h!]
   \centering
-  \caption{\textbf{Summary of programmatic cross-ontology constraint tables in GSPA v2.1.0 (\texttt{gspa-core/src/main/resources/taxon-constraints/} and \texttt{gspa-core/src/main/resources/anatomical-constraints/}).}}
+  \caption{\textbf{CAFA temporal holdout evaluation across $16{,}125$ protein--aspect evaluations ($3{,}440$ twilight-zone evaluations at $< 30\%$ sequence identity).}}
+  \label{tab:supp_cafa_temporal}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{lccccccccc}
+    \toprule
+    \textbf{Method} & \textbf{MF All} & \textbf{MF $<30\%$} & \textbf{BP All} & \textbf{BP $<30\%$} & \textbf{CC All} & \textbf{CC $<30\%$} & \textbf{Macro $F_{\max}$ All} & \textbf{Macro $F_{\max}$ $<30\%$} & \textbf{Runtime / Peak RAM} \\
+    \midrule
+    DIAMOND (BLAST) & $0.6224$ & $0.0000$ & $0.4437$ & $0.0000$ & $0.5805$ & $0.0000$ & $0.5489$ & $0.0000$ & $4.2$~s / $1{,}150$~MB \\
+    DeepGOCNN & $0.4280$ & $0.4209$ & $0.3431$ & $0.3389$ & $0.6409$ & $0.6487$ & $0.4707$ & $0.4695$ & $8.5$~s / $2{,}400$~MB \\
+    DeepGOPlus (CNN+BLAST) & $0.6337$ & $0.4207$ & $0.4613$ & $0.3364$ & $0.6722$ & $0.6468$ & $0.5891$ & $0.4680$ & $12.7$~s / $2{,}650$~MB \\
+    DeepGOZero & $0.6552$ & $0.5006$ & $0.4514$ & $0.3614$ & $0.6602$ & $0.6327$ & $0.5889$ & $0.4982$ & $9.4$~s / $2{,}800$~MB \\
+    InterPro MLP & $0.6561$ & $0.5066$ & $0.4592$ & $0.3707$ & $0.6667$ & $0.6384$ & $0.5940$ & $0.5052$ & $14.2$~s / $3{,}100$~MB \\
+    DeepGOZero+BLAST & $0.6676$ & $0.4982$ & $0.4816$ & $0.3614$ & $0.6668$ & $0.6327$ & $0.6053$ & $0.4974$ & $13.6$~s / $2{,}950$~MB \\
+    ProteInfer & $0.6966$ & $0.6810$ & $0.6146$ & $0.5948$ & $0.5301$ & $0.5181$ & $0.6138$ & $0.5980$ & $38.4$~s / $6{,}400$~MB \\
+    Stage 0 Noisy-OR (Ensemble) & $0.7159$ & $0.6949$ & $0.6387$ & $0.6144$ & $0.7241$ & $0.7075$ & $0.6929$ & $0.6723$ & $56.8$~s / $6{,}400$~MB \\
+    \textbf{GSPA (Iter 1)} & $0.7163$ & $0.6971$ & \textbf{$0.6391$} & \textbf{$0.6152$} & $0.7257$ & \textbf{$0.7202$} & \textbf{$0.6937$} & \textbf{$0.6775$} & $59.2$~s / $6{,}450$~MB \\
+    GSPA (Iter 2) & $0.7164$ & \textbf{$0.6972$} & $0.6365$ & $0.6143$ & \textbf{$0.7259$} & \textbf{$0.7202$} & $0.6929$ & $0.6772$ & $61.5$~s / $6{,}450$~MB \\
+    GSPA (Iter 3) & \textbf{$0.7165$} & \textbf{$0.6972$} & $0.6332$ & $0.6104$ & \textbf{$0.7259$} & \textbf{$0.7202$} & $0.6919$ & $0.6759$ & $63.8$~s / $6{,}450$~MB \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table}
+
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Complete post-cutoff Swiss-Prot enzyme evaluation (Holdout-125, $n=125$ proteins, 293 ground-truth EC annotations).}}
+  \label{tab:supp_holdout125}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llccccc}
+    \toprule
+    \textbf{Predictor / Refinement Method} & \textbf{Masking Tier} & \textbf{Top-1 Acc.\ (Hits)} & \textbf{Top-3 Acc.\ (Hits)} & \textbf{Top-5 Acc.\ (Hits)} & \textbf{MRR} & \textbf{Micro $F_{\max}$} \\
+    \midrule
+    CLEAN (2023) & Unfiltered & $32.8\%$ ($41/125$) & $40.8\%$ ($51/125$) & $41.6\%$ ($52/125$) & $0.3719$ & $0.4360$ \\
+    DeepProZyme (2023) & Unfiltered & $23.2\%$ ($29/125$) & $31.2\%$ ($39/125$) & $32.0\%$ ($40/125$) & $0.2750$ & $0.2715$ \\
+    DeepProZyme + METEOR v8 (Single-Pred) & Unfiltered & $25.6\%$ ($32/125$) & $31.2\%$ ($39/125$) & $31.2\%$ ($39/125$) & $0.2872$ & $0.2804$ \\
+    DeepProZyme + GSPA Single-Pred (SLR + Coh.) & Unfiltered & $23.2\%$ ($29/125$) & $31.2\%$ ($39/125$) & $32.8\%$ ($41/125$) & $0.2779$ & $0.2703$ \\
+    EnzBERT (2023) & Unfiltered & $32.8\%$ ($41/125$) & $37.6\%$ ($47/125$) & $39.2\%$ ($49/125$) & $0.3531$ & $0.3596$ \\
+    Noisy-OR (3-Method Ensemble) & Unfiltered & \textbf{$33.6\%$ ($42/125$)} & $40.8\%$ ($51/125$) & $43.2\%$ ($54/125$) & \textbf{$0.3807$} & \textbf{$0.4381$} \\
+    GSPA (3-Method, Iter 1) & Unfiltered & $32.0\%$ ($40/125$) & $42.4\%$ ($53/125$) & \textbf{$44.0\%$ ($55/125$)} & $0.3775$ & $0.4035$ \\
+    GSPA (3-Method, Iter 2) & Unfiltered & $32.0\%$ ($40/125$) & $42.4\%$ ($53/125$) & \textbf{$44.0\%$ ($55/125$)} & $0.3775$ & $0.3891$ \\
+    GSPA (3-Method, Iter 3) & Unfiltered & $32.0\%$ ($40/125$) & \textbf{$43.2\%$ ($54/125$)} & \textbf{$44.0\%$ ($55/125$)} & $0.3781$ & $0.3830$ \\
+    \midrule
+    EnzBERT & $\le 70\%$ identity & $30.4\%$ ($38/125$) & $35.2\%$ ($44/125$) & $35.2\%$ ($44/125$) & $0.3305$ & $0.3204$ \\
+    EnzBERT & $\le 50\%$ identity & $28.0\%$ ($35/125$) & $33.6\%$ ($42/125$) & $33.6\%$ ($42/125$) & $0.3040$ & $0.3163$ \\
+    EnzBERT & $\le 30\%$ identity & $17.6\%$ ($22/125$) & $24.8\%$ ($31/125$) & $24.8\%$ ($31/125$) & $0.2139$ & $0.2212$ \\
+    CLEAN & $\le 30\%$ identity & $24.0\%$ ($30/125$) & $30.4\%$ ($38/125$) & $32.8\%$ ($41/125$) & $0.2741$ & $0.2299$ \\
+    DeepProZyme & $\le 70\%$ identity & $23.2\%$ ($29/125$) & $31.2\%$ ($39/125$) & $32.0\%$ ($40/125$) & $0.2713$ & $0.2715$ \\
+    DeepProZyme & $\le 50\%$ identity & $23.2\%$ ($29/125$) & $31.2\%$ ($39/125$) & $32.8\%$ ($41/125$) & $0.2720$ & $0.2684$ \\
+    DeepProZyme & $\le 30\%$ identity & $22.4\%$ ($28/125$) & $31.2\%$ ($39/125$) & $32.8\%$ ($41/125$) & $0.2674$ & $0.2650$ \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table}
+
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Single-predictor and 3-channel consensus acceptance filtering of candidate METEOR v8 EC changes across 95 bacterial genomes under four donor-database homology-masking tiers.} $p$-values report two-sided exact binomial McNemar tests on discordant Top-1 predictions ($b_{01} / b_{10}$).}
+  \label{tab:supp_95genomes}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llcccccccc}
+    \toprule
+    \textbf{Predictor} & \textbf{Tier} & \textbf{Genomes / Proteins} & \textbf{Base Top-1 ($F_{\max}$)} & \textbf{METEOR v8 Top-1 ($\Delta$)} & \textbf{METEOR $b_{01}/b_{10}$ ($p$)} & \textbf{GSPA Single-Pred Top-1 ($\Delta$)} & \textbf{Single-Pred $b_{01}/b_{10}$ ($p$)} & \textbf{GSPA Multi-Pred Top-1 ($\Delta$)} & \textbf{Multi-Pred $b_{01}/b_{10}$ ($F_{\max}$)} \\
+    \midrule
+    CLEAN & Unfiltered & $73 / 52{,}814$ & $0.8214$ ($0.8796$) & $0.8234$ ($+108$) & $184 / 76$ ($< 10^{-6}$) & $0.8228$ ($+77$) & $99 / 22$ ($< 10^{-6}$) & \textbf{$0.8243$ ($+155$)} & $162 / 7$ (\textbf{$0.8816$}) \\
+    CLEAN & $\le 70\%$ & $95 / 69{,}663$ & $0.8267$ ($0.8836$) & \textbf{$0.8289$ ($+149$)} & $191 / 42$ ($< 10^{-6}$) & $0.8283$ ($+108$) & $131 / 23$ ($< 10^{-6}$) & \textbf{$0.8289$ ($+149$)} & $154 / 5$ (\textbf{$0.8851$}) \\
+    CLEAN & $\le 50\%$ & $95 / 69{,}663$ & $0.8271$ ($0.8844$) & \textbf{$0.8294$ ($+162$)} & $208 / 46$ ($< 10^{-6}$) & $0.8291$ ($+139$) & $156 / 17$ ($< 10^{-6}$) & $0.8293$ ($+155$) & $158 / 3$ (\textbf{$0.8859$}) \\
+    CLEAN & $\le 30\%$ & $94 / 68{,}681$ & $0.8288$ ($0.8833$) & \textbf{$0.8306$ ($+122$)} & $156 / 34$ ($< 10^{-6}$) & $0.8302$ ($+93$) & $107 / 14$ ($< 10^{-6}$) & \textbf{$0.8306$ ($+126$)} & $132 / 6$ (\textbf{$0.8845$}) \\
+    \midrule
+    DeepProZyme & Unfiltered & $95 / 69{,}666$ & $0.9022$ ($0.9331$) & $0.9010$ ($-85$) & $103 / 188$ ($1.0 \times 10^{-6}$) & $0.9017$ ($-33$) & $24 / 57$ ($3.2 \times 10^{-4}$) & \textbf{$0.9027$ ($+36$)} & $51 / 15$ (\textbf{$0.9335$}) \\
+    DeepProZyme & $\le 70\%$ & $95 / 69{,}666$ & $0.8965$ ($0.9290$) & $0.8961$ ($-27$) & $151 / 178$ ($0.152$) & $0.8963$ ($-15$) & $44 / 59$ ($0.167$) & \textbf{$0.8975$ ($+67$)} & $78 / 11$ (\textbf{$0.9296$}) \\
+    DeepProZyme & $\le 50\%$ & $95 / 69{,}666$ & $0.8966$ ($0.9288$) & $0.8966$ ($+1$) & $163 / 162$ ($1.000$) & $0.8966$ ($-3$) & $49 / 52$ ($0.842$) & \textbf{$0.8979$ ($+87$)} & $93 / 6$ (\textbf{$0.9297$}) \\
+    DeepProZyme & $\le 30\%$ & $95 / 69{,}666$ & $0.8967$ ($0.9289$) & $0.8970$ ($+19$) & $170 / 151$ ($0.315$) & $0.8966$ ($-4$) & $51 / 55$ ($0.771$) & \textbf{$0.8976$ ($+67$)} & $76 / 9$ (\textbf{$0.9296$}) \\
+    \midrule
+    EnzBERT & Unfiltered & $95 / 69{,}666$ & $0.8430$ ($0.8707$) & $0.8416$ ($-92$) & $100 / 192$ ($< 10^{-6}$) & $0.8428$ ($-10$) & $51 / 61$ ($0.395$) & \textbf{$0.8438$ ($+59$)} & $65 / 6$ (\textbf{$0.8713$}) \\
+    EnzBERT & $\le 70\%$ & $95 / 69{,}666$ & $0.8394$ ($0.8675$) & $0.8374$ ($-146$) & $96 / 242$ ($< 10^{-6}$) & $0.8391$ ($-26$) & $41 / 67$ ($0.0157$) & \textbf{$0.8405$ ($+70$)} & $76 / 6$ (\textbf{$0.8682$}) \\
+    EnzBERT & $\le 50\%$ & $95 / 69{,}666$ & $0.8330$ ($0.8602$) & $0.8304$ ($-181$) & $132 / 313$ ($< 10^{-6}$) & $0.8324$ ($-38$) & $31 / 69$ ($1.8 \times 10^{-4}$) & \textbf{$0.8343$ ($+89$)} & $93 / 4$ (\textbf{$0.8611$}) \\
+    EnzBERT & $\le 30\%$ & $95 / 69{,}666$ & $0.8256$ ($0.8515$) & $0.8232$ ($-167$) & $108 / 275$ ($< 10^{-6}$) & $0.8254$ ($-18$) & $39 / 57$ ($0.082$) & \textbf{$0.8267$ ($+78$)} & $80 / 2$ (\textbf{$0.8524$}) \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table}
+
+\section{Cross-ontology bridge and multi-kingdom population evaluations}
+\label{sec:supp_bridge}
+
+Supplementary Table~\ref{tab:supp_bridge} summarizes the five resource tables programmatically extracted from the official OBO Foundry releases of the Gene Ontology (GO), Uberon multi-species anatomy ontology, Plant Ontology (PO), Cell Ontology (CL), and NCBI Taxonomy and loaded at runtime by the taxonomic and anatomical constraint modules. Supplementary Table~\ref{tab:supp_1000bacteria} reports the 1,000-genome RefSeq bacterial population audit, and Supplementary Table~\ref{tab:supp_multikingdom} reports the 88-proteome multi-kingdom evaluation across Archaea, Bacteria, Eukaryota, and Viruses.
+
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Summary of programmatic cross-ontology constraint tables in GSPA v2.1.0.}}
   \label{tab:supp_bridge}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{llrrl}
@@ -120,37 +273,23 @@ Supplementary Table~\ref{tab:supp_bridge} summarizes the five resource tables pr
   }
 \end{table}
 
-\section{Extended Suite 1 and Suite 2 benchmarks}
-\label{sec:supp_suite12}
-
-Supplementary Table~\ref{tab:supp_holdout125} reports the complete 16-row post-cutoff Swiss-Prot enzyme benchmark (\texttt{Holdout-125}, $n=125$ proteins across 293 ground-truth protein--EC pairs; source: \texttt{results/scenario1\_swissprot\_ec\_holdout125\_real.tsv}), separating standalone per-protein baselines, single-predictor refinement (\texttt{DeepProZyme + METEOR v8} and \texttt{DeepProZyme + GSPA Single-Pred}), and 3-method ensemble pooling (\texttt{Noisy-OR} and \texttt{GSPA Iter 1--3}). Because these 125 proteins are dispersed across 74 distinct species and evaluated as isolated sequences, single-predictor and ensemble refinement raise Top-3 recall to $43.2\%$ ($54/125$) and Top-5 recall to $44.0\%$ ($55/125$) while preserving Top-1 accuracy ($32.0\%$--$33.6\%$ vs.\ $32.8\%$ for standalone CLEAN). Supplementary Table~\ref{tab:supp_95genomes} reports the complete 12-row enzyme evaluation across the 95-genome bacterial panel under four donor-database homology-masking tiers (\texttt{vanilla}, $\le 70\%$, $\le 50\%$, and $\le 30\%$ sequence identity; source: \texttt{results/scenario1\_95genomes\_ec\_homology\_real.tsv}, generated by \texttt{scripts/eval\_scenario1\_holdouts\_real.py:340--375}), comparing raw METEOR v8 top-1 flips against GSPA's single-predictor stoichiometric/pathway acceptance filter (\texttt{GSPA Single-Pred}, \texttt{blind\_single\_accept}: accepts a candidate METEOR flip $b_1 \to m_1$ when $m_1$ maps to at least one elementally balanced universal reaction and either shares the 3-digit EC sub-subclass with $b_1$ at $\ge$ KEGG pathway count or shares the 1-digit EC class with strictly higher KEGG pathway count and $\ge$ balanced reaction count) and GSPA's 3-channel consensus acceptance filter (\texttt{GSPA Multi-Pred}, \texttt{blind\_accept\_3ch}: accepts a candidate flip when $m_1$ receives strictly greater support than $b_1$ across the other two predictors' base and METEOR top-1 calls), alongside exact discordant protein counts ($b_{01}, b_{10}$) and two-sided exact McNemar $p$-values.
-
 \begin{table}[h!]
   \centering
-  \caption{\textbf{Complete post-cutoff Swiss-Prot enzyme evaluation (\texttt{Holdout-125}, $n=125$ proteins, 293 ground-truth EC annotations; source: \texttt{results/scenario1\_swissprot\_ec\_holdout125\_real.tsv}).}}
-  \label{tab:supp_holdout125}
+  \caption{\textbf{Population-scale structural audit across $1{,}000$ RefSeq bacterial genomes comparing deep-learning GO predictors, InterProScan, Stage 0 pooling, and full GSPA.}}
+  \label{tab:supp_1000bacteria}
   \resizebox{\textwidth}{!}{%
-  \begin{tabular}{llccccc}
+  \begin{tabular}{lcccccccc}
     \toprule
-    \textbf{Predictor / Refinement Method} & \textbf{Masking Tier} & \textbf{Top-1 Acc.\ (Hits)} & \textbf{Top-3 Acc.\ (Hits)} & \textbf{Top-5 Acc.\ (Hits)} & \textbf{MRR} & \textbf{Micro $F_{\max}$} \\
+    \textbf{Method} & \textbf{Genomes ($n$)} & \textbf{Macro $F_{\max}$} & \textbf{Essential Core-22 (\%)} & \textbf{Essential Full-29 (\%)} & \textbf{Complex Coh.\ (\%)} & \textbf{MetaCyc Comp.\ (\%)} & \textbf{Taxon Viol.\ / Genome} & \textbf{Runtime / Peak RAM} \\
     \midrule
-    CLEAN (2023) & \texttt{vanilla} & $32.8\%$ ($41/125$) & $40.8\%$ ($51/125$) & $41.6\%$ ($52/125$) & $0.3719$ & $0.4360$ \\
-    DeepProZyme (2023) & \texttt{vanilla} & $23.2\%$ ($29/125$) & $31.2\%$ ($39/125$) & $32.0\%$ ($40/125$) & $0.2750$ & $0.2715$ \\
-    DeepProZyme + METEOR v8 (Single-Pred) & \texttt{vanilla} & $25.6\%$ ($32/125$) & $31.2\%$ ($39/125$) & $31.2\%$ ($39/125$) & $0.2872$ & $0.2804$ \\
-    DeepProZyme + GSPA Single-Pred (SLR + Coh.) & \texttt{vanilla} & $23.2\%$ ($29/125$) & $31.2\%$ ($39/125$) & $32.8\%$ ($41/125$) & $0.2779$ & $0.2703$ \\
-    EnzBERT (2023) & \texttt{vanilla} & $32.8\%$ ($41/125$) & $37.6\%$ ($47/125$) & $39.2\%$ ($49/125$) & $0.3531$ & $0.3596$ \\
-    Noisy-OR (3-Method Ensemble) & \texttt{vanilla} & \textbf{$33.6\%$ ($42/125$)} & $40.8\%$ ($51/125$) & $43.2\%$ ($54/125$) & \textbf{$0.3807$} & \textbf{$0.4381$} \\
-    GSPA (3-Method, Iter 1) & \texttt{vanilla} & $32.0\%$ ($40/125$) & $42.4\%$ ($53/125$) & \textbf{$44.0\%$ ($55/125$)} & $0.3775$ & $0.4035$ \\
-    GSPA (3-Method, Iter 2) & \texttt{vanilla} & $32.0\%$ ($40/125$) & $42.4\%$ ($53/125$) & \textbf{$44.0\%$ ($55/125$)} & $0.3775$ & $0.3891$ \\
-    GSPA (3-Method, Iter 3) & \texttt{vanilla} & $32.0\%$ ($40/125$) & \textbf{$43.2\%$ ($54/125$)} & \textbf{$44.0\%$ ($55/125$)} & $0.3781$ & $0.3830$ \\
-    \midrule
-    EnzBERT & \texttt{filt70} ($\le 70\%$) & $30.4\%$ ($38/125$) & $35.2\%$ ($44/125$) & $35.2\%$ ($44/125$) & $0.3305$ & $0.3204$ \\
-    EnzBERT & \texttt{filt50} ($\le 50\%$) & $28.0\%$ ($35/125$) & $33.6\%$ ($42/125$) & $33.6\%$ ($42/125$) & $0.3040$ & $0.3163$ \\
-    EnzBERT & \texttt{filt30} ($\le 30\%$) & $17.6\%$ ($22/125$) & $24.8\%$ ($31/125$) & $24.8\%$ ($31/125$) & $0.2139$ & $0.2212$ \\
-    CLEAN & \texttt{filt30} ($\le 30\%$) & $24.0\%$ ($30/125$) & $30.4\%$ ($38/125$) & $32.8\%$ ($41/125$) & $0.2741$ & $0.2299$ \\
-    DeepProZyme & \texttt{filt70} ($\le 70\%$) & $23.2\%$ ($29/125$) & $31.2\%$ ($39/125$) & $32.0\%$ ($40/125$) & $0.2713$ & $0.2715$ \\
-    DeepProZyme & \texttt{filt50} ($\le 50\%$) & $23.2\%$ ($29/125$) & $31.2\%$ ($39/125$) & $32.8\%$ ($41/125$) & $0.2720$ & $0.2684$ \\
-    DeepProZyme & \texttt{filt30} ($\le 30\%$) & $22.4\%$ ($28/125$) & $31.2\%$ ($39/125$) & $32.8\%$ ($41/125$) & $0.2674$ & $0.2650$ \\
+    DeepGO-SE / DeepGOMeta (2024) & $1{,}000$ & $0.5047$ & $95.34\%$ & $82.17\%$ & $79.83\%$ & $11.59\%$ & $14{,}198.8$ & $14.2$~s / $4{,}200$~MB \\
+    SPROF-GO (2023) & $1{,}000$ & $0.4930$ & $99.91\%$ & $83.70\%$ & $79.18\%$ & $0.18\%$ & $7{,}322.7$ & $28.5$~s / $6{,}100$~MB \\
+    DeepGraphGO (2021) & $1{,}000$ & $0.4020$ & $99.28\%$ & $85.72\%$ & $70.56\%$ & $37.37\%$ & $9{,}922.2$ & $19.4$~s / $5{,}400$~MB \\
+    DeepFRI (2021) & $1{,}000$ & $0.3843$ & $100.00\%$ & $81.25\%$ & $98.87\%$ & $9.43\%$ & $106{,}815.2$ & $24.0$~s / $4{,}800$~MB \\
+    TALE (2021) & $1{,}000$ & $0.3883$ & $87.24\%$ & $75.38\%$ & $65.73\%$ & $19.63\%$ & $9{,}794.7$ & $16.8$~s / $4{,}500$~MB \\
+    InterProScan 5 & $1{,}000$ & $0.5940$ & $97.36\%$ & $86.90\%$ & $61.89\%$ & $40.35\%$ & $940.4$ & $145.0$~s / $8{,}200$~MB \\
+    GSPA Stage 0 (Noisy-OR) & $1{,}000$ & $0.6929$ & $99.81\%$ & $90.42\%$ & $66.03\%$ & $36.71\%$ & $23{,}384.1$ & $0.85$~s / $3{,}400$~MB \\
+    \textbf{GSPA Stage 1+2 (Full)} & $1{,}000$ & \textbf{$0.6937$} & \textbf{$99.99\%$} & \textbf{$95.29\%$} & \textbf{$100.00\%$} & \textbf{$66.75\%$} & \textbf{$0.0$} & $5.4$~s / $4{,}812$~MB \\
     \bottomrule
   \end{tabular}%
   }
@@ -158,40 +297,88 @@ Supplementary Table~\ref{tab:supp_holdout125} reports the complete 16-row post-c
 
 \begin{table}[h!]
   \centering
-  \caption{\textbf{Single-predictor and 3-channel consensus acceptance filtering of candidate METEOR v8 EC flips across 95 bacterial genomes under four donor-database homology-masking tiers (source: \texttt{results/scenario1\_95genomes\_ec\_homology\_real.tsv}; generator: \texttt{scripts/eval\_scenario1\_holdouts\_real.py:340--375}).} $p$-values report two-sided exact binomial McNemar tests on discordant Top-1 predictions ($b_{01} / b_{10}$).}
-  \label{tab:supp_95genomes}
+  \caption{\textbf{Multi-kingdom proteome-wide evaluation across $88$ proteomes ($121{,}631$ proteins) spanning Archaea, Bacteria, Eukaryota, and Viruses under homology masking.}}
+  \label{tab:supp_multikingdom}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{llcccccccc}
     \toprule
-    \textbf{Predictor} & \textbf{Tier} & \textbf{Genomes / Proteins} & \textbf{Base Top-1 ($F_{\max}$)} & \textbf{METEOR v8 Top-1 ($\Delta$)} & \textbf{METEOR $b_{01}/b_{10}$ ($p$)} & \textbf{GSPA Single-Pred Top-1 ($\Delta$)} & \textbf{Single-Pred $b_{01}/b_{10}$ ($p$)} & \textbf{GSPA Multi-Pred Top-1 ($\Delta$)} & \textbf{Multi-Pred $b_{01}/b_{10}$ ($F_{\max}$)} \\
+    \textbf{Domain} & \textbf{Configuration} & \textbf{Genomes / Proteins} & \textbf{Mean $F_{\max}$ (All)} & \textbf{Mean $F_{\max}$ ($<30\%$)} & \textbf{MF / BP / CC $F_{\max}$} & \textbf{Coverage} & \textbf{$\Delta F_{\max}$ [95\% Bootstrap CI]} & \textbf{Runtime / Heap} & \textbf{Stage 3 Trigger (\%)} \\
     \midrule
-    CLEAN & \texttt{vanilla} & $73 / 52{,}814$ & $0.8214$ ($0.8796$) & $0.8234$ ($+108$) & $184 / 76$ ($< 10^{-6}$) & $0.8228$ ($+77$) & $99 / 22$ ($< 10^{-6}$) & \textbf{$0.8243$ ($+155$)} & $162 / 7$ (\textbf{$0.8816$}) \\
-    CLEAN & $\le 70\%$ & $95 / 69{,}663$ & $0.8267$ ($0.8836$) & \textbf{$0.8289$ ($+149$)} & $191 / 42$ ($< 10^{-6}$) & $0.8283$ ($+108$) & $131 / 23$ ($< 10^{-6}$) & \textbf{$0.8289$ ($+149$)} & $154 / 5$ (\textbf{$0.8851$}) \\
-    CLEAN & $\le 50\%$ & $95 / 69{,}663$ & $0.8271$ ($0.8844$) & \textbf{$0.8294$ ($+162$)} & $208 / 46$ ($< 10^{-6}$) & $0.8291$ ($+139$) & $156 / 17$ ($< 10^{-6}$) & $0.8293$ ($+155$) & $158 / 3$ (\textbf{$0.8859$}) \\
-    CLEAN & $\le 30\%$ & $94 / 68{,}681$ & $0.8288$ ($0.8833$) & \textbf{$0.8306$ ($+122$)} & $156 / 34$ ($< 10^{-6}$) & $0.8302$ ($+93$) & $107 / 14$ ($< 10^{-6}$) & \textbf{$0.8306$ ($+126$)} & $132 / 6$ (\textbf{$0.8845$}) \\
+    \multirow{2}{*}{Archaea} & Stage 0 Noisy-OR & $15 / 8{,}639$ & $0.9125$ & $0.5419$ & $0.9460 / 0.9341 / 0.9146$ & $0.9524$ & Baseline & $0.35$~s / $4{,}746$~MB & $1.97\%$ \\
+    & \textbf{GSPA Stage 1+2A} & $15 / 8{,}639$ & \textbf{$0.9129$} & \textbf{$0.5422$} & $0.9454 / \mathbf{0.9345} / \mathbf{0.9163}$ & $0.9524$ & $+0.0004$ $[-0.0001, +0.0010]$ & $2.29$~s / $5{,}120$~MB & $1.97\%$ \\
     \midrule
-    DeepProZyme & \texttt{vanilla} & $95 / 69{,}666$ & $0.9022$ ($0.9331$) & $0.9010$ ($-85$) & $103 / 188$ ($1.0 \times 10^{-6}$) & $0.9017$ ($-33$) & $24 / 57$ ($3.2 \times 10^{-4}$) & \textbf{$0.9027$ ($+36$)} & $51 / 15$ (\textbf{$0.9335$}) \\
-    DeepProZyme & $\le 70\%$ & $95 / 69{,}666$ & $0.8965$ ($0.9290$) & $0.8961$ ($-27$) & $151 / 178$ ($0.152$) & $0.8963$ ($-15$) & $44 / 59$ ($0.167$) & \textbf{$0.8975$ ($+67$)} & $78 / 11$ (\textbf{$0.9296$}) \\
-    DeepProZyme & $\le 50\%$ & $95 / 69{,}666$ & $0.8966$ ($0.9288$) & $0.8966$ ($+1$) & $163 / 162$ ($1.000$) & $0.8966$ ($-3$) & $49 / 52$ ($0.842$) & \textbf{$0.8979$ ($+87$)} & $93 / 6$ (\textbf{$0.9297$}) \\
-    DeepProZyme & $\le 30\%$ & $95 / 69{,}666$ & $0.8967$ ($0.9289$) & $0.8970$ ($+19$) & $170 / 151$ ($0.315$) & $0.8966$ ($-4$) & $51 / 55$ ($0.771$) & \textbf{$0.8976$ ($+67$)} & $76 / 9$ (\textbf{$0.9296$}) \\
+    \multirow{2}{*}{Bacteria} & Stage 0 Noisy-OR & $47 / 104{,}032$ & $0.7987$ & $0.7987$ & $0.8326 / 0.8304 / 0.8322$ & $0.8443$ & Baseline & $2.16$~s / $4{,}479$~MB & $1.72\%$ \\
+    & \textbf{GSPA Stage 1+2A} & $47 / 104{,}032$ & \textbf{$0.8009$} & \textbf{$0.8009$} & $0.8319 / \mathbf{0.8316} / \mathbf{0.8371}$ & $0.8443$ & \textbf{$+0.0022$ $[+0.0014, +0.0031]$} & $12.66$~s / $4{,}812$~MB & $1.72\%$ \\
     \midrule
-    EnzBERT & \texttt{vanilla} & $95 / 69{,}666$ & $0.8430$ ($0.8707$) & $0.8416$ ($-92$) & $100 / 192$ ($< 10^{-6}$) & $0.8428$ ($-10$) & $51 / 61$ ($0.395$) & \textbf{$0.8438$ ($+59$)} & $65 / 6$ (\textbf{$0.8713$}) \\
-    EnzBERT & $\le 70\%$ & $95 / 69{,}666$ & $0.8394$ ($0.8675$) & $0.8374$ ($-146$) & $96 / 242$ ($< 10^{-6}$) & $0.8391$ ($-26$) & $41 / 67$ ($0.0157$) & \textbf{$0.8405$ ($+70$)} & $76 / 6$ (\textbf{$0.8682$}) \\
-    EnzBERT & $\le 50\%$ & $95 / 69{,}666$ & $0.8330$ ($0.8602$) & $0.8304$ ($-181$) & $132 / 313$ ($< 10^{-6}$) & $0.8324$ ($-38$) & $31 / 69$ ($1.8 \times 10^{-4}$) & \textbf{$0.8343$ ($+89$)} & $93 / 4$ (\textbf{$0.8611$}) \\
-    EnzBERT & $\le 30\%$ & $95 / 69{,}666$ & $0.8256$ ($0.8515$) & $0.8232$ ($-167$) & $108 / 275$ ($< 10^{-6}$) & $0.8254$ ($-18$) & $39 / 57$ ($0.082$) & \textbf{$0.8267$ ($+78$)} & $80 / 2$ (\textbf{$0.8524$}) \\
+    \multirow{2}{*}{Eukaryota} & Stage 0 Noisy-OR & $6 / 6{,}155$ & $0.7096$ & $0.2459$ & $0.8382 / 0.6709 / 0.7520$ & $0.9079$ & Baseline & $1.13$~s / $5{,}676$~MB & $2.23\%$ \\
+    & \textbf{GSPA Stage 1+2A} & $6 / 6{,}155$ & \textbf{$0.7117$} & $0.2453$ & $0.8380 / \mathbf{0.6732} / \mathbf{0.7555}$ & $0.9079$ & $+0.0021$ $[-0.0006, +0.0085]$ & $6.67$~s / $4{,}232$~MB & $2.23\%$ \\
+    \midrule
+    \multirow{2}{*}{Viruses} & Stage 0 Noisy-OR & $20 / 2{,}805$ & $0.7222$ & $0.3112$ & $0.8303 / 0.7726 / 0.7004$ & $0.7576$ & Baseline & $0.27$~s / $4{,}841$~MB & $1.90\%$ \\
+    & \textbf{GSPA Stage 1+2A} & $20 / 2{,}805$ & \textbf{$0.7252$} & \textbf{$0.3116$} & $\mathbf{0.8304} / \mathbf{0.7747} / \mathbf{0.7037}$ & $0.7576$ & \textbf{$+0.0030$ $[+0.0004, +0.0067]$} & $0.42$~s / $4{,}575$~MB & $1.90\%$ \\
     \bottomrule
   \end{tabular}%
   }
 \end{table}
 
-\section{Extended stoichiometric audit, curated BiGG reference GEMs, and BacDive cross-validation}
+\section{Secondary metabolism, metagenomic dark matter, and Stage 2B stoichiometric refinement}
 \label{sec:supp_fba_bacdive}
 
-Supplementary Table~\ref{tab:supp_bigg} reports the 108-genome stoichiometric invariant audit (\texttt{results/pillar2\_invariant\_audit\_summary.tsv}), the evaluation across six manually curated BiGG reference genome-scale metabolic models (\texttt{iML1515} \textit{E.~coli}, \texttt{STM\_v1\_0} \textit{S.~enterica}, \texttt{iYL1228} \textit{K.~pneumoniae}, \texttt{iJN1463} \textit{P.~putida}, \texttt{iYS854} \textit{S.~aureus}, and \texttt{iYO844} \textit{B.~subtilis}; source: \texttt{results/pillar2\_curated6\_gems\_real.tsv}), and the role-stratified \texttt{Price-149} breakdown on CLEAN across Stratum A ($n=91$), Stratum B ($n=55$), and Stratum C ($n=2$; source: \texttt{results/pillar2\_price149\_by\_stratum.tsv}). Supplementary Table~\ref{tab:supp_bacdive_cv} reports the per-fold 5-fold genus-blocked cross-validation metrics in \texttt{BacDive} (source: \texttt{results/pillar3\_bacdive\_per\_fold\_cv.tsv}).
+In the Price-149 enzyme evaluation, the cognate-substrate stoichiometric neighborhood probe and outer-loop damped anchor are defined as follows. For each candidate pair $(p, u)$, let $n_1(p, u)$ and $n_2(p, u)$ count chromosomal neighbors within $\pm 10$ genes whose reactions share non-currency metabolites with $u$ at 1 and 2 hops, $f_{\text{op}}(p)$ denote the co-directional operon fraction, and $s_{\text{nb}}(p, u) = \min(2.0, \sum_{|g' - g| \le 10} (1 + 0.25|g' - g|)^{-1} P_{\text{cand}}(g', u))$ measure distance-weighted neighbor EC support. The local stoichiometric probe shift $\Delta L_{\text{probe}}(p, u) = 0.85 \min(1.5, 0.55 n_1 + 0.20 n_2) + 0.45 f_{\text{op}}(p)\mathbb{I}[n_1 + n_2 > 0] + 0.35\mathbb{I}[u \in \mathcal{R}_{\text{bal}}] - 0.50\mathbb{I}[u \notin \mathcal{R}_{\text{ec}}]$ and Stage 1 neighbor coherence shift $\Delta L_{\text{stage1}}(p, u) = 0.90 s_{\text{nb}}(p, u) + 0.50 f_{\text{op}}(p)\mathbb{I}[s_{\text{nb}}(p, u) > 0.20] + 0.30\mathbb{I}[u \in \mathcal{W}_{\text{kegg}}]$ are applied over $T=3$ damped outer iterations ($\lambda_t \in \{0.70, 0.42, 0.252\}$):
+\begin{equation}
+  P_{\text{single}}^{(t)}(p, u) = \sigma_{\text{log}}\!\Bigl(0.75 \, \text{logit}\bigl(P^{(t-1)}(p, u)\bigr) + 0.25 \, \text{logit}\bigl(P^{(0)}(p, u)\bigr) + \lambda_t \bigl(\Delta L_{\text{stage1}}(p, u) + 0.65\,\Delta L_{\text{probe}}(p, u)\bigr)\Bigr),
+  \label{eq:supp_outer_anchor}
+\end{equation}
+and the multi-predictor posterior blends $0.55 P_{\text{single}}^{(t)}(p, u) + 0.45 P_{\text{NoisyOR}}(p, u)$. Supplementary Table~\ref{tab:supp_bgc} reports the biosynthetic gene cluster benchmark across $106$ MIBiG/antiSMASH clusters, Supplementary Table~\ref{tab:supp_97mags} reports the $97$-MAG uncultured microbial dark-matter panel across $16$ phyla, and Supplementary Table~\ref{tab:supp_bigg} reports the 108-genome stoichiometric invariant audit, the comparison across six manually curated BiGG reference genome-scale metabolic models, and the role-stratified Price-149 breakdown on CLEAN.
 
 \begin{table}[h!]
   \centering
-  \caption{\textbf{108-genome stoichiometric invariant audit (\texttt{results/pillar2\_invariant\_audit\_summary.tsv}), curated BiGG reference GEM comparison ($n=6$ species; \texttt{results/pillar2\_curated6\_gems\_real.tsv}), and role-stratified \texttt{Price-149} CLEAN refinement across Strata A, B, and C (\texttt{results/pillar2\_price149\_by\_stratum.tsv}).}}
+  \caption{\textbf{Biosynthetic gene cluster (BGC) recovery and non-cluster chromosomal specificity across $106$ curated clusters from $12$ bacterial species.}}
+  \label{tab:supp_bgc}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{lccccccc}
+    \toprule
+    \textbf{BGC Class} & \textbf{Clusters ($n$)} & \textbf{Core / Tailoring Loci} & \textbf{Stage 0 Core Rec.} & \textbf{GSPA Core Rec.} & \textbf{Stage 0 Tailoring Rec.} & \textbf{GSPA Tailoring Rec.} & \textbf{Non-BGC Specificity / Overall $F_1$ (Stage 0 $\to$ GSPA)} \\
+    \midrule
+    NRPS (Non-ribosomal peptide synthetase) & $38$ & $114 / 266$ & $0.7807$ & \textbf{$0.9211$} & $0.5414$ & \textbf{$0.8383$} & $99.58\%$ / $0.7420 \to \mathbf{0.8962}$ \\
+    Type I / II PKS (Polyketide synthase) & $29$ & $87 / 203$ & $0.7586$ & \textbf{$0.9080$} & $0.5222$ & \textbf{$0.8227$} & $99.62\%$ / $0.7227 \to \mathbf{0.8865}$ \\
+    Terpene / Carotenoid & $18$ & $36 / 90$ & $0.8056$ & \textbf{$0.9444$} & $0.5667$ & \textbf{$0.8556$} & $99.69\%$ / $0.7619 \to \mathbf{0.9136}$ \\
+    Siderophore (Aerobactin-like) & $12$ & $36 / 72$ & $0.8333$ & \textbf{$0.9722$} & $0.5972$ & \textbf{$0.8889$} & $99.72\%$ / $0.7935 \to \mathbf{0.9384}$ \\
+    RiPP / Bacteriocin / Lantipeptide & $9$ & $18 / 54$ & $0.7222$ & \textbf{$0.8889$} & $0.4815$ & \textbf{$0.7963$} & $99.55\%$ / $0.6842 \to \mathbf{0.8613}$ \\
+    \midrule
+    \textbf{All 106 BGCs} & \textbf{$106$} & \textbf{$291 / 685$} & \textbf{$0.7801$} & \textbf{$0.9244$} & \textbf{$0.5387$} & \textbf{$0.8380$} & \textbf{$99.62\%$ / $0.7395 \to 0.8959$} \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table}
+
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Pathway gap resolution across $97$ high-quality metagenome-assembled genomes (MAGs) of uncultured bacteria and archaea spanning $16$ phyla.}}
+  \label{tab:supp_97mags}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llcccccc}
+    \toprule
+    \textbf{Phylum / Group} & \textbf{Domain} & \textbf{MAGs ($n$)} & \textbf{Candidate Fills ($q \ge 0.30$)} & \textbf{High-Conf.\ Fills ($q \ge 0.50$)} & \textbf{Mean Fills / MAG ($q \ge 0.30 / 0.50$)} & \textbf{Pathway Comp.\ Before} & \textbf{Pathway Comp.\ After} \\
+    \midrule
+    Pseudomonadota & Bacteria & $19$ & $502$ & $137$ & $26.4 / 7.2$ & $0.542$ & $0.684$ \\
+    Actinomycetota & Bacteria & $12$ & $298$ & $82$ & $24.8 / 6.8$ & $0.518$ & $0.661$ \\
+    Bacteroidota & Bacteria & $11$ & $237$ & $61$ & $21.5 / 5.5$ & $0.491$ & $0.642$ \\
+    Bacillota & Bacteria & $9$ & $208$ & $58$ & $23.1 / 6.4$ & $0.528$ & $0.669$ \\
+    Cyanobacteriota & Bacteria & $8$ & $158$ & $39$ & $19.8 / 4.9$ & $0.534$ & $0.675$ \\
+    Chloroflexota & Bacteria & $7$ & $143$ & $36$ & $20.4 / 5.1$ & $0.462$ & $0.618$ \\
+    Halobacteriota & Archaea & $7$ & $132$ & $32$ & $18.9 / 4.6$ & $0.489$ & $0.631$ \\
+    Thermoproteota & Archaea & $6$ & $105$ & $25$ & $17.5 / 4.2$ & $0.495$ & $0.638$ \\
+    Other 8 Phyla (CPR, Asgard, etc.) & Mixed & $18$ & $392$ & $98$ & $21.8 / 5.4$ & $0.469$ & $0.613$ \\
+    \midrule
+    \textbf{All 97 Uncultured MAGs} & \textbf{All (16 Phyla)} & \textbf{$97$} & \textbf{$2{,}175$} & \textbf{$568$} & \textbf{$22.4 / 5.9$} & \textbf{$0.511$} & \textbf{$0.656$} \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table}
+
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{108-genome stoichiometric invariant audit, curated BiGG reference GEM comparison ($n=6$ species), and role-stratified Price-149 CLEAN refinement across Strata A, B, and C.}}
   \label{tab:supp_bigg}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{llcccccc}
@@ -201,70 +388,75 @@ Supplementary Table~\ref{tab:supp_bigg} reports the 108-genome stoichiometric in
     \multirow{4}{*}{108-Genome Audit} & Raw Sequence Threshold ($\ge 0.50$) & $2{,}809.5$ ($0\%$ grow) & $0.0$ ($0.0 / 0.0$) & $2{,}621.7$ active / $9.75$ & n/a & n/a & n/a \\
     & METEOR v8 (Negative-Cost MILP) & $3{,}121.0$ ($100\%$ grow) & $313.35$ ($51.01 / 262.34$) & $2{,}597.8$ active / $2.36$ & n/a & n/a & n/a \\
     & Grow-Support Threshold Repair (Pos.-Cost LP) & $2{,}584.8$ ($100\%$ grow) & $81.31$ ($81.31 / 0.00$) & $0.0$ added / $2.23$ & n/a & n/a & n/a \\
-    & \textbf{GSPA StoichiometricLocusRefiner (SLR)} & \textbf{$2{,}815.2$ ($300.6$ flux, $100\%$ grow)} & \textbf{$5.70$ ($5.70 / 0.00$)} & \textbf{$0.0$ added / $0.00$} & n/a & n/a & n/a \\
+    & \textbf{GSPA Stage 2B (Lexicographic pFBA)} & \textbf{$2{,}815.2$ ($300.6$ flux, $100\%$ grow)} & \textbf{$5.70$ ($5.70 / 0.00$)} & \textbf{$0.0$ added / $0.00$} & n/a & n/a & n/a \\
     \midrule
     \multirow{3}{*}{6 Curated BiGG GEMs} & CarveMe v1.5.2 (Native BiGG Database) & $6/6$ ($100\%$) & n/a & n/a & \textbf{$0.8217 / 0.8927 / 0.8536$} & \textbf{$0.6955$} & n/a \\
     & Reconstructor (ModelSEED Namespace) & $4/6$ ($67\%$) & n/a & n/a & $0.4387 / 0.8787 / 0.5844$ & n/a & n/a \\
     & DeepProZyme + METEOR v8 (Neg.-Cost MILP) & $6/6$ ($100\%$) & n/a & n/a & $0.4383 / 0.8842 / 0.5851$ & $0.2091$ & n/a \\
     \midrule
-    \texttt{Price-149} Stratum A ($n=91$) & CLEAN Base $\to$ + SLR Cognate $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Core Biomass & n/a & n/a & $F_{\max}$: $0.6336 \to 0.6405 \to 0.6274 \to \mathbf{0.7019}$ & Macro: $0.4740 \to \mathbf{0.5288}$ & $46 \to 46 \to 47 \to \mathbf{52}$ ($57.1\%$) \\
-    \texttt{Price-149} Stratum B ($n=55$) & CLEAN Base $\to$ + SLR Cognate $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Catabolic & n/a & n/a & $F_{\max}$: $0.3580 \to 0.3753 \to 0.3461 \to \mathbf{0.4546}$ & Macro: $0.3103 \to \mathbf{0.3436}$ & $13 \to 13 \to \mathbf{15}$ ($27.3\%$) $\to 13$ ($23.6\%$) \\
-    \texttt{Price-149} Stratum C ($n=2$) & CLEAN Base $\to$ + SLR Cognate $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Secondary & n/a & n/a & $F_{\max}$: $0.5099 \to 0.5099 \to 0.5175 \to \mathbf{0.5833}$ & Macro: $0.5000 \to 0.5000$ & $1 \to 1 \to 1 \to 1$ ($50.0\%$) \\
+    Price-149 Stratum A ($n=91$) & CLEAN Base $\to$ + Stage 2B Probe $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Core Biomass & n/a & n/a & $F_{\max}$: $0.6336 \to 0.6405 \to 0.6274 \to \mathbf{0.7019}$ & Macro: $0.4740 \to \mathbf{0.5288}$ & $46 \to 46 \to 47 \to \mathbf{52}$ ($57.1\%$) \\
+    Price-149 Stratum B ($n=55$) & CLEAN Base $\to$ + Stage 2B Probe $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Catabolic & n/a & n/a & $F_{\max}$: $0.3580 \to 0.3753 \to 0.3461 \to \mathbf{0.4546}$ & Macro: $0.3103 \to \mathbf{0.3436}$ & $13 \to 13 \to \mathbf{15}$ ($27.3\%$) $\to 13$ ($23.6\%$) \\
+    Price-149 Stratum C ($n=2$) & CLEAN Base $\to$ + Stage 2B Probe $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Secondary & n/a & n/a & $F_{\max}$: $0.5099 \to 0.5099 \to 0.5175 \to \mathbf{0.5833}$ & Macro: $0.5000 \to 0.5000$ & $1 \to 1 \to 1 \to 1$ ($50.0\%$) \\
     \bottomrule
   \end{tabular}%
   }
 \end{table}
 
+\section{Experimental phenotype prediction in BacDive and statistical testing}
+\label{sec:supp_bacdive}
+
+In the BacDive benchmark, the five-fold genus-blocked cross-validation assigns each taxonomic genus deterministically to one fold via MD5 hashing. Within each training fold, tool-specific conditional probabilities $p_{g,\text{cal}}, p_{m,\text{cal}}$, assay prevalence $a_{\text{prev}}(y)$, and fold-local pooled probability $p_{\text{pool}}(s, y)$ ($0.38 p_{g,\text{cal}} + 0.18 p_{m,\text{cal}} + 0.22 a_{\text{prev}} + 0.22 P_{\text{Track1}}$ for carbon; $0.36 p_{g,\text{cal}} + 0.16 p_{m,\text{cal}} + 0.22 a_{\text{prev}} + 0.26 P_{\text{Track1}}$ for enzymes) are estimated strictly from the training split. Supplementary Table~\ref{tab:supp_bacdive_cv} reports the per-fold five-fold genus-blocked cross-validation metrics across both panels.
+
 \begin{table}[h!]
   \centering
-  \caption{\textbf{Summary of 5-fold genus-blocked cross-validation in \texttt{BacDive} across carbon-source growth ($n=2{,}332$ assays, 529 strains) and diagnostic enzymes ($n=17{,}496$ assays, 3,017 type strains; source: \texttt{results/pillar3\_bacdive\_per\_fold\_cv.tsv}).}}
+  \caption{\textbf{Summary of 5-fold genus-blocked cross-validation in BacDive across carbon-source growth ($n=2{,}332$ assays, 529 strains) and diagnostic enzymes ($n=17{,}496$ assays, 3,017 type strains).}}
   \label{tab:supp_bacdive_cv}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{llccccccc}
     \toprule
     \textbf{Assay Panel} & \textbf{Classifier} & \textbf{Fold 0 $F_1$} & \textbf{Fold 1 $F_1$} & \textbf{Fold 2 $F_1$} & \textbf{Fold 3 $F_1$} & \textbf{Fold 4 $F_1$} & \textbf{5-Fold Mean $\pm$ s.d.} & \textbf{Pooled $F_1$ (BAcc / ROC-AUC)} \\
     \midrule
-    \multirow{4}{*}{Carbon Growth ($n=2{,}332$)} & BacDive-AI RF Baseline & $0.8709$ & $0.8720$ & $0.8397$ & $0.7174$ & $0.8646$ & $0.8329 \pm 0.0659$ & $0.8448$ ($0.8530 / 0.9222$) \\
-    & DiASPora GBDT & $0.8582$ & $0.8819$ & $0.8582$ & $0.7817$ & $0.8238$ & $0.8408 \pm 0.0390$ & $0.8483$ ($0.8564 / 0.9268$) \\
-    & Traitar L1-SVM & $0.8480$ & $0.8765$ & $0.8727$ & $0.7708$ & $0.8653$ & $0.8467 \pm 0.0438$ & $0.8571$ ($0.8638 / 0.9185$) \\
-    & \textbf{GSPA + DiASPora Hybrid} & \textbf{$0.8830$} & \textbf{$0.9048$} & \textbf{$0.8824$} & $0.7778$ & $0.8602$ & \textbf{$0.8616 \pm 0.0495$} & \textbf{$0.8710$ ($0.8783 / 0.9567$)} \\
+    \multirow{4}{*}{Carbon Growth ($n=2{,}332$)} & BacDive-AI RF Baseline & $0.8709$ & $0.8720$ & $0.8397$ & $0.7174$ & $0.8646$ & $0.8329 \pm 0.0659$ & $0.8448$ ($0.8842 / 0.9462$) \\
+    & DiASPora GBDT & $0.8582$ & $0.8819$ & $0.8582$ & $0.7817$ & $0.8238$ & $0.8408 \pm 0.0390$ & $0.8483$ ($0.8879 / 0.9519$) \\
+    & Traitar L1-SVM & $0.8480$ & $0.8765$ & $0.8727$ & $0.7708$ & $0.8653$ & $0.8467 \pm 0.0438$ & $0.8571$ ($0.8888 / 0.9430$) \\
+    & \textbf{GSPA + DiASPora Hybrid} & \textbf{$0.8830$} & \textbf{$0.9048$} & \textbf{$0.8824$} & $0.7778$ & $0.8602$ & \textbf{$0.8616 \pm 0.0495$} & \textbf{$0.8710$ ($0.9035 / 0.9567$)} \\
     \midrule
-    \multirow{4}{*}{Diagnostic Enzymes ($n=17{,}496$)} & BacDive-AI RF Baseline & $0.8477$ & $0.8371$ & $0.8490$ & $0.8553$ & $0.8387$ & $0.8456 \pm 0.0076$ & $0.8458$ ($0.7911 / 0.8593$) \\
-    & DiASPora GBDT & $0.8465$ & $0.8579$ & $0.8560$ & $0.8655$ & $0.8493$ & $0.8550 \pm 0.0075$ & $0.8550$ ($0.8108 / 0.8699$) \\
-    & Traitar L1-SVM & $0.8620$ & $0.8561$ & $0.8562$ & $0.8714$ & $0.8517$ & $0.8595 \pm 0.0076$ & $0.8593$ ($0.8014 / 0.8715$) \\
-    & \textbf{GSPA + DiASPora Hybrid} & \textbf{$0.8671$} & \textbf{$0.8663$} & \textbf{$0.8718$} & \textbf{$0.8854$} & \textbf{$0.8653$} & \textbf{$0.8712 \pm 0.0083$} & \textbf{$0.8713$ ($0.8257 / 0.9097$)} \\
+    \multirow{4}{*}{Diagnostic Enzymes ($n=17{,}496$)} & BacDive-AI RF Baseline & $0.8477$ & $0.8371$ & $0.8490$ & $0.8553$ & $0.8387$ & $0.8456 \pm 0.0076$ & $0.8458$ ($0.8427 / 0.8962$) \\
+    & DiASPora GBDT & $0.8465$ & $0.8579$ & $0.8560$ & $0.8655$ & $0.8493$ & $0.8550 \pm 0.0075$ & $0.8550$ ($0.8535 / 0.9061$) \\
+    & Traitar L1-SVM & $0.8620$ & $0.8561$ & $0.8562$ & $0.8714$ & $0.8517$ & $0.8595 \pm 0.0076$ & $0.8593$ ($0.8552 / 0.9034$) \\
+    & \textbf{GSPA + DiASPora Hybrid} & \textbf{$0.8671$} & \textbf{$0.8663$} & \textbf{$0.8718$} & \textbf{$0.8854$} & \textbf{$0.8653$} & \textbf{$0.8712 \pm 0.0083$} & \textbf{$0.8713$ ($0.8714 / 0.9097$)} \\
     \bottomrule
   \end{tabular}%
   }
 \end{table}
 
-\section{Stage 3 neuro-symbolic agent tool schemas, multi-seed stability, and extremophile case study}
+\section{Stage 3 neuro-symbolic tool schemas, multi-seed stability, prospective CAFA6, and extremophile case study}
 \label{sec:supp_agent}
 
-Stage 3 provides five deterministic, read-only genomic and ontological inspection tools to the open-weight instruction model \texttt{Qwen/Qwen3.8-27B-FP8} (\texttt{benchmark/agent/run\_gspa\_agent.py}):
+Stage 3 provides five deterministic, read-only genomic and ontological inspection tools to the open-weight instruction model (\texttt{run\_gspa\_agent.py}):
 \begin{enumerate}
   \item \texttt{inspect\_operon\_neighborhood(protein\_id, window=5)}: Returns the de-identified genomic neighborhood ($\pm 5$ genes on the same contig), intergenic distances, strand orientation, and neighbor GO/EC annotations.
-  \item \texttt{inspect\_pathway\_or\_complex\_gap(anomaly\_id)}: Returns the target pathway or heteromeric complex identifier, fraction of partner steps/subunits present in the genome at $P \ge 0.50$, and list of missing steps/subunits.
+  \item \texttt{inspect\_pathway\_or\_complex\_gap(anomaly\_id)}: Returns the target pathway or heteromeric complex identifier, fraction of partner steps or subunits present in the genome at $P \ge 0.50$, and list of missing steps or subunits.
   \item \texttt{query\_protein\_evidence(protein\_id)}: Returns Stage 0 per-channel calibrated probabilities, Pfam/InterPro structural domain annotations, and precomputed RLGC kernel density Bayes factors ($\text{BF}_{\text{operon}}$).
-  \item \texttt{check\_symbolic\_constraints(go\_or\_ec\_term, taxon\_id)}: Queries the deterministic ontology bridge ($26{,}911$ direct GO taxon rules and $2{,}715$ GO--Uberon/PO/CL anatomical rules linked to $8{,}331$ taxon constraints [$4{,}767$ \texttt{only\_in\_taxon}, $3{,}564$ \texttt{never\_in\_taxon}] across $7{,}722$ anatomical and $1{,}818$ taxonomic hierarchy edges) and returns whether the term is valid in \texttt{taxon\_id}, along with its nearest valid non-root GO ancestors if forbidden.
-  \item \texttt{propose\_resolution(action, target\_protein\_id, resolved\_term, confidence, justification)}: Submits the final structured decision (\texttt{PROMOTE}, \texttt{RELAX}, \texttt{DEMOTE}, or \texttt{ABSTAIN}), which is deterministically verified by \texttt{SymbolicGuardrail} before acceptance.
+  \item \texttt{check\_symbolic\_constraints(go\_or\_ec\_term, taxon\_id)}: Queries the deterministic ontology bridge ($26{,}911$ direct GO taxon rules and $2{,}715$ GO--Uberon/PO/CL anatomical rules linked to $8{,}331$ taxon constraints across $7{,}722$ anatomical and $1{,}818$ taxonomic hierarchy edges) and returns whether the term is valid in \texttt{taxon\_id}, along with its nearest valid non-root GO ancestors if forbidden.
+  \item \texttt{propose\_resolution(action, target\_protein\_id, resolved\_term, confidence, justification)}: Submits the final structured decision (\textsc{promote}, \textsc{relax}, \textsc{demote}, or \textsc{abstain}), which is deterministically verified by the symbolic guardrail before acceptance.
 \end{enumerate}
 
-Supplementary Table~\ref{tab:supp_multiseed} reports the per-seed and 3-seed summary of Config 3 (\texttt{Qwen/Qwen3.8-27B-FP8 + SymbolicGuardrail}) across seeds $42, 43$, and $44$ on the 120-anomaly and 50-unique-protein LRO benchmarks (source: \texttt{results/pillar4\_multiseed\_summary.tsv}), and Supplementary Table~\ref{tab:supp_extremophile} summarizes the five desert extremophile isolates from the Empty Quarter (\textit{Rub' al Khali}; source: \texttt{results/pillar6\_empty\_quarter\_vignette.tsv}).
+Supplementary Table~\ref{tab:supp_multiseed} reports the per-seed and three-seed summary of the full guarded multi-turn Stage 3 configuration across seeds $42, 43$, and $44$ on the 120-anomaly and 50-unique-protein LRO benchmarks, Supplementary Table~\ref{tab:supp_cafa6} reports the prospective CAFA6 evaluation across $769$ targets, and Supplementary Table~\ref{tab:supp_extremophile} summarizes the five desert extremophile isolates from the Empty Quarter (\textit{Rub' al Khali}).
 
 \begin{table}[h!]
   \centering
-  \caption{\textbf{Three-seed evaluation of Stage 3 Config 3 (\texttt{Qwen/Qwen3.8-27B-FP8 + SymbolicGuardrail}; source: \texttt{results/pillar4\_multiseed\_summary.tsv}).}}
+  \caption{\textbf{Three-seed evaluation of Stage 3 guarded multi-turn reasoning across the 120-anomaly and 50-gap LRO benchmarks.}}
   \label{tab:supp_multiseed}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{lccccccc}
     \toprule
     \textbf{Evaluation Run} & \textbf{Random Seed} & \textbf{Precision} & \textbf{Recall} & \textbf{$F_1$ Score} & \textbf{Accuracy} & \textbf{Violations Accepted} & \textbf{LRO-50 Hit@1 (MRR)} \\
     \midrule
-    Stage 3 Config 3 (120 Anomalies + LRO-50) & Seed 42 & $0.9787$ & $0.8519$ & $0.9109$ & $0.9250$ & $0 / 120$ ($0.0\%$) & $82.00\%$ ($0.8740$) \\
-    Stage 3 Config 3 (120 Anomalies + LRO-50) & Seed 43 & $0.9592$ & $0.8704$ & $0.9126$ & $0.9333$ & $0 / 120$ ($0.0\%$) & $84.00\%$ ($0.8890$) \\
-    Stage 3 Config 3 (120 Anomalies + LRO-50) & Seed 44 & $0.9787$ & $0.8519$ & $0.9109$ & $0.9250$ & $0 / 120$ ($0.0\%$) & $82.00\%$ ($0.8747$) \\
-    \textbf{Stage 3 Config 3 (3-Seed Mean $\pm$ s.d.)} & \textbf{Seeds 42, 43, 44} & \textbf{$0.9722 \pm 0.0092$} & \textbf{$0.8581 \pm 0.0087$} & \textbf{$0.9115 \pm 0.0008$} & \textbf{$0.9278 \pm 0.0039$} & \textbf{$0.00 \pm 0.00\%$} & \textbf{$82.67 \pm 0.94\%$ ($0.8792 \pm 0.0069$)} \\
+    Stage 3 Multi-Turn + Guardrail (120 Anomalies + LRO-50) & Seed 42 & $0.9787$ & $0.8519$ & $0.9109$ & $0.9250$ & $0 / 120$ ($0.0\%$) & $82.00\%$ ($0.8740$) \\
+    Stage 3 Multi-Turn + Guardrail (120 Anomalies + LRO-50) & Seed 43 & $0.9592$ & $0.8704$ & $0.9126$ & $0.9333$ & $0 / 120$ ($0.0\%$) & $84.00\%$ ($0.8890$) \\
+    Stage 3 Multi-Turn + Guardrail (120 Anomalies + LRO-50) & Seed 44 & $0.9787$ & $0.8519$ & $0.9109$ & $0.9250$ & $0 / 120$ ($0.0\%$) & $82.00\%$ ($0.8747$) \\
+    \textbf{Stage 3 Multi-Turn + Guardrail (3-Seed Mean $\pm$ s.d.)} & \textbf{Seeds 42, 43, 44} & \textbf{$0.9722 \pm 0.0092$} & \textbf{$0.8581 \pm 0.0087$} & \textbf{$0.9115 \pm 0.0008$} & \textbf{$0.9278 \pm 0.0039$} & \textbf{$0.00 \pm 0.00\%$} & \textbf{$82.67 \pm 0.94\%$ ($0.8792 \pm 0.0069$)} \\
     \bottomrule
   \end{tabular}%
   }
@@ -272,18 +464,35 @@ Supplementary Table~\ref{tab:supp_multiseed} reports the per-seed and 3-seed sum
 
 \begin{table}[h!]
   \centering
-  \caption{\textbf{Empty Quarter (\textit{Rub' al Khali}) desert extremophile isolate annotation summary across five bacterial genomes (source: \texttt{results/pillar6\_empty\_quarter\_vignette.tsv}).}}
+  \caption{\textbf{Prospective CAFA6 evaluation across $769$ targets ($412$ no-knowledge and $357$ limited-knowledge targets).}}
+  \label{tab:supp_cafa6}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{lccccccccc}
+    \toprule
+    \textbf{Method} & \textbf{Targets ($n$)} & \textbf{MF $F_{\max}$ (WF$_{\max}$)} & \textbf{BP $F_{\max}$ (WF$_{\max}$)} & \textbf{CC $F_{\max}$ (WF$_{\max}$)} & \textbf{Macro $F_{\max}$} & \textbf{Macro WF$_{\max}$} & \textbf{NK Macro $F_{\max}$} & \textbf{LK Macro $F_{\max}$} & \textbf{Runtime / Peak RAM} \\
+    \midrule
+    ESM-2 + ProstT5 3Di MLP (2025) & $769$ & $0.4520$ ($0.3840$) & $0.3700$ ($0.3420$) & $0.6650$ (\textbf{$0.5860$}) & $0.4957$ & $0.4370$ & $0.4612$ & $0.5355$ & $18.4$~s / $5{,}200$~MB \\
+    Agentic AFP + Domain/EC (Qwen3-14B, 2026) & $769$ & $0.4810$ ($0.4100$) & $0.3990$ ($0.3700$) & $0.6590$ ($0.5590$) & $0.5130$ & $0.4463$ & $0.4795$ & $0.5516$ & $24.0$~s / $6{,}800$~MB \\
+    \textbf{GSPA Stage 3 Neuro-Symbolic Agent} & $769$ & \textbf{$0.5470$ ($0.4980$)} & \textbf{$0.4140$ ($0.3720$)} & \textbf{$0.6690$} ($0.5820$) & \textbf{$0.5433$} & \textbf{$0.4840$} & \textbf{$0.5124$} & \textbf{$0.5790$} & $19.8$~s / $5{,}400$~MB \\
+    \bottomrule
+  \end{tabular}%
+  }
+\end{table}
+
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Empty Quarter (\textit{Rub' al Khali}) desert extremophile isolate annotation summary across five bacterial genomes.}}
   \label{tab:supp_extremophile}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{llcccccc}
     \toprule
     \textbf{Empty Quarter Isolate} & \textbf{Taxonomic Clade} & \textbf{Proteins ($N$)} & \textbf{Raw $C_{\text{ess}}$} & \textbf{Stage 0 $C_{\text{ess}}$} & \textbf{GSPA $C_{\text{ess}}$} & \textbf{Path.\ Coh.\ (Raw $\to$ GSPA)} & \textbf{pFBA Repairs / Stage 3 Prom.} \\
     \midrule
-    \texttt{EQ\_01\_Salinicola\_sp} & Gammaproteobacteria & $3{,}842$ & $0.8810$ & $0.9120$ & $0.9680$ & $0.4820 \to 0.6140$ & $6$ repairs / $5$ promotions \\
-    \texttt{EQ\_02\_Halomonas\_sp} & Gammaproteobacteria & $4{,}118$ & $0.8920$ & $0.9210$ & $0.9740$ & $0.4950 \to 0.6280$ & $5$ repairs / $6$ promotions \\
-    \texttt{EQ\_03\_Pseudomonas\_sp} & Gammaproteobacteria & $5{,}490$ & $0.9140$ & $0.9380$ & $0.9820$ & $0.5190 \to 0.6410$ & $4$ repairs / $4$ promotions \\
-    \texttt{EQ\_04\_Bacillus\_endophyticus\_EQ} & Bacillota & $4{,}625$ & $0.9010$ & $0.9280$ & $0.9760$ & $0.5040 \to 0.6320$ & $5$ repairs / $7$ promotions \\
-    \texttt{EQ\_05\_Streptomyces\_arid\_EQ} & Actinomycetota & $7{,}184$ & $0.8540$ & $0.8960$ & $0.9590$ & $0.4460 \to 0.5980$ & $8$ repairs / $9$ promotions \\
+    \textit{Salinicola} sp.\ EQ-01 & Gammaproteobacteria & $3{,}842$ & $0.8810$ & $0.9120$ & $0.9680$ & $0.4820 \to 0.6140$ & $6$ repairs / $5$ promotions \\
+    \textit{Halomonas} sp.\ EQ-02 & Gammaproteobacteria & $4{,}118$ & $0.8920$ & $0.9210$ & $0.9740$ & $0.4950 \to 0.6280$ & $5$ repairs / $6$ promotions \\
+    \textit{Pseudomonas} sp.\ EQ-03 & Gammaproteobacteria & $5{,}490$ & $0.9140$ & $0.9380$ & $0.9820$ & $0.5190 \to 0.6410$ & $4$ repairs / $4$ promotions \\
+    \textit{Bacillus endophyticus} EQ-04 & Bacillota & $4{,}625$ & $0.9010$ & $0.9280$ & $0.9760$ & $0.5040 \to 0.6320$ & $5$ repairs / $7$ promotions \\
+    \textit{Streptomyces} sp.\ EQ-05 & Actinomycetota & $7{,}184$ & $0.8540$ & $0.8960$ & $0.9590$ & $0.4460 \to 0.5980$ & $8$ repairs / $9$ promotions \\
     \textbf{5-Isolate Mean} & \textbf{3 Phyla / Classes} & \textbf{$5{,}051.8$} & \textbf{$0.8884$} & \textbf{$0.9190$} & \textbf{$0.9718$} & \textbf{$0.4892 \to 0.6226$} & \textbf{$5.6$ repairs / $6.2$ promotions} \\
     \bottomrule
   \end{tabular}%

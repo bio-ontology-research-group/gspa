@@ -119,7 +119,7 @@ def generate_figure6():
     met_pad_pct = float(r_met["uncertified_padding_pct"])
     bars_m = ax_a.bar(x - w, meteor_vals, w, label=f"METEOR v8 (Negative-Cost MILP, {met_pad_pct:.1f}% Padding)", color=PALETTE["vermilion"], edgecolor="#111111")
     bars_g = ax_a.bar(x, grow_vals, w, label="Grow-Support Threshold Repair (Positive-Cost LP)", color=PALETTE["orange"], edgecolor="#111111", hatch="//")
-    bars_s = ax_a.bar(x + w, slr_vals, w, label="GSPA StoichiometricLocusRefiner (pFBA, 100% Cert.)", color=PALETTE["teal"], edgecolor="#111111")
+    bars_s = ax_a.bar(x + w, slr_vals, w, label="GSPA Stage 2B (pFBA, 100% Certified)", color=PALETTE["teal"], edgecolor="#111111")
 
     ax_a.set_yscale("symlog", linthresh=1.0)
     ax_a.set_ylim(0, 7500)
@@ -164,7 +164,7 @@ def generate_figure6():
     wb = 0.165
     ax_b.bar(x_b - 2 * wb, base_fmax, wb, label="Baseline Predictor", color=PALETTE["grey"])
     ax_b.bar(x_b - wb, meteor_fmax, wb, label="+ METEOR v8 (Single-Pred)", color=PALETTE["orange"], hatch="//")
-    ax_b.bar(x_b, slr_cog_fmax, wb, label="+ GSPA SLR (Stoich. Probe)", color=PALETTE["sky"])
+    ax_b.bar(x_b, slr_cog_fmax, wb, label="+ GSPA Stage 2B (Stoich. Probe)", color=PALETTE["sky"])
     ax_b.bar(x_b + wb, gspa_single_fmax, wb, label="+ GSPA Single-Pred (Iter 3)", color=PALETTE["teal"])
     bars_g = ax_b.bar(x_b + 2 * wb, gspa_multi_fmax, wb, label="+ GSPA Multi-Pred (Iter 3)", color=PALETTE["navy"])
 
@@ -200,9 +200,9 @@ def generate_figure6():
     xc = np.arange(len(regimes))
     ax_c.plot(xc, gbdt_all_pool, "s:", color=PALETTE["orange"], linewidth=1.8, markersize=6, label="RLGC + GBDT (All Strata, Given Pool)")
     ax_c.plot(xc, rlgc_all_pool, "^-.", color=PALETTE["sky"], linewidth=2.0, markersize=6.5, label="RLGC Kernel Only (All Strata, Given Pool)")
-    ax_c.plot(xc, gspa_all_total, "D--", color=PALETTE["teal"], linewidth=2.0, markersize=6.5, label="GSPA Full M4 (All Strata, Hit@1 All)")
-    ax_c.plot(xc[:3], gspa_stratumA_pool[:3], "v-", color=PALETTE["purple"], linewidth=2.2, markersize=7.0, label="GSPA Full M4 (Stratum A, Pool; n=0 at ≤30%)")
-    ax_c.plot(xc, gspa_all_pool, "o-", color=PALETTE["navy"], linewidth=2.5, markersize=7.5, label="GSPA Full M4 (All Strata, Hit@1 Given Pool)")
+    ax_c.plot(xc, gspa_all_total, "D--", color=PALETTE["teal"], linewidth=2.0, markersize=6.5, label="Full GSPA (All Strata, Hit@1 All)")
+    ax_c.plot(xc[:3], gspa_stratumA_pool[:3], "v-", color=PALETTE["purple"], linewidth=2.2, markersize=7.0, label="Full GSPA (Stratum A, Pool; n=0 at ≤30%)")
+    ax_c.plot(xc, gspa_all_pool, "o-", color=PALETTE["navy"], linewidth=2.5, markersize=7.5, label="Full GSPA (All Strata, Hit@1 Given Pool)")
 
     ax_c.set_ylim(-0.04, 1.34)
     ax_c.set_xticks(xc)
