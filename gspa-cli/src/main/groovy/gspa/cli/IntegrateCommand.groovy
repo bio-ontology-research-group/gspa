@@ -634,8 +634,8 @@ class IntegrateCommand implements Runnable {
                     File bundledTc = classpathToTempFile('/taxon-constraints/go-taxon-constraints.tsv', 'go-taxon-constraints', '.tsv')
                     if (bundledTc != null && bundledTc.exists()) tc.loadFromTsv(bundledTc)
                 }
-                boolean wantAnatShared = enablePriors == null || enablePriors.trim().toLowerCase() == 'all' ||
-                    enablePriors.split(',').collect { it.trim().toLowerCase() }.contains('anatomical')
+                boolean wantAnatShared = enabledPriors == null || enabledPriors.trim().toLowerCase() == 'all' ||
+                    enabledPriors.split(',').collect { it.trim().toLowerCase() }.contains('anatomical')
                 if (sharedState.anatomicalConstraints != null && wantAnatShared) {
                     sharedState.anatomicalConstraints.augmentTaxonConstraints(tc)
                 }
@@ -922,8 +922,8 @@ class IntegrateCommand implements Runnable {
                         taxonConstraints.loadFromGoOntology(state.goOntology)
                     }
                 }
-                boolean wantAnat = enablePriors == null || enablePriors.trim().toLowerCase() == 'all' ||
-                    enablePriors.split(',').collect { it.trim().toLowerCase() }.contains('anatomical')
+                boolean wantAnat = enabledPriors == null || enabledPriors.trim().toLowerCase() == 'all' ||
+                    enabledPriors.split(',').collect { it.trim().toLowerCase() }.contains('anatomical')
                 if (state.anatomicalConstraints != null && wantAnat) {
                     state.anatomicalConstraints.augmentTaxonConstraints(taxonConstraints)
                 }
@@ -1102,7 +1102,7 @@ class IntegrateCommand implements Runnable {
             ))
         }
 
-        Set<String> enabledStage2Set = (enablePriors ?: '').split(',').collect { it.trim() }.findAll { it && it != 'none' } as Set
+        Set<String> enabledStage2Set = (enabledPriors ?: '').split(',').collect { it.trim() }.findAll { it && it != 'none' } as Set
         boolean useAnatomicalInStage2 = enabledStage2Set.isEmpty() || enabledStage2Set.contains('anatomical')
         def report = new EnforcementReport(provenance: true)
         def consEnf = new ConsistencyEnforcer(

@@ -1,0 +1,124 @@
+site_name: GSPA documentation
+site_description: Genome-Scale Protein Annotation — whole-genome protein function prediction
+site_url: https://gspa.readthedocs.io/
+repo_url: https://github.com/bio-ontology-research-group/gspa
+repo_name: bio-ontology-research-group/gspa
+edit_uri: edit/main/docs/
+copyright: GSPA is licensed under GPL-3.0-or-later. Bio-Ontology Research Group, KAUST.
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+  - Concepts:
+      - concepts/index.md
+      - Per-protein evidence (Stage 0): concepts/stage0-evidence.md
+      - Genome-scale priors (Stage 1): concepts/stage1-priors.md
+      - Symbolic enforcement (Stage 2A): concepts/stage2a-enforcement.md
+      - Flux-certified locus refinement (Stage 2B): concepts/stage2b-fba.md
+      - Agentic completion (Stage 3): concepts/stage3-agent.md
+      - Genome-scale quality metrics: concepts/quality-metrics.md
+  - Usage scenarios:
+      - scenarios/index.md
+      - Bacterial isolate genome: scenarios/bacterial-isolate.md
+      - Archaeal genome: scenarios/archaea.md
+      - Metagenome-assembled genomes: scenarios/mag-metagenome.md
+      - Viral genomes: scenarios/virus.md
+      - Eukaryotic genomes: scenarios/eukaryote.md
+      - Metabolic gaps and dark matter: scenarios/metabolic-gaps-dark-matter.md
+      - Flux-certified refinement: scenarios/fba-refiner.md
+      - Agentic completion: scenarios/agent.md
+      - Many genomes in batch: scenarios/batch-multi-genome.md
+      - Cross-genome evidence: scenarios/cross-genome.md
+      - DeepGO-PlusPlus base predictor: scenarios/deepgo-plusplus.md
+      - Evaluate, compare, report: scenarios/evaluate-compare-report.md
+      - Interactive browser: scenarios/visualize.md
+      - Nextflow and HPC: scenarios/nextflow-hpc.md
+      - Web service: scenarios/web-service.md
+  - Benchmarks:
+      - benchmarks/index.md
+      - Prospective GO holdouts: benchmarks/prospective-go-holdouts.md
+      - Enzyme EC holdouts and homology masking: benchmarks/enzyme-ec-holdouts.md
+      - Reference panels and production pipelines: benchmarks/reference-panels.md
+      - Genome-scale prior ablation and perturbation: benchmarks/prior-ablation.md
+      - Population and multi-kingdom audits: benchmarks/population-multikingdom.md
+      - Eukaryotic anatomical constraints: benchmarks/eukaryotic-anatomy.md
+      - Heteromeric complex leave-subunit-out: benchmarks/complex-leave-subunit-out.md
+      - Leave-reaction-out enzyme attribution: benchmarks/leave-reaction-out.md
+      - Secondary metabolism and dark-matter MAGs: benchmarks/secondary-metabolism-mags.md
+      - Flux-certified repair and fitness-validated enzymes: benchmarks/flux-repair-price149.md
+      - BacDive phenotype prediction: benchmarks/bacdive-phenotypes.md
+      - Guarded agentic completion: benchmarks/agentic-completion.md
+  - Reference:
+      - reference/index.md
+      - gspa integrate: reference/cli-integrate.md
+      - gspa annotate: reference/cli-annotate.md
+      - gspa evaluate: reference/cli-evaluate.md
+      - gspa compare: reference/cli-compare.md
+      - gspa report: reference/cli-report.md
+      - gspa visualize: reference/cli-visualize.md
+      - gspa agent: reference/cli-agent.md
+      - Configuration files: reference/configuration.md
+      - Hyperparameters (theta): reference/theta.md
+      - Input and output formats: reference/file-formats.md
+      - Bundled resources: reference/bundled-resources.md
+      - Environment variables: reference/environment.md
+      - Nextflow parameters: reference/nextflow-params.md
+  - Changelog: changelog.md
+
+exclude_docs: |
+  CLI_REFERENCE.md

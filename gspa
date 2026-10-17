@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# GSPA v2.0.0 — Stand-Alone Command-Line Launcher
+# GSPA v2.1.0 — Stand-Alone Command-Line Launcher
 # Genome-Scale Protein Annotation (Stage 1 + Stage 2 + Stage 3 gspa-agent)
 # =============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERSION="2.0.0"
+VERSION="2.1.0"
 
 # Subcommand shortcut: `gspa agent [args...]` invokes the Stage 3 Neuro-Symbolic Agent directly
 if [[ "${1:-}" == "agent" ]]; then
@@ -26,7 +26,7 @@ if [[ "${1:-}" == "agent" ]]; then
     fi
 fi
 
-# Locate gspa-2.0.0.jar
+# Locate gspa-${VERSION}.jar
 if [[ -n "${GSPA_JAR:-}" && -f "${GSPA_JAR}" ]]; then
     JAR="${GSPA_JAR}"
 elif [[ -f "${SCRIPT_DIR}/gspa-${VERSION}.jar" ]]; then
