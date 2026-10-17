@@ -212,7 +212,7 @@ def generate_figure1():
             "  Universal/domain core GO categories",
             "• Coherence Prior (+α_coh, −w_sing):",
             "  Pathway & heteromeric complex support",
-            "• Taxon Consistency Prior (−α_cons = −3.0):",
+            "• Taxon Consistency Prior (−α_cons = −0.68):",
             "  SAT minimal unsatisfiable cores",
             "• Anatomical Prior (−α_anat, +α_boost):",
             "  Uberon/PO/CL cross-product bridge",
@@ -328,13 +328,13 @@ def generate_figure2():
     gaef = [float(r["composite_score"]) for r in summary_rows]
 
     x = np.arange(len(cfg_labels))
-    ax.plot(x, gaef, marker="o", lw=2.3, color=PALETTE["navy"], label="Structural Score (0.846→0.864)")
+    ax.plot(x, gaef, marker="o", lw=2.3, color=PALETTE["navy"], label=f"Structural Score ({gaef[0]:.3f}→{gaef[-1]:.3f})")
     ax.plot(x, comp, marker="s", lw=1.8, linestyle="--", color=PALETTE["teal"], label="Essential Completeness")
     ax.plot(x, c_coh, marker="^", lw=1.8, linestyle="-.", color=PALETTE["blue"], label="Complex Coherence")
     ax.plot(x, p_coh, marker="D", lw=1.8, linestyle=":", color=PALETTE["orange"], label="Pathway Coherence")
     ax.set_xticks(x)
     ax.set_xticklabels(cfg_labels, rotation=32, ha="right")
-    ax.set_ylim(0.35, 1.00)
+    ax.set_ylim(0.35, 1.02)
     ax.set_ylabel("Genome-Scale Metric Score")
     ax.set_title("9-Genome Prior & Stage 2A Ablation Progression")
     ax.grid(True, axis="y")
@@ -362,17 +362,19 @@ def generate_figure2():
     h = 0.36
     v1 = [a1_by_g[g] for g in genomes]
     v9 = [a9_by_g[g] for g in genomes]
-    ax.barh(y_pos + h / 2, v1, height=h, color=PALETTE["lightgrey"], edgecolor=PALETTE["grey"], hatch="//", label="Stage 0 Baseline (Mean 0.846)")
-    ax.barh(y_pos - h / 2, v9, height=h, color=PALETTE["teal"], edgecolor=PALETTE["navy"], label="Full GSPA Stage 1+2A (Mean 0.864)")
+    non_ecoli_v1 = sum(a1_by_g[g] for g in genomes if g != "ecoli") / 8.0
+    non_ecoli_v9 = sum(a9_by_g[g] for g in genomes if g != "ecoli") / 8.0
+    ax.barh(y_pos + h / 2, v1, height=h, color=PALETTE["lightgrey"], edgecolor=PALETTE["grey"], hatch="//", label=f"Stage 0 Baseline (Mean {gaef[0]:.3f})")
+    ax.barh(y_pos - h / 2, v9, height=h, color=PALETTE["teal"], edgecolor=PALETTE["navy"], label=f"Full GSPA Stage 1+2A (Mean {gaef[-1]:.3f})")
     for idx, (b_val, f_val) in enumerate(zip(v1, v9)):
         diff = f_val - b_val
         ax.text(f_val + 0.003, idx - h / 2, f"+{diff:.3f}", va="center", fontsize=7.6, fontweight="bold", color=PALETTE["navy"])
     ax.set_yticks(y_pos)
     ax.set_yticklabels(g_names)
-    ax.set_xlim(0.70, 0.96)
+    ax.set_xlim(0.70, 0.985)
     ax.set_ylim(-0.6, 10.6)
     ax.set_xlabel(r"Composite Structural Score (*$\it{E.\ coli}$ K-12 calibration reference)")
-    ax.set_title(r"Per-Genome Structural Gain (8 Non-$\it{E.\ coli}$ Mean: 0.843→0.860)")
+    ax.set_title(rf"Per-Genome Structural Gain (8 Non-$\it{{E.\ coli}}$ Mean: {non_ecoli_v1:.3f}→{non_ecoli_v9:.3f})")
     ax.grid(True, axis="x")
     ax.legend(loc="upper right", frameon=True, fontsize=7.6)
 

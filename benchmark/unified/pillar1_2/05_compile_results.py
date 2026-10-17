@@ -223,6 +223,47 @@ def main():
             "composite_score": round(mean_composite, 4),
         })
 
+    # Out-of-sample 8-genome subset (excluding ecoli K-12)
+    non_ecoli_rows_by_cfg = defaultdict(list)
+    for r in per_genome_rows:
+        if r["genome"] != "ecoli":
+            non_ecoli_rows_by_cfg[r["config"]].append(r)
+
+    base8_rows = non_ecoli_rows_by_cfg.get("A1_noisy_or", [])
+    n8_base = len(base8_rows) or 1
+    base8_micro_exp = sum(r["fmax_micro_exp"] for r in base8_rows) / n8_base
+    base8_cafa_exp = sum(r["fmax_cafa_exp"] for r in base8_rows) / n8_base
+
+    for cfg, label8 in [
+        ("A1_noisy_or", "NON_ECOLI_8 Noisy-OR Base"),
+        ("A7_stage1_all", "NON_ECOLI_8 Stage 1 All"),
+        ("A8_stage2_remove", "NON_ECOLI_8 Stage 2 Remove"),
+        ("A9_stage2_relax", "NON_ECOLI_8 Stage 2 Relax"),
+    ]:
+        rlist = non_ecoli_rows_by_cfg.get(cfg, [])
+        if not rlist:
+            continue
+        n8 = len(rlist)
+        m_micro_exp = sum(r["fmax_micro_exp"] for r in rlist) / n8
+        m_cafa_exp = sum(r["fmax_cafa_exp"] for r in rlist) / n8
+        summary_rows.append({
+            "config": f"{cfg}_non_ecoli8",
+            "label": label8,
+            "fmax_micro_exp": round(m_micro_exp, 4),
+            "delta_micro_exp": round(m_micro_exp - base8_micro_exp, 4),
+            "fmax_cafa_exp": round(m_cafa_exp, 4),
+            "delta_cafa_exp": round(m_cafa_exp - base8_cafa_exp, 4),
+            "fmax_micro_all": round(sum(r["fmax_micro_all"] for r in rlist) / n8, 4),
+            "fmax_cafa_all": round(sum(r["fmax_cafa_all"] for r in rlist) / n8, 4),
+            "coverage_exp": round(sum(r["coverage_exp"] for r in rlist) / n8, 4),
+            "ic_recall_exp": round(sum(r["ic_recall_exp"] for r in rlist) / n8, 4),
+            "completeness": round(sum(r["completeness"] for r in rlist) / n8, 4),
+            "pathway_coherence": round(sum(r["pathway_coherence"] for r in rlist) / n8, 4),
+            "complex_coherence": round(sum(r["complex_coherence"] for r in rlist) / n8, 4),
+            "total_violations": sum(r["violation_count"] for r in rlist),
+            "composite_score": round(sum(r["composite_score"] for r in rlist) / n8, 4),
+        })
+
     summary_file = f"{out_dir}/pillar1_2_ablation_summary.tsv"
     with open(summary_file, "w", newline="") as f:
         fieldnames = list(summary_rows[0].keys())

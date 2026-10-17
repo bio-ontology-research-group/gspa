@@ -85,18 +85,18 @@ External cluster dependencies are required for step 1. If running offline with p
 
 Values transcribed from `results/pillar1_2_ablation_summary.tsv`:
 
-| Configuration | CAFA \(F_{\max}\) (All) | Micro \(F_{\max}\) (All) | Essential \(C_{\text{ess}}\) | Pathway Coherence | Complex Coherence | Violations (\(V\)) | Audit Score |
+| Configuration | CAFA \(F_{\max}\) (All / Exp) | Micro \(F_{\max}\) (All / Exp) | Essential \(C_{\text{ess}}\) | Pathway Coherence | Complex Coherence | Violations (\(V\)) | Audit Score |
 |---|---|---|---|---|---|---|---|
-| Stage 0 Noisy-OR Base | 0.8041 | 0.7631 | 0.9400 | 0.4975 | 0.8636 | 25 | 0.8459 |
-| + Essentiality Prior (\(B_1\)) | 0.8040 | 0.7632 | 0.9444 | 0.4975 | 0.8636 | 25 | 0.8472 |
-| + Pathway/Module Coherence (\(B_2\)) | 0.8025 | 0.7629 | 0.9400 | 0.5052 | 0.8636 | 25 | 0.8474 |
-| + Metabolic Gap Filling (\(B_5\)) | 0.8038 | 0.7631 | 0.9400 | 0.4977 | 0.8636 | 25 | 0.8459 |
-| + Operon Genomic Context (\(B_6\)) | 0.8039 | 0.7630 | 0.9400 | 0.4992 | 0.8636 | 25 | 0.8462 |
-| + Consistency / Anatomical (\(B_3, B_4\)) | 0.8071 | 0.7681 | 0.9400 | 0.4973 | 0.8636 | 0 | 0.8542 |
-| All Stage 1 Priors (\(B_1\) to \(B_6\)) | 0.8037 | 0.7660 | 0.9479 | 0.5146 | 0.8852 | 0 | 0.8643 |
-| Stage 1 + Stage 2A Removal | 0.8037 | 0.7660 | 0.9479 | 0.5146 | 0.8852 | 0 | 0.8643 |
-| **Stage 1 + Stage 2A Relaxation** | **0.8037** | **0.7660** | **0.9479** | **0.5146** | **0.8852** | **0** | **0.8643** |
-| *Out-of-Sample 8-Genome Mean (Base \(\to\) Full)* | *0.8143 \(\to\) 0.8140* | *0.7718 \(\to\) 0.7749* | *0.9325 \(\to\) 0.9414* | *0.4834 \(\to\) 0.5012* | *0.8743 \(\to\) 0.8865* | *21 \(\to\) 0* | *0.8434 \(\to\) 0.8599* |
+| Stage 0 Noisy-OR Base | 0.8041 (0.2361) | 0.7672 (0.2836) | 0.9400 | 0.5041 | 0.8636 | 25 | 0.8559 |
+| + Essentiality Prior (\(B_1\)) | 0.8040 (0.2361) | 0.7683 (0.2838) | **0.9826** | 0.5041 | 0.8636 | 25 | 0.8686 |
+| + Pathway/Module Coherence (\(B_2\)) | 0.8028 (0.2357) | 0.7671 (0.2815) | 0.9400 | 0.5616 | 0.9222 | 25 | 0.8812 |
+| + Metabolic Gap Filling (\(B_5\)) | 0.8039 (0.2361) | 0.7685 (0.2838) | 0.9400 | 0.5100 | 0.8636 | 25 | 0.8573 |
+| + Operon Genomic Context (\(B_6\)) | 0.8037 (0.2356) | 0.7675 (0.2815) | 0.9400 | 0.5336 | 0.8636 | 25 | 0.8616 |
+| + Consistency / Anatomical (\(B_3, B_4\)) | **0.8060** (0.2371) | 0.7711 (0.2851) | 0.9400 | 0.5038 | 0.8636 | 9 | 0.8635 |
+| All Stage 1 Priors (\(B_1\) to \(B_6\)) | 0.8043 (0.2368) | 0.7703 (0.2828) | **0.9826** | 0.5621 | 0.9222 | 9 | 0.9005 |
+| Stage 1 + Stage 2A Removal | 0.8053 (0.2378) | 0.7710 (0.2852) | 0.9782 | **0.5622** | **0.9722** | **0** | 0.9090 |
+| **Stage 1 + Stage 2A Relaxation** | 0.8056 (**0.2382**) | **0.7733** (**0.2863**) | **0.9826** | **0.5622** | **0.9722** | **0** | **0.9106** |
+| *Out-of-Sample 8-Genome Mean (Base \(\to\) Full)* | *0.8143 \(\to\) **0.8160*** | *0.7764 \(\to\) **0.7830*** | *0.9325 \(\to\) **0.9805*** | *0.4904 \(\to\) **0.5514*** | *0.8743 \(\to\) **0.9844*** | *21 \(\to\) **0*** | *0.8531 \(\to\) **0.9096*** |
 
 ### Cross-clade perturbation results
 
@@ -117,11 +117,12 @@ Values transcribed from `results/pillar1_2_perturbation_summary.tsv` across the 
 
 ## Main findings
 
-1. **Accuracy preservation:** Whole-genome inference maintains protein-level CAFA \(F_{\max}\) at the Stage 0 baseline (0.8041 baseline versus 0.8037 refined; out-of-sample 8-genome mean 0.8143 versus 0.8140), while pair-level micro \(F_{\max}\) increases from 0.7631 to 0.7660 (0.7718 to 0.7749 out-of-sample). Roughly 85% of proteins in these reference genomes have high-confidence homology in Stage 0, which refinement leaves unchanged while focusing updates on constrained lower-confidence loci.
+1. **Accuracy improvement and preservation:** Whole-genome inference with Stage 2A semantic ancestor relaxation improves both protein-centric CAFA \(F_{\max}\) (0.8041 to 0.8056 on all annotations; 0.2361 to 0.2382 on experimental-only annotations) and pair-level micro \(F_{\max}\) (0.7672 to 0.7733 on all annotations; 0.2836 to 0.2863 on experimental-only annotations; out-of-sample 8-genome micro \(F_{\max}\) 0.7764 to 0.7830).
 2. **Selective prior impacts:** Each prior selectively improves its corresponding genome property:
-    - Essentiality prior (\(B_1\)) raises domain-core completeness \(C_{\text{ess}}\) from 0.9400 to 0.9444 (out-of-sample 0.9325 to 0.9414).
-    - Complex coherence prior (\(B_2\)) increases heteromeric complex completeness from 0.8636 to 0.8852.
-    - Consistency priors (\(B_3, B_4\)) resolve all 25 endogenous taxonomic violations present in Stage 0.
-3. **Synergy across priors:** While individual metabolic gap-filling and operon priors produce small individual gains in pathway completeness, combining all six Stage 1 priors increases mean pathway coherence from 0.4975 to 0.5146 (\(p = 0.0078\), Wilcoxon signed-rank test). Metabolic gap-filling identifies missing reaction steps across the genome, while operon context localizes which candidate genes receive that support.
-4. **Structural audit improvement:** The composite structural audit score increases from 0.8459 to 0.8643 across the nine genomes (\(p = 0.0039\); out-of-sample mean 0.8434 to 0.8599).
+    - Essentiality prior (\(B_1\)) raises domain-core completeness \(C_{\text{ess}}\) from 0.9400 to 0.9826 (out-of-sample 0.9325 to 0.9805).
+    - Pathway and complex coherence prior (\(B_2\)) increases pathway coherence from 0.5041 to 0.5616 and heteromeric complex completeness from 0.8636 to 0.9222.
+    - Metabolic gap-filling (\(B_5\)) and operon context (\(B_6\)) priors increase pathway coherence to 0.5100 and 0.5336, respectively.
+    - Soft taxonomic and anatomical consistency priors (\(B_3, B_4\)) suppress 16 of the 25 endogenous taxonomic violations in Stage 1 (`25` to `9`), while Stage 2A deterministic enforcement resolves the remaining 9 high-confidence violations (`9` to `0`) and prunes isolated obligate-complex singletons to reach 0.9722 complex coherence.
+3. **Semantic ancestor relaxation outperforms hard deletion:** Within Stage 2A, relaxing clade-incompatible terms to their nearest valid GO ancestors (`A9_stage2_relax`) outperforms hard term removal (`A8_stage2_remove`) across CAFA \(F_{\max}\) (0.8056 versus 0.8053), micro \(F_{\max}\) (0.7733 versus 0.7710), essential completeness (0.9826 versus 0.9782), experimental coverage (0.8057 versus 0.8000), and composite audit score (0.9106 versus 0.9090).
+4. **Structural audit improvement:** The composite structural audit score increases from 0.8559 to 0.9106 across all nine genomes (\(p = 0.0039\), two-sided Wilcoxon signed-rank test; out-of-sample 8-genome mean 0.8531 to 0.9096).
 5. **Cross-clade error elimination:** Of 900 injected cross-clade false-positive claims, 125 survive unconstrained Stage 0 calibration (86.1% baseline suppression). Stage 2A deterministic enforcement eliminates 122 of these 125 surviving claims (97.6% post-calibration suppression; 99.7% total suppression), leaving zero violations in seven of the nine species.

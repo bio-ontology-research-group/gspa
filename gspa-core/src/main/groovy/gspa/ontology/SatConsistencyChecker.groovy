@@ -41,10 +41,10 @@ class SatConsistencyChecker {
     TaxonConstraints taxonConstraints
 
     /** Multi-parent subclass map: child taxon -> set of parent taxa (is_a). */
-    Map<String, Set<String>> subClassOf = [:].withDefault { new LinkedHashSet<String>() }
+    Map<String, Set<String>> subClassOf = new java.util.concurrent.ConcurrentHashMap<>()
 
     /** Symmetric explicit disjointness: taxon -> set of taxa disjoint from it. */
-    Map<String, Set<String>> disjointWith = [:].withDefault { new LinkedHashSet<String>() }
+    Map<String, Set<String>> disjointWith = new java.util.concurrent.ConcurrentHashMap<>()
 
     /**
      * Optional organism taxon to assert (the {@code provide_taxon_id} mode):

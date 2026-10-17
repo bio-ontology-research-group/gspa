@@ -55,12 +55,13 @@ gspa evaluate -i genome.gff3 -a predictions.gaf --go-owl go.owl --lite \
     constraints are then not loaded at all. Consistency is effectively not
     checked. Omit `--taxonomy` unless you also verify the violation count.
 
-## Performance
+## Performance and batch evaluation
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `--lite` | flag | off | Skip the ELK reasoner. Process coherence is not computed and is reported as `N/A` (-1 in JSON). |
 | `--reasoner-cache` | directory | none | Cache for reasoner results (`has_part` pairs); speeds up repeated full runs. |
+| `--batch-manifest` | file | none | Evaluate multiple genomes in a single JVM invocation while sharing the loaded GO ontology, pathway database, complex terms, and constraint tables in memory. Each non-comment line is a five-column TSV record: `gff_path<TAB>gaf_path<TAB>kingdom<TAB>taxon<TAB>output_json_path`. When `--batch-manifest` is given, `-i` is not required. |
 
 ## Output
 

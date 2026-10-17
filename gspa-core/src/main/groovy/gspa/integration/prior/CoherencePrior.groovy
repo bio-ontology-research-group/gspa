@@ -56,6 +56,9 @@ class CoherencePrior implements Prior {
     /** Cached per iteration: functionKey -> complex coherence weight (+boost or -penalty). */
     private Map<String, Double> complexKeyWeights = new LinkedHashMap<>()
 
+    /** Cached per iteration: functionKey -> targeted coherence log-odds adjustment when claimCounts is populated. */
+    private Map<String, Double> targetedKeyBoosts = Collections.emptyMap()
+
     @Override
     String name() { 'coherence' }
 
@@ -67,28 +70,38 @@ class CoherencePrior implements Prior {
         processMissingTerms = new LinkedHashMap<>()
         pathwayMissingTerms = new LinkedHashMap<>()
         complexKeyWeights = new LinkedHashMap<>()
+        targetedKeyBoosts = Collections.emptyMap()
 
-        Set<String> annotated = state.goReasoner != null
+        Set<String> annotated = (state.goOntology != null || state.goReasoner != null)
             ? state.currentlyAnnotatedGoTermsPropagated()
             : state.currentlyAnnotatedGoTerms()
-        Set<String> baselineAnnotated = state.goReasoner != null
+        Set<String> baselineAnnotated = (state.goOntology != null || state.goReasoner != null)
             ? state.baselineAnnotatedGoTermsPropagated()
             : state.baselineAnnotatedGoTerms()
 
-        // --- Process coherence: needs GoReasoner for has_part pairs ---
-        if (state.goReasoner != null) try {
+        Map<String, Double> missingRootWeights = new LinkedHashMap<>()
+        Set<String> allPathwayDomain = new LinkedHashSet<>()
+
+        // --- Process coherence: uses GoReasoner if available, or GoOntology has_part axioms ---
+        if (state.goReasoner != null || state.goOntology != null) try {
             def coherence = new Coherence(state.goOntology, state.goReasoner)
             ProcessCoherenceResult result = coherence.evaluateProcessCoherence(baselineAnnotated)
             int triggered = result.triggered
             int satisfied = result.satisfied
             double fracAnnotated = triggered == 0 ? 1.0 : (satisfied / (double) triggered)
-            double weight = Math.max(0.0d, 1.0d - fracAnnotated)
+            double weight = Math.max(0.25d, fracAnnotated)
 
             for (Map.Entry<String, String> unsat : result.unsatisfied) {
-                // Each entry: C present but F missing. Boost F.
                 String fTerm = unsat.value
                 if (fTerm != null) {
+                    missingRootWeights.merge(fTerm, weight, { a, b -> Math.max(a as double, b as double) })
                     processMissingTerms.merge(fTerm, weight, { a, b -> Math.max(a as double, b as double) })
+                    allPathwayDomain << fTerm
+                    if (state.goOntology != null) {
+                        for (String desc : state.goOntology.getDescendants(fTerm)) {
+                            processMissingTerms.merge(desc, weight, { a, b -> Math.max(a as double, b as double) })
+                        }
+                    }
                 }
             }
         } catch (Exception ex) {
@@ -101,16 +114,24 @@ class CoherencePrior implements Prior {
                 for (PathwayGraph pathway : state.pathwayDatabase.pathways.values()) {
                     Set<String> required = pathway.getRequiredGoTerms()
                     if (required == null || required.isEmpty()) continue
-                    // Is this pathway "triggered"? Use any-member-annotated as a soft trigger.
+                    allPathwayDomain.addAll(required)
                     boolean triggeredPw = required.any { annotated.contains(it) || baselineAnnotated.contains(it) }
                     if (!triggeredPw) continue
                     int requiredCount = required.size()
                     int annotatedCount = required.count { baselineAnnotated.contains(it) }
                     double coverage = (double) annotatedCount / requiredCount
-                    double weight = Math.max(0.25d, 1.0d - coverage)
+                    double weight = Math.max(0.35d, 0.35d + 0.65d * coverage)
                     for (String term : required) {
                         if (baselineAnnotated.contains(term)) continue
+                        if (coverage >= 0.15d) {
+                            missingRootWeights.merge(term, weight, { a, b -> Math.max(a as double, b as double) })
+                        }
                         pathwayMissingTerms.merge(term, weight, { a, b -> Math.max(a as double, b as double) })
+                        if (state.goOntology != null) {
+                            for (String desc : state.goOntology.getDescendants(term)) {
+                                pathwayMissingTerms.merge(desc, weight, { a, b -> Math.max(a as double, b as double) })
+                            }
+                        }
                     }
                 }
             } catch (Exception ex) {
@@ -144,12 +165,10 @@ class CoherencePrior implements Prior {
                     List<String> candKeys = candByComplex[goId] ?: []
                     if (strongKeys.size() == 1) {
                         if (!candKeys.isEmpty()) {
-                            // Boost sub-threshold partner subunit(s) to complete the obligate heteromer
                             for (String ck : candKeys) {
                                 complexKeyWeights[ck] = complexPartnerWeight
                             }
                         } else {
-                            // Penalize isolated singleton heteromeric complex with no candidate partner
                             complexKeyWeights[strongKeys[0]] = -complexSingletonPenaltyWeight
                         }
                     } else if (strongKeys.size() >= 2 && !candKeys.isEmpty()) {
@@ -163,11 +182,56 @@ class CoherencePrior implements Prior {
             }
         }
 
+        if (state.claimCounts != null && !state.claimCounts.isEmpty()) {
+            Map<String, Double> boosts = state.computeProteinSpecificityPrior(null, allPathwayDomain, 0.38d * alphaCoh, 0.42d * alphaCoh)
+            if (!missingRootWeights.isEmpty()) {
+                Map<String, List<Map.Entry<String, Double>>> candsByGo = [:].withDefault { [] }
+                for (String fkey : state.posteriorLogOdds.keySet()) {
+                    String[] parts = IntegrationState.splitFunctionKey(fkey)
+                    if (parts == null || parts[1] != 'GO') continue
+                    double likeProb = state.getLikelihoodProbability(fkey)
+                    if (likeProb >= 0.18d && likeProb <= IntegrationState.MAP_THRESHOLD) {
+                        candsByGo[parts[2]] << new AbstractMap.SimpleImmutableEntry<>(fkey, likeProb)
+                    }
+                }
+                for (Map.Entry<String, Double> me : missingRootWeights.entrySet()) {
+                    String rootTerm = me.key
+                    double w = me.value
+                    Set<String> tSet = new LinkedHashSet<>()
+                    tSet << rootTerm
+                    if (state.goOntology != null) {
+                        tSet.addAll(state.goOntology.getDescendants(rootTerm))
+                    }
+                    List<Map.Entry<String, Double>> cands = []
+                    for (String gt : tSet) {
+                        List<Map.Entry<String, Double>> list = candsByGo.get(gt)
+                        if (list != null) cands.addAll(list)
+                    }
+                    if (!cands.isEmpty()) {
+                        state.sortCandidatesForRescue(cands)
+                        String fk = cands[0].key
+                        double pVal = cands[0].value as double
+                        if (state.candidateRescueTier(fk, pVal) >= 1) {
+                            double bVal = Math.max(1.80d * alphaCoh * w, 0.14d - state.getLikelihoodLogOdds(fk))
+                            boosts[fk] = Math.max(boosts.getOrDefault(fk, 0.0d), bVal)
+                        }
+                    }
+                }
+            }
+            for (Map.Entry<String, Double> ce : complexKeyWeights.entrySet()) {
+                boosts[ce.key] = boosts.getOrDefault(ce.key, 0.0d) + alphaCoh * ce.value
+            }
+            targetedKeyBoosts = boosts
+        }
+
         log.debug("CoherencePrior: ${processMissingTerms.size()} process-missing, ${pathwayMissingTerms.size()} pathway-missing, ${complexKeyWeights.size()} complex-adjusted keys")
     }
 
     @Override
     double logOddsBoost(String proteinId, String functionKey, IntegrationState state) {
+        if (state.claimCounts != null && !state.claimCounts.isEmpty()) {
+            return targetedKeyBoosts.getOrDefault(functionKey, 0.0d)
+        }
         String[] parts = IntegrationState.splitFunctionKey(functionKey)
         if (parts == null || parts[1] != 'GO') return 0.0d
         String goId = parts[2]
@@ -175,7 +239,6 @@ class CoherencePrior implements Prior {
         double processWeight = processMissingTerms.getOrDefault(goId, 0.0d)
         double pathwayWeight = pathwayMissingTerms.getOrDefault(goId, 0.0d)
         double complexWeight = complexKeyWeights.getOrDefault(functionKey, 0.0d)
-        // Take the max positive signal of process/pathway, plus complex subunit adjustment
         double posWeight = Math.max(processWeight, pathwayWeight)
         double totalWeight = posWeight + complexWeight
         if (totalWeight == 0.0d) return 0.0d

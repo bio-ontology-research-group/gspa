@@ -87,7 +87,7 @@ def run_single_gaef(genome, cfg, force=False):
 
     # Step 2: run gspa evaluate
     eval_cmd = [
-        JAVA, "-Xmx8g", "-jar", JAR, "evaluate",
+        JAVA, "-Xmx4g", "-XX:ActiveProcessorCount=4", "-jar", JAR, "evaluate",
         "--lite",
         "--go-owl", f"{REF}/go.owl",
         "-i", gff_file,
@@ -122,9 +122,31 @@ def run_single_gaef(genome, cfg, force=False):
         return f"[ERR] {tag} {cfg} parse error: {e}"
 
 
+def make_synth_only(genome, cfg, force=False):
+    tag = genome["tag"]
+    int_file = f"{INTEGRATED_DIR}/{tag}_{cfg}_integrated.tsv"
+    fasta_file = f"{ROOT}/proteomes/{tag}.faa"
+    gff_file = f"{GAEF_DIR}/{tag}_{cfg}.gff"
+    gaf_file = f"{GAEF_DIR}/{tag}_{cfg}.gaf"
+    if force or not os.path.exists(gff_file) or not os.path.exists(gaf_file) or os.path.getsize(gaf_file) < 100:
+        synth_cmd = [
+            PYTHON, SYNTH_SCRIPT,
+            "--fasta", fasta_file,
+            "--tsv", int_file,
+            "--threshold", "0.5",
+            "--gff-out", gff_file,
+            "--gaf-out", gaf_file,
+        ]
+        subprocess.run(synth_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+    import hashlib
+    with open(gaf_file, "rb") as f:
+        h = hashlib.md5(b"".join(sorted(line for line in f if not line.startswith(b"!")))).hexdigest()
+    return (tag, cfg, h)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run GAEF quality evaluation on ablation grid")
-    parser.add_argument("--jobs", "-j", type=int, default=8, help="Parallel worker threads")
+    parser.add_argument("--jobs", "-j", type=int, default=6, help="Parallel worker threads")
     parser.add_argument("--genome", "-g", default=None, help="Filter to specific genome tag")
     parser.add_argument("--config", "-c", default=None, help="Filter to specific config")
     parser.add_argument("--force", "-f", action="store_true", help="Force re-evaluation")
@@ -136,21 +158,78 @@ def main():
     configs = [c for c in CONFIGS if args.config is None or c == args.config]
 
     tasks = [(g, c) for g in genomes for c in configs]
-    print(f"Total GAEF evaluation jobs: {len(tasks)} (concurrency: {args.jobs})")
 
+    import hashlib
+    import shutil
+    prev_cache = {}
+    for g, c in tasks:
+        tag = g["tag"]
+        gaf_p = f"{GAEF_DIR}/{tag}_{c}.gaf"
+        json_p = f"{GAEF_DIR}/{tag}_{c}_quality.json"
+        if os.path.exists(gaf_p) and os.path.exists(json_p) and os.path.getsize(json_p) > 100:
+            with open(gaf_p, "rb") as f:
+                h = hashlib.md5(b"".join(sorted(line for line in f if not line.startswith(b"!")))).hexdigest()
+            with open(json_p, "rb") as jf:
+                prev_cache[(tag, h)] = jf.read()
+
+    print(f"Step 3a: Generating synthetic GFF/GAF for {len(tasks)} tasks (cached GAF states: {len(prev_cache)})...", flush=True)
     t_start = time.time()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as executor:
-        futures = {executor.submit(run_single_gaef, g, c, args.force): (g["tag"], c) for g, c in tasks}
-        for future in concurrent.futures.as_completed(futures):
-            tag, cfg = futures[future]
-            try:
-                res = future.result()
-                print(res, flush=True)
-            except Exception as e:
-                print(f"[ERROR] {tag} {cfg}: {e}", flush=True)
+    rep_tasks = []
+    clone_map = {}  # (tag, rep_cfg) -> list of other cfgs with identical GAF
+    seen_hash = {}  # (tag, md5) -> rep_cfg
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
+        futs = [ex.submit(make_synth_only, g, c, True) for g, c in tasks]
+        by_tag_cfg = {(g["tag"], c): (g, c) for g, c in tasks}
+        for fut in futs:
+            tag, cfg, h = fut.result()
+            key = (tag, h)
+            if key in prev_cache:
+                dst_json = f"{GAEF_DIR}/{tag}_{cfg}_quality.json"
+                with open(dst_json, "wb") as out_jf:
+                    out_jf.write(prev_cache[key])
+                print(f"[CACHE-HIT] {tag} {cfg} (unchanged @0.50 GAF)", flush=True)
+                continue
+            if key not in seen_hash:
+                seen_hash[key] = cfg
+                rep_tasks.append(by_tag_cfg[(tag, cfg)])
+                clone_map[(tag, cfg)] = []
+            else:
+                rep_cfg = seen_hash[key]
+                clone_map[(tag, rep_cfg)].append(cfg)
+
+    print(f"Step 3b: Running shared-memory GAEF batch evaluate on {len(rep_tasks)} unique changed GAF sets...", flush=True)
+    if rep_tasks:
+        manifest_path = f"{GAEF_DIR}/gaef_batch_manifest.tsv"
+        with open(manifest_path, "w") as mf:
+            mf.write("gff_path\tgaf_path\tout_json_path\tkingdom\ttaxon\n")
+            for g, cfg in rep_tasks:
+                tag = g["tag"]
+                gff_f = f"{GAEF_DIR}/{tag}_{cfg}.gff"
+                gaf_f = f"{GAEF_DIR}/{tag}_{cfg}.gaf"
+                out_f = f"{GAEF_DIR}/{tag}_{cfg}_quality.json"
+                mf.write(f"{gff_f}\t{gaf_f}\t{out_f}\t{g['k']}\t{g['taxon']}\n")
+        eval_cmd = [
+            JAVA, "-Xmx32g", "-jar", JAR, "evaluate",
+            "--lite",
+            "--go-owl", f"{REF}/go.owl",
+            "--pathways", f"{REF}/kegg_pathways.tsv",
+            "--modules", f"{REF}/kegg_modules.tsv",
+            "--ec2go", f"{REF}/ec2go.txt",
+            "--batch-manifest", manifest_path,
+        ]
+        subprocess.run(eval_cmd, check=True)
+        for g, cfg in rep_tasks:
+            tag = g["tag"]
+            src_json = f"{GAEF_DIR}/{tag}_{cfg}_quality.json"
+            if os.path.exists(src_json):
+                for dup_cfg in clone_map.get((tag, cfg), []):
+                    dst_json = f"{GAEF_DIR}/{tag}_{dup_cfg}_quality.json"
+                    shutil.copyfile(src_json, dst_json)
+                    print(f"[CLONE] {tag} {dup_cfg} <- {cfg} (identical @0.50 GAF)", flush=True)
 
     total_time = time.time() - t_start
-    print(f"\nAll GAEF evaluation tasks completed in {total_time:.1f}s ({total_time/60:.2f}m)")
+    print(f"\nAll GAEF evaluation tasks completed in {total_time:.1f}s ({total_time/60:.2f}m)", flush=True)
 
 
 if __name__ == "__main__":

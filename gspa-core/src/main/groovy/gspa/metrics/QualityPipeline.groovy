@@ -252,6 +252,13 @@ class QualityPipeline {
 
     // --- Evaluation ---
 
+    void updateDomain(OrganismDomain domain) {
+        this.essentialFunctions = EssentialFunctions.getDefault(domain)
+        if (goOntology != null) {
+            this.completenessEvaluator = new Completeness(goOntology, essentialFunctions)
+        }
+    }
+
     /**
      * Evaluate all quality metrics for a genome.
      */
@@ -312,7 +319,7 @@ class QualityPipeline {
 
         // Consistency
         if (config.quality.consistency.taxonConstraints) {
-            if (genome.taxonomy?.ncbiTaxId && satChecker != null && !satChecker.organismTaxon) {
+            if (genome.taxonomy?.ncbiTaxId && satChecker != null) {
                 satChecker.organismTaxon = genome.taxonomy.ncbiTaxId
             }
             def consr = consistencyEvaluator.evaluateWithAttribution(genome)

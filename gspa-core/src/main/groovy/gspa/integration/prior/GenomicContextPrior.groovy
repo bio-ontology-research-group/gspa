@@ -72,21 +72,65 @@ class GenomicContextPrior implements Prior {
             if (gap.goTerm) gapFillerTerms << gap.goTerm
         }
 
+        boolean useTargeted = state.claimCounts != null && !state.claimCounts.isEmpty()
+        Set<String> allOperonProteins = new LinkedHashSet<>()
+        Set<String> allContextTerms = new LinkedHashSet<>(gapFillerTerms)
+        Set<String> baselineAnnotated = useTargeted ? (
+            (state.goOntology != null || state.goReasoner != null)
+                ? state.baselineAnnotatedGoTermsPropagated()
+                : state.baselineAnnotatedGoTerms()
+        ) : Collections.emptySet()
+        if (useTargeted) {
+            for (Set<String> req : pathwayTerms.values()) {
+                allContextTerms.addAll(req)
+            }
+        }
+        Map<String, List<Map.Entry<String, Double>>> operonCandsByMissingTerm = useTargeted ? [:].withDefault { [] } : null
+
         // For each operon: determine pathway consensus and co-operonic complex partners.
         for (List<String> operon : state.operons) {
             if (operon == null || operon.size() < 2) continue
+            if (useTargeted) allOperonProteins.addAll(operon)
 
-            // Track strong GO terms per protein in this operon.
+            // Track strong GO terms (and their GO ancestors) per protein in this operon,
+            // plus best sub-threshold candidate per GO term (and ancestor) across the operon.
             Map<String, Set<String>> strongByProt = new LinkedHashMap<>()
+            Set<String> allStrongTerms = new LinkedHashSet<>()
+            Map<String, Map> bestWeakByTerm = useTargeted ? new LinkedHashMap<>() : null
+
             for (String pid : operon) {
                 Set<String> pTerms = new LinkedHashSet<>()
                 for (String fkey : state.functionKeysForProtein(pid)) {
-                    if (state.getProbability(fkey) <= IntegrationState.MAP_THRESHOLD) continue
                     String[] parts = IntegrationState.splitFunctionKey(fkey)
                     if (parts == null || parts[1] != 'GO') continue
-                    pTerms << parts[2]
+                    String goId = parts[2]
+                    double pVal = useTargeted ? state.getLikelihoodProbability(fkey) : state.getProbability(fkey)
+                    if (pVal > IntegrationState.MAP_THRESHOLD) {
+                        pTerms << goId
+                        if (state.goOntology != null) {
+                            pTerms.addAll(state.goOntology.getAncestors(goId))
+                        }
+                    } else if (useTargeted && pVal >= 0.18d) {
+                        Set<String> goAndAnc = state.goOntology != null ? state.goOntology.getAncestors(goId) : Collections.emptySet()
+                        boolean isGap = gapFillerTerms.contains(goId) || (!gapFillerTerms.isEmpty() && !Collections.disjoint(goAndAnc, gapFillerTerms))
+                        int tier = state.candidateRescueTier(fkey, pVal)
+                        Map candInfo = [fkey: fkey, prob: pVal, tier: tier, gap: isGap]
+                        Map prev = bestWeakByTerm.get(goId)
+                        if (prev == null || tier > (prev.tier as int) || (tier == (prev.tier as int) && pVal > (prev.prob as double))) {
+                            bestWeakByTerm.put(goId, candInfo)
+                        }
+                        for (String anc : goAndAnc) {
+                            Map prevAnc = bestWeakByTerm.get(anc)
+                            if (prevAnc == null || tier > (prevAnc.tier as int) || (tier == (prevAnc.tier as int) && pVal > (prevAnc.prob as double))) {
+                                bestWeakByTerm.put(anc, candInfo)
+                            }
+                        }
+                    }
                 }
-                if (!pTerms.isEmpty()) strongByProt[pid] = pTerms
+                if (!pTerms.isEmpty()) {
+                    strongByProt[pid] = pTerms
+                    allStrongTerms.addAll(pTerms)
+                }
             }
             if (strongByProt.isEmpty()) continue
 
@@ -94,21 +138,38 @@ class GenomicContextPrior implements Prior {
             if (!pathwayTerms.isEmpty()) {
                 for (Map.Entry<String, Set<String>> pe : pathwayTerms.entrySet()) {
                     Set<String> reqTerms = pe.value
-                    int activeProts = 0
-                    for (Set<String> pTerms : strongByProt.values()) {
-                        if (pTerms.any { reqTerms.contains(it) }) activeProts++
-                    }
-                    if (activeProts < 1) continue
-                    double consensusStrength = (double) activeProts / operon.size()
-                    for (String pid : operon) {
-                        for (String fkey : state.functionKeysForProtein(pid)) {
-                            String[] parts = IntegrationState.splitFunctionKey(fkey)
-                            if (parts == null || parts[1] != 'GO') continue
-                            String goId = parts[2]
-                            if (!reqTerms.contains(goId)) continue
-                            double boost = alphaCtx * consensusStrength
-                            if (gapFillerTerms.contains(goId)) boost *= alphaGapCtx
-                            boosts.merge(fkey, boost, { a, b -> Math.max(a as double, b as double) })
+                    if (Collections.disjoint(allStrongTerms, reqTerms)) continue
+                    if (useTargeted) {
+                        if (bestWeakByTerm.isEmpty()) continue
+                        for (String reqTerm : reqTerms) {
+                            if (allStrongTerms.contains(reqTerm) || baselineAnnotated.contains(reqTerm)) continue
+                            Map bestCand = bestWeakByTerm.get(reqTerm)
+                            if (bestCand != null) {
+                                operonCandsByMissingTerm[reqTerm] << new AbstractMap.SimpleImmutableEntry<>(
+                                    bestCand.fkey as String, bestCand.prob as Double
+                                )
+                            }
+                        }
+                    } else {
+                        int activeProts = 0
+                        for (Set<String> pTerms : strongByProt.values()) {
+                            if (!Collections.disjoint(pTerms, reqTerms)) activeProts++
+                        }
+                        if (activeProts < 1) continue
+                        double consensusStrength = (double) activeProts / operon.size()
+                        for (String pid : operon) {
+                            for (String fkey : state.functionKeysForProtein(pid)) {
+                                String[] parts = IntegrationState.splitFunctionKey(fkey)
+                                if (parts == null || parts[1] != 'GO') continue
+                                String goId = parts[2]
+                                Set<String> goAndAnc = state.goOntology != null ? state.goOntology.getAncestors(goId) : Collections.emptySet()
+                                boolean matchesPathway = reqTerms.contains(goId) || !Collections.disjoint(goAndAnc, reqTerms)
+                                if (!matchesPathway) continue
+                                double boost = alphaCtx * consensusStrength
+                                boolean matchesGap = gapFillerTerms.contains(goId) || !Collections.disjoint(goAndAnc, gapFillerTerms)
+                                if (matchesGap) boost *= alphaGapCtx
+                                boosts.merge(fkey, boost, { a, b -> Math.max(a as double, b as double) })
+                            }
                         }
                     }
                 }
@@ -131,6 +192,31 @@ class GenomicContextPrior implements Prior {
                             boosts.merge(fkey, cBoost, { a, b -> (a as double) + (b as double) })
                         }
                     }
+                }
+            }
+        }
+
+        if (useTargeted) {
+            if (operonCandsByMissingTerm != null && !operonCandsByMissingTerm.isEmpty()) {
+                for (Map.Entry<String, List<Map.Entry<String, Double>>> me : operonCandsByMissingTerm.entrySet()) {
+                    List<Map.Entry<String, Double>> cands = me.value
+                    if (cands != null && !cands.isEmpty()) {
+                        state.sortCandidatesForRescue(cands)
+                        String fk = cands[0].key
+                        double pVal = cands[0].value as double
+                        if (state.candidateRescueTier(fk, pVal) >= 1) {
+                            double boost = Math.max(1.65d * alphaCtx, 0.14d - state.getLikelihoodLogOdds(fk))
+                            boosts[fk] = Math.max(boosts.getOrDefault(fk, 0.0d), boost)
+                        }
+                    }
+                }
+            }
+            Map<String, Double> spec = state.computeProteinSpecificityPrior(allOperonProteins, allContextTerms, 0.38d * alphaCtx, 0.38d * alphaCtx)
+            for (Map.Entry<String, Double> se : spec.entrySet()) {
+                if (se.value > 0.0d) {
+                    boosts[se.key] = Math.max(boosts.getOrDefault(se.key, 0.0d), se.value)
+                } else if (!boosts.containsKey(se.key)) {
+                    boosts[se.key] = se.value
                 }
             }
         }

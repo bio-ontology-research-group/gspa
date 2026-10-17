@@ -26,7 +26,19 @@ def load_ec2go(path):
                 continue
             m = re.match(r'^(EC:\S+)\s*>\s*GO:[^;]+;\s*(GO:\d{7})', line)
             if m:
-                out[m.group(1).replace('EC:', '')] = m.group(2)
+                ec_id = m.group(1).replace('EC:', '')
+                go_id = m.group(2)
+                out.setdefault(ec_id, [])
+                if go_id not in out[ec_id]:
+                    out[ec_id].append(go_id)
+            else:
+                parts = line.strip().split('\t')
+                if len(parts) >= 2 and parts[1].startswith('GO:'):
+                    ec_id = parts[0].replace('EC:', '').strip()
+                    go_id = parts[1].strip()
+                    out.setdefault(ec_id, [])
+                    if go_id not in out[ec_id]:
+                        out[ec_id].append(go_id)
     return out
 
 
@@ -95,30 +107,38 @@ def main():
             if pathway not in triggered:
                 continue
             status = (row.get('status') or '').strip()
-            # good_blast → annotated, not a gap
+            # good_blast -> annotated, not a gap
             if status == 'good_blast':
                 continue
             rxn = (row.get('rxn') or '').strip()
-            ec = (row.get('ec') or '').strip()
-            if ec in ('', 'NA', '-'):
-                ec = None
-            go_term = ec2go.get(ec) if ec else None
-            key = (pathway, rxn, ec)
-            if key in seen_keys:
-                continue
-            seen_keys.add(key)
-            record = {
-                'pathway_id': f'MetaCyc:{pathway}',
-                'reaction_id': rxn,
-                'ec_number': ec,
-                'go_term': go_term,
-                'gapseq_guessed': status == 'bad_blast',
-            }
-            out.write(json.dumps(record) + '\n')
-            emitted += 1
+            raw_ec = (row.get('ec') or '').strip()
+            if raw_ec in ('', 'NA', '-'):
+                ec_list = [None]
+            else:
+                ec_list = [e.strip() for e in re.split(r'[/,;\s]+', raw_ec) if e.strip() and e.strip() not in ('NA', '-')]
+                if not ec_list:
+                    ec_list = [None]
+
+            for ec in ec_list:
+                go_terms = ec2go.get(ec, [None]) if ec else [None]
+                for go_term in go_terms:
+                    key = (pathway, rxn, ec, go_term)
+                    if key in seen_keys:
+                        continue
+                    seen_keys.add(key)
+                    record = {
+                        'pathway_id': f'MetaCyc:{pathway}',
+                        'reaction_id': rxn,
+                        'ec_number': ec,
+                        'go_term': go_term,
+                        'gapseq_guessed': status == 'bad_blast',
+                    }
+                    out.write(json.dumps(record) + '\n')
+                    emitted += 1
 
     with_ec = sum(1 for k in seen_keys if k[2])
-    print(f'  {args.tag}: wrote {emitted} gaps ({with_ec} with EC) -> {args.out}')
+    with_go = sum(1 for k in seen_keys if k[3])
+    print(f'  {args.tag}: wrote {emitted} gaps ({with_ec} with EC, {with_go} with GO) -> {args.out}')
 
 
 if __name__ == '__main__':

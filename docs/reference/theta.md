@@ -163,7 +163,7 @@ Defaults to `1.0` for all priors when omitted.
 
 #### Consistency prior
 
-- `alpha_cons` (float, default `3.0`): Soft log-odds penalty subtracted from
+- `alpha_cons` (float, default `0.68`): Soft log-odds penalty subtracted from
   claims participating in a taxonomic constraint conflict (identified by SAT4J
   UNSAT cores).
 - `consistency_hard_filter` (boolean, default `false`): When true, converts the
@@ -172,7 +172,7 @@ Defaults to `1.0` for all priors when omitted.
 
 #### Anatomical prior
 
-- `alpha_anat_penalty` (float, default `3.5`): Soft log-odds penalty subtracted
+- `alpha_anat_penalty` (float, default `0.68`): Soft log-odds penalty subtracted
   from candidate GO claims whose target anatomical structure cannot occur in the
   clade of the organism.
 - `alpha_anat_boost` (float, default `0.65`): Positive log-odds boost for sub-threshold
@@ -260,9 +260,9 @@ The following example configuration specifies custom reliabilities and prior wei
   "alpha_coh": 1.0,
   "alpha_complex_boost": 0.85,
   "alpha_complex_penalty": 0.75,
-  "alpha_cons": 3.0,
+  "alpha_cons": 0.68,
   "consistency_hard_filter": false,
-  "alpha_anat_penalty": 3.5,
+  "alpha_anat_penalty": 0.68,
   "alpha_anat_boost": 0.65,
   "anatomical_hard_filter": false,
   "alpha_gap": 1.5,

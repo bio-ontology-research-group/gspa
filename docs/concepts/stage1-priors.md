@@ -143,8 +143,8 @@ All defaults below are the published values, calibrated on *E. coli* K-12 MG1655
 | \( w_{\text{part}} \) | complex partner boost | 0.85 | theta `alpha_complex_boost` |
 | \( w_{\text{sing}} \) | isolated-subunit penalty | 0.75 | theta `alpha_complex_penalty` |
 | | complex candidate gate | 0.08 | fixed |
-| \( \alpha_{\text{cons}} \) | taxonomic conflict penalty | 3.00 | theta `alpha_cons` |
-| \( \alpha_{\text{anat}} \) | anatomical penalty | 3.50 | theta `alpha_anat_penalty` |
+| \( \alpha_{\text{cons}} \) | taxonomic conflict penalty | 0.68 | theta `alpha_cons` |
+| \( \alpha_{\text{anat}} \) | anatomical penalty | 0.68 | theta `alpha_anat_penalty` |
 | \( \alpha_{\text{boost}} \) | active-structure boost | 0.65 | theta `alpha_anat_boost` |
 | \( \alpha_{\text{gap}} \) | gap-filling boost | 1.50 | theta `alpha_gap` |
 | \( \alpha_{\text{ctx}} \) | operon pathway scale | 1.00 | theta `alpha_ctx` |

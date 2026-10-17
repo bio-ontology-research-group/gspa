@@ -50,9 +50,12 @@ class Coherence {
      */
     CoherenceResult evaluate(Genome genome) {
         Set<String> annotatedTerms = genome.allGoTerms()
+        Set<String> propagatedTerms = goOntology != null
+            ? goOntology.propagateAnnotations(annotatedTerms)
+            : annotatedTerms
 
-        def processResult = evaluateProcessCoherence(annotatedTerms)
-        def pathwayDetail = evaluatePathwayCoherenceDetailed(annotatedTerms)
+        def processResult = evaluateProcessCoherence(propagatedTerms)
+        def pathwayDetail = evaluatePathwayCoherenceDetailed(propagatedTerms)
         def complexResult = evaluateComplexCoherence(genome)
 
         new CoherenceResult(
@@ -72,20 +75,46 @@ class Coherence {
      * Process coherence: fraction of triggered has_part dependencies that are satisfied.
      */
     ProcessCoherenceResult evaluateProcessCoherence(Set<String> annotatedTerms) {
-        if (goReasoner == null) {
+        if (goReasoner != null) {
+            def result = goReasoner.checkProcessCoherence(annotatedTerms)
+            int triggered = result.triggered as int
+            int satisfied = result.satisfied as int
+            double score = triggered == 0 ? 1.0 : satisfied / (double) triggered
+            return new ProcessCoherenceResult(
+                score: score,
+                triggered: triggered,
+                satisfied: satisfied,
+                unsatisfied: result.unsatisfied as List
+            )
+        }
+        if (goOntology == null) {
             return new ProcessCoherenceResult(score: -1.0, triggered: 0, satisfied: 0, unsatisfied: [])
         }
-        def result = goReasoner.checkProcessCoherence(annotatedTerms)
-        int triggered = result.triggered as int
-        int satisfied = result.satisfied as int
-
+        Set<String> propagated = goOntology.propagateAnnotations(annotatedTerms)
+        def axioms = goOntology.getExistentialAxioms(GoOntology.HAS_PART)
+        int triggered = 0
+        int satisfied = 0
+        List<Map.Entry<String, String>> unsatisfied = []
+        for (Map<String, String> ax : axioms) {
+            String subj = ax.subject
+            String obj = ax.object
+            if (subj && obj && subj.startsWith('GO:') && obj.startsWith('GO:') && subj != obj) {
+                if (propagated.contains(subj)) {
+                    triggered++
+                    if (propagated.contains(obj)) {
+                        satisfied++
+                    } else {
+                        unsatisfied << new AbstractMap.SimpleEntry<>(subj, obj)
+                    }
+                }
+            }
+        }
         double score = triggered == 0 ? 1.0 : satisfied / (double) triggered
-
         new ProcessCoherenceResult(
             score: score,
             triggered: triggered,
             satisfied: satisfied,
-            unsatisfied: result.unsatisfied as List
+            unsatisfied: unsatisfied
         )
     }
 

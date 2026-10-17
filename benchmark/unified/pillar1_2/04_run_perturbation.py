@@ -24,7 +24,7 @@ from pathlib import Path
 
 PYTHON = "/storage/miniforge3/envs/metagenomics/bin/python3"
 JAVA = "/data/hohndor/envs/java21/bin/java"
-JAR = "/data/hohndor/gspa/proteomes/bench9_unified/.pillar1_2_private.jar"
+JAR = "/data/hohndor/gspa/bin/gspa-unified.jar"
 BENCH_SCRIPT = "/data/hohndor/gspa/benchmark-py/benchmark_pgap_v2.py"
 ROOT = "/data/hohndor/gspa"
 REF = f"{ROOT}/reference"
@@ -400,21 +400,77 @@ def main():
         claims_by_genome[g["tag"]] = claims_file
         print(f"Injected 100 claims into {g['tag']} -> {claims_file}")
 
-    # Run integration in parallel
+    # Run integration via shared-memory batch manifest
     tasks = [(g, c) for g in GENOMES for c in PERTURB_CONFIGS]
-    print(f"\nRunning {len(tasks)} perturbation integration jobs (concurrency: {args.jobs})...")
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as executor:
-        futures = {executor.submit(run_perturb_job, g, c, claims_by_genome[g["tag"]], args.force): (g["tag"], c) for g, c in tasks}
-        for future in concurrent.futures.as_completed(futures):
-            tag, cfg = futures[future]
-            try:
-                res = future.result()
-                print(res, flush=True)
-            except Exception as e:
-                print(f"[ERROR] {tag} {cfg}: {e}", flush=True)
+    to_run = []
+    for g, c in tasks:
+        out_file = f"{PERTURB_DIR}/{g['tag']}_{c}_perturbed_integrated.tsv"
+        if not args.force and os.path.exists(out_file) and os.path.getsize(out_file) > 1000:
+            continue
+        to_run.append((g, c))
+
+    if to_run:
+        manifest_path = f"{PERTURB_DIR}/perturb_batch_manifest.tsv"
+        with open(manifest_path, "w") as mf:
+            mf.write("genome_id\tclaims_path\tout_path\ttaxon\tessential_profile\toperons_path\tgaps_path\tmax_iter\tenforce_stage2\tenforce_mode\tenable_priors\n")
+            for g, cfg in to_run:
+                tag = g["tag"]
+                taxon = g["taxon"]
+                k = g["k"]
+                claims_file = claims_by_genome[tag]
+                out_file = f"{PERTURB_DIR}/{tag}_{cfg}_perturbed_integrated.tsv"
+                gaps_file = f"{BENCH9}/gapseq/{tag}_gaps.jsonl"
+                has_gaps = os.path.exists(gaps_file) and os.path.getsize(gaps_file) > 0
+                operons_file = f"{OPERONS}/{tag}_operons.tsv"
+                has_ops = os.path.exists(operons_file) and os.path.getsize(operons_file) > 0
+
+                row_tax = "-"
+                row_ess = "-"
+                row_ops = "-"
+                row_gaps = "-"
+                row_s2 = "false"
+                row_mode = "-"
+                row_priors = "none"
+
+                if cfg == "A1_noisy_or":
+                    row_priors = "none"
+                elif cfg == "A6_consistency_anatomical":
+                    row_priors = "consistency,anatomical"
+                    row_tax = taxon
+                elif cfg in ("A8_stage2_remove", "A9_stage2_relax"):
+                    row_priors = "essentiality,coherence,consistency,anatomical,gap_filling,genomic_context"
+                    row_tax = taxon
+                    row_ess = k
+                    if has_ops:
+                        row_ops = operons_file
+                    if has_gaps:
+                        row_gaps = gaps_file
+                    row_s2 = "true"
+                    row_mode = "remove" if cfg == "A8_stage2_remove" else "relax"
+
+                mf.write("\t".join([
+                    f"{tag}_{cfg}_perturb", claims_file, out_file, row_tax, row_ess,
+                    row_ops, row_gaps, "-", row_s2, row_mode, row_priors
+                ]) + "\n")
+
+        cmd = [
+            JAVA, "-Xmx48g", "-jar", JAR, "integrate",
+            "--batch-manifest", manifest_path,
+            "--batch-threads", str(args.jobs),
+            "--enable-priors", "essentiality,coherence,consistency,anatomical,gap_filling,genomic_context",
+            "--go-owl", f"{REF}/go.owl",
+            "--pathways", f"{REF}/kegg_pathways.tsv",
+            "--modules", f"{REF}/kegg_modules.tsv",
+            "--ec2go", f"{REF}/ec2go.txt",
+            "--lite",
+        ]
+        print(f"\nRunning {len(to_run)} perturbation integration jobs via shared-memory batch mode...", flush=True)
+        proc = subprocess.run(cmd)
+        if proc.returncode != 0:
+            raise RuntimeError(f"Perturbation batch integration failed with exit code {proc.returncode}")
 
     # Evaluate all
-    print("\nEvaluating surviving violations and CAFA metrics...")
+    print("\nEvaluating surviving violations and CAFA metrics...", flush=True)
     summary_results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as executor:
         eval_futures = {
@@ -426,13 +482,13 @@ def main():
             summary_results.append(res)
             print(f"[EVAL] {res['tag']} {res['config']}: surviving={res['n_surviving']}/100 "
                   f"(suppr={res['suppression_rate_pct']:.1f}%), fmax_micro(exp)={res['fmax_micro_exp']:.4f}, "
-                  f"fmax_cafa(exp)={res['fmax_cafa_exp']:.4f}")
+                  f"fmax_cafa(exp)={res['fmax_cafa_exp']:.4f}", flush=True)
 
     # Save summary json
     summary_file = f"{PERTURB_DIR}/perturbation_summary.json"
     with open(summary_file, "w") as f:
         json.dump(summary_results, f, indent=2)
-    print(f"\nPerturbation summary saved to {summary_file}")
+    print(f"\nPerturbation summary saved to {summary_file}", flush=True)
 
 
 if __name__ == "__main__":

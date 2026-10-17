@@ -30,7 +30,7 @@ class ConsistencyPrior implements Prior {
     private static final Logger log = LoggerFactory.getLogger(ConsistencyPrior)
 
     /** Soft penalty in log-odds. Learned by the benchmark. */
-    double alphaCons = 3.0d
+    double alphaCons = 0.68d
 
     /** If true, effectively remove the claim entirely. */
     boolean hardFilter = false

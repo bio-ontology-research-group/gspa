@@ -166,13 +166,22 @@ class IntegrationState {
         sigmoid(posteriorLogOdds.getOrDefault(functionKey, 0.0d))
     }
 
+    private Map<String, Set<String>> proteinKeyIndex = null
+    private int indexedSize = -1
+
     /** Set / overwrite a posterior log-odds value. */
     void set(String functionKey, double logOdds) {
+        if (!posteriorLogOdds.containsKey(functionKey)) {
+            proteinKeyIndex = null
+        }
         posteriorLogOdds[functionKey] = logOdds
     }
 
     /** Replace the whole posterior map in one shot (used by refiner). */
     void updatePosteriors(Map<String, Double> newPosteriors) {
+        if (posteriorLogOdds == null || newPosteriors.size() != posteriorLogOdds.size()) {
+            proteinKeyIndex = null
+        }
         posteriorLogOdds = newPosteriors
     }
 
@@ -180,12 +189,21 @@ class IntegrationState {
 
     /**
      * Parse a function key "proteinId|type|functionId" into its parts.
+     * Splits on the last two '|' characters so proteinIds containing '|'
+     * (e.g., UniProt 'sp|P00956|SYI_ECOLI') are preserved intact.
      * @return [proteinId, type, functionId] or null if the key is malformed.
      */
     static String[] splitFunctionKey(String key) {
         if (key == null) return null
-        String[] parts = key.split('\\|', 3)
-        return parts.length == 3 ? parts : null
+        int lastPipe = key.lastIndexOf('|')
+        if (lastPipe <= 0) return null
+        int prevPipe = key.lastIndexOf('|', lastPipe - 1)
+        if (prevPipe <= 0) return null
+        return [
+            key.substring(0, prevPipe),
+            key.substring(prevPipe + 1, lastPipe),
+            key.substring(lastPipe + 1)
+        ] as String[]
     }
 
     /**
@@ -202,11 +220,133 @@ class IntegrationState {
     /** Initial (Noisy-OR calibrated) likelihood log-odds by function key. */
     Map<String, Double> likelihoodLogOdds = new LinkedHashMap<>()
 
+    /** Number of supporting raw evidence claims per function key (populated by IterativeRefiner). */
+    Map<String, Integer> claimCounts = new LinkedHashMap<>()
+
+    /** Keys already adjusted by computeProteinSpecificityPrior in the current iteration. */
+    Set<String> specificityAdjustedKeys = new HashSet<>()
+
+    /** Cached maximum baseline likelihood probability per protein. */
+    private Map<String, Double> maxLikeProbByProtein = null
+
+    /** Return number of supporting claims for a functionKey (defaults to 1 if unpopulated). */
+    int getClaimCount(String functionKey) {
+        claimCounts != null ? claimCounts.getOrDefault(functionKey, 1) : 1
+    }
+
+    /** Return maximum baseline GO likelihood probability for a protein. */
+    double getMaxLikelihoodProbForProtein(String proteinId) {
+        if (maxLikeProbByProtein == null) {
+            Map<String, Double> m = new HashMap<>()
+            Map<String, Double> src = (likelihoodLogOdds != null && !likelihoodLogOdds.isEmpty()) ? likelihoodLogOdds : posteriorLogOdds
+            if (src != null) {
+                for (Map.Entry<String, Double> e : src.entrySet()) {
+                    String[] parts = splitFunctionKey(e.key)
+                    if (parts == null || parts[1] != 'GO') continue
+                    double p = sigmoid(e.value)
+                    Double prev = m.get(parts[0])
+                    if (prev == null || p > prev) m.put(parts[0], p)
+                }
+            }
+            maxLikeProbByProtein = m
+        }
+        maxLikeProbByProtein.getOrDefault(proteinId, 0.0d)
+    }
+
+    int candidateRescueTier(String fkey, double likeProb) {
+        if (likeProb >= 0.45d) return 4
+        if (likeProb >= 0.40d) return 3
+        String[] parts = splitFunctionKey(fkey)
+        double maxProt = parts != null ? getMaxLikelihoodProbForProtein(parts[0]) : 1.0d
+        if (maxProt < 0.50d) return 2
+        if (getClaimCount(fkey) >= 2) return 1
+        return 0
+    }
+
+    void sortCandidatesForRescue(List<Map.Entry<String, Double>> cands) {
+        cands.sort { a, b ->
+            int ta = candidateRescueTier(a.key, a.value)
+            int tb = candidateRescueTier(b.key, b.value)
+            int c = Integer.compare(tb, ta)
+            c != 0 ? c : Double.compare(b.value as double, a.value as double)
+        }
+    }
+
+    /**
+     * Compute protein-level specificity log-odds adjustments scoped to a prior's
+     * biological domain: on proteins with a strong multi-hit primary annotation
+     * (maxProb >= 0.55, maxNsup >= 2), attenuate uncorroborated single-hit secondary
+     * noise (n_sup == 1, 0.40 <= likeProb < 0.46) outside {@code domainGoTerms}
+     * to log-odds -0.52 (prob ~0.373).
+     */
+    Map<String, Double> computeProteinSpecificityPrior(Set<String> domainProteins,
+                                                       Set<String> domainGoTerms,
+                                                       double boostMag,
+                                                       double penaltyMag) {
+        if (claimCounts == null || claimCounts.isEmpty()) return Collections.emptyMap()
+        Map<String, Double> src = (likelihoodLogOdds != null && !likelihoodLogOdds.isEmpty()) ? likelihoodLogOdds : posteriorLogOdds
+        if (src == null || src.isEmpty()) return Collections.emptyMap()
+
+        Map<String, List<Map>> byProtAspect = new LinkedHashMap<>()
+        for (Map.Entry<String, Double> entry : src.entrySet()) {
+            String key = entry.key
+            String[] parts = splitFunctionKey(key)
+            if (parts == null || parts[1] != 'GO') continue
+            String pid = parts[0]
+            if (domainProteins != null && !domainProteins.contains(pid)) continue
+            String goId = parts[2]
+            String aspect = goOntology != null ? (goOntology.getAspect(goId) ?: 'BP') : 'BP'
+            String paKey = "${pid}|${aspect}".toString()
+            double lo = entry.value
+            double prob = sigmoid(lo)
+            int nsup = getClaimCount(key)
+            byProtAspect.computeIfAbsent(paKey) { new ArrayList<Map>() } << [
+                key: key, goId: goId, prob: prob, lo: lo, nsup: nsup
+            ]
+        }
+
+        Map<String, Double> adjustments = new LinkedHashMap<>()
+        for (List<Map> items : byProtAspect.values()) {
+            if (items.isEmpty()) continue
+            items.sort { a, b ->
+                int c = Double.compare(b.prob as double, a.prob as double)
+                c != 0 ? c : Integer.compare(b.nsup as int, a.nsup as int)
+            }
+            Map top = items[0]
+            double maxProb = top.prob as double
+            int maxNsup = top.nsup as int
+
+            if (penaltyMag > 0.0d && maxProb >= 0.55d && maxNsup >= 2 && items.size() > 1) {
+                for (int i = 1; i < items.size(); i++) {
+                    Map item = items[i]
+                    double p = item.prob as double
+                    double lo = item.lo as double
+                    int nsup = item.nsup as int
+                    String goId = item.goId as String
+                    String itemKey = item.key as String
+                    if (nsup == 1 && p >= 0.40d && p < 0.46d) {
+                        if (domainGoTerms == null || !domainGoTerms.contains(goId)) {
+                            if (specificityAdjustedKeys.add(itemKey)) {
+                                double delta = Math.max(-penaltyMag, -0.52d - lo)
+                                if (delta < 0.0d) adjustments[itemKey] = delta
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        adjustments
+    }
+
+    /** Get initial likelihood log-odds for a function key. */
+    double getLikelihoodLogOdds(String functionKey) {
+        Double lo = likelihoodLogOdds != null ? likelihoodLogOdds[functionKey] : null
+        lo != null ? lo : posteriorLogOdds.getOrDefault(functionKey, 0.0d)
+    }
+
     /** Get initial likelihood probability for a function key via sigmoid. */
     double getLikelihoodProbability(String functionKey) {
-        Double lo = likelihoodLogOdds != null ? likelihoodLogOdds[functionKey] : null
-        if (lo == null) lo = posteriorLogOdds.getOrDefault(functionKey, 0.0d)
-        sigmoid(lo)
+        sigmoid(getLikelihoodLogOdds(functionKey))
     }
 
     /**
@@ -263,12 +403,18 @@ class IntegrationState {
 
     /** Set of function keys for a given protein. */
     Set<String> functionKeysForProtein(String proteinId) {
-        String prefix = proteinId + '|'
-        Set<String> out = new LinkedHashSet<>()
-        for (String key : posteriorLogOdds.keySet()) {
-            if (key.startsWith(prefix)) out << key
+        if (proteinKeyIndex == null || indexedSize != posteriorLogOdds.size()) {
+            Map<String, Set<String>> idx = new LinkedHashMap<>()
+            for (String key : posteriorLogOdds.keySet()) {
+                String[] parts = splitFunctionKey(key)
+                if (parts != null) {
+                    idx.computeIfAbsent(parts[0]) { new LinkedHashSet<String>() } << key
+                }
+            }
+            proteinKeyIndex = idx
+            indexedSize = posteriorLogOdds.size()
         }
-        out
+        proteinKeyIndex.getOrDefault(proteinId, Collections.emptySet())
     }
 
     /** Convenience: check if a protein has any annotation above the MAP threshold. */

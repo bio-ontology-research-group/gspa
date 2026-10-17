@@ -142,6 +142,57 @@ class ConsistencyEnforcer {
                 applyAction(p, victims, result, effectiveAction(), defaultReason, forbidden)
             }
         }
+        if (effectiveAction() in ['remove', 'relax']) {
+            resolveResidualCoAnnotationConflicts(genome, result, forbidden)
+        }
+    }
+
+    private void resolveResidualCoAnnotationConflicts(Genome genome, Result result, Set<String> forbidden) {
+        int maxRounds = 50
+        for (int round = 0; round < maxRounds; round++) {
+            Set<String> activeTerms = new LinkedHashSet<>()
+            genome.proteins.each { Protein p ->
+                p.annotations.goAnnotations().each { Annotation a ->
+                    if (a.score >= 0.5d) activeTerms << a.value
+                }
+            }
+            if (activeTerms.isEmpty()) break
+            Set<String> checkSet = goOntology != null ? goOntology.propagateAnnotations(activeTerms) : activeTerms
+            def cr = satChecker.check(checkSet)
+            if (cr.consistent) break
+            Set<String> conflict = (cr.violations.collectMany { it.involvedGoTerms ?: [] } as Set)
+            if (conflict.isEmpty()) break
+
+            Map<String, Double> w = [:].withDefault { 0.0d }
+            genome.proteins.each { Protein p ->
+                p.annotations.goAnnotations().each { Annotation a ->
+                    if (a.score >= 0.5d && annotationViolates(a, conflict)) {
+                        w[a.value] += Math.max(0.0d, a.score)
+                    }
+                }
+            }
+            if (w.isEmpty()) break
+            Set<String> remove = new TaxonConsistencyMaxSat(checker: satChecker, goOntology: goOntology)
+                .termsToRemove(w)
+            if (remove.isEmpty()) {
+                remove = [w.min { it.value }.key] as Set
+            }
+            Set<String> nextForbidden = new HashSet<>(forbidden ?: Collections.emptySet())
+            nextForbidden.addAll(remove)
+            nextForbidden.addAll(conflict)
+            boolean acted = false
+            genome.proteins.each { Protein p ->
+                List<Annotation> victims = p.annotations.goAnnotations().findAll { Annotation a ->
+                    a.score >= 0.5d && (remove.contains(a.value) || annotationViolates(a, remove))
+                }
+                if (victims) {
+                    result.violations++
+                    applyAction(p, victims, result, effectiveAction(), 'co-annotation taxon conflict', nextForbidden)
+                    acted = true
+                }
+            }
+            if (!acted) break
+        }
     }
 
     private Set<String> computeForbiddenTerms() {

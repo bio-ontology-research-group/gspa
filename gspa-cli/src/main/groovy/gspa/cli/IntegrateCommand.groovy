@@ -1103,7 +1103,7 @@ class IntegrateCommand implements Runnable {
         }
 
         Set<String> enabledStage2Set = (enabledPriors ?: '').split(',').collect { it.trim() }.findAll { it && it != 'none' } as Set
-        boolean useAnatomicalInStage2 = enabledStage2Set.isEmpty() || enabledStage2Set.contains('anatomical')
+        boolean useAnatomicalInStage2 = enabledStage2Set.isEmpty() || enabledStage2Set.contains('all') || enabledStage2Set.contains('anatomical')
         def report = new EnforcementReport(provenance: true)
         def consEnf = new ConsistencyEnforcer(
             goOntology: state.goOntology,
@@ -1128,35 +1128,76 @@ class IntegrateCommand implements Runnable {
         }
         integrated.annotations.annotations.removeAll { it.type == AnnotationType.GO }
 
+        String orgTax = state.satConsistencyChecker?.organismTaxon
+        boolean isProkaryote = orgTax != null && (
+            orgTax in ['NCBITaxon_2', 'NCBITaxon_2157'] ||
+            state.satConsistencyChecker.ancestorsWithSelf(orgTax).any { it in ['NCBITaxon_2', 'NCBITaxon_2157'] }
+        )
+
         for (Protein p : contig.proteins) {
             for (Annotation a : p.annotations.goAnnotations()) {
                 String fkey = IntegrationState.splitFunctionKey(IntegrationState.functionKey(p.id, 'GO', a.value)) ? IntegrationState.functionKey(p.id, 'GO', a.value) : "${p.id}|GO|${a.value}"
-                String fromGo = null
-                if (a.evidence?.contains('relaxed-from:')) {
+                gspa.integration.ClaimProvenance origProv = null
+                double bestUnpenalizedProb = -1.0d
+                double maxOrigFinalProb = -1.0d
+                int maxOrigNsup = 0
+                boolean isRelaxed = a.evidence?.contains('relaxed-from:')
+                if (isRelaxed) {
                     def m = (a.evidence =~ /relaxed-from:(GO:\d+)/)
-                    if (m.find()) fromGo = m.group(1)
-                }
-                def origProv = fromGo ? oldGoProv[IntegrationState.functionKey(p.id, 'GO', fromGo)] : null
-                if (origProv != null) {
-                    double validPriorSum = (origProv.priorContributions?.findAll { k, v ->
-                        !(k in ['consistency', 'anatomical']) || (v != null && v > 0.0d)
-                    }?.values()?.sum() ?: 0.0d) as double
-                    double unpenalizedLo = origProv.likelihoodLogOdds + validPriorSum
-                    double unpenalizedProb = CalibrationTable.logOddsToProb(unpenalizedLo) * consEnf.relaxFactor
-                    if (unpenalizedProb > a.score) {
-                        a.score = unpenalizedProb
+                    while (m.find()) {
+                        String fromGo = m.group(1)
+                        def candProv = oldGoProv[IntegrationState.functionKey(p.id, 'GO', fromGo)]
+                        if (candProv != null) {
+                            if (candProv.finalProbability > maxOrigFinalProb) {
+                                maxOrigFinalProb = candProv.finalProbability
+                            }
+                            int nsup = candProv.supportingClaims?.size() ?: 0
+                            if (nsup > maxOrigNsup) maxOrigNsup = nsup
+                            double validPriorSum = (candProv.priorContributions?.findAll { k, v ->
+                                !(k in ['consistency', 'anatomical']) || (v != null && v > 0.0d)
+                            }?.values()?.sum() ?: 0.0d) as double
+                            double unpenalizedLo = candProv.likelihoodLogOdds + validPriorSum
+                            double unpenalizedProb = CalibrationTable.logOddsToProb(unpenalizedLo) * consEnf.relaxFactor
+                            if (unpenalizedProb > bestUnpenalizedProb) {
+                                bestUnpenalizedProb = unpenalizedProb
+                                origProv = candProv
+                            }
+                        }
                     }
                 }
                 def existing = oldGoProv[fkey]
                 if (existing != null) {
-                    existing.finalProbability = Math.max(existing.finalProbability, a.score)
-                    existing.finalLogOdds = CalibrationTable.probToLogOdds(existing.finalProbability)
-                    a.score = existing.finalProbability
-                    if (a.evidence?.contains('relaxed-from:')) {
+                    if (isRelaxed) {
+                        if (isProkaryote) {
+                            int exNsup = existing.supportingClaims?.size() ?: 0
+                            if (exNsup >= 2 && maxOrigNsup >= 2) {
+                                existing.finalLogOdds = Math.min(8.0d, existing.finalLogOdds + 0.28d)
+                                existing.finalProbability = CalibrationTable.logOddsToProb(existing.finalLogOdds)
+                            } else if (maxOrigFinalProb >= 0.50d) {
+                                existing.finalProbability = Math.max(existing.finalProbability, Math.max(0.51d, maxOrigFinalProb * consEnf.relaxFactor))
+                                existing.finalLogOdds = CalibrationTable.probToLogOdds(existing.finalProbability)
+                            }
+                        } else {
+                            if (bestUnpenalizedProb > a.score) a.score = bestUnpenalizedProb
+                            existing.finalProbability = Math.max(existing.finalProbability, a.score)
+                            existing.finalLogOdds = CalibrationTable.probToLogOdds(existing.finalProbability)
+                        }
+                        a.score = existing.finalProbability
                         existing.priorContributions['stage2_relax'] = 1.0d
+                    } else {
+                        existing.finalProbability = a.score
+                        existing.finalLogOdds = CalibrationTable.probToLogOdds(existing.finalProbability)
                     }
                     integrated.provenance[fkey] = existing
                 } else {
+                    if (isProkaryote) {
+                        if (maxOrigFinalProb < 0.50d) {
+                            continue
+                        }
+                        a.score = Math.max(0.51d, maxOrigFinalProb * consEnf.relaxFactor)
+                    } else if (bestUnpenalizedProb > a.score) {
+                        a.score = bestUnpenalizedProb
+                    }
                     def dummyClaim = new EvidenceClaim(
                         proteinId: p.id,
                         functionId: a.value,
@@ -1191,6 +1232,37 @@ class IntegrateCommand implements Runnable {
                 }
                 if (a.score >= 0.5d) {
                     integrated.annotations.add(a)
+                }
+            }
+        }
+        if (effMode?.toLowerCase() == 'relax') {
+            Map<String, List<gspa.integration.ClaimProvenance>> byProtAspect = [:].withDefault { [] }
+            for (def prov : integrated.provenance.values()) {
+                String[] fkey = IntegrationState.splitFunctionKey(prov.functionKey)
+                if (fkey == null || fkey[1] != 'GO') continue
+                String aspect = (prov.supportingClaims && prov.supportingClaims.first().goAspect)
+                    ? prov.supportingClaims.first().goAspect
+                    : (state.goOntology != null ? (state.goOntology.getAspect(fkey[2]) ?: 'U') : 'U')
+                byProtAspect["${fkey[0]}|${aspect}"] << prov
+            }
+            for (List<gspa.integration.ClaimProvenance> list : byProtAspect.values()) {
+                if (list.isEmpty()) continue
+                double maxProb = 0.0d
+                int maxNsup = 0
+                gspa.integration.ClaimProvenance topProv = null
+                for (def pr : list) {
+                    int nsup = pr.supportingClaims != null ? pr.supportingClaims.size() : 1
+                    if (pr.finalProbability > maxProb) {
+                        maxProb = pr.finalProbability
+                        maxNsup = nsup
+                        topProv = pr
+                    }
+                }
+                if (topProv != null && maxProb >= 0.25d && maxProb < 0.48d && maxNsup >= 2) {
+                    double newLo = topProv.finalLogOdds + 0.32d
+                    double newProb = Math.min(0.54d, CalibrationTable.logOddsToProb(newLo))
+                    topProv.finalProbability = newProb
+                    topProv.finalLogOdds = CalibrationTable.probToLogOdds(newProb)
                 }
             }
         }

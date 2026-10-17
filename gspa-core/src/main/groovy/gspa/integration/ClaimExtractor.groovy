@@ -145,6 +145,8 @@ class ClaimExtractor {
     List<EvidenceClaim> readClaimsJsonl(File file) {
         ObjectMapper mapper = new ObjectMapper()
         List<EvidenceClaim> out = []
+        boolean hasBareProteinId = false
+        boolean hasPipeProteinId = false
         file.withReader { reader ->
             reader.eachLine { line ->
                 line = line.trim()
@@ -163,8 +165,13 @@ class ClaimExtractor {
                 double calibrated = rec.calibrated_prob != null
                     ? ((Number) rec.calibrated_prob).doubleValue()
                     : calibration.calibrate(source ?: '', raw)
+                String pid = rec.protein_id as String
+                if (pid != null) {
+                    if (pid.contains('|')) hasPipeProteinId = true
+                    else hasBareProteinId = true
+                }
                 out << new EvidenceClaim(
-                    proteinId: rec.protein_id as String,
+                    proteinId: pid,
                     functionType: AnnotationType.valueOf((rec.function_type as String).toUpperCase(Locale.ROOT)),
                     functionId: rec.function_id as String,
                     goAspect: rec.go_aspect as String,
@@ -174,6 +181,28 @@ class ClaimExtractor {
                     calibratedProb: calibrated,
                     metadata: (rec.metadata ?: [:]) as Map,
                 )
+            }
+        }
+        if (hasBareProteinId && hasPipeProteinId) {
+            for (int i = 0; i < out.size(); i++) {
+                EvidenceClaim c = out[i]
+                if (c.proteinId != null && (c.proteinId.startsWith('sp|') || c.proteinId.startsWith('tr|'))) {
+                    String[] parts = c.proteinId.split('\\|')
+                    if (parts.length >= 2 && parts[1]) {
+                        out[i] = new EvidenceClaim(
+                            proteinId: parts[1],
+                            functionType: c.functionType,
+                            functionId: c.functionId,
+                            goAspect: c.goAspect,
+                            evidenceType: c.evidenceType,
+                            source: c.source,
+                            rawScore: c.rawScore,
+                            calibratedProb: c.calibratedProb,
+                            metadata: c.metadata,
+                            origin: c.origin,
+                        )
+                    }
+                }
             }
         }
         out

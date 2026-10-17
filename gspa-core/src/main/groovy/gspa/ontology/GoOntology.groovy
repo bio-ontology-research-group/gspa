@@ -40,6 +40,9 @@ class GoOntology {
     private Map<String, Set<String>> ancestorCache = new java.util.concurrent.ConcurrentHashMap<>()
     private Map<String, Set<String>> descendantCache = new java.util.concurrent.ConcurrentHashMap<>()
     private Map<String, String> labelCache = new java.util.concurrent.ConcurrentHashMap<>()
+    private Map<String, Set<String>> directParentsIndex = new java.util.concurrent.ConcurrentHashMap<>()
+    private Map<String, Set<String>> directPartOfParentsIndex = new java.util.concurrent.ConcurrentHashMap<>()
+    private Map<String, Set<String>> directChildrenIndex = new java.util.concurrent.ConcurrentHashMap<>()
 
     GoOntology() {
         manager = OWLManager.createOWLOntologyManager()
@@ -54,6 +57,7 @@ class GoOntology {
         ontology = manager.loadOntologyFromOntologyDocument(owlFile)
         log.info("Loaded ${ontology.classesInSignature.size()} classes")
         buildLabelCache()
+        buildHierarchyIndex()
     }
 
     /**
@@ -108,6 +112,9 @@ class GoOntology {
      * Get direct superclasses of a GO term (via SubClassOf axioms to named classes).
      */
     Set<String> getDirectParents(String goId) {
+        if (!directParentsIndex.isEmpty()) {
+            return directParentsIndex.getOrDefault(goId, Collections.emptySet())
+        }
         def cls = getGoClass(goId)
         Set<String> parents = []
         ontology.getSubClassAxiomsForSubClass(cls).each { OWLSubClassOfAxiom ax ->
@@ -136,7 +143,7 @@ class GoOntology {
             if (visited.contains(current)) continue
             visited.add(current)
 
-            def parents = getDirectParents(current)
+            Set<String> parents = new LinkedHashSet<>(getDirectParents(current))
             // Also include part_of parents
             parents.addAll(getPartOfParents(current))
 
@@ -153,9 +160,44 @@ class GoOntology {
     }
 
     /**
+     * Get all descendants of a GO term (transitive closure of inverse is_a and part_of).
+     * Results are cached.
+     */
+    Set<String> getDescendants(String goId) {
+        if (descendantCache.containsKey(goId)) return descendantCache[goId]
+        if (directChildrenIndex.isEmpty() && ontology != null) {
+            buildHierarchyIndex()
+        }
+
+        Set<String> descendants = new LinkedHashSet<>()
+        Set<String> visited = new HashSet<>()
+        Queue<String> queue = new LinkedList<>()
+        queue.add(goId)
+
+        while (!queue.isEmpty()) {
+            String current = queue.poll()
+            if (!visited.add(current)) continue
+
+            Set<String> children = directChildrenIndex.getOrDefault(current, Collections.emptySet())
+            for (String child : children) {
+                descendants << child
+                if (!visited.contains(child)) {
+                    queue.add(child)
+                }
+            }
+        }
+
+        descendantCache[goId] = descendants
+        descendants
+    }
+
+    /**
      * Get classes that this GO term is part_of (via SubClassOf part_of some X).
      */
     Set<String> getPartOfParents(String goId) {
+        if (!directPartOfParentsIndex.isEmpty()) {
+            return directPartOfParentsIndex.getOrDefault(goId, Collections.emptySet())
+        }
         def cls = getGoClass(goId)
         def partOfProp = factory.getOWLObjectProperty(IRI.create(PART_OF))
         Set<String> parents = []
@@ -211,11 +253,16 @@ class GoOntology {
         ontology.containsClassInSignature(goToIri(goId))
     }
 
+    private Map<String, List<Map<String, String>>> existentialAxiomCache = new java.util.concurrent.ConcurrentHashMap<>()
+
     /**
      * Get all SubClassOf axioms involving existential restrictions (some values from).
      * Useful for extracting has_part, occurs_in, etc. relationships.
      */
     List<Map<String, String>> getExistentialAxioms(String propertyIri) {
+        if (existentialAxiomCache.containsKey(propertyIri)) {
+            return existentialAxiomCache[propertyIri]
+        }
         def property = factory.getOWLObjectProperty(IRI.create(propertyIri))
         List<Map<String, String>> axioms = []
 
@@ -230,7 +277,9 @@ class GoOntology {
                 }
             }
         }
-        axioms
+        List<Map<String, String>> immutable = Collections.unmodifiableList(axioms)
+        existentialAxiomCache[propertyIri] = immutable
+        immutable
     }
 
     private void buildLabelCache() {
@@ -246,5 +295,33 @@ class GoOntology {
             }
         }
         log.info("Built label cache for ${labelCache.size()} terms")
+    }
+
+    private synchronized void buildHierarchyIndex() {
+        if (!directChildrenIndex.isEmpty() || ontology == null) return
+        def partOfProp = factory.getOWLObjectProperty(IRI.create(PART_OF))
+        ontology.getAxioms(AxiomType.SUBCLASS_OF).each { OWLSubClassOfAxiom ax ->
+            if (!(ax.subClass instanceof OWLClass)) return
+            String subGo = iriToGo(((OWLClass) ax.subClass).getIRI())
+            if (!subGo.startsWith('GO:')) return
+            def superCls = ax.superClass
+            if (superCls instanceof OWLClass && !superCls.isOWLThing()) {
+                String supGo = iriToGo(((OWLClass) superCls).getIRI())
+                if (supGo.startsWith('GO:')) {
+                    directParentsIndex.computeIfAbsent(subGo) { new LinkedHashSet<String>() }.add(supGo)
+                    directChildrenIndex.computeIfAbsent(supGo) { new LinkedHashSet<String>() }.add(subGo)
+                }
+            } else if (superCls instanceof OWLObjectSomeValuesFrom) {
+                OWLObjectSomeValuesFrom svf = (OWLObjectSomeValuesFrom) superCls
+                if (svf.property == partOfProp && svf.filler instanceof OWLClass) {
+                    String supGo = iriToGo(((OWLClass) svf.filler).getIRI())
+                    if (supGo.startsWith('GO:')) {
+                        directPartOfParentsIndex.computeIfAbsent(subGo) { new LinkedHashSet<String>() }.add(supGo)
+                        directChildrenIndex.computeIfAbsent(supGo) { new LinkedHashSet<String>() }.add(subGo)
+                    }
+                }
+            }
+        }
+        log.info("Built GO hierarchy index (${directParentsIndex.size()} sub->parent, ${directChildrenIndex.size()} parent->child)")
     }
 }

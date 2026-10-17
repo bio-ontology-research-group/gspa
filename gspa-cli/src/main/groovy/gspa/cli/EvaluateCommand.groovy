@@ -11,11 +11,14 @@ import picocli.CommandLine.Option
 @Command(name = 'evaluate', description = 'Evaluate quality of existing annotations', mixinStandardHelpOptions = true)
 class EvaluateCommand implements Runnable {
 
-    @Option(names = ['-i', '--input'], required = true, description = 'Input GFF3 file')
+    @Option(names = ['-i', '--input'], description = 'Input GFF3 file')
     File input
 
     @Option(names = ['-a', '--annotations'], description = 'GO annotations in GAF format')
     File annotations
+
+    @Option(names = ['--batch-manifest'], description = 'TSV manifest (gff_path, gaf_path, out_json_path, kingdom, taxon) for shared-memory batch evaluation')
+    File batchManifest
 
     @Option(names = ['--go-owl'], required = true, description = 'Path to GO OWL file')
     String goOwl
@@ -58,29 +61,15 @@ class EvaluateCommand implements Runnable {
     @Option(names = ['-o', '--output'], description = 'Output report file', defaultValue = 'quality_report.json')
     File output
 
-    @Override
-    void run() {
-        println "GSPA evaluate"
-        println "  Input: ${input}"
-        println "  GO ontology: ${goOwl}"
-        println "  Kingdom: ${kingdom}"
-        println ""
-
-        // Load genome from GFF3
-        def genome = GffReader.readGff3(input)
+    private gspa.model.Genome loadGenomeWithGaf(File gffFile, File gafFile, String taxStr, String kingStr) {
+        def genome = GffReader.readGff3(gffFile)
         genome.mag = mag
-        String normTax = organismTaxon ? gspa.ontology.TaxonConstraints.normalizeTaxon(organismTaxon) : (kingdom ? gspa.ontology.TaxonConstraints.normalizeTaxon(kingdom) : null)
+        String normTax = taxStr ? gspa.ontology.TaxonConstraints.normalizeTaxon(taxStr) : (kingStr ? gspa.ontology.TaxonConstraints.normalizeTaxon(kingStr) : null)
         if (normTax) {
             genome.taxonomy = new gspa.model.TaxonomyInfo(ncbiTaxId: normTax)
         }
-        println "Loaded genome: ${genome.contigs.size()} contigs, ${genome.features.size()} features (taxon=${genome.taxonomy?.ncbiTaxId})"
-
-        // Load GO annotations from GAF
-        if (annotations?.exists()) {
-            println "Loading GO annotations from: ${annotations}"
-            def goAnnotations = GafReader.readGaf(annotations)
-
-            // Create proteins from CDS features and assign annotations
+        if (gafFile?.exists()) {
+            def goAnnotations = GafReader.readGaf(gafFile)
             genome.contigs.each { contig ->
                 contig.featuresOfType(gspa.model.FeatureType.CDS).each { feature ->
                     def protein = new gspa.model.Protein(
@@ -95,12 +84,15 @@ class EvaluateCommand implements Runnable {
                     contig.addProtein(protein)
                 }
             }
-            println "Assigned annotations to ${genome.proteinCount} proteins " +
-                "(${genome.allGoTerms().size()} unique GO terms)"
         }
+        genome
+    }
 
-        // Build quality pipeline
-        println ""
+    @Override
+    void run() {
+        println "GSPA evaluate"
+        println "  GO ontology: ${goOwl}"
+
         println "Initializing quality pipeline..."
         def pipeline = new QualityPipeline()
             .goOwlFile(goOwl)
@@ -110,8 +102,6 @@ class EvaluateCommand implements Runnable {
             pipeline.complexTermsFile(complexTerms)
         }
         if (ec2go?.exists() && pathways?.exists()) {
-            // Build the pathway DB ourselves so we can stack additional sources
-            // (KEGG Modules, MetaCyc, BioCyc) via --modules.
             def ec2goMap = gspa.ontology.PathwayLoader.loadEc2Go(ec2go)
             def pwDb = gspa.ontology.PathwayLoader.loadPathways(pathways, ec2goMap)
             for (File mod : (moduleFiles ?: [])) {
@@ -126,7 +116,6 @@ class EvaluateCommand implements Runnable {
         if (taxonomy?.exists()) {
             pipeline.taxonomyFile(taxonomy)
         }
-
         if (reasonerCache != null) {
             pipeline.reasonerCacheDir(reasonerCache)
         }
@@ -135,6 +124,37 @@ class EvaluateCommand implements Runnable {
         } else {
             pipeline.initialize()
         }
+
+        if (batchManifest != null && batchManifest.exists()) {
+            List<String> lines = batchManifest.readLines().findAll { it.trim() && !it.startsWith('#') }
+            int idx = 0
+            for (String line : lines) {
+                String[] cols = line.split('\t')
+                if (cols.length < 5 || cols[0] == 'gff_path') continue
+                idx++
+                File gffF = new File(cols[0])
+                File gafF = new File(cols[1])
+                File outF = new File(cols[2])
+                String rowKing = cols[3]
+                String rowTax = cols[4]
+                pipeline.updateDomain(OrganismDomain.fromName(rowKing))
+                def genome = loadGenomeWithGaf(gffF, gafF, rowTax, rowKing)
+                def report = pipeline.evaluate(genome)
+                def outDir = outF.parentFile ?: new File('.')
+                outDir.mkdirs()
+                QualityReportWriter.writeJson(report, outF)
+                println "[BATCH-EVAL ${idx}] ${outF.name} -> comp=${String.format('%.3f', report.completeness)}, pw=${String.format('%.3f', report.pathwayCoherence)}, cx=${String.format('%.3f', report.complexCoherence)}, viols=${report.violations?.size() ?: 0}, score=${String.format('%.3f', report.compositeScore)}"
+            }
+            pipeline.dispose()
+            return
+        }
+
+        if (input == null) {
+            throw new IllegalArgumentException("Either -i/--input or --batch-manifest must be specified")
+        }
+
+        def genome = loadGenomeWithGaf(input, annotations, organismTaxon, kingdom)
+        println "Loaded genome: ${genome.contigs.size()} contigs, ${genome.features.size()} features (taxon=${genome.taxonomy?.ncbiTaxId})"
 
         // Evaluate
         println "Running evaluation..."

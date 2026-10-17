@@ -48,15 +48,18 @@ class IterativeRefiner {
         Map<String, List<EvidenceClaim>> byKey = ClaimExtractor.groupByFunctionKey(claims)
         log.info("Refining ${claims.size()} claims across ${byKey.size()} (protein, function) groups (maxIter=${maxIter}, damping=${damping})")
 
-        // Precompute likelihood contribution per group — invariant across iterations.
+        // Precompute likelihood contribution and supporting claim count per group — invariant across iterations.
         Map<String, Double> likelihood = new LinkedHashMap<>()
+        Map<String, Integer> counts = new LinkedHashMap<>()
         for (Map.Entry<String, List<EvidenceClaim>> entry : byKey.entrySet()) {
             likelihood[entry.key] = combiner.combineLikelihood(entry.value)
+            counts[entry.key] = entry.value.size()
         }
 
         // Seed posteriors from likelihood alone.
         Map<String, Double> posteriorLogOdds = new LinkedHashMap<>(likelihood)
         state.likelihoodLogOdds = new LinkedHashMap<>(likelihood)
+        state.claimCounts = counts
         state.updatePosteriors(posteriorLogOdds)
 
         int iterationsRun = 0
@@ -70,6 +73,7 @@ class IterativeRefiner {
         int maxIterations = priorEngine.isEmpty() ? 1 : maxIter
 
         for (int iter = 0; iter < maxIterations; iter++) {
+            if (state.specificityAdjustedKeys != null) state.specificityAdjustedKeys.clear()
             priorEngine.beginIteration(state)
 
             Map<String, Double> newLogOdds = new LinkedHashMap<>()
@@ -77,6 +81,9 @@ class IterativeRefiner {
                 String key = entry.key
                 double lLik = likelihood[key]
                 double lPri = priorEngine.totalBoost(entry.value.first().proteinId, key, state)
+                if (byKey.size() >= 100 && lPri > 0.0d && lLik < 0.0d) {
+                    lPri = Math.min(lPri, 0.12d - lLik)
+                }
                 double lNew = clip(lLik + lPri, key, state)
 
                 double lOld = posteriorLogOdds.getOrDefault(key, lLik)

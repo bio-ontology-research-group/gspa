@@ -31,8 +31,16 @@ class GapFillingPrior implements Prior {
     /** Discount for gapseq's own gap-fill guesses. */
     double gapseqGuessedFactor = 0.7d
 
-    /** Cached per iteration: function_id → strongest boost magnitude. */
+    private static final Set<String> GENERIC_CATALYTIC_ROOTS = [
+        'GO:0003824', 'GO:0016491', 'GO:0016740', 'GO:0016787',
+        'GO:0016829', 'GO:0016853', 'GO:0016874'
+    ] as Set
+
+    /** Cached per iteration: function_id → strongest boost magnitude (fallback when claimCounts is empty). */
     private Map<String, Double> boostByFunctionId = new LinkedHashMap<>()
+
+    /** Cached per iteration: functionKey -> targeted log-odds adjustment when claimCounts is populated. */
+    private Map<String, Double> targetedKeyBoosts = Collections.emptyMap()
 
     @Override
     String name() { 'gap_filling' }
@@ -43,18 +51,89 @@ class GapFillingPrior implements Prior {
     @Override
     void beginIteration(IntegrationState state) {
         boostByFunctionId = new LinkedHashMap<>()
+        targetedKeyBoosts = Collections.emptyMap()
         if (state.metabolicGaps == null || state.metabolicGaps.isEmpty()) return
 
+        Set<String> allGapGoTerms = new LinkedHashSet<>()
+        Map<String, List<Map.Entry<String, Double>>> candsByFunc = null
+        if (state.claimCounts != null && !state.claimCounts.isEmpty()) {
+            candsByFunc = [:].withDefault { [] }
+            for (String fkey : state.posteriorLogOdds.keySet()) {
+                String[] parts = IntegrationState.splitFunctionKey(fkey)
+                if (parts == null) continue
+                if (parts[1] != AnnotationType.EC.name() && parts[1] != AnnotationType.GO.name()) continue
+                double likeProb = state.getLikelihoodProbability(fkey)
+                if (likeProb >= 0.18d && likeProb <= IntegrationState.MAP_THRESHOLD) {
+                    candsByFunc[parts[2]] << new AbstractMap.SimpleImmutableEntry<>(fkey, likeProb)
+                }
+            }
+        }
+
+        Map<String, Double> topBoosts = new LinkedHashMap<>()
         for (MetabolicGap gap : state.metabolicGaps) {
             double mag = gap.gapseqGuessed ? (alphaGap * gapseqGuessedFactor) : alphaGap
-            if (gap.ecNumber) updateMax(gap.ecNumber, mag)
-            if (gap.goTerm) updateMax(gap.goTerm, mag)
+            Set<String> gapGoTerms = new LinkedHashSet<>()
+            Set<String> gapMatchFuncs = new LinkedHashSet<>()
+            if (gap.ecNumber) {
+                for (String rawEc : gap.ecNumber.split('[/,;\\s]+')) {
+                    String ec = rawEc.trim()
+                    if (!ec) continue
+                    updateMax(ec, mag)
+                    gapMatchFuncs << ec
+                    String mappedGo = state.pathwayDatabase?.ec2go?.get(ec)
+                    if (mappedGo) gapGoTerms << mappedGo
+                }
+            }
+            if (gap.goTerm) {
+                for (String rawGo : gap.goTerm.split('[,;\\s]+')) {
+                    String go = rawGo.trim()
+                    if (go) gapGoTerms << go
+                }
+            }
+            for (String go : gapGoTerms) {
+                updateMax(go, mag)
+                gapMatchFuncs << go
+                allGapGoTerms << go
+                if (state.goOntology != null && !GENERIC_CATALYTIC_ROOTS.contains(go)) {
+                    for (String desc : state.goOntology.getDescendants(go)) {
+                        updateMax(desc, mag)
+                        gapMatchFuncs << desc
+                        allGapGoTerms << desc
+                    }
+                }
+            }
+            if (candsByFunc != null && !gapMatchFuncs.isEmpty()) {
+                List<Map.Entry<String, Double>> cands = []
+                for (String fid : gapMatchFuncs) {
+                    List<Map.Entry<String, Double>> list = candsByFunc.get(fid)
+                    if (list != null) cands.addAll(list)
+                }
+                if (!cands.isEmpty()) {
+                    state.sortCandidatesForRescue(cands)
+                    String fk = cands[0].key
+                    double pVal = cands[0].value as double
+                    if (state.candidateRescueTier(fk, pVal) >= 1) {
+                        double bVal = Math.max(1.15d * mag, 0.14d - state.getLikelihoodLogOdds(fk))
+                        topBoosts[fk] = Math.max(topBoosts.getOrDefault(fk, 0.0d), bVal)
+                    }
+                }
+            }
+        }
+        if (state.claimCounts != null && !state.claimCounts.isEmpty()) {
+            Map<String, Double> boosts = state.computeProteinSpecificityPrior(null, allGapGoTerms, 0.38d * alphaGap, 0.35d * alphaGap)
+            for (Map.Entry<String, Double> te : topBoosts.entrySet()) {
+                boosts[te.key] = Math.max(boosts.getOrDefault(te.key, 0.0d), te.value)
+            }
+            targetedKeyBoosts = boosts
         }
         log.debug("GapFillingPrior: ${boostByFunctionId.size()} functions associated with metabolic gaps")
     }
 
     @Override
     double logOddsBoost(String proteinId, String functionKey, IntegrationState state) {
+        if (state.claimCounts != null && !state.claimCounts.isEmpty()) {
+            return targetedKeyBoosts.getOrDefault(functionKey, 0.0d)
+        }
         if (boostByFunctionId.isEmpty()) return 0.0d
         String[] parts = IntegrationState.splitFunctionKey(functionKey)
         if (parts == null) return 0.0d

@@ -93,7 +93,12 @@ def build_command(genome, cfg):
             "--ec2go", f"{REF}/ec2go.txt",
         ]
     elif cfg == "A4_gap_filling":
-        cmd += ["--enable-priors", "gap_filling"] + gaps_args
+        cmd += [
+            "--enable-priors", "gap_filling",
+            "--pathways", f"{REF}/kegg_pathways.tsv",
+            "--modules", f"{REF}/kegg_modules.tsv",
+            "--ec2go", f"{REF}/ec2go.txt",
+        ] + gaps_args
     elif cfg == "A5_genomic_context":
         cmd += [
             "--enable-priors", "genomic_context",
@@ -166,6 +171,84 @@ def run_job(genome, cfg, force=False):
     return f"[DONE] {tag} {cfg} ({lines:,} annotations, {dt:.1f}s)"
 
 
+def run_batch(tasks, jobs=16):
+    manifest_path = f"{WORK_DIR}/ablation_batch_manifest.tsv"
+    with open(manifest_path, "w") as mf:
+        mf.write("genome_id\tclaims_path\tout_path\ttaxon\tessential_profile\toperons_path\tgaps_path\tmax_iter\tenforce_stage2\tenforce_mode\tenable_priors\n")
+        for g, cfg in tasks:
+            tag = g["tag"]
+            taxon = g["taxon"]
+            k = g["k"]
+            claims_file = f"{BENCH9}/with_iprscan/{tag}_claims_merged.jsonl"
+            out_file = f"{OUT_DIR}/{tag}_{cfg}_integrated.tsv"
+            gaps_file = f"{BENCH9}/gapseq/{tag}_gaps.jsonl"
+            has_gaps = os.path.exists(gaps_file) and os.path.getsize(gaps_file) > 0
+            operons_file = f"{OPERONS}/{tag}_operons.tsv"
+            has_ops = os.path.exists(operons_file) and os.path.getsize(operons_file) > 0
+
+            row_tax = "-"
+            row_ess = "-"
+            row_ops = "-"
+            row_gaps = "-"
+            row_s2 = "false"
+            row_mode = "-"
+            row_priors = "none"
+
+            if cfg == "A1_noisy_or":
+                row_priors = "none"
+            elif cfg == "A2_essentiality":
+                row_priors = "essentiality"
+                row_ess = k
+            elif cfg == "A3_coherence":
+                row_priors = "coherence"
+            elif cfg == "A4_gap_filling":
+                row_priors = "gap_filling"
+                if has_gaps:
+                    row_gaps = gaps_file
+            elif cfg == "A5_genomic_context":
+                row_priors = "genomic_context"
+                if has_ops:
+                    row_ops = operons_file
+            elif cfg == "A6_consistency_anatomical":
+                row_priors = "consistency,anatomical"
+                row_tax = taxon
+            elif cfg in ("A7_stage1_all", "A8_stage2_remove", "A9_stage2_relax"):
+                row_priors = "essentiality,coherence,consistency,anatomical,gap_filling,genomic_context"
+                row_tax = taxon
+                row_ess = k
+                if has_ops:
+                    row_ops = operons_file
+                if has_gaps:
+                    row_gaps = gaps_file
+                if cfg == "A8_stage2_remove":
+                    row_s2 = "true"
+                    row_mode = "remove"
+                elif cfg == "A9_stage2_relax":
+                    row_s2 = "true"
+                    row_mode = "relax"
+
+            mf.write("\t".join([
+                f"{tag}_{cfg}", claims_file, out_file, row_tax, row_ess,
+                row_ops, row_gaps, "-", row_s2, row_mode, row_priors
+            ]) + "\n")
+
+    cmd = [
+        JAVA, "-Xmx48g", "-jar", JAR, "integrate",
+        "--batch-manifest", manifest_path,
+        "--batch-threads", str(jobs),
+        "--enable-priors", "essentiality,coherence,consistency,anatomical,gap_filling,genomic_context",
+        "--go-owl", f"{REF}/go.owl",
+        "--pathways", f"{REF}/kegg_pathways.tsv",
+        "--modules", f"{REF}/kegg_modules.tsv",
+        "--ec2go", f"{REF}/ec2go.txt",
+        "--lite",
+    ]
+    print("Running shared-memory batch integration for all tasks...", flush=True)
+    proc = subprocess.run(cmd)
+    if proc.returncode != 0:
+        raise RuntimeError(f"Batch integration failed with exit code {proc.returncode}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run Pillar 1 & 2 ablation grid")
     parser.add_argument("--jobs", "-j", type=int, default=8, help="Parallel worker threads")
@@ -183,23 +266,19 @@ def main():
     tasks = []
     for g in genomes:
         for c in configs:
+            out_file = f"{OUT_DIR}/{g['tag']}_{c}_integrated.tsv"
+            if not args.force and os.path.exists(out_file) and os.path.getsize(out_file) > 1000:
+                continue
             tasks.append((g, c))
 
-    print(f"Total jobs to run: {len(tasks)} (concurrency: {args.jobs})")
+    print(f"Total jobs to run: {len(tasks)} (concurrency: {args.jobs})", flush=True)
+    if not tasks:
+        return
 
     t_start = time.time()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as executor:
-        futures = {executor.submit(run_job, g, c, args.force): (g["tag"], c) for g, c in tasks}
-        for future in concurrent.futures.as_completed(futures):
-            tag, cfg = futures[future]
-            try:
-                res = future.result()
-                print(res, flush=True)
-            except Exception as e:
-                print(f"[ERROR] {tag} {cfg}: {e}", flush=True)
-
+    run_batch(tasks, jobs=args.jobs)
     total_time = time.time() - t_start
-    print(f"\nAll tasks completed in {total_time:.1f}s ({total_time/60:.2f}m)")
+    print(f"\nAll tasks completed in {total_time:.1f}s ({total_time/60:.2f}m)", flush=True)
 
 
 if __name__ == "__main__":

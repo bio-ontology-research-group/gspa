@@ -14,15 +14,19 @@
 
 | Configuration | Label | F-max (micro, exp) | Δ vs Base | F-max (CAFA, exp) | Δ vs Base | Completeness | Pathway Coh | Complex Coh | Violations | Composite Score |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `A1_noisy_or` | Noisy-OR Base | **0.2853** | +0.0000 | **0.2363** | +0.0000 | 0.940 | 0.497 | 0.864 | 25 | **0.846** |
-| `A2_essentiality` | + Essentiality Prior | **0.2853** | +-0.0000 | **0.2363** | +-0.0000 | 0.944 | 0.497 | 0.864 | 25 | **0.847** |
-| `A3_coherence` | + Pathway/Module Coherence | **0.2824** | -0.0029 | **0.2354** | -0.0009 | 0.940 | 0.505 | 0.864 | 25 | **0.847** |
-| `A4_gap_filling` | + Metabolic Gap Filling | **0.2853** | +-0.0000 | **0.2361** | -0.0001 | 0.940 | 0.498 | 0.864 | 25 | **0.846** |
-| `A5_genomic_context` | + Operon Genomic Context | **0.2851** | -0.0002 | **0.2363** | +-0.0000 | 0.940 | 0.499 | 0.864 | 25 | **0.846** |
-| `A6_consistency_anatomical` | + Taxon/Anatomical Priors | **0.2894** | +0.0041 | **0.2389** | +0.0026 | 0.940 | 0.497 | 0.864 | 0 | **0.854** |
-| `A7_stage1_all` | Stage 1 Full Integration | **0.2847** | -0.0006 | **0.2366** | +0.0003 | 0.948 | 0.515 | 0.885 | 0 | **0.864** |
-| `A8_stage2_remove` | Stage 2 Enforcement (Remove) | **0.2847** | -0.0006 | **0.2366** | +0.0003 | 0.948 | 0.515 | 0.885 | 0 | **0.864** |
-| `A9_stage2_relax` | Stage 2 Enforcement (Relax) | **0.2847** | -0.0006 | **0.2366** | +0.0003 | 0.948 | 0.515 | 0.885 | 0 | **0.864** |
+| `A1_noisy_or` | Noisy-OR Base | **0.2836** | +0.0000 | **0.2361** | +0.0000 | 0.940 | 0.504 | 0.864 | 25 | **0.856** |
+| `A2_essentiality` | + Essentiality Prior | **0.2838** | +0.0002 | **0.2361** | +-0.0000 | 0.983 | 0.504 | 0.864 | 25 | **0.869** |
+| `A3_coherence` | + Pathway/Module Coherence | **0.2815** | -0.0021 | **0.2357** | -0.0004 | 0.940 | 0.562 | 0.922 | 25 | **0.881** |
+| `A4_gap_filling` | + Metabolic Gap Filling | **0.2838** | +0.0002 | **0.2361** | +-0.0000 | 0.940 | 0.510 | 0.864 | 25 | **0.857** |
+| `A5_genomic_context` | + Operon Genomic Context | **0.2815** | -0.0021 | **0.2356** | -0.0006 | 0.940 | 0.534 | 0.864 | 25 | **0.862** |
+| `A6_consistency_anatomical` | + Taxon/Anatomical Priors | **0.2851** | +0.0015 | **0.2371** | +0.0010 | 0.940 | 0.504 | 0.864 | 9 | **0.864** |
+| `A7_stage1_all` | Stage 1 Full Integration | **0.2828** | -0.0008 | **0.2368** | +0.0006 | 0.983 | 0.562 | 0.922 | 9 | **0.900** |
+| `A8_stage2_remove` | Stage 2 Enforcement (Remove) | **0.2852** | +0.0016 | **0.2378** | +0.0017 | 0.978 | 0.562 | 0.972 | 0 | **0.909** |
+| `A9_stage2_relax` | Stage 2 Enforcement (Relax) | **0.2863** | +0.0027 | **0.2382** | +0.0021 | 0.983 | 0.562 | 0.972 | 0 | **0.911** |
+| `A1_noisy_or_non_ecoli8` | NON_ECOLI_8 Noisy-OR Base | **0.2668** | +0.0000 | **0.2138** | +0.0000 | 0.932 | 0.490 | 0.874 | 21 | **0.853** |
+| `A7_stage1_all_non_ecoli8` | NON_ECOLI_8 Stage 1 All | **0.2658** | -0.0010 | **0.2145** | +0.0007 | 0.981 | 0.551 | 0.928 | 8 | **0.899** |
+| `A8_stage2_remove_non_ecoli8` | NON_ECOLI_8 Stage 2 Remove | **0.2686** | +0.0017 | **0.2157** | +0.0019 | 0.976 | 0.551 | 0.984 | 0 | **0.908** |
+| `A9_stage2_relax_non_ecoli8` | NON_ECOLI_8 Stage 2 Relax | **0.2697** | +0.0029 | **0.2162** | +0.0024 | 0.981 | 0.551 | 0.984 | 0 | **0.910** |
 
 ## 3. Cross-Clade Taxon & Anatomical Perturbation Analysis
 
@@ -30,10 +34,10 @@ Injected 100 high-confidence false-positive claims (50 anatomical constraints li
 
 | Configuration | Mean Injected | Mean Surviving | Surviving Anat | Surviving Taxon | Suppression Rate (%) | F-max Micro (exp) | F-max CAFA (exp) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `A1_noisy_or` | 100.0 | 13.9 | 7.8 | 6.1 | **86.1%** | 0.2851 | 0.2360 |
-| `A6_consistency_anatomical` | 100.0 | 0.3 | 0.3 | 0.0 | **99.7%** | 0.2894 | 0.2388 |
-| `A8_stage2_remove` | 100.0 | 0.3 | 0.3 | 0.0 | **99.7%** | 0.2847 | 0.2371 |
-| `A9_stage2_relax` | 100.0 | 0.3 | 0.3 | 0.0 | **99.7%** | 0.2811 | 0.2350 |
+| `A1_noisy_or` | 100.0 | 13.9 | 7.8 | 6.1 | **86.1%** | 0.2834 | 0.2358 |
+| `A6_consistency_anatomical` | 100.0 | 0.3 | 0.3 | 0.0 | **99.7%** | 0.2851 | 0.2370 |
+| `A8_stage2_remove` | 100.0 | 0.3 | 0.3 | 0.0 | **99.7%** | 0.2827 | 0.2367 |
+| `A9_stage2_relax` | 100.0 | 0.3 | 0.3 | 0.0 | **99.7%** | 0.2836 | 0.2372 |
 
 ## 4. Key Empirical Findings
 

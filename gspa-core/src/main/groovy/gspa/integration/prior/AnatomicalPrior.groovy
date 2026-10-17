@@ -32,7 +32,7 @@ class AnatomicalPrior implements Prior {
     private static final Logger log = LoggerFactory.getLogger(AnatomicalPrior)
 
     /** Soft penalty in log-odds for anatomically impossible GO terms. */
-    double alphaAnatPenalty = 3.5d
+    double alphaAnatPenalty = 0.68d
 
     /** Soft boost in log-odds for candidate claims on an active, valid anatomical structure. */
     double alphaAnatBoost = 0.65d
