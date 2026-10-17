@@ -395,11 +395,11 @@ def generate_figure2():
     for idx, b in enumerate(bars):
         val = surv_means[idx]
         supp = supp_means[idx]
-        txt = f"{val:.1f}/genome\n(Unfiltered)" if idx == 0 else f"{val:.2f}/genome\n({supp:.1f}% supp.)"
-        ax.text(b.get_x() + b.get_width() / 2, val + 0.35, txt, ha="center", va="bottom", fontsize=7.8, fontweight="bold")
+        txt = f"{val:.1f}/genome\n({supp:.1f}% supp.)" if idx == 0 else f"{val:.2f}/genome\n({supp:.1f}% supp.)"
+        ax.text(b.get_x() + b.get_width() / 2, val + 1.5, txt, ha="center", va="bottom", fontsize=7.6, fontweight="bold")
     ax.set_xticks(x_p)
     ax.set_xticklabels(p_labels)
-    ax.set_ylim(0, 17.5)
+    ax.set_ylim(0, 86.0)
     ax.set_ylabel("Surviving Cross-Clade Violations / Genome")
     ax.set_title("Cross-Clade Perturbation Suppression (900 Injected Claims)")
     ax.grid(True, axis="y")
@@ -602,8 +602,18 @@ def generate_figure4():
     # --- Panel A: Obligate Heteromeric Complex LSO Summary (175 cases) ---
     ax = axes[0, 0]
     add_panel_label(ax, "a")
-    all_lso = [r for r in lso_rows if r["genome"] == "ALL (Weighted Mean)"]
-    m_names = ["Stage 0\nNoisy-OR", "Stage 1\nCoherence Prior", "Stage 1\n+ Operon Context", "Stage 1+2\n+ Stage 3"]
+    all_lso_dict = {r["method"]: r for r in lso_rows if r["genome"] == "ALL (Weighted Mean)"}
+    lso_order = [
+        ("DIAMOND-BLASTp Sequence Homology", "DIAMOND\nBLASTp"),
+        ("InterProScan / Pfam Domain Profile", "InterProScan\n/ Pfam"),
+        ("Operon Neighborhood Vote (Synteny Only)", "Operon\nVote"),
+        ("Baseline Noisy-OR", "Stage 0\nNoisy-OR"),
+        ("Stage 1 CoherencePrior", "Stage 1\nCoherence"),
+        ("Stage 1 Coherence + Operon Context", "Stage 1\n+ Operon"),
+        ("Stage 1 + Stage 2 + Stage 3 Agent", "Stage 1+2\n+ Stage 3"),
+    ]
+    all_lso = [all_lso_dict[k] for k, _ in lso_order]
+    m_names = [lbl for _, lbl in lso_order]
     hit1 = [float(r["hit_at_1"]) for r in all_lso]
     rec = [float(r["recall_at_05"]) for r in all_lso]
     f1 = [float(r["f1_at_05"]) for r in all_lso]
@@ -616,15 +626,14 @@ def generate_figure4():
     ax.bar(x + 0.5 * w, f1, width=w, color=PALETTE["blue"], label="F1@0.5")
     ax.bar(x + 1.5 * w, coh, width=w, color=PALETTE["orange"], hatch="..", label="Genome Complex Coherence")
     for idx in range(len(m_names)):
-        ax.text(x[idx] - 0.5 * w, rec[idx] + 0.02, f"{rec[idx]:.2f}", ha="center", va="bottom", fontsize=7.2, fontweight="bold", color=PALETTE["teal"])
-        ax.text(x[idx] - 1.5 * w, hit1[idx] + 0.02, f"{hit1[idx]:.2f}", ha="center", va="bottom", fontsize=7.2, fontweight="bold", color=PALETTE["navy"])
+        ax.text(x[idx] + 0.5 * w, f1[idx] + 0.02, f"{f1[idx]:.2f}", ha="center", va="bottom", fontsize=6.4, fontweight="bold", color=PALETTE["navy"])
     ax.set_xticks(x)
-    ax.set_xticklabels(m_names)
+    ax.set_xticklabels(m_names, fontsize=7.0, rotation=18, ha="right")
     ax.set_ylim(0, 1.25)
     ax.set_ylabel("Score Across 175 Held-Out Subunits")
     ax.set_title("Leave-Subunit-Out (LSO) Heteromeric Complex Completion")
     ax.grid(True, axis="y")
-    ax.legend(loc="upper left", frameon=True, ncol=2, fontsize=7.5)
+    ax.legend(loc="upper left", frameon=True, ncol=2, fontsize=7.2)
 
     # --- Panel B: Per-Genome LSO F1@0.5 Progression (Highlighting Synechocystis) ---
     ax = axes[0, 1]
@@ -639,7 +648,7 @@ def generate_figure4():
         r"$\it{Synechocystis}$" + "\n(Dispersed Loci)",
     ]
     f1_m2 = [float(next(r["f1_at_05"] for r in lso_rows if r["genome"] == g and "CoherencePrior" in r["method"])) for g in g_order]
-    f1_m3 = [float(next(r["f1_at_05"] for r in lso_rows if r["genome"] == g and "Operon" in r["method"])) for g in g_order]
+    f1_m3 = [float(next(r["f1_at_05"] for r in lso_rows if r["genome"] == g and "Coherence + Operon" in r["method"])) for g in g_order]
     f1_m4 = [float(next(r["f1_at_05"] for r in lso_rows if r["genome"] == g and "Agent" in r["method"])) for g in g_order]
 
     x_g = np.arange(len(g_order))
@@ -739,12 +748,13 @@ def generate_figure5():
     vs_by_cfg = {r["configuration"]: r for r in vs_rows}
     selected_cfgs = [
         ("Stage 1 + Stage 2 Deterministic Only", "Stage 1+2\nOnly"),
+        ("Direct Zero-Shot LLM (No Tools, No Guardrail)", "Zero-Shot LLM\n(No Tools)"),
         ("Posterior Threshold (>=0.35) + Guardrail", "Threshold ≥0.35\n+ Guardrail"),
         ("Logistic Regression (5-Fold CV, 3 Pre-Tool Scalars)", "LogReg (3-Feat\nPre-Tool CV)"),
         ("GBDT (5-Fold CV, 3 Pre-Tool Scalars)", "GBDT (3-Feat\nPre-Tool CV)"),
         ("Stage 3 Agent — Fast 1-Step Mode", "Fast 1-Step\nStage 3"),
-        ("Stage 3 Agent — Qwen 27B Without Guardrail", "Qwen 27B\nNo Guardrail"),
-        ("Stage 3 Agent — Qwen 27B + Guardrail", "Qwen 27B\n+ Guardrail"),
+        ("Stage 3 Agent — Qwen 3.8 27B Without Guardrail", "Qwen 3.8 27B\nNo Guardrail"),
+        ("Stage 3 Agent — Qwen 3.8 27B + Guardrail", "Qwen 3.8 27B\n+ Guardrail"),
         ("GBDT (5-Fold CV) + Guardrail", "GBDT (8-Feat\nPost-Tool CV)"),
     ]
     cfg_short = [lbl for _, lbl in selected_cfgs]
@@ -763,14 +773,14 @@ def generate_figure5():
     ax.bar(x + 0.5 * w, f1, width=w, color=PALETTE["navy"], label="F1 Score (%)")
     ax.bar(x + 1.5 * w, acc, width=w, color=PALETTE["sky"], hatch="..", label="Overall Accuracy (%)")
     for idx in range(1, len(cfg_short)):
-        ax.text(x[idx] + 0.5 * w, f1[idx] + 1.5, f"{f1[idx]:.1f}%", ha="center", va="bottom", fontsize=6.2, fontweight="bold", color=PALETTE["navy"])
+        ax.text(x[idx] + 0.5 * w, f1[idx] + 1.5, f"{f1[idx]:.1f}%", ha="center", va="bottom", fontsize=5.8, fontweight="bold", color=PALETTE["navy"])
     ax.set_xticks(x)
-    ax.set_xticklabels(cfg_short, fontsize=6.7, rotation=24, ha="right")
+    ax.set_xticklabels(cfg_short, fontsize=6.3, rotation=25, ha="right")
     ax.set_ylim(0, 125)
     ax.set_ylabel("Performance on 120 Anomalies (%)")
     ax.set_title("De-Identified Stage 3 Resolution vs. ML Baselines (n = 120)")
     ax.grid(True, axis="y")
-    ax.legend(loc="upper left", frameon=True, ncol=2, fontsize=7.0)
+    ax.legend(loc="upper left", frameon=True, ncol=2, fontsize=6.8)
 
     # --- Panel B: Symbolic Guardrail Violation Rate vs F1 Tradeoff ---
     ax = axes[0, 1]
@@ -779,6 +789,7 @@ def generate_figure5():
     viol_cnt = [int(vs_by_cfg[k]["violations_accepted"]) for k, _ in selected_cfgs]
     colors_b = [
         PALETTE["lightgrey"],
+        PALETTE["vermilion"],
         PALETTE["sky"],
         PALETTE["orange"],
         PALETTE["orange"],
@@ -792,11 +803,11 @@ def generate_figure5():
         v = viol_pct[idx]
         c = viol_cnt[idx]
         lbl = f"{v:.1f}%\n({c}/120)" if c > 0 else "0.0%\n(0/120)"
-        ax.text(b.get_x() + b.get_width() / 2, v + 0.12, lbl, ha="center", va="bottom", fontsize=6.4, fontweight="bold",
+        ax.text(b.get_x() + b.get_width() / 2, v + 0.45, lbl, ha="center", va="bottom", fontsize=6.0, fontweight="bold",
                 color=PALETTE["vermilion"] if c > 0 else PALETTE["teal"])
     ax.set_xticks(x)
-    ax.set_xticklabels(cfg_short, fontsize=6.7, rotation=24, ha="right")
-    ax.set_ylim(0, 4.0)
+    ax.set_xticklabels(cfg_short, fontsize=6.3, rotation=25, ha="right")
+    ax.set_ylim(0, 31.0)
     ax.set_ylabel("Accepted Taxon/Anatomical Violation Rate (%)")
     ax.set_title("Symbolic Guardrail Eliminates Cross-Clade Trap Violations")
     ax.grid(True, axis="y")
@@ -862,9 +873,9 @@ def generate_figure5():
     c2_http = float(vs_by_cfg["Stage 3 Agent — Fast 1-Step Mode"]["mean_latency_sec"])
     c2_lat = c2_http / 8.0
     c2_tools = float(vs_by_cfg["Stage 3 Agent — Fast 1-Step Mode"]["mean_tool_calls"])
-    c3_http = float(vs_by_cfg["Stage 3 Agent — Qwen 27B + Guardrail"]["mean_latency_sec"])
+    c3_http = float(vs_by_cfg["Stage 3 Agent — Qwen 3.8 27B + Guardrail"]["mean_latency_sec"])
     c3_lat = c3_http / 8.0
-    c3_tools = float(vs_by_cfg["Stage 3 Agent — Qwen 27B + Guardrail"]["mean_tool_calls"])
+    c3_tools = float(vs_by_cfg["Stage 3 Agent — Qwen 3.8 27B + Guardrail"]["mean_tool_calls"])
 
     x_t = np.arange(len(taxa_labels))
     w_bar = 0.34

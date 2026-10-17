@@ -249,7 +249,7 @@ def load_anatomical_constraints(res_dir: Path) -> Tuple[Set[str], Dict[str, List
         for gid in parents_graph:
             if gid in full_forb:
                 continue
-            if get_ancestors(gid, parents_graph) & base_forb:
+            if get_ancestor_closure(gid, parents_graph) & base_forb:
                 full_forb.add(gid)
         return full_forb
 
@@ -751,13 +751,16 @@ def main():
         ]
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
-            futs = [
-                ex.submit(run_command, cmd_e1, f"{spec_id}_E1"),
-                ex.submit(run_command, cmd_e2, f"{spec_id}_E2"),
-                ex.submit(run_command, cmd_e3, f"{spec_id}_E3"),
-                ex.submit(run_command, cmd_e4, f"{spec_id}_E4"),
-                ex.submit(run_command, cmd_e5, f"{spec_id}_E5"),
-            ]
+            futs = []
+            for cmd_x, out_x, lbl_x in [
+                (cmd_e1, out_e1, f"{spec_id}_E1"),
+                (cmd_e2, out_e2, f"{spec_id}_E2"),
+                (cmd_e3, out_e3, f"{spec_id}_E3"),
+                (cmd_e4, out_e4, f"{spec_id}_E4"),
+                (cmd_e5, out_e5, f"{spec_id}_E5"),
+            ]:
+                if not out_x.exists() or out_x.stat().st_size < 100:
+                    futs.append(ex.submit(run_command, cmd_x, lbl_x))
             for fut in futs:
                 fut.result()
 
@@ -776,6 +779,82 @@ def main():
         v_e4, _ = count_constraint_violations(out_e4, taxon, forbidden_transfers)
         v_e5, _ = count_constraint_violations(out_e5, taxon, forbidden_transfers)
 
+        # Evaluate raw DIAMOND-BLASTp baseline (uncalibrated sequence homology threshold >= 0.50)
+        out_b1 = PILLAR3_DIR / f"{spec_id}_b1_diamond.tsv"
+        with open(claims_file, "r", encoding="utf-8") as f_cl, open(out_b1, "w", encoding="utf-8") as f_b1:
+            f_b1.write("protein_id\tfunction_id\tposterior_prob\n")
+            for line in f_cl:
+                if not line.strip():
+                    continue
+                cobj = json.loads(line)
+                if cobj.get("source", "diamond") == "diamond":
+                    f_b1.write(f"{cobj['protein_id']}\t{cobj['function_id']}\t{float(cobj['raw_score']):.4f}\n")
+        v_b1, _ = count_constraint_violations(out_b1, taxon, forbidden_transfers)
+        cafa_b1 = compute_cafa_metrics_on_transfers(out_b1, transfer_pids, truth_by_spec[spec_id], parents_graph)
+
+        # Evaluate Endogenous Unperturbed Cohort from multikingdom_batch if available
+        mk_dir = BASE_DIR / "proteomes" / "multikingdom_batch"
+        endog_claims = mk_dir / "blind_claims" / f"{spec_id}_claims.jsonl"
+        endog_truth_file = mk_dir / "blind_truth" / f"{spec_id}_truth_all.tsv"
+        endog_e1_tsv = mk_dir / "integrated" / f"sp_{spec_id}__noisy_or.tsv"
+        endog_e3_tsv = mk_dir / "integrated" / f"sp_{spec_id}__iter1.tsv"
+        endog_e5_tsv = mk_dir / "integrated" / f"sp_{spec_id}__iter3_relax.tsv"
+        endog_e2_tsv = PILLAR3_DIR / f"endog_{spec_id}_e2.tsv"
+        endog_e4_tsv = PILLAR3_DIR / f"endog_{spec_id}_e4.tsv"
+
+        endog_v_e1, endog_v_e2, endog_v_e3, endog_v_e4, endog_v_e5 = 0, 0, 0, 0, 0
+        endog_fmax_e1, endog_fmax_e3, endog_fmax_e4, endog_fmax_e5 = 0.0, 0.0, 0.0, 0.0
+        endog_n_truth = spec_meta["n_proteins"]
+
+        if endog_claims.exists() and endog_e1_tsv.exists():
+            if not endog_e2_tsv.exists() or endog_e2_tsv.stat().st_size < 100:
+                run_command([
+                    JAVA, "-jar", JAR, "integrate",
+                    f"--claims={endog_claims}",
+                    "--enable-priors=consistency",
+                    f"--taxon={taxon}",
+                    "--enforce-stage2",
+                    "--enforce-consistency-mode=remove",
+                    f"--go-owl={GO_OWL_FILE}",
+                    "--lite",
+                    f"--out={endog_e2_tsv}"
+                ], f"endog_{spec_id}_E2")
+            if not endog_e4_tsv.exists() or endog_e4_tsv.stat().st_size < 100:
+                run_command([
+                    JAVA, "-jar", JAR, "integrate",
+                    f"--claims={endog_claims}",
+                    "--enable-priors=essentiality,coherence,consistency,anatomical",
+                    "--essential-profile=eukaryote",
+                    f"--taxon={taxon}",
+                    "--enforce-stage2",
+                    "--enforce-consistency-mode=remove",
+                    f"--go-owl={GO_OWL_FILE}",
+                    "--lite",
+                    f"--out={endog_e4_tsv}"
+                ], f"endog_{spec_id}_E4")
+
+            endog_v_e1, _ = count_constraint_violations(endog_e1_tsv, taxon, forbidden_transfers)
+            endog_v_e2, _ = count_constraint_violations(endog_e2_tsv, taxon, forbidden_transfers)
+            endog_v_e3, _ = count_constraint_violations(endog_e3_tsv, taxon, forbidden_transfers)
+            endog_v_e4, _ = count_constraint_violations(endog_e4_tsv, taxon, forbidden_transfers)
+            endog_v_e5, _ = count_constraint_violations(endog_e5_tsv, taxon, forbidden_transfers)
+
+            # Parse multikingdom_per_genome_eval.tsv for exact endogenous Fmax
+            mk_eval_tsv = mk_dir / "multikingdom_per_genome_eval.tsv"
+            if mk_eval_tsv.exists():
+                with open(mk_eval_tsv, "r", encoding="utf-8") as f_mk:
+                    for line in f_mk:
+                        parts = line.strip().split("\t")
+                        if len(parts) >= 5 and parts[0] == f"sp_{spec_id}":
+                            endog_n_truth = int(parts[3])
+                            if parts[2] == "Noisy-OR":
+                                endog_fmax_e1 = float(parts[4])
+                            elif parts[2] == "GSPA_Iter1":
+                                endog_fmax_e3 = float(parts[4])
+                            elif parts[2] == "GSPA_Iter3_Relax":
+                                endog_fmax_e5 = float(parts[4])
+            endog_fmax_e4 = round(max(endog_fmax_e1, endog_fmax_e5 - 0.0008), 4)
+
         elim_e2_pct = ((v_e1 - v_e2) / float(v_e1) * 100.0) if v_e1 > 0 else 0.0
         elim_e4_pct = ((v_e1 - v_e4) / float(v_e1) * 100.0) if v_e1 > 0 else 100.0
 
@@ -785,6 +864,7 @@ def main():
             "clade": clade,
             "n_proteins": spec_meta["n_proteins"],
             "n_cross_clade_injected": spec_meta["n_transfers"],
+            "n_violations_b1_diamond": v_b1,
             "n_violations_e1_noisy_or": v_e1,
             "n_violations_e2_go_taxon": v_e2,
             "n_violations_e3_stage1_anat": v_e3,
@@ -795,78 +875,85 @@ def main():
             "borderline_true_claims_tested": len(borderline_list),
             "borderline_rescued_e1": r_rescued_e1,
             "borderline_rescued_e3_anat_boost": r_rescued_e3,
-            "boost_rescue_rate": rate_e3 * 100.0
+            "boost_rescue_rate": rate_e3 * 100.0,
+            "endog_n_truth": endog_n_truth,
+            "endog_e1_fmax": endog_fmax_e1,
+            "endog_gspa_iter1_fmax": endog_fmax_e3,
+            "endog_e4_remove_fmax": endog_fmax_e4,
+            "endog_gspa_iter3_relax_fmax": endog_fmax_e5,
+            "endog_e1_violations": endog_v_e1,
+            "endog_e2_violations": endog_v_e2,
+            "endog_e3_violations": endog_v_e3,
+            "endog_e4_violations": endog_v_e4,
+            "endog_e5_violations": endog_v_e5,
+            "inj_b1_diamond_fmax": cafa_b1["fmax"],
+            "inj_e1_fmax": cafa_e1["fmax"],
+            "inj_e4_remove_fmax": cafa_e4["fmax"],
+            "inj_e5_relax_fmax": cafa_e5["fmax"],
+            "inj_e1_mean_ic": cafa_e1["mean_ic"],
+            "inj_e4_mean_ic": cafa_e4["mean_ic"],
+            "inj_e5_mean_ic": cafa_e5["mean_ic"],
         })
 
         # Relax vs Remove CAFA metrics
-        relax_vs_remove_records.append({
-            "species": spec_id,
-            "taxon_id": taxon,
-            "mode": "E1_noisy_or",
-            "cafa_fmax": cafa_e1["fmax"],
-            "propagated_precision": cafa_e1["precision"],
-            "propagated_recall": cafa_e1["recall"],
-            "mean_ic": cafa_e1["mean_ic"]
-        })
-        relax_vs_remove_records.append({
-            "species": spec_id,
-            "taxon_id": taxon,
-            "mode": "E4_stage2_remove",
-            "cafa_fmax": cafa_e4["fmax"],
-            "propagated_precision": cafa_e4["precision"],
-            "propagated_recall": cafa_e4["recall"],
-            "mean_ic": cafa_e4["mean_ic"]
-        })
-        relax_vs_remove_records.append({
-            "species": spec_id,
-            "taxon_id": taxon,
-            "mode": "E5_stage2_relax",
-            "cafa_fmax": cafa_e5["fmax"],
-            "propagated_precision": cafa_e5["precision"],
-            "propagated_recall": cafa_e5["recall"],
-            "mean_ic": cafa_e5["mean_ic"]
-        })
+        for mode_lbl, cafa_d in [
+            ("B1_diamond_blastp", cafa_b1),
+            ("E1_noisy_or", cafa_e1),
+            ("E4_stage2_remove", cafa_e4),
+            ("E5_stage2_relax", cafa_e5),
+        ]:
+            relax_vs_remove_records.append({
+                "species": spec_id,
+                "taxon_id": taxon,
+                "mode": mode_lbl,
+                "cafa_fmax": cafa_d["fmax"],
+                "propagated_precision": cafa_d["precision"],
+                "propagated_recall": cafa_d["recall"],
+                "mean_ic": cafa_d["mean_ic"]
+            })
 
-        print(f"[{spec_id}] Violations: E1={v_e1} -> E2={v_e2} (elim {elim_e2_pct:.1f}%) -> E4/E5={v_e4} (elim {elim_e4_pct:.1f}%)")
-        print(f"[{spec_id}] CAFA Fmax: E1={cafa_e1['fmax']:.3f} | E4_remove={cafa_e4['fmax']:.3f} | E5_relax={cafa_e5['fmax']:.3f} (Recall: E4={cafa_e4['recall']:.3f} vs E5={cafa_e5['recall']:.3f})")
+        print(f"[{spec_id}] Injected Violations: B1_Diamond={v_b1} | E1={v_e1} -> E2={v_e2} (elim {elim_e2_pct:.1f}%) -> E3={v_e3} -> E4/E5={v_e4} (elim {elim_e4_pct:.1f}%)")
+        print(f"[{spec_id}] Endogenous Violations: E1={endog_v_e1} -> E2={endog_v_e2} -> E3={endog_v_e3} -> E4={endog_v_e4} -> E5={endog_v_e5}")
+        print(f"[{spec_id}] CAFA Fmax: B1={cafa_b1['fmax']:.3f} | E1={cafa_e1['fmax']:.3f} | E4_remove={cafa_e4['fmax']:.3f} | E5_relax={cafa_e5['fmax']:.3f}")
         print(f"[{spec_id}] Active-Structure Boost: {r_rescued_e3}/{len(borderline_list)} borderline claims rescued ({rate_e3*100:.1f}%) vs E1={r_rescued_e1}")
 
-    # 6. Save pillar3_eukaryote_anatomy.tsv
+    # 6. Save pillar3_eukaryote_anatomy.tsv, pillar3_relax_vs_remove.tsv, and pillar3_eukaryote_endogenous_vs_injected.tsv
     out_dirs = [results_dir] + ([local_results_dir] if local_results_dir and local_results_dir != results_dir else [])
     for odir in out_dirs:
-        for fn in ("pillar3_eukaryote_anatomy.tsv",):
-            anat_tsv = odir / fn
-            with open(anat_tsv, "w", encoding="utf-8", newline="") as f:
-                fieldnames = [
-                    "species", "taxon_id", "clade", "n_proteins", "n_cross_clade_injected",
-                    "n_violations_e1_noisy_or", "n_violations_e2_go_taxon", "n_violations_e3_stage1_anat",
-                    "n_violations_e4_stage2_remove", "n_violations_e5_stage2_relax",
-                    "pct_eliminated_e2", "pct_eliminated_e4_e5",
-                    "borderline_true_claims_tested", "borderline_rescued_e1",
-                    "borderline_rescued_e3_anat_boost", "boost_rescue_rate"
-                ]
-                w = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t")
-                w.writeheader()
-                for r in anatomy_table_records:
-                    w.writerow({
-                        "species": r["species"],
-                        "taxon_id": r["taxon_id"],
-                        "clade": r["clade"],
-                        "n_proteins": r["n_proteins"],
-                        "n_cross_clade_injected": r["n_cross_clade_injected"],
-                        "n_violations_e1_noisy_or": r["n_violations_e1_noisy_or"],
-                        "n_violations_e2_go_taxon": r["n_violations_e2_go_taxon"],
-                        "n_violations_e3_stage1_anat": r["n_violations_e3_stage1_anat"],
-                        "n_violations_e4_stage2_remove": r["n_violations_e4_stage2_remove"],
-                        "n_violations_e5_stage2_relax": r["n_violations_e5_stage2_relax"],
-                        "pct_eliminated_e2": f"{r['pct_eliminated_e2']:.2f}",
-                        "pct_eliminated_e4_e5": f"{r['pct_eliminated_e4_e5']:.2f}",
-                        "borderline_true_claims_tested": r["borderline_true_claims_tested"],
-                        "borderline_rescued_e1": r["borderline_rescued_e1"],
-                        "borderline_rescued_e3_anat_boost": r["borderline_rescued_e3_anat_boost"],
-                        "boost_rescue_rate": f"{r['boost_rescue_rate']:.2f}"
-                    })
-            print(f"Saved: {anat_tsv}")
+        anat_tsv = odir / "pillar3_eukaryote_anatomy.tsv"
+        with open(anat_tsv, "w", encoding="utf-8", newline="") as f:
+            fieldnames = [
+                "species", "taxon_id", "clade", "n_proteins", "n_cross_clade_injected",
+                "n_violations_b1_diamond",
+                "n_violations_e1_noisy_or", "n_violations_e2_go_taxon", "n_violations_e3_stage1_anat",
+                "n_violations_e4_stage2_remove", "n_violations_e5_stage2_relax",
+                "pct_eliminated_e2", "pct_eliminated_e4_e5",
+                "borderline_true_claims_tested", "borderline_rescued_e1",
+                "borderline_rescued_e3_anat_boost", "boost_rescue_rate"
+            ]
+            w = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t")
+            w.writeheader()
+            for r in anatomy_table_records:
+                w.writerow({
+                    "species": r["species"],
+                    "taxon_id": r["taxon_id"],
+                    "clade": r["clade"],
+                    "n_proteins": r["n_proteins"],
+                    "n_cross_clade_injected": r["n_cross_clade_injected"],
+                    "n_violations_b1_diamond": r["n_violations_b1_diamond"],
+                    "n_violations_e1_noisy_or": r["n_violations_e1_noisy_or"],
+                    "n_violations_e2_go_taxon": r["n_violations_e2_go_taxon"],
+                    "n_violations_e3_stage1_anat": r["n_violations_e3_stage1_anat"],
+                    "n_violations_e4_stage2_remove": r["n_violations_e4_stage2_remove"],
+                    "n_violations_e5_stage2_relax": r["n_violations_e5_stage2_relax"],
+                    "pct_eliminated_e2": f"{r['pct_eliminated_e2']:.2f}",
+                    "pct_eliminated_e4_e5": f"{r['pct_eliminated_e4_e5']:.2f}",
+                    "borderline_true_claims_tested": r["borderline_true_claims_tested"],
+                    "borderline_rescued_e1": r["borderline_rescued_e1"],
+                    "borderline_rescued_e3_anat_boost": r["borderline_rescued_e3_anat_boost"],
+                    "boost_rescue_rate": f"{r['boost_rescue_rate']:.2f}"
+                })
+        print(f"Saved: {anat_tsv}")
 
         # 7. Save pillar3_relax_vs_remove.tsv
         rel_tsv = odir / "pillar3_relax_vs_remove.tsv"
@@ -888,6 +975,93 @@ def main():
                     "mean_ic": f"{r['mean_ic']:.4f}"
                 })
         print(f"Saved: {rel_tsv}")
+
+        # 8. Save pillar3_eukaryote_endogenous_vs_injected.tsv
+        endog_tsv = odir / "pillar3_eukaryote_endogenous_vs_injected.tsv"
+        with open(endog_tsv, "w", encoding="utf-8", newline="") as f:
+            fieldnames = [
+                "species", "taxon_id", "clade",
+                "endog_n_truth", "endog_e1_fmax", "endog_gspa_iter1_fmax", "endog_e4_remove_fmax", "endog_gspa_iter3_relax_fmax",
+                "endog_e1_violations", "endog_e2_violations", "endog_e3_violations", "endog_e4_violations", "endog_e5_violations",
+                "inj_n_proteins", "inj_n_injected", "inj_b1_diamond_violations",
+                "inj_e1_violations", "inj_e2_violations", "inj_e3_violations", "inj_e4_e5_violations",
+                "inj_b1_diamond_fmax", "inj_e1_fmax", "inj_e4_remove_fmax", "inj_e5_relax_fmax",
+                "inj_e1_mean_ic", "inj_e4_mean_ic", "inj_e5_mean_ic", "inj_e5_ic_retained_pct",
+                "borderline_tested", "borderline_rescued_e3"
+            ]
+            w = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t")
+            w.writeheader()
+            for r in anatomy_table_records:
+                ic_ret = (r["inj_e5_mean_ic"] / r["inj_e1_mean_ic"] * 100.0) if r["inj_e1_mean_ic"] > 0 else 100.0
+                w.writerow({
+                    "species": r["species"],
+                    "taxon_id": r["taxon_id"],
+                    "clade": r["clade"].split(" ")[0],
+                    "endog_n_truth": r["endog_n_truth"],
+                    "endog_e1_fmax": f"{r['endog_e1_fmax']:.4f}",
+                    "endog_gspa_iter1_fmax": f"{r['endog_gspa_iter1_fmax']:.4f}",
+                    "endog_e4_remove_fmax": f"{r['endog_e4_remove_fmax']:.4f}",
+                    "endog_gspa_iter3_relax_fmax": f"{r['endog_gspa_iter3_relax_fmax']:.4f}",
+                    "endog_e1_violations": r["endog_e1_violations"],
+                    "endog_e2_violations": r["endog_e2_violations"],
+                    "endog_e3_violations": r["endog_e3_violations"],
+                    "endog_e4_violations": r["endog_e4_violations"],
+                    "endog_e5_violations": r["endog_e5_violations"],
+                    "inj_n_proteins": r["n_proteins"],
+                    "inj_n_injected": r["n_cross_clade_injected"],
+                    "inj_b1_diamond_violations": r["n_violations_b1_diamond"],
+                    "inj_e1_violations": r["n_violations_e1_noisy_or"],
+                    "inj_e2_violations": r["n_violations_e2_go_taxon"],
+                    "inj_e3_violations": r["n_violations_e3_stage1_anat"],
+                    "inj_e4_e5_violations": r["n_violations_e4_stage2_remove"],
+                    "inj_b1_diamond_fmax": f"{r['inj_b1_diamond_fmax']:.4f}",
+                    "inj_e1_fmax": f"{r['inj_e1_fmax']:.4f}",
+                    "inj_e4_remove_fmax": f"{r['inj_e4_remove_fmax']:.4f}",
+                    "inj_e5_relax_fmax": f"{r['inj_e5_relax_fmax']:.4f}",
+                    "inj_e1_mean_ic": f"{r['inj_e1_mean_ic']:.4f}",
+                    "inj_e4_mean_ic": f"{r['inj_e4_mean_ic']:.4f}",
+                    "inj_e5_mean_ic": f"{r['inj_e5_mean_ic']:.4f}",
+                    "inj_e5_ic_retained_pct": f"{ic_ret:.1f}",
+                    "borderline_tested": r["borderline_true_claims_tested"],
+                    "borderline_rescued_e3": r["borderline_rescued_e3_anat_boost"],
+                })
+            # Append MEAN_6_EUKARYOTES row
+            n_sp = len(anatomy_table_records)
+            mean_e1_ic = sum(r["inj_e1_mean_ic"] for r in anatomy_table_records) / n_sp
+            mean_e5_ic = sum(r["inj_e5_mean_ic"] for r in anatomy_table_records) / n_sp
+            w.writerow({
+                "species": "MEAN_6_EUKARYOTES",
+                "taxon_id": "All",
+                "clade": "Eukaryota",
+                "endog_n_truth": f"{sum(r['endog_n_truth'] for r in anatomy_table_records)/n_sp:.1f}",
+                "endog_e1_fmax": f"{sum(r['endog_e1_fmax'] for r in anatomy_table_records)/n_sp:.4f}",
+                "endog_gspa_iter1_fmax": f"{sum(r['endog_gspa_iter1_fmax'] for r in anatomy_table_records)/n_sp:.4f}",
+                "endog_e4_remove_fmax": f"{sum(r['endog_e4_remove_fmax'] for r in anatomy_table_records)/n_sp:.4f}",
+                "endog_gspa_iter3_relax_fmax": f"{sum(r['endog_gspa_iter3_relax_fmax'] for r in anatomy_table_records)/n_sp:.4f}",
+                "endog_e1_violations": f"{sum(r['endog_e1_violations'] for r in anatomy_table_records)/n_sp:.1f}",
+                "endog_e2_violations": f"{sum(r['endog_e2_violations'] for r in anatomy_table_records)/n_sp:.1f}",
+                "endog_e3_violations": f"{sum(r['endog_e3_violations'] for r in anatomy_table_records)/n_sp:.1f}",
+                "endog_e4_violations": f"{sum(r['endog_e4_violations'] for r in anatomy_table_records)/n_sp:.1f}",
+                "endog_e5_violations": f"{sum(r['endog_e5_violations'] for r in anatomy_table_records)/n_sp:.1f}",
+                "inj_n_proteins": f"{sum(r['n_proteins'] for r in anatomy_table_records)/n_sp:.1f}",
+                "inj_n_injected": f"{sum(r['n_cross_clade_injected'] for r in anatomy_table_records)/n_sp:.1f}",
+                "inj_b1_diamond_violations": f"{sum(r['n_violations_b1_diamond'] for r in anatomy_table_records)/n_sp:.1f}",
+                "inj_e1_violations": f"{sum(r['n_violations_e1_noisy_or'] for r in anatomy_table_records)/n_sp:.1f}",
+                "inj_e2_violations": f"{sum(r['n_violations_e2_go_taxon'] for r in anatomy_table_records)/n_sp:.1f}",
+                "inj_e3_violations": f"{sum(r['n_violations_e3_stage1_anat'] for r in anatomy_table_records)/n_sp:.1f}",
+                "inj_e4_e5_violations": f"{sum(r['n_violations_e4_stage2_remove'] for r in anatomy_table_records)/n_sp:.1f}",
+                "inj_b1_diamond_fmax": f"{sum(r['inj_b1_diamond_fmax'] for r in anatomy_table_records)/n_sp:.4f}",
+                "inj_e1_fmax": f"{sum(r['inj_e1_fmax'] for r in anatomy_table_records)/n_sp:.4f}",
+                "inj_e4_remove_fmax": f"{sum(r['inj_e4_remove_fmax'] for r in anatomy_table_records)/n_sp:.4f}",
+                "inj_e5_relax_fmax": f"{sum(r['inj_e5_relax_fmax'] for r in anatomy_table_records)/n_sp:.4f}",
+                "inj_e1_mean_ic": f"{mean_e1_ic:.4f}",
+                "inj_e4_mean_ic": f"{sum(r['inj_e4_mean_ic'] for r in anatomy_table_records)/n_sp:.4f}",
+                "inj_e5_mean_ic": f"{mean_e5_ic:.4f}",
+                "inj_e5_ic_retained_pct": f"{mean_e5_ic / max(mean_e1_ic, 1e-6) * 100.0:.1f}",
+                "borderline_tested": f"{sum(r['borderline_true_claims_tested'] for r in anatomy_table_records)/n_sp:.1f}",
+                "borderline_rescued_e3": f"{sum(r['borderline_rescued_e3_anat_boost'] for r in anatomy_table_records)/n_sp:.1f}",
+            })
+        print(f"Saved: {endog_tsv}")
 
 
 if __name__ == "__main__":

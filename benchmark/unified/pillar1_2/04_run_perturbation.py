@@ -50,6 +50,7 @@ GENOMES = [
 PERTURB_CONFIGS = [
     "A1_noisy_or",
     "A6_consistency_anatomical",
+    "A7_stage1_all",
     "A8_stage2_remove",
     "A9_stage2_relax",
 ]
@@ -137,13 +138,13 @@ def pick_perturbation_terms():
     return all_terms
 
 
-def inject_claims_for_genome(genome, terms):
+def inject_claims_for_genome(genome, terms, force=False):
     tag = genome["tag"]
     claims_file = f"{BENCH9}/with_iprscan/{tag}_claims_merged.jsonl"
     out_claims_file = f"{PERTURB_DIR}/{tag}_claims_perturbed.jsonl"
     injected_info_file = f"{PERTURB_DIR}/{tag}_injected_pairs.tsv"
 
-    if os.path.exists(injected_info_file) and os.path.exists(out_claims_file) and os.path.getsize(injected_info_file) > 100:
+    if not force and os.path.exists(injected_info_file) and os.path.exists(out_claims_file) and os.path.getsize(injected_info_file) > 100:
         records = []
         with open(injected_info_file) as f:
             reader = csv.DictReader(f, delimiter="\t")
@@ -178,18 +179,31 @@ def inject_claims_for_genome(genome, terms):
     injected_claims = []
     injected_records = []
 
-    for term_info, pid in zip(terms, chosen_proteins):
-        raw_score = round(rng.uniform(0.55, 0.85), 4)
+    for idx_t, (term_info, pid) in enumerate(zip(terms, chosen_proteins)):
+        raw_score = round(rng.uniform(0.62, 0.90), 4)
+        src_primary = "diamond" if idx_t % 2 == 0 else "deepgo"
         c = {
             "protein_id": pid,
             "function_type": "GO",
             "function_id": term_info["go_id"],
             "go_aspect": term_info["aspect"],
-            "source": "deepgo",
+            "source": src_primary,
             "raw_score": raw_score,
             "metadata": {"injected_perturbation": True, "category": term_info["category"]},
         }
         injected_claims.append(c)
+        # For 60% of cross-clade false positives, simulate a corroborating domain/PLM hit
+        if idx_t % 5 in (0, 1, 2):
+            sec_score = round(max(0.52, raw_score - 0.12), 4)
+            injected_claims.append({
+                "protein_id": pid,
+                "function_type": "GO",
+                "function_id": term_info["go_id"],
+                "go_aspect": term_info["aspect"],
+                "source": "pfam" if src_primary == "diamond" else "diamond",
+                "raw_score": sec_score,
+                "metadata": {"injected_perturbation": True, "category": term_info["category"]},
+            })
         injected_records.append({
             "protein_id": pid,
             "go_id": term_info["go_id"],
@@ -241,6 +255,15 @@ def build_perturb_command(genome, cfg, claims_file):
         cmd += ["--enable-priors", "none"]
     elif cfg == "A6_consistency_anatomical":
         cmd += ["--enable-priors", "consistency,anatomical", "--taxon", taxon]
+    elif cfg == "A7_stage1_all":
+        cmd += [
+            "--enable-priors", "essentiality,coherence,consistency,anatomical,gap_filling,genomic_context",
+            "--essential-profile", k,
+            "--taxon", taxon,
+            "--pathways", f"{REF}/kegg_pathways.tsv",
+            "--modules", f"{REF}/kegg_modules.tsv",
+            "--ec2go", f"{REF}/ec2go.txt",
+        ] + operons_args + gaps_args
     elif cfg == "A8_stage2_remove":
         actions_file = f"{PERTURB_DIR}/{tag}_A8_perturbed_actions.tsv"
         cmd += [
@@ -395,7 +418,7 @@ def main():
     injected_by_genome = {}
     claims_by_genome = {}
     for g in GENOMES:
-        claims_file, records = inject_claims_for_genome(g, terms)
+        claims_file, records = inject_claims_for_genome(g, terms, force=args.force)
         injected_by_genome[g["tag"]] = records
         claims_by_genome[g["tag"]] = claims_file
         print(f"Injected 100 claims into {g['tag']} -> {claims_file}")
@@ -437,6 +460,14 @@ def main():
                 elif cfg == "A6_consistency_anatomical":
                     row_priors = "consistency,anatomical"
                     row_tax = taxon
+                elif cfg == "A7_stage1_all":
+                    row_priors = "essentiality,coherence,consistency,anatomical,gap_filling,genomic_context"
+                    row_tax = taxon
+                    row_ess = k
+                    if has_ops:
+                        row_ops = operons_file
+                    if has_gaps:
+                        row_gaps = gaps_file
                 elif cfg in ("A8_stage2_remove", "A9_stage2_relax"):
                     row_priors = "essentiality,coherence,consistency,anatomical,gap_filling,genomic_context"
                     row_tax = taxon

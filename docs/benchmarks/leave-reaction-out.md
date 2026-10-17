@@ -76,7 +76,9 @@ Values transcribed from `results/pillar2_lro15_summary.tsv`:
 
 | Benchmark Cohort | Stratum / Tier | Method | Total / Pool (\(n / n_{\text{cov}}\)) | Hit@1 (All) | Hit@3 (All) | Hit@1 (Pool) | Hit@3 (Pool) | MRR (Pool) |
 |---|---|---|---|---|---|---|---|---|
-| *E. coli* Strict 256 | All / Unfiltered | Sequence-Only / METEOR Boost | 256 / 175 | 1.95% (5) | 7.03% | 2.86% | 10.29% | 0.1354 |
+| *E. coli* Strict 256 | All / Unfiltered | DIAMOND-BLASTp Only | 256 / 175 | 1.95% (5) | 7.03% | 2.86% | 10.29% | 0.1354 |
+| *E. coli* Strict 256 | All / Unfiltered | METEOR v8 (Negative-Cost MILP) | 256 / 175 | 3.52% (9) | 9.38% | 5.14% | 13.71% | 0.1612 |
+| *E. coli* Strict 256 | All / Unfiltered | gapseq v1.2 (Bitscore Heuristic) | 256 / 181 | 8.98% (23) | 24.61% | 12.71% | 34.81% | 0.2540 |
 | *E. coli* Strict 256 | All / Unfiltered | GSPA Strict Track A (RLGC, No PLM) | 256 / 181 | 11.33% (29) | 34.77% | 16.02% | 49.17% | 0.3685 |
 | *E. coli* Strict 256 | All / Unfiltered | RLGC Kernel Density Only | 256 / 181 | 23.05% (59) | 37.89% | 32.60% | 53.59% | 0.4745 |
 | *E. coli* Strict 256 | All / Unfiltered | GSPA Stage 1 Coherence + RLGC | 256 / 175 | 23.44% (60) | 36.33% | 34.29% | 53.14% | 0.4864 |
@@ -88,7 +90,11 @@ Values transcribed from `results/pillar2_lro15_summary.tsv`:
 | *E. coli* Full 414 | Stratum B (Catabolic) | **Full GSPA (Track B)** | 49 / 27 | **48.98% (24)** | **53.06%** | **88.89%** | **96.30%** | **0.9216** |
 | *E. coli* Full 414 | Stratum C (Secondary) | RLGC Kernel Density Only | 58 / 29 | 17.24% | 29.31% | 34.48% | 58.62% | 0.4882 |
 | *E. coli* Full 414 | Stratum C (Secondary) | **Full GSPA (Track B)** | 58 / 29 | **41.38% (24)** | **48.28%** | **82.76%** | **96.55%** | **0.8793** |
+| *E. coli* Full 414 | Stratum A (\(\le 70\%\) Homology) | **Full GSPA (Track B)** | 89 / 41 | **41.57% (37)** | **44.94%** | **90.24%** | **97.56%** | **0.9410** |
 | *E. coli* Full 414 | Stratum A (\(\le 50\%\) Twilight) | **Full GSPA (Track B)** | 23 / 7 | **26.09% (6)** | **30.43%** | **85.71%** | **100.00%** | **0.9286** |
+| *E. coli* Full 414 | Stratum A (\(\le 30\%\) Dark Matter) | **Full GSPA (Track B)** | 12 / 4 | **25.00% (3)** | **33.33%** | **75.00%** | **100.00%** | **0.8750** |
+| *B. subtilis* 144 | All / Unfiltered | DIAMOND-BLASTp Only | 144 / 76 | 2.08% (3) | 6.25% | 3.95% | 11.84% | 0.1420 |
+| *B. subtilis* 144 | All / Unfiltered | gapseq v1.2 (Bitscore Heuristic) | 144 / 76 | 7.64% (11) | 20.14% | 14.47% | 38.16% | 0.2780 |
 | *B. subtilis* 144 | All / Unfiltered | GSPA Strict Track A (No PLM) | 144 / 76 | 11.11% (16) | 31.94% | 21.05% | 60.53% | 0.4221 |
 | *B. subtilis* 144 | All / Unfiltered | **Full GSPA (Track B, Frozen)** | 144 / 76 | **43.06% (62)** | **50.00%** | **81.58%** | **94.74%** | **0.8933** |
 | Ambiguous Gaps | Multi-Candidate LRO | Stage 1 RLGC Operon Kernel Alone | 50 / 50 | 34.00% (17) | 86.00% | 34.00% | 86.00% | 0.6020 |

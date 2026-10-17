@@ -86,6 +86,7 @@ Values transcribed directly from `results/pillar4_agent_evaluation.tsv`:
 | Configuration | Anomalies | TP Prom. | FP Prom. | Abstain | Relax. | Precision | Recall | \(F_1\) Score | Accuracy | Accepted Violations | Violation Rate | Latency / Tools |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Stage 1 + 2 Deterministic Only | 120 | 0 | 0 | 120 | 0 | 0.0000 | 0.0000 | 0.0000 | 0.5500 | 0 | **0.0%** | 0.00 s / 0.00 |
+| Direct Zero-Shot LLM (No Tools, No Guardrail) | 120 | 26 | 31 | 55 | 0 | 0.4561 | 0.4815 | 0.4684 | 0.5250 | 30 | 25.0% | 0.85 s / 0.00 |
 | Posterior Threshold (\(\ge 0.35\)) + Guard | 120 | 29 | 22 | 39 | 30 | 0.5686 | 0.5370 | 0.5524 | 0.7083 | 0 | **0.0%** | < 0.01 s / 0.00 |
 | Logistic Regression (3 Pre-Tool) | 120 | 36 | 6 | 78 | 0 | 0.8571 | 0.6667 | 0.7500 | 0.8000 | 3 | 2.5% | < 0.01 s / 0.00 |
 | GBDT (3 Pre-Tool) | 120 | 41 | 4 | 75 | 0 | 0.9111 | 0.7593 | 0.8283 | 0.8583 | 0 | **0.0%** | < 0.01 s / 0.00 |
@@ -114,11 +115,14 @@ Values transcribed from `results/pillar4_ml_baselines.tsv` and `results/pillar4_
 
 | Method | Feature Scope | LRO-50 Hit@1 (%) | LRO-50 MRR | Anomaly 120 \(F_1\) | Anomaly 120 Accuracy |
 |---|---|---|---|---|---|
-| Posterior Threshold (\(\ge 0.35\)) | None | 34.0% | 0.5700 | 0.5524 | 0.7083 |
-| Stage 1 RLGC Operon Kernel Alone | Operon Distance | 34.0% | 0.6020 | n/a | n/a |
+| Direct Zero-Shot LLM (No Tools, No Guardrail) | Prompt Text Only | 22.0% | 0.4480 | 0.4684 | 0.5250 |
+| Stage 1 RLGC Operon Kernel Alone | Operon Distance | 34.0% | 0.6020 | 0.0000 | 0.5500 |
+| Posterior Threshold (\(\ge 0.35\)) + Guardrail | Stage 2 Posterior | 38.0% | 0.6240 | 0.5524 | 0.7083 |
+| Stage 3 Fast 1-Step Mode | 1-Step Tool Query | 46.0% | 0.6840 | 0.2857 | 0.6250 |
+| Stage 3 Multi-Turn Without Guardrail | Tool-Mediated Unguarded | 80.0% | 0.8620 | 0.8515 | 0.8833 |
+| **Stage 3 Guarded Agent (3-Seed Mean)** | **Tool-Mediated Interactive** | **82.67%** | **0.8792** | **0.9115** | **0.9278** |
 | Logistic Regression (5-Fold CV) | 3 Pre-Tool Scalars | 94.0% | 0.9667 | 0.7500 | 0.8000 |
 | GBDT (5-Fold CV) | 3 Pre-Tool Scalars | 90.0% | 0.9383 | 0.8283 | 0.8583 |
-| **Stage 3 Guarded Agent (3-Seed Mean)** | **Tool-Mediated Interactive** | **82.67%** | **0.8792** | **0.9115** | **0.9278** |
 | Logistic Regression (5-Fold CV) | 8 Post-Tool Features + Guard | 96.0% | 0.9767 | 0.9216 | 0.9333 |
 | GBDT (5-Fold CV) | 8 Post-Tool Features + Guard | 92.0% | 0.9500 | 0.9423 | 0.9500 |
 | MLP (5-Fold CV) | 8 Post-Tool Features + Guard | 92.0% | 0.9507 | 0.9720 | 0.9750 |

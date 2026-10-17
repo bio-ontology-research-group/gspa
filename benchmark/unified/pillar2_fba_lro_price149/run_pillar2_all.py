@@ -469,8 +469,23 @@ def run_15_genome_stratified_lro(refiner: StoichiometricLocusRefiner) -> Path:
             **st,
         })
 
+    # Load density_unassigned.tsv (414 cases) and density_aaeolicus.tsv (101 cases)
+    rk_dens_all_414 = {}
+    rk_dens_nonanc_414 = {}
+    rk_dens_gapseq_414 = {}
+    if (LRO_DIR / "density_unassigned.tsv").exists():
+        with open(LRO_DIR / "density_unassigned.tsv", "r", encoding="utf-8") as f:
+            for idx, r in enumerate(csv.DictReader(f, delimiter="\t")):
+                cidx = int(r["case_idx"]) if "case_idx" in r and r["case_idx"] != "" else idx
+                rk_dens_all_414[cidx] = int(r.get("rank_all", "0") or 0)
+                rk_dens_nonanc_414[cidx] = int(r.get("rank_nonanchor", "0") or 0)
+                rk_dens_gapseq_414[cidx] = int(r.get("rank_unassigned", "0") or 0)
+
     # 2. Overall E. coli MG1655 Full 414-case LRO benchmark + Stratified (Stratum A, B, C) + Protocol H (Unfiltered, <=70%, <=50%, <=30%)
     methods_414 = [
+        ("Whole_Proteome_Operon_Kernel_Density (density_unassigned.tsv:rank_all)", rk_dens_all_414),
+        ("Non_Anchor_Operon_Kernel_Density (density_unassigned.tsv:rank_nonanchor)", rk_dens_nonanc_414),
+        ("gapseq_Unassigned_Operon_Density (density_unassigned.tsv:rank_unassigned)", rk_dens_gapseq_414),
         ("RLGC_Kernel_Density_Only (results_rlgc_mg1655_all.tsv)", rk_rlgc_414),
         ("RLGC_Plus_GBDT (results_rlgc_gbdt_mg1655_all.tsv)", rk_gbdt_414),
         ("GSPA_Full_M4_RLGC_Coherence_PLM (results_m4_trackB_mg1655_all.tsv)", rk_m4_b_414),
@@ -507,6 +522,30 @@ def run_15_genome_stratified_lro(refiner: StoichiometricLocusRefiner) -> Path:
             "method": mname,
             **st,
         })
+
+    # 4. Aquifex aeolicus VF5 Out-of-Clade LRO Benchmark (n=101 cases)
+    if (LRO_DIR / "density_aaeolicus.tsv").exists():
+        rk_aa_all, rk_aa_nonanc, rk_aa_gapseq = {}, {}, {}
+        with open(LRO_DIR / "density_aaeolicus.tsv", "r", encoding="utf-8") as f:
+            for idx, r in enumerate(csv.DictReader(f, delimiter="\t")):
+                cidx = int(r["case_idx"]) if "case_idx" in r and r["case_idx"] != "" else idx
+                rk_aa_all[cidx] = int(r.get("rank_all", "0") or 0)
+                rk_aa_nonanc[cidx] = int(r.get("rank_nonanchor", "0") or 0)
+                rk_aa_gapseq[cidx] = int(r.get("rank_unassigned", "0") or 0)
+        keys_aa = sorted(rk_aa_all.keys())
+        for mname, rmap in [
+            ("Whole_Proteome_Operon_Kernel_Density (density_aaeolicus.tsv:rank_all)", rk_aa_all),
+            ("Non_Anchor_Operon_Kernel_Density (density_aaeolicus.tsv:rank_nonanchor)", rk_aa_nonanc),
+            ("gapseq_Unassigned_Operon_Density (density_aaeolicus.tsv:rank_unassigned)", rk_aa_gapseq),
+        ]:
+            st = score_subset(keys_aa, rmap)
+            summary_rows.append({
+                "benchmark_cohort": "Aaeolicus_VF5_LRO_101",
+                "stratum": "All_Strata",
+                "protocol_H": "Unfiltered",
+                "method": mname,
+                **st,
+            })
 
     out_path = RESULTS_DIR / "pillar2_lro15_summary.tsv"
     with open(out_path, "w", encoding="utf-8", newline="") as f:

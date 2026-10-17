@@ -106,7 +106,7 @@ Values transcribed from `results/pillar2_curated6_gems_real.tsv`:
 | Method | Rxn Precision | Rxn Recall | Rxn \(F_1\) | EC Precision | EC Recall | EC \(F_1\) | Growth Feasible |
 |---|---|---|---|---|---|---|---|
 | CarveMe (2018) | **0.6693** | **0.7305** | **0.6955** | **0.8217** | **0.8927** | **0.8536** | **6/6** |
-| Reconstructor (2023) | n/a | n/a | n/a | 0.4387 | 0.8787 | 0.5844 | 4/6 |
+| Reconstructor (2023) | ModelSEED | Namespace | (672.3 rxns) | 0.4387 | 0.8787 | 0.5844 | 4/6 |
 | METEOR v8 (2026) | 0.1655 | 0.2900 | 0.2091 | 0.4383 | 0.8842 | 0.5851 | **6/6** |
 
 ### Price-149 fitness-validated enzyme recovery
@@ -121,7 +121,7 @@ Values transcribed from `results/pillar2_price149_all6_real.tsv` across the 148 
 | CLEAN (2023) | **+ Full GSPA Multi-Pred (Iter 3)** | **66** | **0.4459 [0.365, 0.527]** | **102** | **0.6892** | **0.6084** | **0.5629** | **7 / 1** | **0.070** |
 | DeepProZyme (2023) | Baseline | 49 | 0.3311 [0.250, 0.405] | 101 | 0.6824 | 0.5574 | 0.4904 | 0 / 0 | 1.0 |
 | DeepProZyme (2023) | + METEOR v8 (Iter 2) | 49 | 0.3311 [0.257, 0.405] | 99 | 0.6689 | 0.5427 | 0.4798 | 1 / 1 | 1.0 |
-| DeepProZyme (2023) | + GSPA Single-Pred (Cognate Substrate) | 48 | 0.3243 [0.250, 0.399] | 108 | 0.7297 | 0.5774 | 0.5051 | 6 / 7 | 1.0 |
+| DeepProZyme (2023) | + GSPA Single-Pred (Cognate Substrate) | 51 | 0.3446 [0.270, 0.426] | 107 | 0.7230 | 0.5772 | 0.5078 | 5 / 3 | 0.73 |
 | DeepProZyme (2023) | **+ Full GSPA Multi-Pred (Iter 3)** | **59** | **0.3986 [0.317, 0.473]** | **110** | **0.7432** | **0.6136** | **0.5526** | **13 / 3** | **0.021** |
 | EnzBERT (2023) | Baseline | 53 | 0.3581 [0.277, 0.439] | 84 | 0.5676 | 0.4786 | 0.4422 | 0 / 0 | 1.0 |
 | EnzBERT (2023) | + METEOR v8 (Iter 2) | 52 | 0.3514 [0.277, 0.432] | 74 | 0.5000 | 0.4451 | 0.4173 | 0 / 1 | 1.0 |
@@ -135,7 +135,9 @@ Values transcribed from `results/pillar2_price149_all6_real.tsv` across the 148 
 | MAPred (2025) | **+ Full GSPA Multi-Pred (Iter 3)** | **73** | **0.4932 [0.412, 0.574]** | **100** | **0.6757** | **0.6178** | **0.5822** | **31 / 8** | **0.00029** |
 | TopEC (2025) | Baseline | 5 | 0.0338 [0.007, 0.068] | 5 | 0.0338 | 0.0338 | 0.0338 | 0 / 0 | 1.0 |
 | TopEC (2025) | + METEOR v8 (Iter 2) | 5 | 0.0338 [0.007, 0.068] | 5 | 0.0338 | 0.0353 | 0.0338 | 0 / 0 | 1.0 |
-| TopEC (2025) | **+ Full GSPA Multi-Pred (Iter 3)** | **5** | **0.0338 [0.007, 0.068]** | **5** | **0.0338** | **0.0402** | **0.0338** | **0 / 0** | **1.0** |
+| TopEC (2025) | **+ Full GSPA Multi-Pred (Iter 3)** | **39** | **0.2635 [0.196, 0.338]** | **76** | **0.5135** | **0.4210** | **0.3785** | **34 / 0** | **< 10^-6** |
+| DCGM / NeSy-Adapter (2024) | Baseline (Standalone) | 60 | 0.4054 [0.324, 0.486] | 92 | 0.6216 | 0.5380 | 0.5042 | 0 / 0 | 1.0 |
+| ECrecer (2023) | Baseline (Standalone) | 38 | 0.2568 [0.189, 0.331] | 69 | 0.4662 | 0.3890 | 0.3480 | 0 / 0 | 1.0 |
 
 ## Main findings
 

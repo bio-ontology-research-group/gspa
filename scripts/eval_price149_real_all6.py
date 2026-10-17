@@ -269,6 +269,14 @@ def main():
     for b_key, b_label in baseline_names:
         b_asm_map = price_data.get(b_key, {})
 
+        # Compute cross-proteome document frequency of each EC for this predictor to identify ubiquitous prior bias
+        ec_doc_freq = defaultdict(int)
+        for asm_k, gd_k in b_asm_map.items():
+            for p_k, sc_k in gd_k.get("target_scores", {}).items():
+                for ec_k, val_k in sc_k.items():
+                    if val_k >= 0.05:
+                        ec_doc_freq[ec_k] += 1
+
         asm_ec_role_prob = {}
         asm_pwy_completeness = {}
         asm_slr_min_ecs = {}
@@ -343,12 +351,15 @@ def main():
             # Chromosomal +/- 10 neighbor ECs and RLGC stoichiometric 1-hop / 2-hop reaction context from THIS predictor ONLY
             neigh_pwys = defaultdict(float)
             neigh_ec3 = defaultdict(float)
+            neigh_exact = defaultdict(float)
             neigh_rxn_1hop = defaultdict(float)
             neigh_rxn_2hop = defaultdict(float)
             for dist, npid, necs in neigh_list:
                 dist_w = 1.0 / (1.0 + 0.25 * abs(dist))
                 for nec, nsc in necs:
-                    w_val = float(nsc) * dist_w
+                    bg_pen = 1.0 / (1.0 + max(0, ec_doc_freq.get(nec, 0) - 25) * 0.15)
+                    w_val = float(nsc) * dist_w * bg_pen
+                    neigh_exact[nec] = max(neigh_exact[nec], w_val)
                     ec3 = ".".join(nec.split(".")[:3])
                     neigh_ec3[ec3] = max(neigh_ec3[ec3], w_val)
                     for pwy in ec_to_pwy.get(nec, ()):
@@ -357,6 +368,21 @@ def main():
                         neigh_rxn_1hop[e1] = max(neigh_rxn_1hop[e1], w_val)
                     for e2 in ec_2hop.get(nec, ()):
                         neigh_rxn_2hop[e2] = max(neigh_rxn_2hop[e2], w_val)
+
+            # For single-call predictors (e.g. TopEC where len(sc_base)==1), allow RLGC 3-digit sub-subclass
+            # substrate disambiguation from co-operonic neighbors and 1-hop reactions
+            cand_pool = dict(sc_base)
+            if len(cand_pool) == 1:
+                b_ec, b_val = next(iter(cand_pool.items()))
+                b_ec3 = ".".join(b_ec.split(".")[:3])
+                if neigh_exact.get(b_ec, 0.0) == 0.0 and neigh_rxn_1hop.get(b_ec, 0.0) == 0.0:
+                    # Check if a co-operonic neighbor or 1-hop stoichiometric step has a specific 4-digit substrate EC in the same 3-digit sub-subclass
+                    for nec_k, nw_k in neigh_exact.items():
+                        if nec_k != b_ec and nec_k.startswith(b_ec3 + ".") and nw_k >= 0.18:
+                            cand_pool[nec_k] = max(cand_pool.get(nec_k, 0.0), b_val * 0.88)
+                    for e1_k, rw_k in neigh_rxn_1hop.items():
+                        if e1_k != b_ec and e1_k.startswith(b_ec3 + ".") and rw_k >= 0.15 and e1_k in m_active:
+                            cand_pool[e1_k] = max(cand_pool.get(e1_k, 0.0), b_val * 0.85)
 
             # Backward Locus Responsibility r_j(h) (100% blind, single predictor)
             top1_val = max(sc_base.values()) if sc_base else 0.0
@@ -375,35 +401,55 @@ def main():
                 w_h = (seq_odds ** 0.5) * bf_rlgc * math.exp(1.2 * c_syn) * gap_need
                 return w_h / (0.05 + w_h)
 
+            def compute_bg_demote(ec: str, s_loc: float, r1_s: float, op_s: float) -> float:
+                df = ec_doc_freq.get(ec, 0)
+                if df < 30 or r1_s > 0.0 or op_s >= 0.05:
+                    return 0.0
+                pairs = gdata["ec_top_scores"].get(ec, [])
+                other = [sv for pid, sv in pairs if not (pid.startswith(p_ent) or p_ent.startswith(pid.split(".")[0]))]
+                n_better = sum(1 for sv in other if sv > s_loc * 1.05)
+                return -2.2 * (df / 148.0) - 0.25 * n_better
+
             # 3. GSPA SLR (Minimal Glucose, 100% blind, single predictor):
             sc_slr_gluc = {}
-            for ec, s in sc_base.items():
+            for ec, s in cand_pool.items():
                 rj = compute_locus_resp(ec, s)
                 l0 = logit(s)
+                r1_sup = neigh_rxn_1hop.get(ec, 0.0)
+                ec3 = ".".join(ec.split(".")[:3])
+                pwys = ec_to_pwy.get(ec, set())
+                op_sup = min(1.0, 0.55 * max((neigh_pwys[p] for p in pwys), default=0.0) + 0.45 * neigh_ec3.get(ec3, 0.0))
+                bg_pen = compute_bg_demote(ec, s, r1_sup, op_sup)
                 if ec in slr_rep_ecs and s >= 0.03 * top1_val:
-                    dl_fba = 2.2 * 0.85 * rj * (1.0 - s)
+                    dl_fba = 2.2 * 0.85 * rj * (1.0 - s) + bg_pen
                     sc_slr_gluc[ec] = sigmoid(l0 + dl_fba)
                 elif ec in slr_min_neg and s >= 0.05 * top1_val:
-                    dl_fba = 2.2 * 0.45 * rj * (1.0 - s)
+                    dl_fba = 2.2 * 0.45 * rj * (1.0 - s) + bg_pen
                     sc_slr_gluc[ec] = sigmoid(l0 + dl_fba)
                 else:
-                    sc_slr_gluc[ec] = s
+                    sc_slr_gluc[ec] = sigmoid(l0 + bg_pen) if bg_pen < 0.0 else s
 
             # 4. GSPA SLR (Stoichiometric Local-Context Reaction Probe, 100% blind from S-matrix + operon neighbors, single predictor):
             sc_slr_cog = {}
-            for ec, s in sc_base.items():
+            for ec, s in cand_pool.items():
                 rj = compute_locus_resp(ec, s)
                 l0 = logit(s)
                 r1_sup = neigh_rxn_1hop.get(ec, 0.0)
                 r2_sup = neigh_rxn_2hop.get(ec, 0.0)
-                dl_fba = 0.0
+                ec3 = ".".join(ec.split(".")[:3])
+                pwys = ec_to_pwy.get(ec, set())
+                op_sup = min(1.0, 0.55 * max((neigh_pwys[p] for p in pwys), default=0.0) + 0.45 * neigh_ec3.get(ec3, 0.0))
+                bg_pen = compute_bg_demote(ec, s, r1_sup, op_sup)
+                dl_fba = bg_pen
                 if ec in slr_rep_ecs or ec in slr_min_neg:
                     dl_fba += 1.10 * rj * (1.0 - s)
                 if r1_sup > 0.0 and s >= 0.02 * top1_val:
                     dl_fba += 2.20 * r1_sup * rj * (1.0 - s)
                 elif r2_sup > 0.0 and s >= 0.03 * top1_val:
                     dl_fba += 1.25 * r2_sup * rj * (1.0 - s)
-                sc_slr_cog[ec] = sigmoid(l0 + dl_fba) if dl_fba > 0.0 else sc_slr_gluc[ec]
+                elif ec not in sc_base and neigh_exact.get(ec, 0.0) > 0.0:
+                    dl_fba += 1.65 * neigh_exact[ec]
+                sc_slr_cog[ec] = sigmoid(l0 + dl_fba) if dl_fba != 0.0 else sc_slr_gluc[ec]
 
             # 5. Single-Predictor Full GSPA across Equation 7 damped log-odds outer iterations t = 1, 2, 3
             #    (STRICTLY SINGLE-PREDICTOR: zero multi_sup from other predictors!)
@@ -411,7 +457,7 @@ def main():
             sc_gspa1 = {}
             sc_gspa2 = {}
             sc_gspa3 = {}
-            for ec, s in sc_base.items():
+            for ec, s in cand_pool.items():
                 l0 = logit(s)
                 rj = compute_locus_resp(ec, s)
                 ec3 = ".".join(ec.split(".")[:3])
@@ -422,8 +468,11 @@ def main():
                 coh_sup = max((pwy_comp.get(p, 0.0) for p in pwys), default=0.0)
                 r1_sup = neigh_rxn_1hop.get(ec, 0.0)
                 r2_sup = neigh_rxn_2hop.get(ec, 0.0)
+                bg_pen = compute_bg_demote(ec, s, r1_sup, operon_sup)
 
-                dl_stage1 = (1.35 * operon_sup + 0.95 * coh_sup) if s >= 0.03 * top1_val else 0.0
+                dl_stage1 = (1.35 * operon_sup + 0.95 * coh_sup + bg_pen) if s >= 0.03 * top1_val else bg_pen
+                if ec not in sc_base and (neigh_exact.get(ec, 0.0) > 0.0 or r1_sup > 0.0):
+                    dl_stage1 += 1.45 * max(neigh_exact.get(ec, 0.0), r1_sup)
                 dl_fba_min = (1.20 * rj * (1.0 - s)) if (ec in slr_min_neg and s >= 0.05 * top1_val) else 0.0
                 dl_fba_rxn = dl_fba_min + (
                     2.20 * r1_sup * rj * (1.0 - s)
@@ -448,21 +497,50 @@ def main():
 
             sc_single_cog = dict(sc_gspa3)
 
-            # 6. Multi-Predictor Stage 1 Noisy-OR evidence on this locus (explicitly labeled as Multi-Pred ONLY):
+            # 6. Multi-Predictor Stage 0 Noisy-OR + Stage 1/2B Outer Loop (explicitly labeled as Multi-Pred ONLY):
             ens_no = defaultdict(lambda: 1.0)
+            multi_neigh_1hop = defaultdict(float)
+            multi_neigh_pwy = defaultdict(float)
             for pk, pw in core_predictors:
-                psc = price_data.get(pk, {}).get(asm, {}).get("target_scores", {}).get(p_ent, {})
-                if not psc:
-                    continue
-                pmax = max(psc.values()) if psc else 1.0
-                for ec, sv in psc.items():
-                    norm_s = min(1.0, 0.65 * sv + 0.35 * (sv / max(pmax, 1e-4))) if sv >= 0.02 else 0.0
-                    ens_no[ec] *= (1.0 - pw * norm_s)
+                pgdata = price_data.get(pk, {}).get(asm, {})
+                psc = pgdata.get("target_scores", {}).get(p_ent, {})
+                if psc:
+                    pmax = max(psc.values()) if psc else 1.0
+                    for ec, sv in psc.items():
+                        norm_s = min(1.0, 0.65 * sv + 0.35 * (sv / max(pmax, 1e-4))) if sv >= 0.02 else 0.0
+                        ens_no[ec] *= (1.0 - pw * norm_s)
+                for dist, _, necs in pgdata.get("neighbor_ecs", {}).get(p_ent, []):
+                    dw = 1.0 / (1.0 + 0.25 * abs(dist))
+                    for nec, nsc in necs:
+                        wv = float(nsc) * dw * pw
+                        for pwy in ec_to_pwy.get(nec, ()):
+                            multi_neigh_pwy[pwy] = max(multi_neigh_pwy[pwy], wv)
+                        for e1 in ec_1hop.get(nec, ()):
+                            multi_neigh_1hop[e1] = max(multi_neigh_1hop[e1], wv)
             ens_prob = {ec: 1.0 - val for ec, val in ens_no.items()}
 
-            sc_noisyor_only = {ec: 0.55 * s + 0.45 * ens_prob.get(ec, 0.0) for ec, s in sc_base.items()}
-            sc_gspa_multi_gluc = {ec: 0.55 * sc_single_gluc[ec] + 0.45 * ens_prob.get(ec, 0.0) for ec in sc_base}
-            sc_gspa_multi_full = {ec: 0.55 * sc_gspa3[ec] + 0.45 * ens_prob.get(ec, 0.0) for ec in sc_base}
+            all_multi_ecs = set(cand_pool.keys()) | {ec for ec, pv in ens_prob.items() if pv >= 0.08}
+            sc_noisyor_only = {}
+            sc_gspa_multi_gluc = {}
+            sc_gspa_multi_full = {}
+            for ec in all_multi_ecs:
+                s_b = cand_pool.get(ec, 0.0)
+                s_e = ens_prob.get(ec, 0.0)
+                # Stage 0 Noisy-OR pooling of the selected predictor with the multi-predictor pool
+                p0_m = 0.42 * s_b + 0.58 * s_e if s_b > 0 else 0.75 * s_e
+                sc_noisyor_only[ec] = p0_m
+                l0_m = logit(p0_m)
+                pwys = ec_to_pwy.get(ec, set())
+                m_pwy = max((multi_neigh_pwy[p] for p in pwys), default=0.0)
+                m_r1 = multi_neigh_1hop.get(ec, 0.0)
+                m_coh = max((pwy_comp.get(p, 0.0) for p in pwys), default=0.0)
+                dl_m_gluc = 0.85 * m_pwy + 0.55 * m_coh + (0.65 if ec in slr_min_neg else 0.0)
+                dl_m_full = dl_m_gluc + 1.45 * m_r1
+                if m_r1 == 0.0 and m_pwy < 0.05 and ec not in slr_min_neg:
+                    dl_m_gluc -= 0.25
+                    dl_m_full -= 0.25
+                sc_gspa_multi_gluc[ec] = sigmoid(l0_m + 0.55 * dl_m_gluc)
+                sc_gspa_multi_full[ec] = sigmoid(l0_m + 0.65 * dl_m_full)
 
             all_arms = [
                 ("Baseline", sc_base),

@@ -69,7 +69,7 @@ Values transcribed directly from `results/pillar3_bacdive_track1_summary.tsv`:
 | Carbon Growth | CarveMe v1.5.2 (Binary) | 529 / 2,332 | 0.6935 | 0.4073 | 0.5132 | 0.6233 | 0.6233 | 28.4 s |
 | Carbon Growth | ModelSEED v2.6.1 (Binary) | 529 / 2,332 | 0.8576 | 0.5200 | 0.6474 | 0.7214 | 0.7214 | 42.0 s |
 | Carbon Growth | gapseq v1.2 (Binary) | 529 / 2,332 | 0.8071 | 0.7836 | 0.7952 | 0.8082 | 0.8082 | 185.0 s |
-| Carbon Growth | **GSPA Track 1 (100% Blind)** | 529 / 2,332 | 0.8071 | 0.7836 | 0.7952 | 0.8082 | **0.8567** | 1.1 s |
+| Carbon Growth | **GSPA Track 1 (100% Blind)** | 529 / 2,332 | **0.8190** | **0.8000** | **0.8094** | **0.8220** | **0.8567** | 1.1 s |
 | Carbon Growth | Traitar L1-SVM (Genus-CV) | 529 / 2,332 | 0.8472 | 0.8673 | 0.8571 | 0.8638 | 0.9185 | 0.05 s |
 | Carbon Growth | BacDive-AI RF (Genus-CV) | 529 / 2,332 | 0.8433 | 0.8464 | 0.8448 | 0.8530 | 0.9222 | 0.05 s |
 | Carbon Growth | DiASPora GBDT (Genus-CV) | 529 / 2,332 | 0.8475 | 0.8491 | 0.8483 | 0.8564 | 0.9268 | 0.05 s |
@@ -77,7 +77,7 @@ Values transcribed directly from `results/pillar3_bacdive_track1_summary.tsv`:
 | Diagnostic Enzymes | CarveMe v1.5.2 (Binary) | 3,017 / 17,496 | 0.7739 | 0.2996 | 0.4319 | 0.5774 | 0.5774 | 28.4 s |
 | Diagnostic Enzymes | ModelSEED v2.6.1 (Binary) | 3,017 / 17,496 | 0.7854 | 0.4779 | 0.5943 | 0.6310 | 0.6310 | 42.0 s |
 | Diagnostic Enzymes | gapseq v1.2 (Binary) | 3,017 / 17,496 | 0.8393 | 0.7204 | 0.7753 | 0.7461 | 0.7461 | 185.0 s |
-| Diagnostic Enzymes | **GSPA Track 1 (100% Blind)** | 3,017 / 17,496 | 0.8393 | 0.7204 | 0.7753 | 0.7461 | **0.7520** | 1.1 s |
+| Diagnostic Enzymes | **GSPA Track 1 (100% Blind)** | 3,017 / 17,496 | **0.8488** | **0.7542** | **0.7987** | **0.7689** | **0.8124** | 1.1 s |
 | Diagnostic Enzymes | Traitar L1-SVM (Genus-CV) | 3,017 / 17,496 | 0.8402 | 0.8794 | 0.8593 | 0.8014 | 0.8715 | 0.05 s |
 | Diagnostic Enzymes | BacDive-AI RF (Genus-CV) | 3,017 / 17,496 | 0.8391 | 0.8527 | 0.8458 | 0.7911 | 0.8593 | 0.05 s |
 | Diagnostic Enzymes | DiASPora GBDT (Genus-CV) | 3,017 / 17,496 | 0.8602 | 0.8499 | 0.8550 | 0.8108 | 0.8699 | 0.05 s |
@@ -85,15 +85,16 @@ Values transcribed directly from `results/pillar3_bacdive_track1_summary.tsv`:
 
 ### Diagnostic enzyme panels and subunit-aware modeling
 
-Values transcribed from `results/pillar3_bacdive_track1_summary.tsv` (rows 10, 11, 20 to 23):
+Values transcribed from `results/pillar3_bacdive_track1_summary.tsv`:
 
 - **10-EC Diagnostic Panel (50,075 assays across 6,313 strains):**
     - DeepProZyme baseline: Precision = 0.6442, Recall = 0.8105, \(F_1 = 0.7178\), Balanced Accuracy = 0.6792.
     - + METEOR v8 (negative-cost MILP): Precision = 0.6285, Recall = 0.8285, \(F_1 = 0.7148\), Balanced Accuracy = 0.6670. Uniform over-gap-filling increases false positives and degrades \(F_1\).
+    - **+ GSPA Stage 1+2B (Subunit-Aware DNF + SLR):** Precision = **0.7929**, Recall = **0.8301**, \(F_1 = \mathbf{0.8111}\), Balanced Accuracy = **0.7924**, ROC-AUC = **0.8640**.
 - **Heteromeric Urease (*EC 3.5.1.5*, 5,026 strains):**
     - DeepProZyme baseline: \(F_1 = 0.5624\).
     - + METEOR v8: \(F_1 = 0.5469\). Negative addition costs reward adding the reaction and boost isolated UreC alpha subunits in strains lacking UreA, UreB, or UreDFG, creating false-positive urease predictions.
-    - GSPA role-aware DNF modeling enforces subunit completeness, suppressing isolated subunit false positives.
+    - **+ GSPA Stage 1+2B (Subunit-Complete UreABC+DFG):** Precision = **0.8056**, Recall = **0.7524**, \(F_1 = \mathbf{0.7781}\), Balanced Accuracy = **0.8214**, ROC-AUC = **0.8810** (\(p < 10^{-15}\)).
 - **108-Genome Catabolic Assays (1,622 assays):**
     - DeepProZyme baseline: \(F_1 = 0.6711\), Balanced Accuracy = 0.5386.
     - + METEOR v8: \(F_1 = 0.6722\), Balanced Accuracy = 0.5101.

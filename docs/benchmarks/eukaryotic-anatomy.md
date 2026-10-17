@@ -79,10 +79,10 @@ Values transcribed from `results/pillar3_eukaryote_anatomy.tsv`:
 | *S. cerevisiae* | Fungi | 300 | 66 | 0 | 0 | **0** | 100.0% | **100.0%** | 66.7% (2/3) |
 | *C. elegans* | Nematoda | 300 | 389 | 190 | 201 | **0** | 51.2% | **100.0%** | 66.7% (44/66) |
 | *D. melanogaster* | Arthropoda | 300 | 894 | 426 | 559 | **0** | 52.3% | **100.0%** | 70.7% (140/198) |
-| *P. patens* | Bryophyta | 46 | 3 | 0 | 0 | **0** | 100.0% | **100.0%** | n/a (0/0) |
+| *P. patens* | Bryophyta | 46 | 3 | 0 | 0 | **0** | 100.0% | **100.0%** | 75.0% (9/12) |
 | *A. thaliana* | Magnoliopsida | 300 | 59 | 26 | 1 | **0** | 55.9% | **100.0%** | 89.9% (62/69) |
 | *M. musculus* | Mammalia | 300 | 41 | 0 | 0 | **0** | 100.0% | **100.0%** | **90.1% (254/282)** |
-| **Total / Mean** | **6 Eukaryotes** | **1,546** | **1,452** | **642** | **761** | **0** | **55.8% (mean)** | **100.0%** | **81.2% (502/618)** |
+| **Total / Mean** | **6 Eukaryotes** | **1,546** | **1,452** | **642** | **761** | **0** | **55.8% (mean)** | **100.0%** | **81.1% (511/630)** |
 
 ### Semantic relaxation versus complete term removal
 

@@ -74,7 +74,7 @@ Supplementary Table~\ref{tab:supp_suites} summarizes the eight benchmark suites 
     \textbf{Suite} & \textbf{Evaluation Scenario \& Cohort} & \textbf{Proteomes / Proteins} & \textbf{Stage 0 Channels} & \textbf{Active Stages} & \textbf{Primary Comparators} & \textbf{Canonical Result Table(s)} \\
     \midrule
     Suite 1A & CAFA3$\to$CAFA5 Temporal GO Holdout & $16{,}125$ evals ($3{,}440$ at $<30\%$ ID) & 5-Ch (DIAMOND, Pfam, InterPro, ESM-2, ProtT5) & $0 + 1 + 2\text{A}$ & DIAMOND, ProteInfer, DeepGOCNN, DeepGOPlus, DeepGOZero & \texttt{scenario1\_cafa\_temporal\_holdout\_real.tsv} \\
-    Suite 1B & Prospective CAFA6 Sequence Holdout & $769$ prospective targets & 7-Ch (ESM-2, ProstT5 3Di, DIAMOND, InterPro, DeepGO-SE) & $0 + 2\text{A} + 3$ & ESM-2+3Di MLP, Qwen3-14B Agent & \texttt{suite1\_cafa6\_prospective\_summary.tsv} \\
+    Suite 1B & Retrained CAFA Time \& Homology Splits + CAFA6 & $82{,}376 \to 272/244$ ($5$ splits); $769$ CAFA6 & 7-Ch (Retrained BLAST, InterPro-LR, CNN, ESM-2, C-HMCNN) & $0 + 1 + 2\text{A} + 3$ & 9 Retrained Baselines (Naive, BLAST-$k$NN, DeepGOPlus, C-HMCNN) & \texttt{cafa\_retrained\_time\_and\_homology\_splits.tsv}; \texttt{suite1\_cafa6\_prospective\_summary.tsv} \\
     Suite 1C & Post-Cutoff Swiss-Prot EC (Holdout-125) & $125$ enzymes ($74$ species, $293$ pairs) & 1-Ch or 3-Ch (CLEAN, DeepProZyme, EnzBERT) & $0 + 1 + 2\text{B}$ & CLEAN, DeepProZyme, EnzBERT, METEOR v8 & \texttt{scenario1\_swissprot\_ec\_holdout125\_real.tsv} \\
     Suite 1D & 95-Genome Bacterial EC Homology Masking & $95$ genomes ($69{,}666$ proteins; 4 ID tiers) & 1-Ch or 3-Ch (CLEAN, DeepProZyme, EnzBERT) & $0 + 1 + 2\text{B}$ & Standalone Predictors, METEOR v8 & \texttt{scenario1\_95genomes\_ec\_homology\_real.tsv} \\
     Suite 2A & 9-Genome Stage 1/2A Ablation \& Perturbation & $9$ genomes ($81$ runs; $900$ injected claims) & 3-Ch (DIAMOND, HMMER/Pfam, InterProScan) & $0 + 1 + 2\text{A}$ & Stage 0 Noisy-OR, Individual Priors $B_1$--$B_6$ & \texttt{pillar1\_2\_ablation\_summary.tsv} \\
@@ -92,29 +92,29 @@ Supplementary Table~\ref{tab:supp_suites} summarizes the eight benchmark suites 
 
 \begin{table}[h!]
   \centering
-  \caption{\textbf{Ancestor-propagated evaluation across the 13-genome prokaryotic panel ($11$ prokaryotes), 21-genome multi-kingdom panel, and 9-genome genomic language model subset.}}
+  \caption{\textbf{Ancestor-propagated evaluation across the 13-genome prokaryotic panel ($11$ prokaryotes), 21-genome multi-kingdom panel, and 9-genome genomic language model subset.} On the 13-genome prokaryotic panel, strict leaf-level weighted $F_{\max}$ reaches $0.7215$ for GSPA Stage 1+2 vs.\ $0.4438$ for NCBI PGAP, $0.4015$ for InterProScan 5.72, and $0.1565$ for metagenomic-deepFRI; on the 21-genome panel, EC $F_{\max}$ reaches $0.8860$ for GSPA 7-Channel and $0.8830$ for GSPA 3-Channel vs.\ $0.8550$ for DIAMOND-BLASTp, $0.8530$ for CLEAN, $0.3880$ for ProteInfer, and $0.3120$ for InterProScan 5.72.}
   \label{tab:supp_panel13_21}
   \resizebox{\textwidth}{!}{%
-  \begin{tabular}{llccccccc}
+  \begin{tabular}{llccccc}
     \toprule
-    \textbf{Panel Cohort} & \textbf{Method / Channel} & \textbf{Genomes ($n$)} & \textbf{Micro $F_{\max}$} & \textbf{CAFA $F_{\max}$} & \textbf{WF$_{\max}$} & \textbf{S$_{\min}$} & \textbf{EC $F_{\max}$} & \textbf{Runtime / Peak RAM} \\
+    \textbf{Panel Cohort} & \textbf{Method / Channel} & \textbf{Genomes ($n$)} & \textbf{Micro $F_{\max}$} & \textbf{CAFA $F_{\max}$} & \textbf{S$_{\min}$} & \textbf{Runtime / Peak RAM} \\
     \midrule
-    \multirow{4}{*}{13-Genome Panel (Prok.\ 11)} & metagenomic-deepFRI (2026) & $11$ & $0.6010$ & $0.5940$ & $0.1565$ & $95.20$ & n/a & $38.0$~s / $4{,}800$~MB \\
-    & InterProScan 5.72 & $11$ & $0.7410$ & $0.6780$ & $0.4015$ & $58.40$ & n/a & $680.0$~s / $8{,}200$~MB \\
-    & NCBI PGAP (2021) & $11$ & $0.7820$ & $0.7680$ & $0.4438$ & $54.20$ & n/a & $1{,}800.0$~s / $16{,}000$~MB \\
-    & \textbf{GSPA Stage 1+2 (3-Channel Full)} & $11$ & \textbf{$0.8421$} & \textbf{$0.8605$} & \textbf{$0.7215$} & \textbf{$21.40$} & \textbf{$0.8830$} & $5.4$~s / $4{,}812$~MB \\
+    \multirow{4}{*}{13-Genome Panel (Prok.\ 11)} & metagenomic-deepFRI (2026) & $11$ & $0.6010$ & $0.5940$ & $95.20$ & $38.0$~s / $4{,}800$~MB \\
+    & InterProScan 5.72 & $11$ & $0.7410$ & $0.6780$ & $58.40$ & $680.0$~s / $8{,}200$~MB \\
+    & NCBI PGAP (2021) & $11$ & $0.7820$ & $0.7680$ & $54.20$ & $1{,}800.0$~s / $16{,}000$~MB \\
+    & \textbf{GSPA Stage 1+2 (3-Channel Full)} & $11$ & \textbf{$0.8421$} & \textbf{$0.8605$} & \textbf{$21.40$} & $5.4$~s / $4{,}812$~MB \\
     \midrule
-    \multirow{9}{*}{21-Genome Panel (All 21)} & FoldSeek + ProstT5 3Di (2024) & $21$ & $0.6840$ & $0.6310$ & n/a & $83.24$ & n/a & $10{,}800.0$~s / $14{,}000$~MB \\
-    & InterProScan 5.72 & $21$ & $0.7180$ & $0.6490$ & n/a & $95.93$ & $0.3120$ & $720.0$~s / $8{,}200$~MB \\
-    & ESM2-DeepGOPlus (2024) & $21$ & $0.7420$ & $0.6950$ & n/a & $105.29$ & n/a & $420.0$~s / $6{,}400$~MB \\
-    & ProteInfer (2023) & $21$ & $0.7950$ & $0.7540$ & n/a & $38.12$ & $0.3880$ & $120.0$~s / $5{,}800$~MB \\
-    & DIAMOND-BLASTp & $21$ & $0.8400$ & $0.7890$ & n/a & $93.81$ & $0.8550$ & $17.0$~s / $2{,}100$~MB \\
-    & ProtT5 $k$-NN (2021) & $21$ & $0.8530$ & $0.8010$ & n/a & $39.40$ & n/a & $28.0$~s / $6{,}200$~MB \\
-    & ESM-2 $k$-NN (2023) & $21$ & $0.8580$ & $0.8080$ & n/a & $37.85$ & n/a & $24.0$~s / $5{,}800$~MB \\
-    & \textbf{GSPA Stage 1+2 (3-Channel Core)} & $21$ & $0.8690$ & $0.8220$ & n/a & $36.14$ & $0.8830$ & $6.1$~s / $4{,}812$~MB \\
-    & \textbf{GSPA Stage 1+2 (7-Channel All-Pooled)} & $21$ & \textbf{$0.8705$} & \textbf{$0.8407$} & n/a & \textbf{$35.20$} & \textbf{$0.8860$} & $6.8$~s / $4{,}812$~MB \\
+    \multirow{9}{*}{21-Genome Panel (All 21)} & FoldSeek + ProstT5 3Di (2024) & $21$ & $0.6840$ & $0.6310$ & $83.24$ & $10{,}800.0$~s / $14{,}000$~MB \\
+    & InterProScan 5.72 & $21$ & $0.7180$ & $0.6490$ & $95.93$ & $720.0$~s / $8{,}200$~MB \\
+    & ESM2-DeepGOPlus (2024) & $21$ & $0.7420$ & $0.6950$ & $105.29$ & $420.0$~s / $6{,}400$~MB \\
+    & ProteInfer (2023) & $21$ & $0.7950$ & $0.7540$ & $38.12$ & $120.0$~s / $5{,}800$~MB \\
+    & DIAMOND-BLASTp & $21$ & $0.8400$ & $0.7890$ & $93.81$ & $17.0$~s / $2{,}100$~MB \\
+    & ProtT5 $k$-NN (2021) & $21$ & $0.8530$ & $0.8010$ & $39.40$ & $28.0$~s / $6{,}200$~MB \\
+    & ESM-2 $k$-NN (2023) & $21$ & $0.8580$ & $0.8080$ & $37.85$ & $24.0$~s / $5{,}800$~MB \\
+    & \textbf{GSPA Stage 1+2 (3-Channel Core)} & $21$ & $0.8690$ & $0.8220$ & $36.14$ & $6.1$~s / $4{,}812$~MB \\
+    & \textbf{GSPA Stage 1+2 (7-Channel All-Pooled)} & $21$ & \textbf{$0.8705$} & \textbf{$0.8407$} & \textbf{$35.20$} & $6.8$~s / $4{,}812$~MB \\
     \midrule
-    9-Genome Subset & gLM / gLM2 Genomic LM (2024) & $9$ & $0.7280$ & $0.7610$ & n/a & $37.40$ & n/a & $95.0$~s / $7{,}200$~MB \\
+    9-Genome Subset & gLM / gLM2 Genomic LM (2024) & $9$ & $0.7280$ & $0.7610$ & $37.40$ & $95.0$~s / $7{,}200$~MB \\
     \bottomrule
   \end{tabular}%
   }
@@ -161,18 +161,18 @@ All 18 configurable pipeline hyperparameters across Stage 1 (13 configuration ke
   }
 \end{table}
 
-\subsection{Temporal GO and EC holdouts and 95-genome homology masking}
+\subsection{Temporal GO and EC holdouts, homology-split retraining, and 95-genome homology masking}
 
-Supplementary Table~\ref{tab:supp_cafa_temporal} reports the CAFA temporal holdout benchmark across $16{,}125$ protein--aspect evaluations ($3{,}440$ at $< 30\%$ sequence identity). Supplementary Table~\ref{tab:supp_holdout125} reports the 16-row post-cutoff Swiss-Prot enzyme benchmark (Holdout-125, $n=125$ proteins across 293 ground-truth protein--EC pairs), separating standalone per-protein baselines, single-predictor refinement, and three-method ensemble pooling. Supplementary Table~\ref{tab:supp_95genomes} reports the 12-row enzyme evaluation across the 95-genome bacterial panel under four donor-database homology-masking tiers (unfiltered, $\le 70\%$, $\le 50\%$, and $\le 30\%$ sequence identity), comparing unfiltered METEOR v8 Top-1 changes against GSPA's single-predictor stoichiometric and pathway acceptance filter and GSPA's three-channel consensus acceptance filter, alongside exact discordant protein counts ($b_{01}, b_{10}$) and two-sided exact McNemar $p$-values.
+Supplementary Table~\ref{tab:supp_cafa_temporal} reports both the complete 55-row retrained CAFA time-based and homology-based split benchmark across all 11 retrained methods (\texttt{cafa\_retrained\_time\_and\_homology\_splits.tsv}) and the $16{,}125$-evaluation CAFA temporal holdout benchmark ($3{,}440$ at $< 30\%$ sequence identity). Supplementary Table~\ref{tab:supp_holdout125} reports the 16-row post-cutoff Swiss-Prot enzyme benchmark (Holdout-125, $n=125$ proteins across 293 ground-truth protein--EC pairs), separating standalone per-protein baselines, single-predictor refinement, and three-method ensemble pooling. Supplementary Table~\ref{tab:supp_95genomes} reports the 12-row enzyme evaluation across the 95-genome bacterial panel under four donor-database homology-masking tiers (unfiltered, $\le 70\%$, $\le 50\%$, and $\le 30\%$ sequence identity), comparing unfiltered METEOR v8 Top-1 changes against GSPA's single-predictor stoichiometric and pathway acceptance filter and GSPA's three-channel consensus acceptance filter, alongside exact discordant protein counts ($b_{01}, b_{10}$) and two-sided exact McNemar $p$-values.
 
 \begin{table}[h!]
   \centering
-  \caption{\textbf{CAFA temporal holdout evaluation across $16{,}125$ protein--aspect evaluations ($3{,}440$ twilight-zone evaluations at $< 30\%$ sequence identity).}}
+  \caption{\textbf{CAFA temporal holdout ($16{,}125$ protein--aspect evaluations, including $3{,}440$ at $< 30\%$ identity) and complete retrained time-based (\texttt{Clean-A}, \texttt{Clean-B}) and homology-based ($\le 70\%$, $\le 50\%$, $\le 30\%$ identity) split summary across all 11 retrained methods.}}
   \label{tab:supp_cafa_temporal}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{lccccccccc}
     \toprule
-    \textbf{Method} & \textbf{MF All} & \textbf{MF $<30\%$} & \textbf{BP All} & \textbf{BP $<30\%$} & \textbf{CC All} & \textbf{CC $<30\%$} & \textbf{Macro $F_{\max}$ All} & \textbf{Macro $F_{\max}$ $<30\%$} & \textbf{Runtime / Peak RAM} \\
+    \textbf{Panel A: 16,125-Eval Temporal Holdout} & \textbf{MF All} & \textbf{MF $<30\%$} & \textbf{BP All} & \textbf{BP $<30\%$} & \textbf{CC All} & \textbf{CC $<30\%$} & \textbf{Macro $F_{\max}$ All} & \textbf{Macro $F_{\max}$ $<30\%$} & \textbf{Runtime / Peak RAM} \\
     \midrule
     DIAMOND (BLAST) & $0.6224$ & $0.0000$ & $0.4437$ & $0.0000$ & $0.5805$ & $0.0000$ & $0.5489$ & $0.0000$ & $4.2$~s / $1{,}150$~MB \\
     DeepGOCNN & $0.4280$ & $0.4209$ & $0.3431$ & $0.3389$ & $0.6409$ & $0.6487$ & $0.4707$ & $0.4695$ & $8.5$~s / $2{,}400$~MB \\
@@ -185,6 +185,20 @@ Supplementary Table~\ref{tab:supp_cafa_temporal} reports the CAFA temporal holdo
     \textbf{GSPA (Iter 1)} & $0.7163$ & $0.6971$ & \textbf{$0.6391$} & \textbf{$0.6152$} & $0.7257$ & \textbf{$0.7202$} & \textbf{$0.6937$} & \textbf{$0.6775$} & $59.2$~s / $6{,}450$~MB \\
     GSPA (Iter 2) & $0.7164$ & \textbf{$0.6972$} & $0.6365$ & $0.6143$ & \textbf{$0.7259$} & \textbf{$0.7202$} & $0.6929$ & $0.6772$ & $61.5$~s / $6{,}450$~MB \\
     GSPA (Iter 3) & \textbf{$0.7165$} & \textbf{$0.6972$} & $0.6332$ & $0.6104$ & \textbf{$0.7259$} & \textbf{$0.7202$} & $0.6919$ & $0.6759$ & $63.8$~s / $6{,}450$~MB \\
+    \midrule
+    \textbf{Panel B: Retrained Splits (Mean $f_w$ / $F_{\max}$ / $V$)} & \textbf{Clean-A $f_w$} & \textbf{Clean-A $F_{\max}$ ($V$)} & \textbf{Clean-B $f_w$} & \textbf{Clean-B $F_{\max}$ ($V$)} & \textbf{$\le 70\%$ $f_w$} & \textbf{$\le 70\%$ $F_{\max}$ ($V$)} & \textbf{$\le 50\%$ $f_w$ ($F_{\max}$)} & \textbf{$\le 30\%$ $f_w$} & \textbf{$\le 30\%$ $F_{\max}$ ($V$)} \\
+    \midrule
+    Naive Term-Frequency Prior (Retrained) & $0.2779$ & $0.3631$ ($43$) & $0.2770$ & $0.3584$ ($35$) & $0.2939$ & $0.3733$ ($22$) & $0.2940$ ($0.3738$) & $0.2950$ & $0.3732$ ($21$) \\
+    InterPro Domain Logistic Regression (Retrained) & $0.2485$ & $0.2629$ ($76$) & $0.2051$ & $0.2173$ ($0$) & $0.2416$ & $0.2577$ ($30$) & $0.2381$ ($0.2540$) & $0.2281$ & $0.2453$ ($6$) \\
+    DIAMOND BLAST-$k$NN (Filtered DB) & $0.4869$ & $0.5287$ ($26$) & $0.4718$ & $0.5165$ ($26$) & $0.3426$ & $0.3856$ ($48$) & $0.1815$ ($0.2035$) & $0.0312$ & $0.0359$ ($2$) \\
+    DeepGOCNN (1D-CNN, Retrained) & $0.3660$ & $0.4372$ ($33$) & $0.3720$ & $0.4428$ ($37$) & $0.3381$ & $0.4083$ ($11$) & $0.3231$ ($0.3887$) & $0.2930$ & $0.3680$ ($56$) \\
+    ESM-2 Embedding $k$-NN (goPredSim, Retrained) & $0.4806$ & $0.5363$ ($14$) & $0.4872$ & $0.5384$ ($14$) & $0.4005$ & $0.4683$ ($19$) & $0.3407$ ($0.4126$) & $0.2952$ & $0.3763$ ($49$) \\
+    DeepGOPlus (1D-CNN + BLAST-$k$NN, Retrained) & $0.5125$ & $0.5505$ ($28$) & $0.5079$ & $0.5465$ ($17$) & $0.4098$ & $0.4679$ ($35$) & $0.3488$ ($0.4091$) & $0.2967$ & $0.3731$ ($48$) \\
+    ESM-2 MLP (Flat BCE, Retrained) & $0.4938$ & $0.5471$ ($26$) & $0.5039$ & $0.5492$ ($20$) & $0.4519$ & $0.5092$ ($31$) & $0.4019$ ($0.4600$) & $0.3256$ & $0.4083$ ($28$) \\
+    ESM-2 C-HMCNN (Hierarchical MCLoss, Retrained) & $0.4998$ & $0.5562$ ($17$) & $0.5081$ & $0.5584$ ($16$) & $0.4482$ & $0.5065$ ($25$) & $0.4027$ ($0.4596$) & $0.3270$ & $0.4139$ ($22$) \\
+    DeepGO-PlusPlus Stacker (Retrained Integrator) & $0.5429$ & $0.5833$ ($665$) & $0.5364$ & $0.5716$ ($696$) & $0.4842$ & \textbf{$0.5392$} ($721$) & \textbf{$0.4400$ ($0.4985$)} & $0.3967$ & $0.4652$ ($389$) \\
+    GSPA Stage 0 (Calibrated Multi-Group Noisy-OR) & $0.5461$ & $0.5893$ ($167$) & \textbf{$0.5435$} & \textbf{$0.5833$} ($142$) & $0.4808$ & $0.5325$ ($65$) & $0.4236$ ($0.4755$) & $0.3748$ & $0.4509$ ($82$) \\
+    \textbf{GSPA Full (Stages 1 + 2A Relaxation)} & \textbf{$0.5481$} & \textbf{$0.5897$ ($0$)} & $0.5416$ & $0.5817$ (\textbf{$0$}) & \textbf{$0.4867$} & $0.5368$ (\textbf{$0$}) & $0.4362$ ($0.4882$, \textbf{$0$}) & \textbf{$0.3983$} & \textbf{$0.4654$ ($0$)} \\
     \bottomrule
   \end{tabular}%
   }
@@ -381,22 +395,26 @@ and the multi-predictor posterior blends $0.55 P_{\text{single}}^{(t)}(p, u) + 0
   \caption{\textbf{108-genome stoichiometric invariant audit, curated BiGG reference GEM comparison ($n=6$ species), and role-stratified Price-149 CLEAN refinement across Strata A, B, and C.}}
   \label{tab:supp_bigg}
   \resizebox{\textwidth}{!}{%
-  \begin{tabular}{llcccccc}
+  \begin{tabular}{llcccc}
     \toprule
-    \textbf{Panel / Stratum} & \textbf{Method / Reconstruction Pipeline} & \textbf{Active / Growing} & \textbf{Added Rxns (Cert.\ / Pad.)} & \textbf{Imbal.\ / Dead-End Added} & \textbf{EC Prec.\ / Rec.\ / $F_1$} & \textbf{BiGG Rxn $F_1$} & \textbf{Top-1 Hits (Acc.)} \\
+    \textbf{Panel A: 108-Genome Audit} & \textbf{Method / Reconstruction Pipeline} & \textbf{Active Rxns (LP Growth)} & \textbf{Flux-Carrying / Zero-Flux} & \textbf{Added Rxns (Cert.\ / Pad.)} & \textbf{Imbal.\ / Dead-End Active} \\
     \midrule
-    \multirow{4}{*}{108-Genome Audit} & Raw Sequence Threshold ($\ge 0.50$) & $2{,}809.5$ ($0\%$ grow) & $0.0$ ($0.0 / 0.0$) & $2{,}621.7$ active / $9.75$ & n/a & n/a & n/a \\
-    & METEOR v8 (Negative-Cost MILP) & $3{,}121.0$ ($100\%$ grow) & $313.35$ ($51.01 / 262.34$) & $2{,}597.8$ active / $2.36$ & n/a & n/a & n/a \\
-    & Grow-Support Threshold Repair (Pos.-Cost LP) & $2{,}584.8$ ($100\%$ grow) & $81.31$ ($81.31 / 0.00$) & $0.0$ added / $2.23$ & n/a & n/a & n/a \\
-    & \textbf{GSPA Stage 2B (Lexicographic pFBA)} & \textbf{$2{,}815.2$ ($300.6$ flux, $100\%$ grow)} & \textbf{$5.70$ ($5.70 / 0.00$)} & \textbf{$0.0$ added / $0.00$} & n/a & n/a & n/a \\
+    \multirow{4}{*}{108-Genome Audit} & Raw Sequence Threshold ($\ge 0.50$) & $2{,}809.5$ ($0\%$ grow) & $0.0 / 2{,}809.5$ & $0.0$ ($0.0 / 0.0$) & $2{,}621.7 / 9.75$ \\
+    & METEOR v8 (Negative-Cost MILP) & $3{,}121.0$ ($100\%$ grow) & $446.4 / 2{,}674.6$ & $313.35$ ($51.01 / 262.34$) & $2{,}597.8 / 2.36$ \\
+    & Grow-Support Threshold Repair (Pos.-Cost LP) & $2{,}584.8$ ($100\%$ grow) & $446.4 / 2{,}138.4$ & $81.31$ ($81.31 / 0.00$) & $0.0 / 2.23$ \\
+    & \textbf{GSPA Stage 2B (Lexicographic pFBA)} & \textbf{$2{,}815.2$ ($100\%$ grow)} & \textbf{$300.6 / 2{,}514.6$} & \textbf{$5.70$ ($5.70 / 0.00$)} & \textbf{$0.0 / 0.00$} \\
     \midrule
-    \multirow{3}{*}{6 Curated BiGG GEMs} & CarveMe v1.5.2 (Native BiGG Database) & $6/6$ ($100\%$) & n/a & n/a & \textbf{$0.8217 / 0.8927 / 0.8536$} & \textbf{$0.6955$} & n/a \\
-    & Reconstructor (ModelSEED Namespace) & $4/6$ ($67\%$) & n/a & n/a & $0.4387 / 0.8787 / 0.5844$ & n/a & n/a \\
-    & DeepProZyme + METEOR v8 (Neg.-Cost MILP) & $6/6$ ($100\%$) & n/a & n/a & $0.4383 / 0.8842 / 0.5851$ & $0.2091$ & n/a \\
+    \textbf{Panel B: 6 Curated BiGG GEMs} & \textbf{Reconstruction Pipeline} & \textbf{FBA Growing GEMs} & \textbf{EC Precision / Recall} & \textbf{EC $F_1$} & \textbf{BiGG Rxn Precision / Recall / $F_1$} \\
     \midrule
-    Price-149 Stratum A ($n=91$) & CLEAN Base $\to$ + Stage 2B Probe $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Core Biomass & n/a & n/a & $F_{\max}$: $0.6336 \to 0.6405 \to 0.6274 \to \mathbf{0.7019}$ & Macro: $0.4740 \to \mathbf{0.5288}$ & $46 \to 46 \to 47 \to \mathbf{52}$ ($57.1\%$) \\
-    Price-149 Stratum B ($n=55$) & CLEAN Base $\to$ + Stage 2B Probe $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Catabolic & n/a & n/a & $F_{\max}$: $0.3580 \to 0.3753 \to 0.3461 \to \mathbf{0.4546}$ & Macro: $0.3103 \to \mathbf{0.3436}$ & $13 \to 13 \to \mathbf{15}$ ($27.3\%$) $\to 13$ ($23.6\%$) \\
-    Price-149 Stratum C ($n=2$) & CLEAN Base $\to$ + Stage 2B Probe $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Secondary & n/a & n/a & $F_{\max}$: $0.5099 \to 0.5099 \to 0.5175 \to \mathbf{0.5833}$ & Macro: $0.5000 \to 0.5000$ & $1 \to 1 \to 1 \to 1$ ($50.0\%$) \\
+    \multirow{3}{*}{6 Curated BiGG GEMs} & CarveMe v1.5.2 (Native BiGG Database) & $6/6$ ($100\%$) & \textbf{$0.8217 / 0.8927$} & \textbf{$0.8536$} & \textbf{$0.6693 / 0.7305 / 0.6955$} \\
+    & Reconstructor (ModelSEED Namespace) & $4/6$ ($67\%$) & $0.4387 / 0.8787$ & $0.5844$ & ModelSEED namespace ($672.3$ active rxns) \\
+    & DeepProZyme + METEOR v8 (Neg.-Cost MILP) & $6/6$ ($100\%$) & $0.4383 / 0.8842$ & $0.5851$ & $0.1655 / 0.2900 / 0.2091$ \\
+    \midrule
+    \textbf{Panel C: Price-149 Strata} & \textbf{Progression: Base $\to$ Probe $\to$ 1-Pred $\to$ Multi-Pred} & \textbf{Reaction Role} & \textbf{Micro $F_{\max}$ Trajectory} & \textbf{Macro $F_1$ Trajectory} & \textbf{Top-1 Hits (Acc.) Trajectory} \\
+    \midrule
+    Price-149 Stratum A ($n=91$) & CLEAN Base $\to$ + Stage 2B Probe $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Core Biomass & $0.6336 \to 0.6405 \to 0.6274 \to \mathbf{0.7019}$ & $0.4740 \to \mathbf{0.5288}$ & $46 \to 46 \to 47 \to \mathbf{52}$ ($57.1\%$) \\
+    Price-149 Stratum B ($n=55$) & CLEAN Base $\to$ + Stage 2B Probe $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Catabolic & $0.3580 \to 0.3753 \to 0.3461 \to \mathbf{0.4546}$ & $0.3103 \to \mathbf{0.3436}$ & $13 \to 13 \to \mathbf{15}$ ($27.3\%$) $\to 13$ ($23.6\%$) \\
+    Price-149 Stratum C ($n=2$) & CLEAN Base $\to$ + Stage 2B Probe $\to$ + Single-Pred $\to$ \textbf{+ Multi-Pred} & Secondary & $0.5099 \to 0.5099 \to 0.5175 \to \mathbf{0.5833}$ & $0.5000 \to 0.5000$ & $1 \to 1 \to 1 \to 1$ ($50.0\%$) \\
     \bottomrule
   \end{tabular}%
   }

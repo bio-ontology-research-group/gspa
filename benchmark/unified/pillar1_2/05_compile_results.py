@@ -331,7 +331,7 @@ def main():
 
             rf.write("| Configuration | Mean Injected | Mean Surviving | Surviving Anat | Surviving Taxon | Suppression Rate (%) | F-max Micro (exp) | F-max CAFA (exp) |\n")
             rf.write("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |\n")
-            for pcfg in ["A1_noisy_or", "A6_consistency_anatomical", "A8_stage2_remove", "A9_stage2_relax"]:
+            for pcfg in ["A1_noisy_or", "A6_consistency_anatomical", "A7_stage1_all", "A8_stage2_remove", "A9_stage2_relax"]:
                 prows = by_pcfg.get(pcfg, [])
                 if prows:
                     avg_surv = sum(x["surviving_violations"] for x in prows) / len(prows)

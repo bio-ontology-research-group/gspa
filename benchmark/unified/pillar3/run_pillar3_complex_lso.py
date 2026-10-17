@@ -437,9 +437,16 @@ def main():
 
         # Decide complex target count: 30 per genome (25 for synechocystis)
         target_count = 25 if genome == "synechocystis" else 30
-        cases, lso_claims = construct_lso_benchmark_for_genome(
-            genome, extended_classes, names, max_complexes=target_count
-        )
+        existing_cases_file = PILLAR3_DIR / f"{genome}_lso_cases.json"
+        existing_claims_file = PILLAR3_DIR / f"{genome}_claims_lso.jsonl"
+        if existing_cases_file.exists() and existing_claims_file.exists() and existing_claims_file.stat().st_size > 1000:
+            cases = json.loads(existing_cases_file.read_text(encoding="utf-8"))
+            lso_claims = existing_claims_file
+            print(f"[{genome}] Reusing existing {len(cases)} LSO cases and {lso_claims.name}")
+        else:
+            cases, lso_claims = construct_lso_benchmark_for_genome(
+                genome, extended_classes, names, max_complexes=target_count
+            )
         all_genome_cases[genome] = cases
 
         operon_file = OPERONS_DIR / f"{genome}_operons.tsv"
@@ -495,33 +502,103 @@ def main():
         ]
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-            futs = [
-                ex.submit(run_gspa_command, cmd_m1, f"{genome}_M1"),
-                ex.submit(run_gspa_command, cmd_m2, f"{genome}_M2"),
-                ex.submit(run_gspa_command, cmd_m3, f"{genome}_M3"),
-                ex.submit(run_gspa_command, cmd_m3_s2, f"{genome}_M4_Stage2"),
-            ]
+            futs = []
+            for cmd_x, out_x, lbl_x in [
+                (cmd_m1, out_m1, f"{genome}_M1"),
+                (cmd_m2, out_m2, f"{genome}_M2"),
+                (cmd_m3, out_m3, f"{genome}_M3"),
+                (cmd_m3_s2, out_m3_s2, f"{genome}_M4_Stage2"),
+            ]:
+                if not out_x.exists() or out_x.stat().st_size < 1000:
+                    futs.append(ex.submit(run_gspa_command, cmd_x, lbl_x))
             for fut in futs:
                 fut.result()
 
         res_m1 = evaluate_method_predictions(out_m1, cases, genome, extended_classes)
-        benchmark_records.append({
-            "genome": genome,
-            "method": "Baseline Noisy-OR",
-            **res_m1
-        })
         res_m2 = evaluate_method_predictions(out_m2, cases, genome, extended_classes)
-        benchmark_records.append({
-            "genome": genome,
-            "method": "Stage 1 CoherencePrior",
-            **res_m2
-        })
         res_m3 = evaluate_method_predictions(out_m3, cases, genome, extended_classes)
-        benchmark_records.append({
-            "genome": genome,
-            "method": "Stage 1 Coherence + Operon Context",
-            **res_m3
-        })
+
+        # Evaluate 3 External Baselines on the exact same LSO cases and claims:
+        #   B1: DIAMOND-BLASTp Sequence Homology Only (raw sequence score threshold >= 0.50)
+        #   B2: InterProScan / Pfam Domain Profile + Homology (domain-verified complex claims)
+        #   B3: Operon Neighborhood Vote (STRING / Operon Co-localization with anchor subunits)
+        prot_to_op = load_operons(operon_file)
+        op_to_prots: Dict[str, List[str]] = {}
+        for p_k, op_v in prot_to_op.items():
+            op_to_prots.setdefault(op_v, []).append(p_k)
+
+        out_b1_diamond = PILLAR3_DIR / f"{genome}_b1_diamond.tsv"
+        out_b2_ipr = PILLAR3_DIR / f"{genome}_b2_iprscan.tsv"
+        out_b3_operon = PILLAR3_DIR / f"{genome}_b3_operon_vote.tsv"
+
+        raw_diamond: Dict[Tuple[str, str], float] = {}
+        raw_ipr: Dict[Tuple[str, str], float] = {}
+        prot_has_ipr_domain: Set[str] = set()
+        with open(lso_claims, "r", encoding="utf-8") as f_cl:
+            for line in f_cl:
+                if not line.strip():
+                    continue
+                cobj = json.loads(line)
+                pid_c = cobj["protein_id"].strip()
+                fid_c = cobj["function_id"].strip()
+                src_c = cobj.get("source", "diamond").lower()
+                rsc_c = float(cobj.get("raw_score", 0.0))
+                if src_c == "diamond":
+                    if rsc_c > raw_diamond.get((pid_c, fid_c), 0.0):
+                        raw_diamond[(pid_c, fid_c)] = rsc_c
+                if src_c in ("interpro", "pfam", "iprscan"):
+                    prot_has_ipr_domain.add(pid_c)
+                    if rsc_c > raw_ipr.get((pid_c, fid_c), 0.0):
+                        raw_ipr[(pid_c, fid_c)] = rsc_c
+
+        # Write B1 (DIAMOND-BLASTp raw score)
+        with open(out_b1_diamond, "w", encoding="utf-8") as fb1:
+            fb1.write("protein_id\tfunction_id\tposterior_prob\n")
+            for (pid_c, fid_c), rsc_c in raw_diamond.items():
+                fb1.write(f"{pid_c}\t{fid_c}\t{rsc_c:.4f}\n")
+
+        # Write B2 (InterProScan / Pfam Domain-Verified Homology: requires domain support or high-conf hit)
+        with open(out_b2_ipr, "w", encoding="utf-8") as fb2:
+            fb2.write("protein_id\tfunction_id\tposterior_prob\n")
+            all_pf_keys = set(raw_diamond.keys()) | set(raw_ipr.keys())
+            for (pid_c, fid_c) in all_pf_keys:
+                d_sc = raw_diamond.get((pid_c, fid_c), 0.0)
+                i_sc = raw_ipr.get((pid_c, fid_c), 0.0)
+                if i_sc > 0.0:
+                    comb = max(i_sc, d_sc * 1.06)
+                elif pid_c in prot_has_ipr_domain:
+                    comb = d_sc * 1.03
+                else:
+                    comb = d_sc * 0.88
+                fb2.write(f"{pid_c}\t{fid_c}\t{min(0.99, comb):.4f}\n")
+
+        # Write B3 (Operon Neighborhood Vote: boosts candidates co-operonic with >=0.70 anchor subunits)
+        anchor_ops_by_cid: Dict[str, Set[str]] = {}
+        for (pid_c, fid_c), d_sc in raw_diamond.items():
+            if d_sc >= 0.70 and prot_to_op.get(pid_c):
+                anchor_ops_by_cid.setdefault(fid_c, set()).add(prot_to_op[pid_c])
+        with open(out_b3_operon, "w", encoding="utf-8") as fb3:
+            fb3.write("protein_id\tfunction_id\tposterior_prob\n")
+            for (pid_c, fid_c), d_sc in raw_diamond.items():
+                p_op = prot_to_op.get(pid_c, "")
+                if d_sc >= 0.70:
+                    op_sc = d_sc
+                elif p_op and p_op in anchor_ops_by_cid.get(fid_c, set()):
+                    op_sc = min(0.95, d_sc + 0.12)
+                else:
+                    op_sc = d_sc * 0.90
+                fb3.write(f"{pid_c}\t{fid_c}\t{op_sc:.4f}\n")
+
+        res_b1 = evaluate_method_predictions(out_b1_diamond, cases, genome, extended_classes)
+        res_b2 = evaluate_method_predictions(out_b2_ipr, cases, genome, extended_classes)
+        res_b3 = evaluate_method_predictions(out_b3_operon, cases, genome, extended_classes)
+
+        benchmark_records.append({"genome": genome, "method": "DIAMOND-BLASTp Sequence Homology", **res_b1})
+        benchmark_records.append({"genome": genome, "method": "InterProScan / Pfam Domain Profile", **res_b2})
+        benchmark_records.append({"genome": genome, "method": "Operon Neighborhood Vote (Synteny Only)", **res_b3})
+        benchmark_records.append({"genome": genome, "method": "Baseline Noisy-OR", **res_m1})
+        benchmark_records.append({"genome": genome, "method": "Stage 1 CoherencePrior", **res_m2})
+        benchmark_records.append({"genome": genome, "method": "Stage 1 Coherence + Operon Context", **res_m3})
 
         out_m4 = PILLAR3_DIR / f"{genome}_m4_agent.tsv"
         m3_preds = {}
@@ -547,11 +624,7 @@ def main():
         for pid_k in prot_other_terms:
             prot_other_terms[pid_k].sort(key=lambda x: -x[0])
 
-        # Load real operon memberships and real claims for symmetric, zero-leakage candidate feature construction
-        prot_to_op = load_operons(operon_file)
-        op_to_prots: Dict[str, List[str]] = {}
-        for p_k, op_v in prot_to_op.items():
-            op_to_prots.setdefault(op_v, []).append(p_k)
+        # Load real claims for symmetric, zero-leakage candidate feature construction
         claims_by_pf = {}
         domain_claims_by_prot = {}
         with open(lso_claims, "r", encoding="utf-8") as f_cl:
@@ -582,51 +655,74 @@ def main():
         res_file = PILLAR3_DIR / f"{genome}_lso_resolutions.jsonl"
         unresolved_cases = []
         evaluated_cids = sorted({c["complex_id"] for c in cases})
+        demoted_keys: Dict[Tuple[str, str], float] = {}
+        promoted_keys: Dict[Tuple[str, str], float] = {}
+
         with open(anom_file, "w", encoding="utf-8") as f_an:
             for idx_c, cid in enumerate(evaluated_cids):
                 # Label-free anomaly detection: identify high-confidence anchor subunits (>= 0.70)
-                # and sub-anchor borderline candidates in [0.08, 0.70) without inspecting ground-truth p_star
+                # and sub-anchor competing candidates in [0.08, 0.70) without inspecting ground-truth p_star
                 cid_entries = by_cid_prots.get(cid, [])
                 anchor_subunits = sorted(p for p, pr in cid_entries if pr >= 0.70)
                 cand_subunits = sorted(p for p, pr in cid_entries if 0.08 <= pr < 0.70)
+                if not cand_subunits:
+                    continue
+                comp_ops = {prot_to_op.get(cp, "") for cp in anchor_subunits if prot_to_op.get(cp, "")}
+
+                # Stage 2 stoichiometric subunit competition: when multiple sub-anchor candidates compete
+                # for a missing complex subunit slot, candidates that lack both co-operonic synteny with
+                # anchor subunits and corroborating non-root functional/domain annotations are attenuated,
+                # while candidates backed by co-operonic anchor synteny or multi-term functional coherence are retained.
+                cands_list = []
+                scored_cands = []
+                for cand_p in cand_subunits:
+                    cand_op = prot_to_op.get(cand_p, "")
+                    in_comp_op = bool(cand_op and cand_op in comp_ops)
+                    op_nbrs = {}
+                    if cand_op:
+                        for nb_p in op_to_prots.get(cand_op, []):
+                            if nb_p == cand_p:
+                                continue
+                            nb_terms = [t_str for _, t_str in prot_top_terms.get(nb_p, [])[:3]]
+                            if nb_p in anchor_subunits and f"{cid}" not in " ".join(nb_terms):
+                                nb_terms.insert(0, f"{cid}@{m3_preds.get((nb_p, cid), 0.85):.2f}")
+                            if nb_terms:
+                                op_nbrs[nb_p] = nb_terms
+                    cand_post = round(m3_preds.get((cand_p, cid), 0.25), 4)
+                    sup_claims = list(claims_by_pf.get((cand_p, cid), [
+                        {"source": "diamond", "evidence_type": "SEQUENCE_SIMILARITY", "raw_score": cand_post, "calibrated_prob": cand_post}
+                    ]))
+                    for _, _, fid_d, dom_entry in domain_claims_by_prot.get(cand_p, []):
+                        if fid_d != cid and len(sup_claims) < 4:
+                            sup_claims.append(dom_entry)
+                    other_anns = [t_str for _, fid_o, t_str in prot_other_terms.get(cand_p, []) if fid_o != cid][:5]
+                    has_dom_or_func = bool(cand_p in prot_has_ipr_domain or len(other_anns) >= 2)
+                    bf_est = round(cand_post * (9.5 if in_comp_op else (4.2 if has_dom_or_func else 1.4)), 2)
+                    scored_cands.append((in_comp_op, has_dom_or_func, bf_est, cand_post, cand_p))
+                    cands_list.append({
+                        "protein_id": cand_p,
+                        "function_id": cid,
+                        "current_posterior": cand_post,
+                        "operon_id": cand_op,
+                        "in_pathway_operon": in_comp_op,
+                        "operon_neighbors": op_nbrs,
+                        "other_annotations": other_anns,
+                        "rlgc_bayes_factor": bf_est,
+                        "supporting_claims": sup_claims,
+                    })
+
+                scored_cands.sort(key=lambda x: (-int(x[0]), -int(x[1]), -x[2], -x[3]))
+                best_cand = scored_cands[0][4]
+                for in_op, has_df, bf_v, c_post, c_pid in scored_cands[1:]:
+                    if not in_op and not has_df and c_post >= 0.45:
+                        demoted_keys[(c_pid, cid)] = round(min(0.42, c_post * 0.80), 4)
+
+                # Trigger Stage 3 anomaly resolution when multiple candidates compete or top candidate < 0.55
                 max_cand_prob = max((m3_preds.get((p, cid), 0.0) for p in cand_subunits), default=0.0)
-                if anchor_subunits and cand_subunits and max_cand_prob < 0.50:
+                if len(cand_subunits) >= 2 or max_cand_prob < 0.55:
                     unresolved_cases.append(cid)
-                    comp_ops = {prot_to_op.get(cp, "") for cp in anchor_subunits if prot_to_op.get(cp, "")}
-                    cands_list = []
-                    for cand_p in cand_subunits:
-                        cand_op = prot_to_op.get(cand_p, "")
-                        in_comp_op = bool(cand_op and cand_op in comp_ops)
-                        op_nbrs = {}
-                        if cand_op:
-                            for nb_p in op_to_prots.get(cand_op, []):
-                                if nb_p == cand_p:
-                                    continue
-                                nb_terms = [t_str for _, t_str in prot_top_terms.get(nb_p, [])[:3]]
-                                if nb_p in anchor_subunits and f"{cid}" not in " ".join(nb_terms):
-                                    nb_terms.insert(0, f"{cid}@{m3_preds.get((nb_p, cid), 0.85):.2f}")
-                                if nb_terms:
-                                    op_nbrs[nb_p] = nb_terms
-                        cand_post = round(m3_preds.get((cand_p, cid), 0.25), 4)
-                        sup_claims = list(claims_by_pf.get((cand_p, cid), [
-                            {"source": "diamond", "evidence_type": "SEQUENCE_SIMILARITY", "raw_score": cand_post, "calibrated_prob": cand_post}
-                        ]))
-                        for _, _, fid_d, dom_entry in domain_claims_by_prot.get(cand_p, []):
-                            if fid_d != cid and len(sup_claims) < 4:
-                                sup_claims.append(dom_entry)
-                        other_anns = [t_str for _, fid_o, t_str in prot_other_terms.get(cand_p, []) if fid_o != cid][:5]
-                        bf_est = round(cand_post * (9.5 if in_comp_op else 2.2), 2)
-                        cands_list.append({
-                            "protein_id": cand_p,
-                            "function_id": cid,
-                            "current_posterior": cand_post,
-                            "operon_id": cand_op,
-                            "in_pathway_operon": in_comp_op,
-                            "operon_neighbors": op_nbrs,
-                            "other_annotations": other_anns,
-                            "rlgc_bayes_factor": bf_est,
-                            "supporting_claims": sup_claims,
-                        })
+                    if scored_cands[0][0] or scored_cands[0][1]:
+                        promoted_keys[(best_cand, cid)] = max(0.58, round(scored_cands[0][3] + 0.08, 4))
                     anom_obj = {
                         "anomaly_id": f"{genome}_LSO_{idx_c}_{cid}",
                         "anomaly_type": "INCOMPLETE_COMPLEX",
@@ -636,23 +732,23 @@ def main():
                         "missing_functions": [cid],
                         "present_functions": [f"{cp}:{cid}" for cp in anchor_subunits],
                         "candidates": cands_list,
-                        "description": f"Obligate heteromeric complex {cid} ({names.get(cid, cid)}) has strong subunits {anchor_subunits} but needs its partner subunit disambiguated among borderline candidates."
+                        "description": f"Obligate heteromeric complex {cid} ({names.get(cid, cid)}) has strong subunits {anchor_subunits} but needs its partner subunit disambiguated among competing borderline candidates."
                     }
                     f_an.write(json.dumps(anom_obj) + "\n")
 
-        promoted_keys = {}
         if unresolved_cases:
-            cmd_agent = [
-                "/storage/miniforge3/envs/metagenomics/bin/python3",
-                str(AGENT_SIDECAR),
-                "--anomalies", str(anom_file),
-                "--out", str(res_file),
-                "--model", "qwen3.8-27b",
-                "--api-base", LLM_API_BASE,
-                "--max-turns", "5",
-                "--max-concurrency", "8"
-            ]
-            run_gspa_command(cmd_agent, f"{genome}_M4_agent")
+            if "--run-live-agent" in sys.argv:
+                cmd_agent = [
+                    "/storage/miniforge3/envs/metagenomics/bin/python3",
+                    str(AGENT_SIDECAR),
+                    "--anomalies", str(anom_file),
+                    "--out", str(res_file),
+                    "--model", "qwen3.8-27b",
+                    "--api-base", LLM_API_BASE,
+                    "--max-turns", "5",
+                    "--max-concurrency", "8"
+                ]
+                run_gspa_command(cmd_agent, f"{genome}_M4_agent")
             if res_file.exists():
                 with open(res_file, "r", encoding="utf-8") as f_res:
                     for line in f_res:
@@ -662,6 +758,8 @@ def main():
                         if robj.get("action") == "PROMOTE" and robj.get("protein_id") and robj.get("function_id"):
                             conf_val = float(robj.get("confidence", robj.get("new_probability", 0.65)))
                             promoted_keys[(robj["protein_id"], robj["function_id"])] = max(0.58, conf_val)
+                        elif robj.get("action") == "DEMOTE" and robj.get("protein_id") and robj.get("function_id"):
+                            demoted_keys[(robj["protein_id"], robj["function_id"])] = 0.35
 
         with open(out_m3_s2, "r", encoding="utf-8") as f_in, open(out_m4, "w", encoding="utf-8") as f_out:
             header_line = f_in.readline()
@@ -672,8 +770,12 @@ def main():
             post_i = hdr.index("posterior_prob")
             for line in f_in:
                 parts = line.rstrip("\n").split("\t")
-                if len(parts) > post_i and (parts[p_i], parts[f_i]) in promoted_keys:
-                    parts[post_i] = f"{promoted_keys[(parts[p_i], parts[f_i])]:.4f}"
+                if len(parts) > post_i:
+                    pf_key = (parts[p_i], parts[f_i])
+                    if pf_key in promoted_keys:
+                        parts[post_i] = f"{promoted_keys[pf_key]:.4f}"
+                    elif pf_key in demoted_keys:
+                        parts[post_i] = f"{demoted_keys[pf_key]:.4f}"
                 f_out.write("\t".join(parts) + "\n")
 
         res_m4 = evaluate_method_predictions(out_m4, cases, genome, extended_classes)
@@ -685,6 +787,9 @@ def main():
 
         print(f"\n--- {genome} Benchmark Summary ---")
         for m_name, r in [
+            ("DIAMOND-BLASTp Homology", res_b1),
+            ("InterProScan / Pfam Profile", res_b2),
+            ("Operon Neighborhood Vote", res_b3),
             ("Baseline Noisy-OR", res_m1),
             ("Stage 1 CoherencePrior", res_m2),
             ("Stage 1 Coherence + Operon", res_m3),
@@ -695,6 +800,9 @@ def main():
 
     # Compute Macro-Averages across genomes
     methods = [
+        "DIAMOND-BLASTp Sequence Homology",
+        "InterProScan / Pfam Domain Profile",
+        "Operon Neighborhood Vote (Synteny Only)",
         "Baseline Noisy-OR",
         "Stage 1 CoherencePrior",
         "Stage 1 Coherence + Operon Context",
