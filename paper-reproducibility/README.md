@@ -37,4 +37,4 @@ Pipelines
 | P09 | Table 7, Fig. 6d: BacDive | local | done |
 | P10 | Stage 3 benchmarks | unimatrix01 (vLLM) | done |
 | P11 | Section 2.8, Suppl. S16-S17: AllTheBacteria | ibex | done for 7,009 species representatives; Stage D over all batches still running |
-| P12 | Suppl. S8-S9: 1,000-genome and 88-proteome runs | unimatrix01 / ibex | done (six external tools); GSPA rows of S8 pending the ibex array |
+| P12 | Suppl. S8-S9: 1,000-genome and 88-proteome runs | unimatrix01 / ibex | done |

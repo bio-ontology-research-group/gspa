@@ -71,10 +71,12 @@ unimatrix01 `/data/hohndor/gspa/refseq1000_repro_2026-10-19/`:
 | 53987063 | IBEX | matrix reproduction | COMPLETED |
 | 53986356 | IBEX debug | evaluation test, tools, 2 genomes | COMPLETED |
 | 53986642 | IBEX | evaluation, tools, 40 × 25 genomes (DeepFRI GAEF empty, see README) | COMPLETED |
-| 53997270 | IBEX | GSPA-evaluator re-run for DeepFRI only (`GAEF_METHODS=deepfri`) | running at hand-off (350/1,000 genomes) |
+| 53997270 | IBEX | GSPA-evaluator re-run for DeepFRI only (`GAEF_METHODS=deepfri`) | COMPLETED (40/40 chunks) |
 | 53987583 | IBEX debug | GSPA test, genomes 1–5 (tasks 0–3 completed; task 4 never started and was cancelled; its genome is covered by the array) | 4/5 COMPLETED |
 | 53989989 | IBEX debug | evaluation test, GSPA rows, 4 genomes | COMPLETED |
-| 53989601 | IBEX | GSPA array, 100 tasks × 10 genomes, at most 60 concurrent | running at hand-off (17/1,000 genomes done; the per-user 1,300-CPU cap is held by other jobs) |
+| 53989601 | IBEX | GSPA array, 100 tasks × 10 genomes, at most 60 concurrent | COMPLETED (1,000/1,000 genomes with `DONE`, no `[FAIL]` line in any task log) |
+| 54026849 | IBEX | evaluation, GSPA rows, 40 × 25 genomes (submitted after the array finished) | COMPLETED (40/40 chunks, 2,000 genome × configuration rows) |
+| 54027265 | IBEX | `05_aggregate.py`, final (all eight rows `source=computed`; fetched into `results/`) | COMPLETED |
 | 53991948, 53997214, 54002223, 54002429 | IBEX debug | `05_aggregate.py` snapshots (the last one is in `results/`) | COMPLETED |
 
 ## Finishing the run
