@@ -76,15 +76,7 @@ Note: the static caption of tab:bacdive (templates/bacdive.head.tex) still menti
 
 ### tab:supp_bgc
 
-- `(compared with the block in git HEAD:paper/supplement.tex; the working copy \input's the generated file)`
-- `numeric cell differences: 0; bold-only differences: 0`
-- `ROW EXTRA in generated: block 0 | NRPS`
-- `ROW EXTRA in generated: block 0 | PKS`
-- `ROW EXTRA in generated: block 0 | Terpene`
-- `ROW EXTRA in generated: block 0 | Siderophore`
-- `ROW EXTRA in generated: block 0 | RiPP`
-- `ROW EXTRA in generated: block 1 | All regions`
-- `HEAD (caption/header) differs from main.tex`
+- `(no \label{tab:supp_bgc} block in paper/supplement.tex or in its HEAD version; nothing to compare)`
 
 ### tab:supp_mags
 
