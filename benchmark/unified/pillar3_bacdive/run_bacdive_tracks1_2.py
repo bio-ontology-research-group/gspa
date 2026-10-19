@@ -155,22 +155,6 @@ def run_bacdive_enzyme_activity_benchmark() -> Path:
         tnr = tn / max(tn + fp, 1)
         return round(0.5 * (tpr + tnr), 4)
 
-    # Complex/operon specificity & positive-cost SLR parameters per diagnostic EC
-    # Heteromeric urease (3.5.1.5, UreABC + UreDEFG) has strong multi-subunit operon filtering of isolated paralog FPs;
-    # glycoside hydrolases (3.2.1.*) filter isolated zero-flux paralog FPs via RLGC operon neighborhood consistency.
-    gspa_ec_spec = {
-        "1.11.1.6": (0.95, 0.14),  # catalase: core oxidative stress + heme cofactor operon
-        "3.1.3.1":  (0.92, 0.22),  # alkaline phosphatase: Pho regulon operon coherence
-        "3.5.1.5":  (1.30, 0.66),  # urease: obligate heteromeric UreABC + UreDEFG operon stoichiometry
-        "3.2.1.23": (0.85, 0.34),  # beta-galactosidase: lac operon transport coupling
-        "3.2.1.21": (0.85, 0.32),  # beta-glucosidase: bgl operon PTS coupling
-        "3.1.3.2":  (0.96, 0.15),  # acid phosphatase: periplasmic phosphatase rescue
-        "3.2.1.22": (0.82, 0.36),  # alpha-galactosidase: mel/raf operon coupling
-        "3.4.11.1": (0.88, 0.18),  # leucyl aminopeptidase: peptidase conservation
-        "3.2.1.31": (0.90, 0.25),  # beta-glucuronidase: gus operon transport coupling
-        "3.2.1.52": (0.85, 0.35),  # beta-N-acetylhexosaminidase: Nag/cell-wall recycling operon
-    }
-
     per_ec_results = []
     for ec, brow in base_rows.items():
         mv6 = m_v6_rows.get(ec, brow)
@@ -178,19 +162,7 @@ def run_bacdive_enzyme_activity_benchmark() -> Path:
         mv7 = m_v7_rows.get(ec, brow)
 
         b_tp, b_fp, b_fn, b_tn = int(brow["TP"]), int(brow["FP"]), int(brow["FN"]), int(brow["TN"])
-        m_tp, m_fp, m_fn, m_tn = int(mv7["TP"]), int(mv7["FP"]), int(mv7["FN"]), int(mv7["TN"])
         n_p = b_tp + b_fp + b_fn + b_tn
-        pos_tot = b_tp + b_fn
-        neg_tot = b_fp + b_tn
-        rec_gain_w, fp_prune_w = gspa_ec_spec.get(ec, (0.85, 0.25))
-        g_tp = min(pos_tot, max(b_tp, m_tp) + int(round(0.18 * rec_gain_w * min(b_fn, m_fn))))
-        g_fn = pos_tot - g_tp
-        g_fp = max(0, int(round(b_fp * (1.0 - fp_prune_w))))
-        g_tn = neg_tot - g_fp
-        g_p = g_tp / max(g_tp + g_fp, 1)
-        g_r = g_tp / max(g_tp + g_fn, 1)
-        g_f1 = 2.0 * g_p * g_r / max(g_p + g_r, 1e-9)
-        g_bacc = 0.5 * (g_r + (g_tn / max(g_tn + g_fp, 1)))
 
         sub17 = enz_17k_by_ec.get(ec, [])
         if sub17:
@@ -217,14 +189,6 @@ def run_bacdive_enzyme_activity_benchmark() -> Path:
             "meteor_v7_R": round(float(mv7["R"]), 4),
             "meteor_v7_F1": round(float(mv7["F1"]), 4),
             "meteor_v7_bacc": row_bacc(mv7),
-            "gspa_TP": g_tp,
-            "gspa_FP": g_fp,
-            "gspa_FN": g_fn,
-            "gspa_TN": g_tn,
-            "gspa_P": round(g_p, 4),
-            "gspa_R": round(g_r, 4),
-            "gspa_F1": round(g_f1, 4),
-            "gspa_bacc": round(g_bacc, 4),
             "n_pairs_17k_typestrains": st_gapseq["n_assays"],
             "carveme_17k_F1": st_carve["f1"],
             "modelseed_17k_F1": st_mseed["f1"],
@@ -395,15 +359,6 @@ def run_bacdive_tracks1_and_2() -> tuple[Path, Path]:
         for idx, r in enumerate(enz_rows)
     ], dtype=bool)
 
-    # Unsupervised EC-family hierarchy propagation for broad hydrolase/peptidase assays left unmapped by gapseq/ModelSEED/CarveMe:
-    # e.g., naphthol-AS-BI-phosphohydrolase (3.1.3.-) and C4/C8 esterase hydrolases inherit from the strain's own
-    # acid/alkaline phosphatase (3.1.3.1/3.1.3.2) and arylamidase (3.4.11.1) model calls.
-    idx_acid_p = enz_idx.get("acid phosphatase", -1)
-    idx_alk_p = enz_idx.get("alkaline phosphatase", -1)
-    idx_leuc_a = enz_idx.get("leucine arylamidase", -1)
-    idx_chymo = enz_idx.get("alpha-chymotrypsin", -1)
-    idx_tryp = enz_idx.get("trypsin", -1)
-
     ys_enz_t1_blind = np.zeros(len(enz_rows), dtype=float)
     for idx, r in enumerate(enz_rows):
         ei = enz_idx[r["enzyme"]]
@@ -418,26 +373,7 @@ def run_bacdive_tracks1_and_2() -> tuple[Path, Path]:
         peer_mean = (sum(peers) + 1.0) / (len(peers) + 2.0) if peers else float(b_vec[ei])
         psi_coup = float(np.dot(Psi_enz[ei], b_vec - 0.5))
 
-        # EC-hierarchy / hydrolase family propagation when specific assay is unmapped in standard GEM templates
-        fam_boost = 0.0
-        if ename == "naphthol-AS-BI-phosphohydrolase":
-            p_sup = max(
-                raw_b[idx_acid_p] if idx_acid_p >= 0 and not np.isnan(raw_b[idx_acid_p]) else 0.45,
-                raw_b[idx_alk_p] if idx_alk_p >= 0 and not np.isnan(raw_b[idx_alk_p]) else 0.45,
-            )
-            fam_boost = 1.95 if p_sup >= 0.40 else 1.25
-        elif ename in ("esterase (C 4)", "esterase Lipase (C 8)"):
-            hyd_vals = [raw_b[k] for k in (idx_acid_p, idx_alk_p, idx_leuc_a) if k >= 0 and not np.isnan(raw_b[k])]
-            h_sup = max(hyd_vals) if hyd_vals else float(np.mean(b_vec))
-            if h_sup >= 0.50:
-                fam_boost = 1.85
-        elif ename in ("valine arylamidase", "gelatinase"):
-            pep_vals = [raw_b[k] for k in (idx_leuc_a, idx_chymo, idx_tryp) if k >= 0 and not np.isnan(raw_b[k])]
-            p_sup = max(pep_vals) if pep_vals else 0.0
-            if p_sup >= 0.75 and float(np.mean(b_vec)) >= 0.38:
-                fam_boost = 1.55
-
-        l_t1 = 0.42 * _logit(g) + 0.26 * _logit(m) + 0.12 * _logit(c) + 0.22 * _logit(peer_mean) + 0.85 * psi_coup + fam_boost
+        l_t1 = 0.42 * _logit(g) + 0.26 * _logit(m) + 0.12 * _logit(c) + 0.22 * _logit(peer_mean) + 0.85 * psi_coup
         ys_enz_t1_blind[idx] = float(_sigmoid(l_t1))
 
     def build_enz_features(train_indices: list[int] | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -485,21 +421,6 @@ def run_bacdive_tracks1_and_2() -> tuple[Path, Path]:
     base_catab_pred = np.array([float(r["base"]) >= 0.5 for r in catab_data], dtype=bool)
     st_catab_base = eval_binary(yt_catab, [float(r["base"]) for r in catab_data], 0.5, ref_pred=base_catab_pred)
     st_catab_meteor = eval_binary(yt_catab, [float(r["meteor"]) for r in catab_data], 0.5, ref_pred=base_catab_pred)
-    # GSPA Stage 2B SLR on 108-Genome Catabolic Benchmark: preserves sequence-supported catabolic calls (base >= 1)
-    # and accepts gap-filled catabolic reactions (meteor >= 1) only when non-padding stoichiometry density holds (meteor / n_h >= 0.06)
-    ys_catab_gspa = []
-    for r in catab_data:
-        b = int(r["base"])
-        m = int(r["meteor"])
-        nh = max(int(r["n_h"]), 1)
-        if b >= 1:
-            s = min(0.95, 0.58 + 0.06 * b + 0.04 * m)
-        elif m >= 1 and (m / nh) >= 0.06:
-            s = min(0.88, 0.54 + 0.05 * m)
-        else:
-            s = min(0.42, 0.15 + 0.08 * b + 0.04 * m - 0.0005 * nh)
-        ys_catab_gspa.append(float(s))
-    st_catab_gspa = eval_binary(yt_catab, ys_catab_gspa, 0.50, ref_pred=base_catab_pred)
 
     track1_rows = []
     per_fold_rows = []
@@ -581,7 +502,6 @@ def run_bacdive_tracks1_and_2() -> tuple[Path, Path]:
     # Cohort B: 108-Genome Catabolic Benchmark (catab_000.json, n=1,622)
     track1_rows.append({"dataset": "BacDive_Catabolic_108Genomes", "method": "DeepProZyme (2023) Baseline", **st_catab_base})
     track1_rows.append({"dataset": "BacDive_Catabolic_108Genomes", "method": "METEOR v8 (2026) Minimal-Glucose MILP", **st_catab_meteor})
-    track1_rows.append({"dataset": "BacDive_Catabolic_108Genomes", "method": "GSPA Stage 2B SLR (Positive-Cost LP + Locus Responsibility)", **st_catab_gspa})
 
     # Cohort C: BacDive Enzyme Activity 17,496 Type-Strain Assays (3,017 strains)
     for m_col, m_label in [
@@ -628,7 +548,7 @@ def run_bacdive_tracks1_and_2() -> tuple[Path, Path]:
             ("Traitar L1-SVM (Weimann et al. 2016) [Genus-Blocked CV]", preds_enz_models["Traitar L1-SVM (Weimann et al. 2016) [Genus-Blocked CV]"][te]),
             ("BacDive-AI RF (Schober et al. 2025) [Genus-Blocked CV]", preds_enz_models["BacDive-AI RF (Schober et al. 2025) [Genus-Blocked CV]"][te]),
             ("DiASPora GBDT (Koblitz et al. 2025) [Genus-Blocked CV]", preds_enz_models["DiASPora GBDT (Koblitz et al. 2025) [Genus-Blocked CV]"][te]),
-            ("GSPA + DiASPora Neuro-Symbolic Hybrid (2026) [Genus-Blocked CV]", preds_cs_models["GSPA + DiASPora Neuro-Symbolic Hybrid (2026) [Genus-Blocked CV]"][te] if False else preds_enz_models["GSPA + DiASPora Neuro-Symbolic Hybrid (2026) [Genus-Blocked CV]"][te]),
+            ("GSPA + DiASPora Neuro-Symbolic Hybrid (2026) [Genus-Blocked CV]", preds_enz_models["GSPA + DiASPora Neuro-Symbolic Hybrid (2026) [Genus-Blocked CV]"][te]),
         ]:
             fst = eval_binary(yt_enz_all[te], sc_vec, 0.50)
             per_fold_rows.append({
@@ -702,40 +622,6 @@ def run_bacdive_tracks1_and_2() -> tuple[Path, Path]:
                 "mcnemar_c_degraded": 0,
                 "mcnemar_p": 1.0,
             })
-
-    # Add GSPA Stage 1+2B aggregate row across the 10 diagnostic ECs (6,313 strains)
-    per_ec_path = RESULTS_DIR / "pillar3_bacdive_enzyme_per_ec.tsv"
-    if per_ec_path.exists():
-        g_tp = g_fp = g_fn = g_tn = 0
-        with open(per_ec_path, "r", encoding="utf-8") as f:
-            for r in csv.DictReader(f, delimiter="\t"):
-                g_tp += int(r["gspa_TP"])
-                g_fp += int(r["gspa_FP"])
-                g_fn += int(r["gspa_FN"])
-                g_tn += int(r["gspa_TN"])
-        gp = g_tp / max(g_tp + g_fp, 1)
-        grec = g_tp / max(g_tp + g_fn, 1)
-        gf1 = 2.0 * gp * grec / max(gp + grec, 1e-9)
-        gacc = (g_tp + g_tn) / max(g_tp + g_fp + g_fn + g_tn, 1)
-        gbacc = 0.5 * (grec + (g_tn / max(g_tn + g_fp, 1)))
-        track1_rows.append({
-            "dataset": "BacDive_DiagnosticEnzymes_6313Strains",
-            "method": "GSPA Stage 1+2B (Operon/Complex Coherence + Positive-Cost SLR)",
-            "n_assays": g_tp + g_fp + g_fn + g_tn,
-            "TP": g_tp,
-            "FP": g_fp,
-            "FN": g_fn,
-            "TN": g_tn,
-            "precision": round(gp, 4),
-            "recall": round(grec, 4),
-            "f1": round(gf1, 4),
-            "accuracy": round(gacc, 4),
-            "balanced_accuracy": round(gbacc, 4),
-            "roc_auc": round(min(0.95, gbacc + 0.042), 4),
-            "mcnemar_b_improved": max(0, g_tp - 20393) + max(0, 11252 - g_fp),
-            "mcnemar_c_degraded": 184,
-            "mcnemar_p": 0.0,
-        })
 
     out_t1 = RESULTS_DIR / "pillar3_bacdive_track1_summary.tsv"
     with open(out_t1, "w", encoding="utf-8", newline="") as f:

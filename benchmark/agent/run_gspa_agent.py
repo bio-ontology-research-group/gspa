@@ -660,8 +660,15 @@ def solve_single_anomaly(
     tools_schema = build_tools_schema()
     if not use_guardrail:
         tools_schema = [t for t in tools_schema if t["function"]["name"] != "check_symbolic_constraints"]
+    if max_turns == 1:
+        tools_schema = [t for t in tools_schema if t["function"]["name"] == "propose_resolution"]
 
-    if use_guardrail:
+    if max_turns == 1:
+        sys_prompt = (
+            "You are a zero-shot protein function curation model operating without external inspection tools or symbolic ontology constraints. "
+            "Given the anomaly summary and candidate list, immediately submit your decision via `propose_resolution`. /no_think"
+        )
+    elif use_guardrail:
         sys_prompt = (
             "You are GSPA-Agent, a neuro-symbolic genome-scale protein function curation agent. "
             "Your task is to resolve genome-level functional anomalies (pathway gaps, incomplete heteromeric complexes, "
@@ -681,15 +688,36 @@ def solve_single_anomaly(
             "Evaluate candidate proteins using `inspect_operon_neighborhood` and `query_protein_evidence` based on numerical predictor scores, domain hits, operon context, and RLGC evidence, then submit your decision via `propose_resolution`. /no_think"
         )
 
-    user_prompt = (
-        f"Resolve Anomaly {anom_id} ({anom_type}):\n"
-        f"- Organism Taxon: {org_tax or 'unknown'}\n"
-        f"- Target Function: {target_func} ({target_label})\n"
-        f"- Context: {json.dumps(clean_context)}\n"
-        f"- Candidates ({len(candidates)}):\n"
-        f"{json.dumps(candidates, indent=2)}\n\n"
-        "Inspect evidence or constraints as needed, then call `propose_resolution`. /no_think"
-    )
+    if max_turns == 1:
+        # In zero-tool mode, only pre-tool candidate fields (protein_id, function_id, current_posterior, final_logodds) are visible
+        zs_candidates = [
+            {
+                "protein_id": c.get("protein_id", ""),
+                "function_id": c.get("function_id", target_func),
+                "current_posterior": c.get("current_posterior", 0.0),
+                "final_logodds": c.get("final_logodds", 0.0),
+            }
+            for c in candidates
+        ]
+        user_prompt = (
+            f"Resolve Anomaly {anom_id} ({anom_type}):\n"
+            f"- Organism Taxon: {org_tax or 'unknown'}\n"
+            f"- Target Function: {target_func} ({target_label})\n"
+            f"- Context: {json.dumps(clean_context)}\n"
+            f"- Candidates ({len(zs_candidates)}):\n"
+            f"{json.dumps(zs_candidates, indent=2)}\n\n"
+            "Call `propose_resolution` immediately. /no_think"
+        )
+    else:
+        user_prompt = (
+            f"Resolve Anomaly {anom_id} ({anom_type}):\n"
+            f"- Organism Taxon: {org_tax or 'unknown'}\n"
+            f"- Target Function: {target_func} ({target_label})\n"
+            f"- Context: {json.dumps(clean_context)}\n"
+            f"- Candidates ({len(candidates)}):\n"
+            f"{json.dumps(candidates, indent=2)}\n\n"
+            "Inspect evidence or constraints as needed, then call `propose_resolution`. /no_think"
+        )
 
     messages: List[Dict[str, Any]] = [
         {"role": "system", "content": sys_prompt},
@@ -746,8 +774,9 @@ def solve_single_anomaly(
                 break
 
             for tc in tcalls:
-                tool_calls_made += 1
                 fn_name = tc["function"]["name"]
+                if not (max_turns == 1 and fn_name == "propose_resolution"):
+                    tool_calls_made += 1
                 try:
                     fn_args = json.loads(tc["function"].get("arguments") or "{}")
                 except Exception:

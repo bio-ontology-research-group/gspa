@@ -1,4 +1,18 @@
-method	n_targets	n_nk	n_lk	n_mf	n_bp	n_cc	mf_fmax	mf_wfmax	bp_fmax	bp_wfmax	cc_fmax	cc_wfmax	macro_fmax	macro_wfmax	nk_macro_fmax	lk_macro_fmax	runtime_sec_per_genome	peak_ram_mb
-ESM2 + ProstT5 3Di MLP (2025)	769	412	357	298	415	384	0.4520	0.3840	0.3700	0.3420	0.6650	0.5860	0.4957	0.4370	0.4612	0.5355	18.4	5200
-Agentic AFP + Domain/EC (Qwen3-14B, 2026)	769	412	357	298	415	384	0.4810	0.4100	0.3990	0.3700	0.6590	0.5590	0.5130	0.4463	0.4795	0.5516	24.0	6800
-GSPA Stage 3 Neuro-Symbolic Agent (2026)	769	412	357	298	415	384	0.5470	0.4980	0.4140	0.3720	0.6690	0.5820	0.5433	0.4840	0.5124	0.5790	19.8	5400
+method	n_targets	mf_fmax	mf_wfmax	bp_fmax	bp_wfmax	cc_fmax	cc_wfmax	macro_fmax	macro_wfmax	taxon_anat_violations_at_050
+Naive Term-Frequency Prior (CAFA Baseline 1)	272	0.4156	0.4074	0.2305	0.1865	0.4430	0.2813	0.3631	0.2917	43
+DIAMOND BLAST-kNN (CAFA Baseline 2)	272	0.6099	0.6186	0.3731	0.3502	0.6048	0.4952	0.5292	0.4880	27
+InterPro Domain Logistic Regression (InterPro-LR)	272	0.4184	0.4036	0.2325	0.2246	0.1378	0.1174	0.2629	0.2485	76
+DeepGOCNN (1D-CNN Sequence Model, Retrained)	272	0.4453	0.4340	0.2678	0.2132	0.5950	0.4655	0.4360	0.3709	19
+DeepGOPlus (1D-CNN + DIAMOND-kNN, Retrained)	272	0.6238	0.6271	0.3869	0.3679	0.6522	0.5327	0.5543	0.5092	22
+ESM-2 Embedding kNN (goPredSim, Retrained)	272	0.6136	0.6144	0.3499	0.3048	0.6417	0.5194	0.5351	0.4795	14
+ESM-2 MLP (Flat BCE, Retrained)	272	0.6441	0.6320	0.3192	0.2894	0.7045	0.5928	0.5559	0.5048	26
+ESM-2 C-HMCNN (Hierarchical MCLoss, Retrained)	272	0.6502	0.6378	0.3360	0.3037	0.6961	0.5886	0.5608	0.5100	22
+FoldSeek Structure Alignment (3Di+AA)	272	0.5693	0.5760	0.3246	0.3029	0.5492	0.4091	0.4810	0.4293	48
+ProstT5 Structure-Aware PLM	272	0.5890	0.5847	0.3287	0.2839	0.6711	0.5666	0.5296	0.4784	86
+ESM-2 3B Fine-Tuned PLM	272	0.5714	0.5526	0.3641	0.3310	0.6609	0.5426	0.5321	0.4754	12
+DeepFRI Graph Convolutional Network	272	0.2790	0.2729	0.2568	0.2247	0.4666	0.3669	0.3341	0.2882	12
+ProteInfer Dilated Residual CNN	272	0.4406	0.4404	0.3161	0.3267	0.4750	0.4530	0.4106	0.4067	2
+eggNOG-mapper v2 Orthology	272	0.4328	0.4320	0.2285	0.2411	0.4082	0.3799	0.3565	0.3510	22
+GSPA Stage 0 (Reliability-Calibrated Noisy-OR)	272	0.6764	0.6772	0.3954	0.3657	0.6944	0.5955	0.5887	0.5461	160
+DeepGO-PlusPlus Stacker (Val-Trained Integrator)	272	0.6621	0.6628	0.3964	0.3665	0.6933	0.5942	0.5839	0.5412	644
+GSPA Full (Stage 1 Priors + Stage 2 Enforcement)	272	0.6647	0.6573	0.3929	0.3676	0.6903	0.5890	0.5826	0.5380	0

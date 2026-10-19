@@ -495,8 +495,6 @@ def main():
                 sc_gspa2[ec] = sigmoid(l2)
                 sc_gspa3[ec] = sigmoid(l3)
 
-            sc_single_cog = dict(sc_gspa3)
-
             # 6. Multi-Predictor Stage 0 Noisy-OR + Stage 1/2B Outer Loop (explicitly labeled as Multi-Pred ONLY):
             ens_no = defaultdict(lambda: 1.0)
             multi_neigh_1hop = defaultdict(float)
@@ -547,9 +545,8 @@ def main():
                 ("+ METEOR v8 (Iter 1)", sc_met1),
                 ("+ METEOR v8 (Iter 2)", sc_met2),
                 ("+ GSPA SLR (Minimal Glucose)", sc_slr_gluc),
-                ("+ GSPA SLR (Cognate Substrate)", sc_slr_cog),
+                ("+ GSPA SLR + RLGC (Stoichiometric Local Context)", sc_slr_cog),
                 ("+ GSPA Single-Pred (Minimal Glucose)", sc_single_gluc),
-                ("+ GSPA Single-Pred (Cognate Substrate)", sc_single_cog),
                 ("+ Full GSPA (Iter 1)", sc_gspa1),
                 ("+ Full GSPA (Iter 2)", sc_gspa2),
                 ("+ Full GSPA (Iter 3)", sc_gspa3),
@@ -588,9 +585,8 @@ def main():
             "+ METEOR v8 (Iter 1)",
             "+ METEOR v8 (Iter 2)",
             "+ GSPA SLR (Minimal Glucose)",
-            "+ GSPA SLR (Cognate Substrate)",
+            "+ GSPA SLR + RLGC (Stoichiometric Local Context)",
             "+ GSPA Single-Pred (Minimal Glucose)",
-            "+ GSPA Single-Pred (Cognate Substrate)",
             "+ Full GSPA (Iter 1)",
             "+ Full GSPA (Iter 2)",
             "+ Full GSPA (Iter 3)",
@@ -610,7 +606,7 @@ def main():
             mrr = float(np.mean([x["mrr"] for x in ms]))
             stats = compute_mcnemar_and_bootstrap(base_t1_vec, [x["top1"] for x in ms])
             print(
-                f"  {arm_name:44s} | Top-1: {t1:3d}/{n_prot} ({100*t1/n_prot:5.1f}%) | "
+                f"  {arm_name:48s} | Top-1: {t1:3d}/{n_prot} ({100*t1/n_prot:5.1f}%) | "
                 f"Fmax(ds): {fmax_ds_mac:.4f} | Fmax(sh): {fmax_prot:.4f} | F1@0.5: {f105:.4f} | "
                 f"MRR: {mrr:.4f} | +{stats['n_improved']}/-{stats['n_degraded']} (p={stats['mcnemar_p']:.2e})"
             )
@@ -656,50 +652,6 @@ def main():
                     "fmax": round(fmax_prot, 4),
                     "fmax_dataset_macro": round(fmax_ds_mac, 4),
                 })
-
-    # Also append target-only comparator baselines (ECrecer, DCGM / NeSy-Adapter) from IBEX evaluation
-    summary_rows.extend([
-        {
-            "baseline": "ECrecer (2023)",
-            "method": "Baseline (Target-Only Comparator)",
-            "n_proteins": 148,
-            "top1_count": 39,
-            "top1_acc": 0.2635,
-            "top1_ci95_lo": 0.1959,
-            "top1_ci95_hi": 0.3378,
-            "top5_count": 58,
-            "top5_acc": 0.3919,
-            "fmax": 0.3412,
-            "fmax_dataset_macro": 0.2985,
-            "fmax_dataset_micro": 0.2910,
-            "best_tau": 0.45,
-            "f1_at_05": 0.2838,
-            "mrr": 0.3125,
-            "n_improved_vs_base": 0,
-            "n_degraded_vs_base": 0,
-            "mcnemar_p": 1.0,
-        },
-        {
-            "baseline": "DCGM / NeSy-Adapter (2024)",
-            "method": "Baseline (Target-Only Comparator)",
-            "n_proteins": 148,
-            "top1_count": 53,
-            "top1_acc": 0.3581,
-            "top1_ci95_lo": 0.2838,
-            "top1_ci95_hi": 0.4392,
-            "top5_count": 76,
-            "top5_acc": 0.5135,
-            "fmax": 0.4485,
-            "fmax_dataset_macro": 0.3942,
-            "fmax_dataset_micro": 0.3880,
-            "best_tau": 0.48,
-            "f1_at_05": 0.3784,
-            "mrr": 0.4182,
-            "n_improved_vs_base": 0,
-            "n_degraded_vs_base": 0,
-            "mcnemar_p": 1.0,
-        },
-    ])
 
     with open(RESULTS_DIR / "pillar2_price149_all6_real.tsv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()), delimiter="\t")

@@ -227,8 +227,12 @@ def evaluate_tabular_ml_baselines(
     anomalies: List[Dict[str, Any]],
     lro_cases: List[Dict[str, Any]],
     guardrail: SymbolicGuardrail,
+    api_base: str = "http://unimatrix01.kaust.edu.sa:8000/v1",
+    model: str = "qwen3.8-27b",
+    max_concurrency: int = 8,
+    skip_live_runs: bool = False,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Evaluates non-LLM threshold and 5-fold CV supervised ML baselines across all 120 anomalies."""
+    """Evaluates non-LLM threshold, zero-shot LLM, and 5-fold CV supervised ML baselines across all 120 anomalies."""
     import numpy as np
     from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
     from sklearn.linear_model import LogisticRegression
@@ -305,42 +309,40 @@ def evaluate_tabular_ml_baselines(
         "mrr": st_post_lro["agent_mrr"],
     })
 
-    # Direct Zero-Shot LLM Prompting (No Tools, No Guardrail): receives only the pre-tool anomaly header
-    # and candidate posteriors without invoking any of the 5 genome/ontology tools or SymbolicGuardrail
-    zs_res = []
-    for idx_a, a in enumerate(anomalies):
-        anom_id = a["anomaly_id"]
-        target_f = a["target_function_id"]
-        cands = a.get("candidates", [])
-        best_c = max(
-            cands,
-            key=lambda c: float(c.get("current_posterior", 0.0)) + 0.08 * float(c.get("final_logodds", 0.0)),
-        ) if cands else None
-        if best_c and float(best_c.get("current_posterior", 0.0)) >= 0.30:
-            zs_res.append({
-                "anomaly_id": anom_id, "action": "PROMOTE",
-                "protein_id": best_c["protein_id"], "function_id": target_f,
-                "confidence": round(float(best_c.get("current_posterior", 0.45)), 4),
-                "guardrail_status": "BYPASSED", "tool_calls": 0, "latency_sec": 0.48,
-            })
-        else:
-            zs_res.append({
-                "anomaly_id": anom_id, "action": "ABSTAIN",
-                "protein_id": "", "function_id": target_f,
-                "confidence": 0.0, "guardrail_status": "BYPASSED", "tool_calls": 0, "latency_sec": 0.45,
-            })
+    # Direct Zero-Shot LLM Prompting (No Tools, No Guardrail): genuine 1-turn LLM call (--max-turns 1 --no-guardrail)
+    c0_zs_out = RESULTS_DIR / "pillar4_resolutions_c0_zeroshot.jsonl"
+    if not skip_live_runs or not c0_zs_out.exists():
+        run_sidecar(
+            BENCHMARK_120_FILE,
+            c0_zs_out,
+            api_base,
+            model,
+            max_turns=1,
+            no_guardrail=True,
+            max_concurrency=max_concurrency,
+            seed=42,
+            temperature=0.0,
+        )
+    with open(c0_zs_out, "r", encoding="utf-8") as fh:
+        zs_res = [json.loads(line) for line in fh if line.strip()]
     m_zeroshot = evaluate_resolutions(anomalies, zs_res, guardrail, "Direct Zero-Shot LLM (No Tools, No Guardrail)")
     ml_eval_metrics.append(m_zeroshot)
-    lro_zs_res = []
-    for c in lro_cases:
-        best_c = max(
-            c["candidates"],
-            key=lambda x: float(x.get("current_posterior", 0.0)) + 0.02 * float(x.get("final_logodds", 0.0)),
+
+    lro_zs_out = RESULTS_DIR / "pillar4_lro_resolutions_c0_zeroshot.jsonl"
+    if not skip_live_runs or not lro_zs_out.exists():
+        run_sidecar(
+            LRO_50_FILE,
+            lro_zs_out,
+            api_base,
+            model,
+            max_turns=1,
+            no_guardrail=True,
+            max_concurrency=max_concurrency,
+            seed=42,
+            temperature=0.0,
         )
-        lro_zs_res.append({
-            "anomaly_id": c["anomaly_id"], "action": "PROMOTE",
-            "protein_id": best_c["protein_id"], "confidence": 0.50,
-        })
+    with open(lro_zs_out, "r", encoding="utf-8") as fh:
+        lro_zs_res = [json.loads(line) for line in fh if line.strip()]
     st_zs_lro = evaluate_lro_reranking(lro_cases, lro_zs_res)
     ml_lro_rows.append({
         "method": "Direct Zero-Shot LLM (No Tools, No Guardrail)",
@@ -713,7 +715,15 @@ def main() -> int:
     # 0. Non-LLM Threshold & 5-Fold Supervised Tabular ML Baselines
     # -------------------------------------------------------------
     print("\n--- Evaluating Non-LLM Threshold & 5-Fold Supervised Tabular ML Baselines ---")
-    ml_metrics, ml_lro_rows = evaluate_tabular_ml_baselines(anomalies_120, lro_50, guardrail)
+    ml_metrics, ml_lro_rows = evaluate_tabular_ml_baselines(
+        anomalies_120,
+        lro_50,
+        guardrail,
+        api_base=args.api_base,
+        model=args.model,
+        max_concurrency=args.max_concurrency,
+        skip_live_runs=args.skip_live_runs,
+    )
 
     # -------------------------------------------------------------
     # 1. Config 1: Deterministic Only (Stage 1 + Stage 2)
@@ -755,24 +765,22 @@ def main() -> int:
         config2_res = [json.loads(line) for line in fh if line.strip()]
     m2 = evaluate_resolutions(anomalies_120, config2_res, guardrail, "Stage 3 Agent — Fast 1-Step Mode")
 
-    # Evaluate Fast 1-Step Mode on LRO-50 (1-step operon & pathway gap inspection without multi-turn PLM/evidence deep query)
-    lro_fast_res = []
-    for c in lro_50:
-        best_c = max(
-            c["candidates"],
-            key=lambda x: (
-                (1.5 if x.get("in_pathway_operon") else 0.0)
-                + 0.45 * float(x.get("rlgc_bayes_factor", 0.0))
-                + 3.5 * float(x.get("final_logodds", 0.0))
-                + 0.25 * len(x.get("operon_neighbors", {}) or {})
-            ),
+    # Evaluate Fast 1-Step Mode on LRO-50 via genuine sidecar run (--max-turns 2)
+    lro_c2_out = RESULTS_DIR / "pillar4_lro_resolutions_c2_fast.jsonl"
+    if not args.skip_live_runs or not lro_c2_out.exists():
+        run_sidecar(
+            LRO_50_FILE,
+            lro_c2_out,
+            args.api_base,
+            args.model,
+            max_turns=2,
+            no_guardrail=False,
+            max_concurrency=args.max_concurrency,
+            seed=42,
+            temperature=0.0,
         )
-        lro_fast_res.append({
-            "anomaly_id": c["anomaly_id"],
-            "action": "PROMOTE",
-            "protein_id": best_c["protein_id"],
-            "confidence": 0.65,
-        })
+    with open(lro_c2_out, "r", encoding="utf-8") as fh:
+        lro_fast_res = [json.loads(line) for line in fh if line.strip()]
     lro_fast_sum = evaluate_lro_reranking(lro_50, lro_fast_res)
     ml_lro_rows.append({
         "method": "Stage 3 Agent — Fast 1-Step Mode",

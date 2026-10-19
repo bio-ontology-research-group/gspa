@@ -557,7 +557,7 @@ def main():
             for (pid_c, fid_c), rsc_c in raw_diamond.items():
                 fb1.write(f"{pid_c}\t{fid_c}\t{rsc_c:.4f}\n")
 
-        # Write B2 (InterProScan / Pfam Domain-Verified Homology: requires domain support or high-conf hit)
+        # Write B2 (InterProScan / Pfam Domain Profile: uses real InterPro/Pfam domain score or domain-verified homology without multipliers)
         with open(out_b2_ipr, "w", encoding="utf-8") as fb2:
             fb2.write("protein_id\tfunction_id\tposterior_prob\n")
             all_pf_keys = set(raw_diamond.keys()) | set(raw_ipr.keys())
@@ -565,29 +565,25 @@ def main():
                 d_sc = raw_diamond.get((pid_c, fid_c), 0.0)
                 i_sc = raw_ipr.get((pid_c, fid_c), 0.0)
                 if i_sc > 0.0:
-                    comb = max(i_sc, d_sc * 1.06)
+                    comb = max(i_sc, d_sc)
                 elif pid_c in prot_has_ipr_domain:
-                    comb = d_sc * 1.03
+                    comb = d_sc
                 else:
-                    comb = d_sc * 0.88
+                    comb = 0.0
                 fb2.write(f"{pid_c}\t{fid_c}\t{min(0.99, comb):.4f}\n")
 
-        # Write B3 (Operon Neighborhood Vote: boosts candidates co-operonic with >=0.70 anchor subunits)
-        anchor_ops_by_cid: Dict[str, Set[str]] = {}
-        for (pid_c, fid_c), d_sc in raw_diamond.items():
-            if d_sc >= 0.70 and prot_to_op.get(pid_c):
-                anchor_ops_by_cid.setdefault(fid_c, set()).add(prot_to_op[pid_c])
-        with open(out_b3_operon, "w", encoding="utf-8") as fb3:
-            fb3.write("protein_id\tfunction_id\tposterior_prob\n")
-            for (pid_c, fid_c), d_sc in raw_diamond.items():
-                p_op = prot_to_op.get(pid_c, "")
-                if d_sc >= 0.70:
-                    op_sc = d_sc
-                elif p_op and p_op in anchor_ops_by_cid.get(fid_c, set()):
-                    op_sc = min(0.95, d_sc + 0.12)
-                else:
-                    op_sc = d_sc * 0.90
-                fb3.write(f"{pid_c}\t{fid_c}\t{op_sc:.4f}\n")
+        # Run B3 (GenomicContextPrior / Operon Synteny Only via gspa-unified.jar --enable-priors=genomic_context)
+        cmd_b3 = [
+            JAVA, "-jar", JAR, "integrate",
+            f"--claims={lso_claims}",
+            "--enable-priors=genomic_context",
+            f"--operons={operon_file}",
+            f"--modules={complex_modules_file}",
+            "--lite",
+            f"--out={out_b3_operon}"
+        ]
+        if not out_b3_operon.exists() or out_b3_operon.stat().st_size < 1000 or "--recompute-b3" in sys.argv:
+            run_gspa_command(cmd_b3, f"{genome}_B3_operon")
 
         res_b1 = evaluate_method_predictions(out_b1_diamond, cases, genome, extended_classes)
         res_b2 = evaluate_method_predictions(out_b2_ipr, cases, genome, extended_classes)
@@ -669,12 +665,7 @@ def main():
                     continue
                 comp_ops = {prot_to_op.get(cp, "") for cp in anchor_subunits if prot_to_op.get(cp, "")}
 
-                # Stage 2 stoichiometric subunit competition: when multiple sub-anchor candidates compete
-                # for a missing complex subunit slot, candidates that lack both co-operonic synteny with
-                # anchor subunits and corroborating non-root functional/domain annotations are attenuated,
-                # while candidates backed by co-operonic anchor synteny or multi-term functional coherence are retained.
                 cands_list = []
-                scored_cands = []
                 for cand_p in cand_subunits:
                     cand_op = prot_to_op.get(cand_p, "")
                     in_comp_op = bool(cand_op and cand_op in comp_ops)
@@ -698,7 +689,6 @@ def main():
                     other_anns = [t_str for _, fid_o, t_str in prot_other_terms.get(cand_p, []) if fid_o != cid][:5]
                     has_dom_or_func = bool(cand_p in prot_has_ipr_domain or len(other_anns) >= 2)
                     bf_est = round(cand_post * (9.5 if in_comp_op else (4.2 if has_dom_or_func else 1.4)), 2)
-                    scored_cands.append((in_comp_op, has_dom_or_func, bf_est, cand_post, cand_p))
                     cands_list.append({
                         "protein_id": cand_p,
                         "function_id": cid,
@@ -711,18 +701,10 @@ def main():
                         "supporting_claims": sup_claims,
                     })
 
-                scored_cands.sort(key=lambda x: (-int(x[0]), -int(x[1]), -x[2], -x[3]))
-                best_cand = scored_cands[0][4]
-                for in_op, has_df, bf_v, c_post, c_pid in scored_cands[1:]:
-                    if not in_op and not has_df and c_post >= 0.45:
-                        demoted_keys[(c_pid, cid)] = round(min(0.42, c_post * 0.80), 4)
-
                 # Trigger Stage 3 anomaly resolution when multiple candidates compete or top candidate < 0.55
                 max_cand_prob = max((m3_preds.get((p, cid), 0.0) for p in cand_subunits), default=0.0)
                 if len(cand_subunits) >= 2 or max_cand_prob < 0.55:
                     unresolved_cases.append(cid)
-                    if scored_cands[0][0] or scored_cands[0][1]:
-                        promoted_keys[(best_cand, cid)] = max(0.58, round(scored_cands[0][3] + 0.08, 4))
                     anom_obj = {
                         "anomaly_id": f"{genome}_LSO_{idx_c}_{cid}",
                         "anomaly_type": "INCOMPLETE_COMPLEX",
@@ -737,7 +719,7 @@ def main():
                     f_an.write(json.dumps(anom_obj) + "\n")
 
         if unresolved_cases:
-            if "--run-live-agent" in sys.argv:
+            if "--run-live-agent" in sys.argv or not res_file.exists():
                 cmd_agent = [
                     "/storage/miniforge3/envs/metagenomics/bin/python3",
                     str(AGENT_SIDECAR),

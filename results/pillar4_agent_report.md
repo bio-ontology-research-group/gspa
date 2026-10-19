@@ -21,7 +21,7 @@ and Stage 2 (Symbolic SAT & Coherence Enforcement).
 | **Stage 3 Agent — Qwen 27B + Guardrail** | 6 | Yes | 47 | 33 | 40 | 97.9% | 85.2% | 91.1% | 92.5% | 0.0% (0) | 32.53s |
 | **Stage 3 Agent — Qwen 27B Without Guardrail** | 6 | No | 47 | 35 | 38 | 91.5% | 79.6% | 85.2% | 88.3% | 0.8% (1) | 29.75s |
 | **Posterior Threshold (>=0.35) + Guardrail** | 0 | Yes | 51 | 39 | 30 | 56.9% | 53.7% | 55.2% | 70.8% | 0.0% (0) | 0.00s |
-| **Direct Zero-Shot LLM (No Tools, No Guardrail)** | 6 | Yes | 104 | 16 | 0 | 35.6% | 68.5% | 46.8% | 42.5% | 25.0% (30) | 0.48s |
+| **Direct Zero-Shot LLM (No Tools, No Guardrail)** | 6 | Yes | 17 | 101 | 2 | 58.8% | 18.5% | 28.2% | 60.8% | 0.0% (0) | 7.24s |
 | **Logistic Regression (5-Fold CV, 3 Pre-Tool Scalars)** | 0 | Yes | 42 | 78 | 0 | 85.7% | 66.7% | 75.0% | 80.0% | 2.5% (3) | 0.00s |
 | **GBDT (5-Fold CV, 3 Pre-Tool Scalars)** | 0 | Yes | 45 | 75 | 0 | 91.1% | 75.9% | 82.8% | 85.8% | 0.0% (0) | 0.00s |
 | **Logistic Regression (5-Fold CV) + Guardrail** | 0 | Yes | 48 | 71 | 1 | 97.9% | 87.0% | 92.2% | 93.3% | 0.0% (0) | 0.00s |
@@ -44,13 +44,13 @@ and Stage 2 (Symbolic SAT & Coherence Enforcement).
 |---|---|---|
 | **RLGC Baseline Alone** | 34.0% | 0.5700 |
 | Posterior Threshold (>=0.35) + Guardrail | 44.0% | 0.6233 |
-| Direct Zero-Shot LLM (No Tools, No Guardrail) | 36.0% | 0.5800 |
+| Direct Zero-Shot LLM (No Tools, No Guardrail) | 42.0% | 0.6133 |
 | Logistic Regression (5-Fold CV, 3 Pre-Tool Scalars) | 94.0% | 0.9667 |
 | GBDT (5-Fold CV, 3 Pre-Tool Scalars) | 90.0% | 0.9383 |
 | Logistic Regression (5-Fold CV) + Guardrail | 96.0% | 0.9767 |
 | Random Forest (5-Fold CV) + Guardrail | 92.0% | 0.9517 |
 | GBDT (5-Fold CV) + Guardrail | 92.0% | 0.9500 |
 | MLP (5-Fold CV) + Guardrail | 92.0% | 0.9507 |
-| Stage 3 Agent — Fast 1-Step Mode | 60.0% | 0.7260 |
+| Stage 3 Agent — Fast 1-Step Mode | 36.0% | 0.5800 |
 | **Stage 3 Agent (`gspa-agent`, Qwen 27B + Guardrail)** | **82.0%** | **0.8740** |
 
