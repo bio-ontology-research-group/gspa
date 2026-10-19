@@ -116,6 +116,67 @@ runs with `afterany`, and evaluation with `afterok`.
 
 ## Jobs of the run reported here (2026-10-19)
 
-JOB_TABLE_PLACEHOLDER
+| Step | Job ID(s) | Partition | Wall | Note |
+| --- | --- | --- | --- | --- |
+| `00_ref` | 53986260 | debug | 1 min 15 s | first submission 53986254 (batch) cancelled while pending, resubmitted to debug |
+| `test`: genomes / integrate ×3 / eval | 53986551 (array 0-2) / 53986552, 53986553, 53986554 / 53986555 | debug | 7–9 min / 17 s–65 s / 3 s | 3 genomes, InterProScan on the first 200 proteins; outputs in `$OUT/test/` and `results/*_test.tsv`. The test's InterProScan/claims files were moved to `$OUT/test/work_ips200/` before the full run |
+| `01_genome` | 53987114 (array 0-26, 4 genomes/task) | batch | 1 h 20 min – 2 h 42 min per task | submitted as 16 CPU/48 GB; changed while pending to 8 CPU/24 GB (`scontrol update`) to get past the per-user CPU cap. Task 0 failed on its three test genomes (shell precedence bug `[[ -s f ]] \|\| cmd && mv`, now fixed) |
+| `01_genome` rerun | 54002128 (array 0) | batch | 1 h 04 min | the fixed script on task 0 (GCA_003598085.1, GCA_014873095.1, GCA_022305115.1, GCA_046479585.1) |
+| `02_integrate` | 54025653 (stage0_noisy_or), 54025654 (operon_only), 54025656 (gspa_A9) | batch | 31 s / 1 min 40 s / 8 min 12 s | 108/108 genomes each. The first submission (53987115-7, 160 GB) was cancelled while pending and resubmitted at 64 GB, `-Xmx56g` |
+| `03_evaluate` | 54025658 | batch | 18 s | `results/pillar2_3_antismash_bgc_specificity_v2.tsv` |
+| sensitivity (≥ 0.30) | 54026488 | debug | 32 s | `outputs/pillar2_3_antismash_bgc_specificity_v2_thr030.tsv` |
+| posterior diagnostic | 54026509 | debug | 23 s | `jobs/diag_posteriors.py` → `outputs/diag_posteriors_54026509.txt` |
+
+Compute: 518,063 proteins. The channel steps took 416 CPU-h at 8 threads per
+genome: InterProScan 160,742 s wall, HMMER 26,102 s and DIAMOND 259 s, summed
+over genomes. SLURM allocated 16 logical CPUs per 8-CPU task, so the reserved
+allocation was about 860 core-h. Integration and evaluation are negligible.
+
+## Result (posterior ≥ 0.50; 95 % bootstrap CI over the 108 genomes)
+
+| Class | Genomes | Clusters | Core / tailoring loci | Stage 0 core recall | GSPA A9 core recall | Operon-only core recall | Stage 0 tail recall | GSPA A9 tail recall | GSPA specificity | Stage 0 F1 | GSPA F1 | Any-claim core / tail |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| NRPS (GO:0019184) | 72 | 359 | 778 / 1877 | 0.069 (0.045–0.104) | 0.069 (0.045–0.104) | 0.069 (0.045–0.104) | 0.019 (0.011–0.029) | 0.019 (0.011–0.029) | 0.9996 (0.9995–0.9996) | 0.061 (0.040–0.090) | 0.061 (0.040–0.090) | 0.713 / 0.093 |
+| PKS (GO:0030639) | 75 | 270 | 649 / 1645 | 0.003 (0.000–0.008) | 0.003 (0.000–0.008) | 0.003 (0.000–0.008) | 0.002 (0.000–0.004) | 0.002 (0.000–0.004) | 0.9999 (0.9999–1.0000) | 0.004 (0.001–0.009) | 0.004 (0.001–0.009) | 0.542 / 0.089 |
+| terpene (GO:0016114) | 106 | 303 | 426 / 649 | 0.157 (0.123–0.192) | 0.157 (0.123–0.192) | 0.157 (0.123–0.192) | 0.133 (0.107–0.168) | 0.133 (0.107–0.168) | 0.9993 (0.9992–0.9994) | 0.196 (0.169–0.222) | 0.196 (0.170–0.222) | 0.575 / 0.185 |
+| siderophore (GO:0019290) | 63 | 117 | 305 / 462 | 0.528 (0.448–0.627) | 0.528 (0.448–0.627) | 0.528 (0.448–0.627) | 0.078 (0.050–0.111) | 0.078 (0.050–0.111) | 0.9998 (0.9998–0.9999) | 0.377 (0.330–0.433) | 0.377 (0.330–0.433) | 0.764 / 0.162 |
+| RiPP (GO:0030152) | 93 | 314 | 570 / 554 | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 1.0000 (1.0000–1.0000) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.000 / 0.000 |
+| ALL_BGC (GO:0044550 or any class term) | 106 | 1292 | 2778 / 4683 | 0.095 (0.079–0.113) | 0.093 (0.077–0.111) | 0.095 (0.079–0.113) | 0.028 (0.022–0.036) | 0.028 (0.022–0.036) | 0.9986 (0.9985–0.9988) | 0.093 (0.080–0.109) | 0.092 (0.079–0.108) | 0.503 / 0.188 |
+
+* GSPA Stage 1+2A and the operon-only prior leave the result unchanged. The
+  only differences in the third decimal are terpene precision and the ALL_BGC
+  core recall (0.0947 → 0.0932). In the posterior diagnostic, 1,385 (core
+  gene, class term) pairs have at least one claim, and A9 moves 19 of them by
+  more than 0.01. The `genomic_context` prior only boosts GO terms that a KEGG
+  pathway in `kegg_pathways.tsv` requires, and none of the five class terms
+  occurs there. Synteny therefore cannot carry a class term from a core gene to
+  its tailoring neighbours.
+* The bottleneck is claim strength, not claim coverage. 50–76 % of core genes
+  have a claim for their class term (none for RiPP), but the median Stage 0
+  posterior of those claims is 0.24. Of the 2,568 class-term claims on core
+  genes, 2,255 come from DIAMOND hits to distant experimentally annotated
+  Swiss-Prot proteins, and pident/100 calibrates them below 0.5.
+* RiPP gets zero recall: no channel produces GO:0030152 (or a descendant) for
+  any RiPP core or tailoring gene.
+* Specificity is ≥ 0.9986 for every class and configuration (FP ≤ 0.14 % of 480,236 non-BGC genes).
+* At posterior ≥ 0.30 (`outputs/…_thr030.tsv`) recall rises, e.g. core recall
+  for PKS 0.18, terpene 0.29, siderophore 0.57 and ALL_BGC 0.17. Stage 0 and
+  GSPA remain within 0.003 of each other.
+
+## Comparison with the old table
+
+`results/pillar2_3_antismash_106bgc_specificity.tsv` reported "106 genomes,
+106 BGCs" in five classes. It gave Stage 0 core recall of 0.72–0.83, rising to
+0.89–0.97 under GSPA, tailoring recall of 0.48–0.60 rising to 0.80–0.89,
+specificity of 0.9955–0.9972 and F1 of 0.68–0.79 rising to 0.86–0.94. No
+generating code, inputs or job record exist for it. Its counts do not match
+any antiSMASH output on ibex: these 108 genomes have 1,292 regions, not 106.
+This real experiment does not reproduce its numbers. Classical
+homology/domain claims recover the class term for 0–53 % of core genes
+(0 % RiPP, 0.3 % PKS, 7 % NRPS, 16 % terpene, 53 % siderophore). GSPA's
+Stage 1/2A priors do not raise that, and the old table's large GSPA gains are
+not supported. The specificity claim (> 0.995) is supported, and is in fact
+higher here (≥ 0.9986).
+
 
 See `OUTPUTS.md` for every output file.

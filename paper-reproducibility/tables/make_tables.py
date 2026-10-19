@@ -59,7 +59,7 @@ HERE = Path(__file__).resolve().parent
 TEMPLATES = HERE / "templates"
 MAIN_LABELS = ["cafa_splits", "ablation", "complex_lso", "anatomy", "metabolism",
                "price149", "bacdive", "agent"]
-SUPP_LABELS = ["supp_panels", "supp_cafa_wg_splits", "supp_1000bacteria", "supp_multikingdom_domains", "supp_mags", "supp_invariant_audit",
+SUPP_LABELS = ["supp_panels", "supp_cafa_wg_splits", "supp_1000bacteria", "supp_multikingdom_domains", "supp_bgc", "supp_mags", "supp_invariant_audit",
                "supp_bacdive_folds", "supp_stage3_v2", "supp_atb_survey", "supp_atb_integrator", "supp_perturbation_designs", "supp_lso_mcnemar",
                "supp_agent_mcnemar", "supp_trigger_rates"]
 LABELS = MAIN_LABELS + SUPP_LABELS
@@ -1854,6 +1854,36 @@ def tab_supp_mags():
     return out
 
 
+BGC = "results/pillar2_3_antismash_bgc_specificity_v2.tsv"
+BGC_LABELS = [("NRPS", "NRPS"), ("PKS", "PKS"), ("terpene", "Terpene"), ("siderophore", "Siderophore"),
+              ("RiPP", "RiPP"), ("ALL_BGC", "All regions")]
+
+
+def tab_supp_bgc():
+    """One row per BGC class in the fixed order above, then the ALL row."""
+    cx = Ctx("supp_bgc")
+    out = []
+    for cls, lab in BGC_LABELS:
+        crit = {"bgc_class": cls}
+        g = lambda c: cx.get(BGC, crit, c, "bgc", cls, c)
+        if cls == "ALL_BGC":
+            out.append("    \\midrule")
+        # the operon-only configuration is omitted from the table; make sure it really equals Stage 0
+        r = select(BGC, crit)
+        for col in ("core_recall", "tail_recall", "specificity", "precision", "f1"):
+            if r and fx(fnum(r[f"operon_only_{col}"]), 4) != fx(fnum(r[f"stage0_{col}"]), 4):
+                warn(f"supp_bgc: operon_only_{col} differs from stage0_{col} for {cls}; caption claims equality")
+        cells = [f"${ith(g('n_genomes_with_class'))} / {ith(g('n_clusters'))}$",
+                 f"${ith(g('n_core_loci'))} / {ith(g('n_tailoring_loci'))}$",
+                 f"${fx(g('stage0_core_recall'), 3)}$ (${fx(g('stage0_core_recall_lo'), 3)}$--${fx(g('stage0_core_recall_hi'), 3)}$)",
+                 m(fx(g('gspa_core_recall'), 3)),
+                 f"${fx(g('stage0_tail_recall'), 3)} / {fx(g('gspa_tail_recall'), 3)}$",
+                 m(fx(g('gspa_specificity'), 4)), f"${fx(g('stage0_f1'), 3)} / {fx(g('gspa_f1'), 3)}$",
+                 m(fx(g('claim_any_core_recall'), 2))]
+        out.append(f"    {lab} & " + " & ".join(cells) + " \\\\")
+    return out
+
+
 def cx_unsourced(cx, block, row, col, cur):
     if cur:
         cx.unsourced(block, row, col, cur, "runtime per genome not present in any results file; omitted from cell")
@@ -1951,7 +1981,7 @@ def body_rows(block_lines, nlab):
     return rows
 
 
-NLAB = {"supp_mags": 2, "supp_1000bacteria": 1, "supp_atb_survey": 2, "supp_atb_integrator": 1, "supp_panels": 2, "supp_cafa_wg_splits": 2, "supp_multikingdom_domains": 2, "supp_invariant_audit": 1,
+NLAB = {"supp_mags": 2, "supp_bgc": 1, "supp_1000bacteria": 1, "supp_atb_survey": 2, "supp_atb_integrator": 1, "supp_panels": 2, "supp_cafa_wg_splits": 2, "supp_multikingdom_domains": 2, "supp_invariant_audit": 1,
         "supp_bacdive_folds": 2, "supp_stage3_v2": 1, "agent": 1, "supp_agent_mcnemar": 2, "supp_trigger_rates": 1, "supp_lso_mcnemar": 3, "supp_perturbation_designs": 2, "cafa_splits": 2, "ablation": 1, "complex_lso": 2, "anatomy": 1, "metabolism": 2, "price149": 1, "bacdive": 2}
 
 
@@ -2058,7 +2088,8 @@ GENERATORS = {"cafa_splits": tab_cafa_splits, "ablation": tab_ablation, "complex
               "supp_multikingdom_domains": tab_supp_multikingdom_domains,
               "supp_invariant_audit": tab_supp_invariant_audit, "supp_bacdive_folds": tab_supp_bacdive_folds,
               "supp_stage3_v2": tab_supp_stage3_v2, "supp_1000bacteria": tab_supp_1000bacteria,
-              "supp_atb_survey": tab_supp_atb_survey, "supp_mags": tab_supp_mags, "supp_atb_integrator": tab_supp_atb_integrator}
+              "supp_atb_survey": tab_supp_atb_survey, "supp_mags": tab_supp_mags, "supp_atb_integrator": tab_supp_atb_integrator,
+              "supp_bgc": tab_supp_bgc}
 
 
 def main():

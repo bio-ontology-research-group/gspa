@@ -26,15 +26,15 @@ Pipelines
 
 | id | Manuscript element | Compute host | Status |
 | --- | --- | --- | --- |
-| P01 | Table 1, Suppl. S4: whole-genome CAFA splits | orix (GPU baselines) + local CPU (GSPA) | being regenerated (calibration fix) |
-| P02 | Table 2, Fig. 2a-c: Stage 1/2A ablation and perturbation (both designs) | unimatrix01 | pending |
-| P03 | Fig. 2d, Suppl. S2: 13/21-genome panels | unimatrix01 | pending (raw outputs being located) |
-| P04 | Table 3, Fig. 4a-b: leave-subunit-out | unimatrix01 | pending |
-| P05 | Table 4, Fig. 4c-d: eukaryote anatomy | unimatrix01 | pending |
-| P06 | Table 5, Fig. 3, Fig. 6c: leave-reaction-out | local | statistics being added |
-| P07 | Fig. 6a, Suppl. S12: 108-genome stoichiometric audit | local | feasibility being computed |
-| P08 | Table 6, Fig. 6b: Price-149 | local (+ibex raw predictor outputs) | pending |
-| P09 | Table 7, Fig. 6d: BacDive | local | cohort sizes being corrected |
-| P10 | Stage 3 benchmarks | unimatrix01 (vLLM) | pending regeneration |
-| P11 | Section 2.8, Suppl. S7: AllTheBacteria | ibex | pending |
-| P12 | Suppl. S8-S9: 1,000-genome and 88-proteome runs | unimatrix01 | pending |
+| P01 | Table 1, Suppl. S4: whole-genome CAFA splits | orix (GPU baselines) + local CPU (GSPA) | done |
+| P02 | Table 2, Fig. 2a-c: Stage 1/2A ablation and perturbation (both designs) | unimatrix01 | done |
+| P03 | Fig. 2d, Suppl. S2: 13/21-genome panels | unimatrix01 | done |
+| P04 | Table 3, Fig. 4a-b: leave-subunit-out | unimatrix01 | done |
+| P05 | Table 4, Fig. 4c-d: eukaryote anatomy | unimatrix01 | done |
+| P06 | Table 5, Fig. 3, Fig. 6c: leave-reaction-out | local | done |
+| P07 | Fig. 6a, Suppl. S12: 108-genome stoichiometric audit | local | done |
+| P08 | Table 6, Fig. 6b: Price-149 | local (+ibex raw predictor outputs) | done |
+| P09 | Table 7, Fig. 6d: BacDive | local | done |
+| P10 | Stage 3 benchmarks | unimatrix01 (vLLM) | done |
+| P11 | Section 2.8, Suppl. S16-S17: AllTheBacteria | ibex | done for 7,009 species representatives; Stage D over all batches still running |
+| P12 | Suppl. S8-S9: 1,000-genome and 88-proteome runs | unimatrix01 / ibex | done (six external tools); GSPA rows of S8 pending the ibex array |

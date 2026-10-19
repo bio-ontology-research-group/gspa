@@ -60,6 +60,10 @@ case "${1:-}" in
     e=$($SB -d afterok$ids -o $OUT/logs/eval-%j.out $J/03_evaluate.sbatch)
     echo "jobs: genome-array=$a integrate=${ids#:} eval=$e"
     ;;
+  sensitivity)  # same evaluation at posterior >= 0.30, plus the posterior diagnostic
+    $SB -p debug -t 00:30:00 -o $OUT/logs/eval-t030-%j.out --export=ALL,THRESH=0.30,TAG=v2_thr030 $J/03_evaluate.sbatch
+    $SB -p debug -t 00:30:00 --mem=16G -o $OUT/logs/diag-%j.out --wrap "module load python/3.11.0; python3 $J/diag_posteriors.py"
+    ;;
   integrate)   # re-run only integration + evaluation (e.g. after fixing a failed genome)
     ids=""
     for c in $cfgs; do
@@ -72,7 +76,7 @@ case "${1:-}" in
     REPO=$(cd "$HERE/../../.." && pwd)
     rsync -a ibex:$OUT/results/pillar2_3_antismash_bgc_specificity_v2.tsv "$REPO/results/"
     mkdir -p "$HERE/outputs"
-    rsync -a ibex:$OUT/results/{bgc_per_genome_counts_v2.tsv,bgc_regions_all_v2.tsv,bgc_timing_v2.tsv} ibex:$OUT/ref/{sha256.txt,build_ref.log,class_terms_verified.tsv} ibex:$OUT/genomes.tsv "$HERE/outputs/"
+    rsync -a ibex:$OUT/results/{bgc_per_genome_counts_v2.tsv,bgc_regions_all_v2.tsv,bgc_timing_v2.tsv,pillar2_3_antismash_bgc_specificity_v2_thr030.tsv,bgc_per_genome_counts_v2_thr030.tsv} ibex:$OUT/ref/{sha256.txt,build_ref.log,class_terms_verified.tsv} ibex:$OUT/genomes.tsv "$HERE/outputs/"
     ;;
-  *) echo "usage: $0 {sync|ref|test|all|integrate|fetch}"; exit 1;;
+  *) echo "usage: $0 {sync|ref|test|all|integrate|sensitivity|fetch}"; exit 1;;
 esac

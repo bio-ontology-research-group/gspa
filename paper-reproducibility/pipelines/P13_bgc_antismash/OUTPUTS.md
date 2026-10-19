@@ -37,3 +37,14 @@ n_core_loci, n_tailoring_loci, n_nonbgc_genes, threshold`, then for each of
 `claim_any_core_recall` / `claim_any_tail_recall` give the fraction of target
 genes that have *any* Stage 0 claim for the class term (or a descendant) at any
 score — the ceiling reachable by re-weighting existing claims.
+
+## Additional outputs
+
+| Path | Produced by | Content |
+| --- | --- | --- |
+| `results/pillar2_3_antismash_bgc_specificity_v2_thr030.tsv` (+ `bgc_per_genome_counts_v2_thr030.tsv`) | `run.sh sensitivity` (job 54026488) | same table at posterior ≥ 0.30 |
+| `logs/diag-<job>.out` | `run.sh sensitivity` → `jobs/diag_posteriors.py` (job 54026509) | posterior quantiles of class-term claims on core genes per configuration; number of pairs changed by A9 |
+
+Local copies in `outputs/` (from `run.sh fetch`): `genomes.tsv`, `sha256.txt`, `build_ref.log`,
+`class_terms_verified.tsv`, `bgc_per_genome_counts_v2.tsv`, `bgc_regions_all_v2.tsv`, `bgc_timing_v2.tsv`,
+`pillar2_3_antismash_bgc_specificity_v2_thr030.tsv`, `bgc_per_genome_counts_v2_thr030.tsv`, `diag_posteriors_54026509.txt`.

@@ -12,7 +12,7 @@ LIST=${GENOME_LIST:-$OUT/genomes.tsv}
 INTEG_DIR=${INTEG_DIR:-$INTEG}
 TAG=${TAG:-v2}
 python3 $BGC evaluate --genomes $LIST --work $WORK --integrated $INTEG_DIR --obo $REF/go.obo \
-  --threshold 0.50 --n-boot ${NBOOT:-1000} \
+  --threshold ${THRESH:-0.50} --n-boot ${NBOOT:-1000} \
   --out $RES/pillar2_3_antismash_bgc_specificity_${TAG}.tsv --per-genome $RES/bgc_per_genome_counts_${TAG}.tsv
 # inventory: clusters / genomes / classes
 cat $WORK/*/*_regions.tsv | awk -F'\t' '$1!="genome"' > $RES/bgc_regions_all_${TAG}.tsv
