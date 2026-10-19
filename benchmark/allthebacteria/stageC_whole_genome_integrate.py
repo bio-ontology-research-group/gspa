@@ -10,6 +10,13 @@ and Per-Protein Provenance Tracking (`B1` Essentiality, `B2` Complex Stoichiomet
    and `<gid>` (Full Whole-Genome GSPA) jobs, and executes `gspa-unified.jar integrate`.
 4. Computes detailed per-protein biological rescue and constraint-suppression provenance
    (`<gid>.delta_events.tsv`) stratified by sequence identity (`max_pident`) for Stage D.
+
+WARNING (2026-10-19): step 4 (`delta_events.tsv`) is a Python heuristic (hand-set increments for
+operon/gap/complex/essential rescue and constraint suppression, ~lines 540-655), not GSPA output, and
+the JVM integrator in step 3 runs only on the first 20 genomes (sorted id) of each batch, which are also
+the only genomes that get claims.jsonl / operons_chains.tsv.  Stage D
+(stageD_java_integrate_batch.py) runs the identical JVM call on every genome; aggregate_atb_java.py
+reads only the JVM outputs.
 """
 from __future__ import annotations
 

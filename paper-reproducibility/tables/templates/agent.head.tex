@@ -1,0 +1,9 @@
+\begin{table*}[t!]
+  \centering
+  \caption{\textbf{Stage 3 selective neuro-symbolic resolution on $80$ de-identified anomalies and on $50$ ambiguous leave-reaction-out gaps.} The anomaly benchmark is built from real integrator output on seven genomes and contains $20$ held-out pathway-gap true positives, $20$ score-matched decoys, $20$ injected cross-clade conflicts, and $20$ valid borderline traps; protein and operon identifiers are replaced by opaque tokens. Precision, recall, $F_1$, and accuracy score the final action on each anomaly; promotions / relaxations count accepted promotions and ancestor relaxations; violations accepted counts promoted terms that are forbidden for the organism. The correct-gene column gives the percentage of the $20$ true pathway gaps for which the correct gene was promoted. LRO-50 Hit@1 (MRR in parentheses) ranks the five candidate genes of each ambiguous leave-reaction-out gap; the three single-feature rows rank by one field of the evidence the agent reads and have no anomaly-benchmark entries (n/a). The language model is Qwen/Qwen3.8-27B-FP8 served by vLLM; the guarded multi-turn agent was run with seed $42$ at temperature $0$ and seeds $43$ and $44$ at temperature $0.25$ (mean $\pm$ population s.d.; its LRO-50 entry is the three-seed mean), all other agent rows with seed $42$ at temperature $0$. Supervised classifiers are evaluated by five-fold stratified cross-validation; the best one per feature set (highest $F_1$, then accuracy) is shown. Bold marks the column maximum (minimum for violations accepted).}
+  \label{tab:agent}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{lcccccccc}
+    \toprule
+    \textbf{Configuration} & \textbf{Precision} & \textbf{Recall} & \textbf{$F_1$} & \textbf{Accuracy} & \textbf{Promotions / Relaxations} & \textbf{Violations Accepted} & \textbf{Correct Gene, 20 True Gaps} & \textbf{LRO-50 Hit@1 (MRR)} \\
+    \midrule

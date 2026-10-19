@@ -16,7 +16,8 @@ Multi-module Gradle (Groovy 4 + Java):
 
 - **gspa-core** — Data model, ontology (OWL API + ELK), quality metrics (SAT4J for consistency), I/O, config
 - **gspa-predictors** — Predictor interfaces + tool wrappers (DIAMOND, InterProScan, FoldSeek, eggNOG, gapseq, operons, etc.), gene callers, crossfeeding analyzer, AnnotationPipeline orchestrator
-- **gspa-cli** — picocli CLI: `annotate`, `evaluate`, `compare`, `report`. Each subcommand lives in its own file (`AnnotateCommand.groovy`, `EvaluateCommand.groovy`, `CompareCommand.groovy`, `ReportCommand.groovy`); `GspaMain.groovy` only wires them together.
+- **gspa-cli** — picocli CLI: `annotate`, `evaluate`, `compare`, `report`, `integrate` (whole-genome Stage 0–3 integration, `--batch-manifest` for multi-genome runs), `visualize`. Each subcommand lives in its own file (`AnnotateCommand.groovy`, `EvaluateCommand.groovy`, `CompareCommand.groovy`, `ReportCommand.groovy`, `IntegrateCommand.groovy`, ...); `GspaMain.groovy` only wires them together.
+- **paper-reproducibility/** — regeneration package for the manuscript: one pipeline folder per benchmark (`pipelines/P0x_*`), `tables/make_tables.py` writes `paper/tables/*.tex` (which `paper/main.tex` and `supplement.tex` `\input`), `checks/check_numbers.py` verifies every prose number against `results/`. Run `make tables check` in that folder after any change to `results/*.tsv`. Never type numbers into the LaTeX by hand.
 
 Also in the repo but NOT part of the Gradle build:
 

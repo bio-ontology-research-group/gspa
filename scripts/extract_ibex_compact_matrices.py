@@ -120,88 +120,30 @@ def find_protein_idx(index_list, pid, nid=None):
 
 
 def extract_price149_all6():
-    print("[1/3] Extracting Price-149 across 22 genomes & 6 baselines...")
-    manifest_path = "/ibex/scratch/projects/c2014/hohndor/suite6_price149_manifest.tsv"
-    rows = list(csv.DictReader(open(manifest_path), delimiter="\t"))
-    assemblies = sorted({r["host_assembly"] for r in rows})
-    targets_by_asm = defaultdict(list)
-    for r in rows:
-        targets_by_asm[r["host_assembly"]].append((r["price_entry"], r["proteome_protein_id"]))
+    """Price-149 extraction now delegates to the reproducible v2 extractor.
 
-    baselines = ["clean", "dpz", "enzbert", "graphec", "mapred", "topec"]
-    price_data = {b: {} for b in baselines}
+    The v1 body (until 2026-10-19) capped each target's score dict at 100 ECs and rounded
+    scores to 5 decimals; it otherwise read the six predictors correctly (top-1 EC identical
+    for all 148 targets). v2 lives in
+    paper-reproducibility/pipelines/P08_price149/extract_price149_all6.py (see its README for
+    the raw-format inspection) and keeps full target vectors plus input sha256s.
+    """
+    import importlib.util
 
-    for b in baselines:
-        t0 = time.time()
-        for asm in assemblies:
-            bp = price_pkl_path(b, asm)
-            if not bp or not os.path.exists(bp):
-                print(f"  WARN: missing {b} {asm}")
-                continue
-            df = extract_pred(bp)
-            vals = df.values
-            cols = list(df.columns)
-            idx_list = [str(x) for x in df.index]
-
-            # 1. Top-8 protein scores per EC across the genome (for SparseRoleAggregator & SLR)
-            ec_top_scores = {}
-            max_per_col = vals.max(axis=0)
-            active_cols = np.where(max_per_col >= 0.01)[0]
-            for c_idx in active_cols:
-                col_v = vals[:, c_idx]
-                top_k_idx = np.argpartition(col_v, -min(8, len(col_v)))[-min(8, len(col_v)):]
-                top_k_idx = top_k_idx[np.argsort(-col_v[top_k_idx])]
-                pairs = [(idx_list[i], round(float(col_v[i]), 5)) for i in top_k_idx if col_v[i] >= 0.01]
-                if pairs:
-                    ec_top_scores[cols[c_idx]] = pairs
-
-            # 2. Target proteins & +/- 10 chromosomal neighbors
-            target_scores = {}
-            neighbor_ecs = {}
-            for p_ent, p_id in targets_by_asm[asm]:
-                r_idx = find_protein_idx(idx_list, p_id, p_ent)
-                if r_idx < 0:
-                    continue
-                row_v = vals[r_idx]
-                nz = np.where(row_v > 0.0)[0]
-                if len(nz) > 100:
-                    nz = nz[np.argsort(-row_v[nz])[:100]]
-                target_scores[p_ent] = {cols[c_i]: round(float(row_v[c_i]), 5) for c_i in nz if row_v[c_i] > 0.0}
-
-                # Extract +/- 10 chromosomal neighbors' top-5 ECs (score >= 0.15)
-                neigh = []
-                for n_idx in range(max(0, r_idx - 10), min(len(idx_list), r_idx + 11)):
-                    if n_idx == r_idx:
-                        continue
-                    nv = vals[n_idx]
-                    top5 = np.argpartition(nv, -5)[-5:]
-                    top5 = top5[np.argsort(-nv[top5])]
-                    n_ecs = [(cols[c_i], round(float(nv[c_i]), 4)) for c_i in top5 if nv[c_i] >= 0.15]
-                    if n_ecs:
-                        neigh.append((n_idx - r_idx, idx_list[n_idx], n_ecs))
-                neighbor_ecs[p_ent] = neigh
-
-            # 3. METEOR v8 active/muted ECs
-            m_path = f"{MOP}/{b}/meteor_preds_{asm}.pkl"
-            m_active, m_muted = [], []
-            if os.path.exists(m_path):
-                md = pickle.load(open(m_path, "rb"))
-                m_active = list(md.get("active_ecs", []))
-                m_muted = list(md.get("muted_ecs", []))
-
-            price_data[b][asm] = {
-                "n_proteins": len(idx_list),
-                "ec_top_scores": ec_top_scores,
-                "target_scores": target_scores,
-                "neighbor_ecs": neighbor_ecs,
-                "meteor_active_ecs": m_active,
-                "meteor_muted_ecs": m_muted,
-            }
-        print(f"  Done {b} in {time.time() - t0:.1f}s ({len(price_data[b])} assemblies)")
-
-    with gzip.open(f"{OUT_DIR}/price149_all6_compact.pkl.gz", "wb") as f:
-        pickle.dump(price_data, f)
-    print(f"  Saved {OUT_DIR}/price149_all6_compact.pkl.gz")
+    path = os.environ.get(
+        "P08_EXTRACTOR",
+        "/ibex/scratch/projects/c2014/hohndor/price149_repro_2026-10-19/P08_price149/extract_price149_all6.py",
+    )
+    spec = importlib.util.spec_from_file_location("extract_price149_all6", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    print("[1/3] Extracting Price-149 across 22 genomes & 6 baselines (v2 extractor)...")
+    mod.extract(
+        "/ibex/scratch/projects/c2014/hohndor/suite6_price149_manifest.tsv",
+        f"{OUT_DIR}/price149_all6_compact.pkl.gz",
+        ["clean", "dpz", "enzbert", "graphec", "mapred", "topec"],
+        f"{OUT_DIR}/price149_input_sha256.tsv",
+    )
 
 
 def resolve_baseline_pkl(baseline, variant, gca):
@@ -438,6 +380,30 @@ def extract_annot_evaluation_1000_bacteria():
     print("  1,000-Genome Bacterial SOTA Summary:")
     print(json.dumps(summary, indent=2))
 
+
+
+def extract_meteor108_drafts(gram_panel=f"{F}/psb_revision/code_snapshot/panel108_gram.tsv",
+                             outdir="/ibex/scratch/projects/c2014/hohndor/meteor108_repro_2026-10-19/per_genome"):
+    """4. METEOR v8 108-genome invariant-audit inputs (DeepProZyme-vanilla, tau=0.5).
+
+    Serial driver for paper-reproducibility/pipelines/P07_invariant_audit/ibex/extract_meteor108_drafts.py
+    (the per-genome tau=0.5 draft, METEOR y>0.5 active set + MILP fluxes, and the Grow-Support threshold
+    repair re-derived with the archived grow_support LP), followed by merge_meteor108_drafts.py, which writes
+    meteor108_drafts_compact.pkl.gz (copied to benchmark/manifests/reference_data/). Each genome needs one
+    PuLP/CBC LP over the universal model (minutes), so on ibex run it as the SLURM array
+    P07_invariant_audit/ibex/extract_array.sbatch instead of calling this function on a login node.
+    """
+    import subprocess
+    import sys
+
+    here = "/ibex/scratch/projects/c2014/hohndor/meteor108_repro_2026-10-19/scripts"
+    for line in open(gram_panel):
+        if not line.strip():
+            continue
+        gca, gram = line.rstrip("\n").split("\t")[:2]
+        subprocess.run([sys.executable, f"{here}/extract_meteor108_drafts.py", "--gca", gca, "--gram", gram,
+                        "--outdir", outdir], check=True)
+    subprocess.run([sys.executable, f"{here}/merge_meteor108_drafts.py"], check=True)
 
 if __name__ == "__main__":
     extract_annot_evaluation_1000_bacteria()

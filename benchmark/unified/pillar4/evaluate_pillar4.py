@@ -620,6 +620,189 @@ def evaluate_lro_reranking(
     }
 
 
+# ---------------------------------------------------------------------------
+# LRO-50 single-feature baselines + exact McNemar tests (regenerable, no LLM)
+# ---------------------------------------------------------------------------
+
+LRO50_SINGLE_FEATURE_LABELS = {
+    "suggestion_score": "Single Feature: RLGC Suggestion Score (Rank Candidates by suggestion_score)",
+    "final_logodds": "Single Feature: Stage 1 Final Log-Odds (Rank Candidates by final_logodds)",
+    "esm2_centroid": "Single Feature: ESM-2 Reaction-Centroid Cosine (Rank Candidates by esm2_centroid calibrated_prob)",
+}
+
+
+def _lro_feature_value(cand: Dict[str, Any], feature: str) -> float:
+    """Returns the scalar used to rank one LRO candidate; missing values rank last."""
+    if feature == "esm2_centroid":
+        for claim in cand.get("supporting_claims", []) or []:
+            if claim.get("source") == "esm2_centroid":
+                return float(claim.get("calibrated_prob", float("-inf")))
+        return float("-inf")
+    val = cand.get(feature)
+    return float(val) if val is not None else float("-inf")
+
+
+def rank_lro_by_feature(case: Dict[str, Any], feature: str) -> Tuple[int, float, float]:
+    """Ranks the candidates of one LRO case by a single scalar feature (descending).
+
+    Ties are broken by the original candidate order in the case file (stable sort).
+    Returns (1-indexed position of the true protein under that tie-break,
+    tie-aware expected Hit@1, tie-aware expected reciprocal rank), where the
+    tie-aware variants assume a uniformly random order within the tied block
+    that contains the true protein.
+    """
+    cands = case.get("candidates", [])
+    vals = [_lro_feature_value(c, feature) for c in cands]
+    order = sorted(range(len(cands)), key=lambda i: -vals[i])  # stable => original order breaks ties
+    true_idx = next(i for i, c in enumerate(cands) if c["protein_id"] == case["true_protein_id"])
+    pos = order.index(true_idx) + 1
+    n_greater = sum(v > vals[true_idx] for v in vals)
+    n_equal = sum(v == vals[true_idx] for v in vals)  # includes the true candidate
+    exp_hit1 = (1.0 / n_equal) if n_greater == 0 else 0.0
+    exp_rr = sum(1.0 / (n_greater + k) for k in range(1, n_equal + 1)) / n_equal
+    return pos, exp_hit1, exp_rr
+
+
+def evaluate_lro_single_feature_baselines(lro_cases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Hit@1 / MRR on the LRO-50 cases when ranking by one feature at a time."""
+    rows: List[Dict[str, Any]] = []
+    n = len(lro_cases)
+    for feature, label in LRO50_SINGLE_FEATURE_LABELS.items():
+        positions, exp_h, exp_rr = [], [], []
+        for c in lro_cases:
+            pos, eh, err = rank_lro_by_feature(c, feature)
+            positions.append(pos)
+            exp_h.append(eh)
+            exp_rr.append(err)
+        hit1 = sum(p == 1 for p in positions)
+        rows.append({
+            "feature": feature,
+            "method": label,
+            "n_cases": n,
+            "hit1_count": hit1,
+            "hit1_pct": round(100.0 * hit1 / n, 2) if n else 0.0,
+            "mrr": round(sum(1.0 / p for p in positions) / n, 4) if n else 0.0,
+            "hit1_pct_tie_aware": round(100.0 * sum(exp_h) / n, 2) if n else 0.0,
+            "mrr_tie_aware": round(sum(exp_rr) / n, 4) if n else 0.0,
+            "n_cases_true_tied": sum(1 for c in lro_cases
+                                     if sum(_lro_feature_value(x, feature) == _lro_feature_value(
+                                         next(y for y in c["candidates"] if y["protein_id"] == c["true_protein_id"]), feature)
+                                            for x in c["candidates"]) > 1),
+            "hit_vector": [p == 1 for p in positions],
+        })
+    return rows
+
+
+def exact_mcnemar(hits_a: List[bool], hits_b: List[bool]) -> Dict[str, Any]:
+    """Exact two-sided McNemar test on paired binary outcomes.
+
+    b = cases where A is correct and B is not; c = the reverse.
+    p = two-sided exact binomial test of b ~ Binomial(b + c, 0.5) (scipy.stats.binomtest).
+    """
+    from scipy.stats import binomtest
+
+    assert len(hits_a) == len(hits_b)
+    b = sum(1 for x, y in zip(hits_a, hits_b) if x and not y)
+    c = sum(1 for x, y in zip(hits_a, hits_b) if y and not x)
+    p = binomtest(b, b + c, 0.5, alternative="two-sided").pvalue if (b + c) > 0 else 1.0
+    return {"n": len(hits_a), "hits_a": sum(map(bool, hits_a)), "hits_b": sum(map(bool, hits_b)),
+            "b": b, "c": c, "p_value": float(p)}
+
+
+def _agent_hit_vector(lro_cases: List[Dict[str, Any]], resolutions: List[Dict[str, Any]]) -> List[bool]:
+    summ = evaluate_lro_reranking(lro_cases, resolutions)
+    by_id = {r["anomaly_id"]: r for r in summ["case_rows"]}
+    return [by_id[c["anomaly_id"]]["agent_position"] == 1 for c in lro_cases]
+
+
+def run_lro_stats(lro_cases: List[Dict[str, Any]], write: bool = True) -> Dict[str, Any]:
+    """Computes LRO-50 single-feature baselines, 3-seed agent Hit@1 and exact McNemar tests.
+
+    Writes results/pillar4_lro_mcnemar.tsv and upserts the single-feature rows into
+    results/pillar4_ml_baselines.tsv (anom120 columns = 'n/a'; existing rows kept).
+    """
+    feats = evaluate_lro_single_feature_baselines(lro_cases)
+    feat_by = {f["feature"]: f for f in feats}
+    rlgc_order_hits = [r["rlgc_position"] == 1 for r in evaluate_lro_reranking(lro_cases, [])["case_rows"]]
+
+    seed_files = {42: "pillar4_lro_resolutions.jsonl", 43: "pillar4_lro_resolutions_seed43.jsonl",
+                  44: "pillar4_lro_resolutions_seed44.jsonl"}
+    agent_hits: Dict[int, List[bool]] = {}
+    for seed, fn in seed_files.items():
+        path = RESULTS_DIR / fn
+        if path.exists():
+            with open(path, "r", encoding="utf-8") as fh:
+                res = [json.loads(line) for line in fh if line.strip()]
+            agent_hits[seed] = _agent_hit_vector(lro_cases, res)
+
+    print("\n--- LRO-50 single-feature baselines (ties: original candidate order) ---")
+    for f in feats:
+        print(f"  {f['feature']:<18} Hit@1 {f['hit1_count']}/{f['n_cases']} = {f['hit1_pct']:.2f}%  MRR {f['mrr']:.4f}"
+              f"  | tie-aware Hit@1 {f['hit1_pct_tie_aware']:.2f}%  MRR {f['mrr_tie_aware']:.4f}"
+              f"  (cases with true protein tied: {f['n_cases_true_tied']})")
+    for seed, hv in agent_hits.items():
+        print(f"  agent seed {seed}: Hit@1 {sum(hv)}/{len(hv)}")
+
+    comparisons = []
+    if 42 in agent_hits:
+        a = agent_hits[42]
+        comparisons.append(("Stage 3 Agent (seed 42)", "Single Feature: suggestion_score", a, feat_by["suggestion_score"]["hit_vector"]))
+        comparisons.append(("Stage 3 Agent (seed 42)", "RLGC ordered baseline (rlgc_ordered_pids)", a, rlgc_order_hits))
+        comparisons.append(("Stage 3 Agent (seed 42)", "Single Feature: final_logodds", a, feat_by["final_logodds"]["hit_vector"]))
+        comparisons.append(("Stage 3 Agent (seed 42)", "Single Feature: esm2_centroid", a, feat_by["esm2_centroid"]["hit_vector"]))
+    for seed in (43, 44):
+        if seed in agent_hits:
+            comparisons.append((f"Stage 3 Agent (seed {seed})", "Single Feature: suggestion_score",
+                                agent_hits[seed], feat_by["suggestion_score"]["hit_vector"]))
+
+    mc_rows = []
+    for name_a, name_b, ha, hb in comparisons:
+        r = exact_mcnemar(ha, hb)
+        mc_rows.append({"benchmark": "LRO_50", "method_a": name_a, "method_b": name_b, **r})
+        print(f"  McNemar {name_a} vs {name_b}: A {r['hits_a']}/{r['n']}, B {r['hits_b']}/{r['n']}, "
+              f"b={r['b']} c={r['c']} p={r['p_value']:.3g}")
+
+    if write:
+        mc_path = RESULTS_DIR / "pillar4_lro_mcnemar.tsv"
+        with open(mc_path, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh, delimiter="\t")
+            w.writerow(["benchmark", "method_a", "method_b", "n", "hit1_a", "hit1_b", "b_a_only", "c_b_only",
+                        "p_exact_two_sided", "test"])
+            for r in mc_rows:
+                w.writerow([r["benchmark"], r["method_a"], r["method_b"], r["n"], r["hits_a"], r["hits_b"],
+                            r["b"], r["c"], f"{r['p_value']:.6g}", "exact McNemar (scipy.stats.binomtest, p=0.5)"])
+            for seed, hv in agent_hits.items():
+                w.writerow(["LRO_50", f"Stage 3 Agent (seed {seed}) Hit@1 count", "", len(hv), sum(hv), "", "", "", "", "recomputed"])
+        print(f"  Wrote {mc_path}")
+        upsert_lro_single_feature_rows(feats)
+
+    return {"features": feats, "agent_hits": agent_hits, "mcnemar": mc_rows}
+
+
+def upsert_lro_single_feature_rows(feats: List[Dict[str, Any]]) -> None:
+    """Adds/replaces the single-feature rows in pillar4_ml_baselines.tsv, keeping all other rows."""
+    path = RESULTS_DIR / "pillar4_ml_baselines.tsv"
+    header = ["method", "anom120_precision", "anom120_recall", "anom120_f1",
+              "anom120_accuracy", "anom120_violation_rate_pct", "lro50_hit1_pct", "lro50_mrr"]
+    rows: List[List[str]] = []
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as fh:
+            rd = list(csv.reader(fh, delimiter="\t"))
+        if rd:
+            header = rd[0]
+            rows = rd[1:]
+    labels = {f["method"] for f in feats}
+    rows = [r for r in rows if r and r[0] not in labels]
+    for f in feats:
+        row = {"method": f["method"], "lro50_hit1_pct": str(f["hit1_pct"]), "lro50_mrr": str(f["mrr"])}
+        rows.append([row.get(h, "n/a") for h in header])
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh, delimiter="\t")
+        w.writerow(header)
+        w.writerows(rows)
+    print(f"  Upserted {len(feats)} single-feature LRO rows into {path}")
+
+
 def generate_markdown_report(
     eval_metrics: List[Dict[str, Any]],
     ml_metrics: List[Dict[str, Any]],
@@ -695,7 +878,18 @@ def main() -> int:
     parser.add_argument("--model", default="qwen3.8-27b")
     parser.add_argument("--max-concurrency", default=8, type=int)
     parser.add_argument("--skip-live-runs", action="store_true", help="Skip re-running LLM if resolutions already exist")
+    parser.add_argument(
+        "--lro-stats-only",
+        action="store_true",
+        help="Only compute LRO-50 single-feature baselines, 3-seed agent Hit@1 and exact McNemar tests "
+             "(writes results/pillar4_lro_mcnemar.tsv, upserts rows into pillar4_ml_baselines.tsv); no LLM calls",
+    )
     args = parser.parse_args()
+
+    if args.lro_stats_only:
+        with open(LRO_50_FILE, "r", encoding="utf-8") as fh:
+            run_lro_stats([json.loads(line) for line in fh if line.strip()])
+        return 0
 
     print("[pillar4-evaluator] Starting Pillar 4 Benchmark Evaluation...")
 
@@ -917,6 +1111,8 @@ def main() -> int:
             m4["accuracy"], m4["violation_rate_pct"], lro_summary["agent_hit1_pct"], lro_summary["agent_mrr"]
         ])
     print(f"  Wrote ML baseline comparison TSV to {ml_tsv_path}")
+    # Single-feature LRO-50 baselines + exact McNemar tests (appended, regenerable without LLM)
+    run_lro_stats(lro_50)
 
     # TSV 3: pillar4_multiseed_summary.tsv
     multiseed_rows = []

@@ -1,0 +1,9 @@
+\begin{table*}[t!]
+  \centering
+  \caption{\textbf{Leave-reaction-out (LRO) enzyme gene attribution in \textit{E.~coli} K-12, donor-homology masking (Protocol H), out-of-sample transfer to \textit{B.~subtilis} 168, and Stage 3 re-ranking of ambiguous gaps.} \textit{E.~coli} K-12 served as the calibration genome. ``All'' scores every held-out reaction unconditionally, counting reactions whose true enzyme is absent from the Stage 0 candidate pool as misses; ``Pool'' scores only reactions whose true gene enters the pool ($n_{\text{cov}}$), so pool metrics are comparable only between rows with the same $n_{\text{cov}}$. In the first row the held-out enzyme carries no evidence of its own and candidates are ranked by the genome-scale suggestions alone; METEOR's uniform reaction-level boost leaves this ranking unchanged. Track B uses Swiss-Prot ESM-2 reaction centroids that are not homology-masked; Track A masks both alignments and embedding neighbors. For the $50$ ambiguous gaps, the three single-feature rows rank the five candidates by one field of the evidence that the Stage 3 agent reads, and the Stage 3 row gives the mean $\pm$ population standard deviation over three seeds of the guarded agent (seed $42$ at temperature $0.0$, seeds $43$ and $44$ at $0.25$) with de-identified prompts, in which every protein identifier is replaced by an opaque token (\texttt{results/pillar4\_v2\_multiseed\_summary.tsv}).}
+  \label{tab:metabolism}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llcccccc}
+    \toprule
+    \textbf{Benchmark Cohort} & \textbf{Configuration} & \textbf{Reactions ($n / n_{\text{cov}}$)} & \textbf{Hit@1 (All)} & \textbf{Hit@3 (All)} & \textbf{Hit@1 (Pool)} & \textbf{Hit@3 (Pool)} & \textbf{MRR (Pool)} \\
+    \midrule

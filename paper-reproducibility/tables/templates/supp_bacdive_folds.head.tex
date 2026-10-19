@@ -1,0 +1,9 @@
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Five-fold genus-blocked cross-validation in BacDive.} Each genus is assigned to one fold by its MD5 hash. Columns give $F_1$ on each held-out fold, the mean $\pm$ sample standard deviation over folds, and the pooled out-of-fold $F_1$ with balanced accuracy and ROC-AUC in parentheses. The supervised classifiers are re-implementations (an $L_1$-regularized linear SVM, a random forest, and a gradient-boosted decision tree) over the three binary reconstruction calls of gapseq, ModelSEED, and CarveMe and a one-hot assay indicator, after the designs of Traitar, BacDive-AI, and DiASPora; the GSPA hybrid trains the same GBDT on GSPA posteriors. gapseq and GSPA Track 1 use no phenotype labels, and their per-fold values evaluate the same predictions on each fold. Strain counts are distinct strains in the gapseq comparison tables after the assay filter. Sources: \texttt{results/pillar3\_bacdive\_per\_fold\_cv.tsv}, \texttt{results/pillar3\_bacdive\_track1\_summary.tsv}.}
+  \label{tab:supp_bacdive_folds}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llccccccc}
+    \toprule
+    \textbf{Assay panel} & \textbf{Method} & \textbf{Fold 1 $F_1$} & \textbf{Fold 2 $F_1$} & \textbf{Fold 3 $F_1$} & \textbf{Fold 4 $F_1$} & \textbf{Fold 5 $F_1$} & \textbf{Mean $\pm$ SD} & \textbf{Pooled $F_1$ (BAcc / ROC-AUC)} \\
+    \midrule

@@ -1,0 +1,9 @@
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Multi-kingdom evaluation on $88$ proteomes.} Proteins are scored against held-out Swiss-Prot GO annotations. Stage 0 claims come from DIAMOND against a reference that excludes the target species and genus and from Pfam (the 19 genomes of the 9- and 10-genome sets also carry InterProScan claims). $F_{\max}$ values are protein-centric and ancestor-propagated, averaged over the proteomes of each domain; the ${<}30\%$ column restricts evaluation to proteins whose best reference hit is below $30\%$ identity (no per-protein identity file was available for the bacterial proteomes, so the bacterial value repeats the all-protein value). $\Delta F_{\max}$ is the mean per-proteome difference from Stage 0 with a $95\%$ paired percentile bootstrap interval over proteomes ($10{,}000$ resamples, seed $20261019$; \texttt{results/multikingdom\_bootstrap\_ci.tsv}, pipeline P15). The Stage 3 trigger rate is the pooled percentage of proteins referenced by at least one anomaly under the cap of $150$ anomalies per proteome, computed from Stage 1 + 2A runs with three iterations (\texttt{results/pillar4\_v2\_trigger\_rates.tsv}; Supplementary Table~\ref{tab:supp_trigger_rates}). Runtime and heap are per proteome in one shared-JVM batch. Source: \texttt{results/multikingdom\_summary\_by\_domain.tsv} (\texttt{scripts/run\_multikingdom\_batch\_unimatrix.py}).}
+  \label{tab:supp_multikingdom_domains}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llcccccccc}
+    \toprule
+    \textbf{Domain} & \textbf{Configuration} & \textbf{Proteomes / proteins} & \textbf{$F_{\max}$ (all)} & \textbf{$F_{\max}$ (${<}30\%$)} & \textbf{MF / BP / CC $F_{\max}$} & \textbf{Coverage} & \textbf{$\Delta F_{\max}$ [95\% CI]} & \textbf{Runtime / heap} & \textbf{Stage 3 trigger} \\
+    \midrule

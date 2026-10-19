@@ -1,0 +1,7 @@
+\begin{table}[h!]
+  \centering
+  \caption{\textbf{Stage 3 on benchmark v2: seed stability and per-category decisions.} The benchmark holds $80$ anomalies extracted by the integrator from seven genomes: $20$ pathway-gap true positives (the held-out protein re-entered the candidate list), $20$ matched decoys (the held-out protein removed from the genome), $20$ genuine borderline ontology conflicts, and $20$ valid borderline terms (traps). (a) Precision, recall, and $F_1$ refer to promotions of the held-out protein; accuracy is over all $80$ items; violations are accepted decisions whose term fails the guardrail. The mean row gives the mean $\pm$ population standard deviation over the three seeds. LRO-50 is the unchanged set of $50$ ambiguous leave-reaction-out gaps with de-identified prompts. (b) A decoy is correct when the agent abstains or demotes; a genuine conflict is correct when the term is demoted or relaxed to a guardrail-valid ancestor (the lenient count also accepts abstention); a trap is correct when the term is kept. Model: \texttt{Qwen/Qwen3.8-27B-FP8} served by vLLM on two NVIDIA RTX 4090 GPUs. Sources: \texttt{results/pillar4\_v2\_multiseed\_summary.tsv}, \texttt{results/pillar4\_v2\_per\_category.tsv} (pipeline P10).}
+  \label{tab:supp_stage3_v2}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{lcccccccc}
+    \toprule

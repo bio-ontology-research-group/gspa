@@ -1,0 +1,31 @@
+configuration	n_anomalies	tp_promoted	fp_promoted	abstentions	relaxations	demotions	precision	recall	f1	accuracy	violations_accepted	violation_rate_pct	mean_latency_sec	mean_tool_calls	benchmark_version
+Stage 1 + Stage 2 Deterministic Only	80	0	0	80	0	0	0.0	0.0	0.0	0.5	0	0.0	0.0	0.0	v2
+Stage 3 Agent — Fast 1-Step Mode	80	3	0	56	0	15	1.0	0.15	0.2609	0.625	0	0.0	165.076	4.44	v2
+Stage 3 Agent — Qwen 27B + Guardrail (seed=42)	80	12	5	28	7	20	0.7059	0.6	0.6486	0.775	0	0.0	264.035	6.26	v2
+Stage 3 Agent — Qwen 27B + Guardrail (seed=43)	80	11	6	29	8	20	0.6471	0.55	0.5946	0.7125	0	0.0	273.231	6.16	v2
+Stage 3 Agent — Qwen 27B + Guardrail (seed=44)	80	10	10	27	6	22	0.5	0.5	0.5	0.6625	0	0.0	271.703	6.51	v2
+Stage 3 Agent — Qwen 27B Without Guardrail	80	12	10	23	4	27	0.5455	0.6	0.5714	0.6	1	1.25	215.369	5.45	v2
+Direct Zero-Shot LLM (No Tools, No Guardrail)	80	0	37	43	0	0	0.0	0.0	0.0	0.275	1	1.25	85.578	0.0	v2
+Posterior Threshold (>=0.35) + Guardrail	80	0	40	0	20	0	0.0	0.0	0.0	0.5	0	0.0	0.0	0.0	v2
+Logistic Regression (5-Fold Stratified CV, 3 Pre-Tool Scalars)	80	0	7	73	0	0	0.0	0.0	0.0	0.5	7	8.75	0.0	0.0	v2
+Logistic Regression (5-Fold Stratified CV, 3 Pre-Tool Scalars) + Guardrail	80	0	0	60	7	13	0.0	0.0	0.0	0.75	0	0.0	0.0	0.0	v2
+Random Forest (5-Fold Stratified CV, 3 Pre-Tool Scalars)	80	0	0	62	0	0	0.0	0.0	0.0	0.5	0	0.0	0.0	0.0	v2
+Random Forest (5-Fold Stratified CV, 3 Pre-Tool Scalars) + Guardrail	80	0	0	42	0	20	0.0	0.0	0.0	0.75	0	0.0	0.0	0.0	v2
+GBDT (5-Fold Stratified CV, 3 Pre-Tool Scalars)	80	1	6	55	0	0	0.1429	0.05	0.0741	0.475	0	0.0	0.0	0.0	v2
+GBDT (5-Fold Stratified CV, 3 Pre-Tool Scalars) + Guardrail	80	1	6	35	0	20	0.1429	0.05	0.0741	0.725	0	0.0	0.0	0.0	v2
+MLP (5-Fold Stratified CV, 3 Pre-Tool Scalars)	80	0	0	61	0	0	0.0	0.0	0.0	0.5	0	0.0	0.0	0.0	v2
+MLP (5-Fold Stratified CV, 3 Pre-Tool Scalars) + Guardrail	80	0	0	41	0	20	0.0	0.0	0.0	0.75	0	0.0	0.0	0.0	v2
+Logistic Regression (5-Fold Stratified CV, 8 Post-Tool Features)	80	0	3	61	0	0	0.0	0.0	0.0	0.475	0	0.0	0.0	0.0	v2
+Logistic Regression (5-Fold Stratified CV, 8 Post-Tool Features) + Guardrail	80	0	3	41	0	20	0.0	0.0	0.0	0.725	0	0.0	0.0	0.0	v2
+Random Forest (5-Fold Stratified CV, 8 Post-Tool Features)	80	0	0	62	0	0	0.0	0.0	0.0	0.5	0	0.0	0.0	0.0	v2
+Random Forest (5-Fold Stratified CV, 8 Post-Tool Features) + Guardrail	80	0	0	42	0	20	0.0	0.0	0.0	0.75	0	0.0	0.0	0.0	v2
+GBDT (5-Fold Stratified CV, 8 Post-Tool Features)	80	1	5	56	0	0	0.1667	0.05	0.0769	0.4625	0	0.0	0.0	0.0	v2
+GBDT (5-Fold Stratified CV, 8 Post-Tool Features) + Guardrail	80	1	5	36	0	20	0.1667	0.05	0.0769	0.7125	0	0.0	0.0	0.0	v2
+MLP (5-Fold Stratified CV, 8 Post-Tool Features)	80	0	0	61	0	0	0.0	0.0	0.0	0.5	0	0.0	0.0	0.0	v2
+MLP (5-Fold Stratified CV, 8 Post-Tool Features) + Guardrail	80	0	0	41	0	20	0.0	0.0	0.0	0.75	0	0.0	0.0	0.0	v2
+Single Feature: current_posterior (argmax candidate, CV-tuned threshold)	80	0	0	80	0	0	0.0	0.0	0.0	0.5	0	0.0	0.0	0.0	v2
+Single Feature: current_posterior (argmax candidate, CV-tuned threshold) + Guardrail	80	0	0	60	0	20	0.0	0.0	0.0	0.75	0	0.0	0.0	0.0	v2
+Single Feature: final_logodds (argmax candidate, CV-tuned threshold)	80	0	0	80	0	0	0.0	0.0	0.0	0.5	0	0.0	0.0	0.0	v2
+Single Feature: final_logodds (argmax candidate, CV-tuned threshold) + Guardrail	80	0	0	60	0	20	0.0	0.0	0.0	0.75	0	0.0	0.0	0.0	v2
+Single Feature: suggestion_score (argmax candidate, CV-tuned threshold)	80	0	2	78	0	0	0.0	0.0	0.0	0.475	0	0.0	0.0	0.0	v2
+Single Feature: suggestion_score (argmax candidate, CV-tuned threshold) + Guardrail	80	0	2	58	0	20	0.0	0.0	0.0	0.725	0	0.0	0.0	0.0	v2

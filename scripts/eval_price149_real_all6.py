@@ -30,10 +30,23 @@ EVALUATION MODES REPORTED SEPARATELY:
     * + Full GSPA Multi-Pred (Minimal Glucose) [condition-blind]
     * + Full GSPA (Iter 1), + Full GSPA (Iter 2), + Full GSPA (Iter 3) [single-predictor damped outer loop t=1,2,3]
     * + Full GSPA Multi-Pred (Iter 3) [multi-predictor Noisy-OR + damped outer loop t=3]
+    * pool_without_this_baseline [the same Stage 0 noisy-OR over the pooled predictors EXCLUDING the
+      row's baseline, with the baseline's own score set to 0; isolates the baseline's contribution]
+  Multi-Pred composition: the row's baseline (direct term, weight 0.42) + noisy-OR pool of
+  CLEAN (0.38), DeepProZyme (0.34), MAPred (0.34), EnzBERT (0.28). For those four baselines the
+  baseline also sits inside the pool. The TSV column `pooled_predictors` records this per row.
+
+USAGE:
+  python scripts/eval_price149_real_all6.py [--compact PKL.GZ] [--extraction-version LABEL]
+                                            [--results-dir DIR] [--rebuild-manifests]
+  McNemar: exact two-sided binomial test (scipy.stats.binomtest) on discordant Top-1 pairs vs the
+  row's Baseline; b = n_improved_vs_base, c = n_degraded_vs_base.
 """
 
+import argparse
 import csv
 import gzip
+import os
 import json
 import math
 import pickle
@@ -53,6 +66,13 @@ REF_DIR = MANIFEST_DIR / "reference_data"
 IBEX_DIR = REF_DIR / "ibex_extracted"
 RESULTS_DIR = ROOT / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+MULTI_ARMS = {
+    "+ Stage 1 Noisy-OR Ensemble (Sequence Only)",
+    "+ Full GSPA Multi-Pred (Minimal Glucose)",
+    "+ Full GSPA Multi-Pred (Iter 3)",
+}
 
 
 def logit(p: float, eps: float = 1e-4) -> float:
@@ -87,14 +107,17 @@ def compute_protein_metrics(gt_ecs: set[str], score_dict: dict[str, float]) -> d
             mrr = 1.0 / idx
             break
     # Evaluate Fmax over unique shared thresholds tau (ties included together at threshold tau)
+    # O(n log n) sweep, identical to evaluating every unique rounded score as threshold tau.
     best_f1 = 0.0
-    unique_taus = sorted({round(float(s), 8) for s in score_dict.values()}, reverse=True)
-    for tau in unique_taus:
-        pred = {ec for ec, s in score_dict.items() if round(float(s), 8) >= tau}
-        if not pred:
-            continue
-        tp = len(gt_ecs & pred)
-        prec = tp / len(pred)
+    ranked = sorted(((round(float(s), 8), ec in gt_ecs) for ec, s in score_dict.items()), reverse=True)
+    n_pred = 0
+    tp = 0
+    for i, (tau, hit) in enumerate(ranked):
+        n_pred += 1
+        tp += int(hit)
+        if i + 1 < len(ranked) and ranked[i + 1][0] == tau:
+            continue  # ties enter together at threshold tau
+        prec = tp / n_pred
         rec = tp / len(gt_ecs)
         if prec + rec > 0:
             best_f1 = max(best_f1, 2.0 * prec * rec / (prec + rec))
@@ -119,6 +142,16 @@ def compute_dataset_threshold_fmax(gt_list: list[set[str]], score_list: list[dic
     best_micro = 0.0
     best_tau = 0.50
     n_total = len(gt_list)
+    # per protein: scores and hit flags as arrays; counts at tau via searchsorted (same result
+    # as building the predicted set {ec: score >= tau} explicitly).
+    prepared = []
+    for gt, sc in zip(gt_list, score_list):
+        vals = np.array(list(sc.values()), dtype=np.float64)
+        hits = np.array([ec in gt for ec in sc.keys()], dtype=bool)
+        order = np.argsort(vals)
+        vals_sorted = vals[order]
+        hits_cum_from_top = np.cumsum(hits[order][::-1])[::-1] if len(vals) else np.zeros(0)
+        prepared.append((len(gt), vals_sorted, hits_cum_from_top))
     for tau_int in range(1, 100):
         tau = tau_int / 100.0
         sum_prec = 0.0
@@ -127,18 +160,21 @@ def compute_dataset_threshold_fmax(gt_list: list[set[str]], score_list: list[dic
         tp_tot = 0
         fp_tot = 0
         fn_tot = 0
-        for gt, sc in zip(gt_list, score_list):
-            pred = {ec for ec, val in sc.items() if val >= tau}
-            tp = len(gt & pred)
-            fp = len(pred) - tp
-            fn = len(gt) - tp
+        for n_gt, vals_sorted, hcum in prepared:
+            k = int(np.searchsorted(vals_sorted, tau, side="left"))
+            n_p = len(vals_sorted) - k
+            tp = int(hcum[k]) if n_p > 0 else 0
+            fp = n_p - tp
+            fn = n_gt - tp
+            pred = n_p
+            gt = n_gt
             tp_tot += tp
             fp_tot += fp
             fn_tot += fn
             if pred:
                 n_pred_prots += 1
-                sum_prec += tp / len(pred)
-            sum_rec += tp / len(gt)
+                sum_prec += tp / pred
+            sum_rec += tp / gt
         macro_p = (sum_prec / n_pred_prots) if n_pred_prots > 0 else 0.0
         macro_r = sum_rec / n_total
         if macro_p + macro_r > 0:
@@ -168,7 +204,7 @@ def compute_mcnemar_and_bootstrap(base_top1: list[int], arm_top1: list[int], see
     return {
         "n_improved": n_improved,
         "n_degraded": n_degraded,
-        "mcnemar_p": round(p_mcnemar, 6),
+        "mcnemar_p": float(f"{p_mcnemar:.4g}"),
         "top1_ci95_lo": round(float(ci_lo), 4),
         "top1_ci95_hi": round(float(ci_hi), 4),
     }
@@ -226,13 +262,28 @@ def build_blind_reaction_ec_graph(fba_dir: Path) -> tuple[dict[str, set[str]], d
 
 
 def main():
-    # Update manifest first so it contains zero ground-truth cognate exchange lookups
-    import subprocess
-    subprocess.run([sys.executable, str(MANIFEST_DIR / "build_all_manifests.py")], check=False)
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    ap.add_argument("--compact", default=str(IBEX_DIR / "price149_all6_compact.pkl.gz"),
+                    help="compact predictor pickle (written by extract_price149_all6.py)")
+    ap.add_argument("--extraction-version", default=None,
+                    help="label written to the extraction_version column (default: read from the pickle's _meta, else 'v1-legacy')")
+    ap.add_argument("--results-dir", default=str(RESULTS_DIR))
+    ap.add_argument("--rebuild-manifests", action="store_true",
+                    help="re-run benchmark/manifests/build_all_manifests.py first (rewrites ALL suite manifests; off by default)")
+    args = ap.parse_args()
+    results_dir = Path(args.results_dir)
+    results_dir.mkdir(parents=True, exist_ok=True)
 
-    pkl_path = IBEX_DIR / "price149_all6_compact.pkl.gz"
+    if args.rebuild_manifests:
+        import subprocess
+        subprocess.run([sys.executable, str(MANIFEST_DIR / "build_all_manifests.py")], check=False)
+
+    pkl_path = Path(args.compact)
     with gzip.open(pkl_path, "rb") as f:
         price_data = pickle.load(f)
+    meta = price_data.pop("_meta", {}) if isinstance(price_data, dict) else {}
+    extraction_version = args.extraction_version or meta.get("extraction_version", "v1-legacy")
+    print(f"compact={pkl_path} extraction_version={extraction_version}")
 
     manifest_rows = list(csv.DictReader(open(MANIFEST_DIR / "suite6_price149_manifest.tsv"), delimiter="\t"))
 
@@ -252,6 +303,7 @@ def main():
 
     # Multi-predictor Stage 1 Noisy-OR weights (used ONLY in the explicitly labeled Multi-Pred arms)
     core_predictors = [("clean", 0.38), ("dpz", 0.34), ("mapred", 0.34), ("enzbert", 0.28)]
+    core_keys = [k for k, _ in core_predictors]
 
     baseline_names = [
         ("clean", "CLEAN (2023)"),
@@ -517,6 +569,20 @@ def main():
                             multi_neigh_1hop[e1] = max(multi_neigh_1hop[e1], wv)
             ens_prob = {ec: 1.0 - val for ec, val in ens_no.items()}
 
+            # Same Stage 0 noisy-OR, but over the OTHER pooled predictors only (this baseline removed
+            # from the pool and its own score set to 0) -> isolates the baseline's own contribution.
+            ens_no_wo = defaultdict(lambda: 1.0)
+            for pk, pw in core_predictors:
+                if pk == b_key:
+                    continue
+                psc = price_data.get(pk, {}).get(asm, {}).get("target_scores", {}).get(p_ent, {})
+                if psc:
+                    pmax = max(psc.values())
+                    for ec, sv in psc.items():
+                        norm_s = min(1.0, 0.65 * sv + 0.35 * (sv / max(pmax, 1e-4))) if sv >= 0.02 else 0.0
+                        ens_no_wo[ec] *= (1.0 - pw * norm_s)
+            sc_pool_wo = {ec: 0.75 * (1.0 - val) for ec, val in ens_no_wo.items() if (1.0 - val) > 0.0}
+
             all_multi_ecs = set(cand_pool.keys()) | {ec for ec, pv in ens_prob.items() if pv >= 0.08}
             sc_noisyor_only = {}
             sc_gspa_multi_gluc = {}
@@ -553,6 +619,7 @@ def main():
                 ("+ Stage 1 Noisy-OR Ensemble (Sequence Only)", sc_noisyor_only),
                 ("+ Full GSPA Multi-Pred (Minimal Glucose)", sc_gspa_multi_gluc),
                 ("+ Full GSPA Multi-Pred (Iter 3)", sc_gspa_multi_full),
+                ("pool_without_this_baseline", sc_pool_wo),
             ]
             for arm_name, sc_arm in all_arms:
                 m = compute_protein_metrics(gt_ecs, sc_arm)
@@ -562,6 +629,7 @@ def main():
                 stratum_gts_scores[stratum][arm_name].append((gt_ecs, sc_arm))
                 top_pred_ec = sorted(sc_arm.items(), key=lambda x: (-x[1], x[0]))[0][0] if sc_arm else ""
                 per_protein_rows.append({
+                    "extraction_version": extraction_version,
                     "baseline": b_label,
                     "method": arm_name,
                     "price_entry": p_ent,
@@ -593,6 +661,7 @@ def main():
             "+ Stage 1 Noisy-OR Ensemble (Sequence Only)",
             "+ Full GSPA Multi-Pred (Minimal Glucose)",
             "+ Full GSPA Multi-Pred (Iter 3)",
+            "pool_without_this_baseline",
         ]:
             ms = methods_metrics[arm_name]
             gts_scs = methods_gts_scores[arm_name]
@@ -610,9 +679,18 @@ def main():
                 f"Fmax(ds): {fmax_ds_mac:.4f} | Fmax(sh): {fmax_prot:.4f} | F1@0.5: {f105:.4f} | "
                 f"MRR: {mrr:.4f} | +{stats['n_improved']}/-{stats['n_degraded']} (p={stats['mcnemar_p']:.2e})"
             )
+            if arm_name == "pool_without_this_baseline":
+                pooled = "+".join(k for k in core_keys if k != b_key)
+            elif arm_name in MULTI_ARMS:
+                pooled = "+".join([b_key] + [k for k in core_keys if k != b_key]) + (
+                    f" ({b_key} counted twice: direct + pool)" if b_key in core_keys else "")
+            else:
+                pooled = b_key
             summary_rows.append({
+                "extraction_version": extraction_version,
                 "baseline": b_label,
                 "method": arm_name,
+                "pooled_predictors": pooled,
                 "n_proteins": n_prot,
                 "top1_count": t1,
                 "top1_acc": round(t1 / n_prot, 4),
@@ -643,6 +721,7 @@ def main():
                     [g for g, _ in gts_scs], [s for _, s in gts_scs]
                 )
                 stratum_summary_rows.append({
+                    "extraction_version": extraction_version,
                     "baseline": b_label,
                     "stratum": st,
                     "method": arm_name,
@@ -653,18 +732,18 @@ def main():
                     "fmax_dataset_macro": round(fmax_ds_mac, 4),
                 })
 
-    with open(RESULTS_DIR / "pillar2_price149_all6_real.tsv", "w", newline="") as f:
+    with open(results_dir / "pillar2_price149_all6_real.tsv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()), delimiter="\t")
         w.writeheader()
         w.writerows(summary_rows)
 
-    with open(RESULTS_DIR / "pillar2_price149_by_stratum.tsv", "w", newline="") as f:
+    with open(results_dir / "pillar2_price149_by_stratum.tsv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(stratum_summary_rows[0].keys()), delimiter="\t")
         w.writeheader()
         w.writerows(stratum_summary_rows)
 
     if per_protein_rows:
-        with open(RESULTS_DIR / "pillar2_price149_per_protein_real.tsv", "w", newline="") as f:
+        with open(results_dir / "pillar2_price149_per_protein_real.tsv", "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=list(per_protein_rows[0].keys()), delimiter="\t")
             w.writeheader()
             w.writerows(per_protein_rows)

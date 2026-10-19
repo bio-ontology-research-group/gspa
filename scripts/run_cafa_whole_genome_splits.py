@@ -4,7 +4,9 @@ Whole-Genome Withheld CAFA Benchmark across Time-Based and Homology-Based Splits
 
 Withholds 6 complete prokaryotic reference genomes (20,697 total coding sequences,
 3,315 experimentally annotated target proteins, 1,060 strictly post-t0 newly annotated
-target proteins, 4,199 chromosomal operons, and 1,938 gapseq metabolic gaps):
+target proteins). Input files hold 4,199 operon records and 1,938 gapseq gap records (per-genome
+counts below); the loader keeps the 3,809 operons with >= 2 members in the proteome and the 1,467
+gaps that map to at least one GO term, and prints the per-genome retained counts to the log:
   1. Bacillus subtilis 168            (bsubtilis,     NCBITaxon:1423, 4,288 ORFs,   425 exp, 748 operons, 398 gaps)
   2. Pseudomonas aeruginosa PAO1      (paeruginosa,   NCBITaxon:287,  5,563 ORFs,   916 exp, 1,128 operons, 509 gaps)
   3. Mycobacterium tuberculosis H37Rv (mtb,           NCBITaxon:1773, 3,997 ORFs, 1,575 exp, 863 operons, 354 gaps)
@@ -44,6 +46,8 @@ and executed across all 20,697 coding sequences of the 6 withheld genomes):
 """
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 import os
 import pickle
@@ -431,6 +435,7 @@ def evaluate_predictions(
     n_tau = len(thresholds)
     metrics = {}
     total_violations = 0
+    total_violations_050 = 0
 
     for asp in ("MF", "BP", "CC"):
         asp_prots = [p for p in test_prots if len(gt[p].get(asp, ())) > 0]
@@ -512,19 +517,26 @@ def evaluate_predictions(
         metrics[f"smin_{asp}"] = best_smin
         metrics[f"tau_{asp}"] = best_tau
 
+        # `violations`: forbidden (taxon-constraint) terms scored at or above the method's
+        # f_w-optimal threshold for this aspect, capped at 0.25 (legacy definition).
+        # `violations_050`: forbidden terms scored at or above a fixed threshold of 0.50.
         tau_check = min(best_tau, 0.25)
         for p in asp_prots:
             forb = get_forbidden_for_taxon(prot2tax.get(p, ""))
             if not forb:
                 continue
             for t, sc in prop_preds[p].get(asp, {}).items():
-                if sc >= tau_check and t in forb:
-                    total_violations += 1
+                if t in forb:
+                    if sc >= tau_check:
+                        total_violations += 1
+                    if sc >= 0.50:
+                        total_violations_050 += 1
 
     metrics["fmax_mean"] = (metrics["fmax_MF"] + metrics["fmax_BP"] + metrics["fmax_CC"]) / 3.0
     metrics["fw_mean"] = (metrics["fw_MF"] + metrics["fw_BP"] + metrics["fw_CC"]) / 3.0
     metrics["smin_mean"] = (metrics["smin_MF"] + metrics["smin_BP"] + metrics["smin_CC"]) / 3.0
     metrics["violations"] = total_violations
+    metrics["violations_050"] = total_violations_050
     return metrics
 
 
@@ -697,6 +709,9 @@ def run_whole_genome_gspa_ablations(
     get_forbidden_for_taxon,
     max_pid: float = 100.0,
     rollover_known_gt: dict[str, dict[str, set[str]]] | None = None,
+    hom_scale_mode: str = "val-tuned",
+    fam_mode: str = "family",
+    log_prefix: str = "",
 ):
     """
     Executes per-protein integration (GSPA Stage 0 Noisy-OR & GSPA-Seq Stacker)
@@ -767,8 +782,13 @@ def run_whole_genome_gspa_ablations(
                         dest_c[a] = sc
 
     # 2. Calibrate Stage 0 channel reliabilities on val_prots with Evidence-Group Correlation Damping
-    rel_weights = {c: {} for c in comp_names}
-    hom_scale = 1.0 if max_pid >= 99.0 else (0.75 if max_pid >= 65.0 else (0.55 if max_pid >= 45.0 else 0.38))
+    #    `base_rel[c][asp]` is the reliability before the MF/BP down-weighting `hom_scale` of the
+    #    sequence-model channels (cnn, esm2_bce, esm2_mcm) and before clipping.
+    #    hom_scale used to be a constant chosen from the split identity (max_pid). It is now
+    #    either fixed at 1.0 or selected on the validation proteins of this split (see
+    #    --hom-scale); the split identity is never used ("legacy-split-pid" only reproduces the
+    #    pre-fix behaviour for auditing).
+    base_rel = {c: {} for c in comp_names}
     for asp in ("MF", "BP", "CC"):
         val_asp_prots = [p for p in val_prots if len(train_labels.get(p, {}).get(asp, ())) > 0]
         for c in comp_names:
@@ -794,11 +814,19 @@ def run_whole_genome_gspa_ablations(
             w_c = best_f ** 1.35
             if c in ("esm2_knn", "esm2_bce", "esm2_mcm"):
                 w_c *= 0.48
-            if c in ("cnn", "esm2_bce", "esm2_mcm") and asp in ("MF", "BP"):
-                w_c *= hom_scale
-            rel_weights[c][asp] = float(np.clip(w_c, 0.05, 0.88))
+            base_rel[c][asp] = w_c
 
-    def compute_stage0(prop_dict, prot_list, min_sc=0.025):
+    def make_rel_weights(h_scale):
+        rw = {c: {} for c in comp_names}
+        for c in comp_names:
+            for asp in ("MF", "BP", "CC"):
+                w_c = base_rel[c][asp]
+                if c in ("cnn", "esm2_bce", "esm2_mcm") and asp in ("MF", "BP"):
+                    w_c *= h_scale
+                rw[c][asp] = float(np.clip(w_c, 0.05, 0.88))
+        return rw
+
+    def compute_stage0(prop_dict, prot_list, min_sc=0.025, rel_weights=None):
         s0 = defaultdict(dict)
         for p in prot_list:
             cand = set()
@@ -817,8 +845,45 @@ def run_whole_genome_gspa_ablations(
                     dest[t] = post
         return s0
 
-    preds_stage0_raw = compute_stage0(prop_raw, full_detail_prots, min_sc=0.025)
-    preds_stage0_cln = compute_stage0(prop_cln, all_wg_prots + val_prots, min_sc=0.025)
+    hom_grid = (1.0, 0.75, 0.55, 0.38)
+    hom_val_fw = {}
+    if hom_scale_mode == "fixed-1.0":
+        hom_scale = 1.0
+    elif hom_scale_mode == "legacy-split-pid":
+        hom_scale = 1.0 if max_pid >= 99.0 else (0.75 if max_pid >= 65.0 else (0.55 if max_pid >= 45.0 else 0.38))
+    elif hom_scale_mode == "val-tuned":
+        # Select hom_scale on this split's validation proteins only: Stage 0 noisy-OR on
+        # val_prots (prop_raw), scored by mean IA-weighted f_w against their training labels.
+        # Ties (to 1e-6) are broken towards the larger value (less down-weighting).
+        val_gt_h = {p: train_labels[p] for p in val_prots if p in train_labels}
+        for h_cand in hom_grid:
+            s0_val = compute_stage0(prop_raw, val_prots, min_sc=0.025, rel_weights=make_rel_weights(h_cand))
+            res_h = evaluate_predictions(
+                s0_val, val_gt_h, anc, aspect_of, ia, train_prot2tax, get_forbidden_for_taxon, already_propagated=True
+            )
+            hom_val_fw[h_cand] = res_h["fw_mean"]
+        hom_scale = max(hom_grid, key=lambda h: (round(hom_val_fw[h], 6), h))
+    else:
+        raise ValueError(f"unknown hom_scale_mode {hom_scale_mode!r}")
+    rel_weights = make_rel_weights(hom_scale)
+    log(
+        f"  {log_prefix}hom_scale mode={hom_scale_mode} selected={hom_scale}"
+        + (
+            " | validation mean f_w by candidate: "
+            + ", ".join(f"{h}: {hom_val_fw[h]:.4f}" for h in hom_grid)
+            if hom_val_fw
+            else ""
+        )
+    )
+    log(
+        f"  {log_prefix}Stage 0 channel reliabilities (MF/BP/CC): "
+        + "; ".join(
+            f"{c}={rel_weights[c]['MF']:.3f}/{rel_weights[c]['BP']:.3f}/{rel_weights[c]['CC']:.3f}" for c in comp_names
+        )
+    )
+
+    preds_stage0_raw = compute_stage0(prop_raw, full_detail_prots, min_sc=0.025, rel_weights=rel_weights)
+    preds_stage0_cln = compute_stage0(prop_cln, all_wg_prots + val_prots, min_sc=0.025, rel_weights=rel_weights)
 
     # 3. Fit GSPA-Seq Stacker strictly on val_prots
     preds_stacker_raw = defaultdict(dict)
@@ -973,6 +1038,18 @@ def run_whole_genome_gspa_ablations(
     # ==========================================================================
     # Whole-Genome Prior 1: Operon Genomic Context (B6)
     # ==========================================================================
+    # Family expansion of KEGG pathway steps in the operon prior (B6). Formerly switched on
+    # only for max_pid >= 99 (split identity); now a single split-independent choice
+    # (--fam-candidates). "family" matches the B1/B2 coherence prior, which always expands
+    # pathway steps to informative (IA >= 3.0) MF ancestors.
+    if fam_mode == "legacy-split-pid":
+        use_fam_expansion = max_pid >= 99.0
+    elif fam_mode == "family":
+        use_fam_expansion = True
+    elif fam_mode == "exact":
+        use_fam_expansion = False
+    else:
+        raise ValueError(f"unknown fam_mode {fam_mode!r}")
     operon_boosts = defaultdict(lambda: defaultdict(float))
     for ginfo in TEST_GENOMES:
         tag = ginfo["tag"]
@@ -1031,7 +1108,7 @@ def run_whole_genome_gspa_ablations(
                 for pw_id, nb_pw_hits in nb_pw_counts.items():
                     pw_frac = nb_pw_hits / len(neighbors)
                     for r in pathways[pw_id]:
-                        fam_candidates = (r,) if max_pid < 99.0 else ((r,) + tuple(a for a in anc.get(r, ()) if ia.get(a, 0.0) >= 3.2 and aspect_of.get(a) == "MF"))
+                        fam_candidates = (r,) if not use_fam_expansion else ((r,) + tuple(a for a in anc.get(r, ()) if ia.get(a, 0.0) >= 3.2 and aspect_of.get(a) == "MF"))
                         for r_or_fam in fam_candidates:
                             cur_r = base_cln[pid].get(r_or_fam, 0.0)
                             if 0.14 <= cur_r <= 0.58:
@@ -1289,19 +1366,102 @@ def run_whole_genome_gspa_ablations(
         preds_fba_gaps,
         preds_constraints,
         preds_gspa_full,
+        {"hom_scale_selected": hom_scale, "hom_scale_val_fw": hom_val_fw, "rel_weights": rel_weights,
+         "beta_by_asp": beta_by_asp, "fam_expansion": use_fam_expansion},
     )
 
 
 # ==============================================================================
 # 5. Main Execution Pipeline
 # ==============================================================================
+def parse_args(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0] if __doc__ else None)
+    ap.add_argument("--gpu-only", action="store_true", help="only build missing split-retrained neural caches")
+    ap.add_argument(
+        "--hom-scale",
+        choices=("val-tuned", "fixed-1.0", "legacy-split-pid"),
+        default="val-tuned",
+        help="MF/BP down-weighting of the cnn/esm2_bce/esm2_mcm Stage 0 reliabilities: selected per split on "
+        "the validation proteins from {1.0, 0.75, 0.55, 0.38} (val-tuned, default), disabled (fixed-1.0), or the "
+        "pre-fix constant chosen from the split's identity cutoff (legacy-split-pid; audit only)",
+    )
+    ap.add_argument(
+        "--fam-candidates",
+        choices=("family", "exact", "legacy-split-pid"),
+        default="family",
+        help="operon prior (B6) pathway-step expansion to informative MF ancestors: always (family, default), "
+        "never (exact), or only when max_pid >= 99 (legacy-split-pid; audit only)",
+    )
+    ap.add_argument(
+        "--val-m8",
+        type=Path,
+        default=None,
+        help="override the validation DIAMOND alignment (audit only; by default it is built/reused under a "
+        "cache name keyed by the validation IDs and the training DIAMOND DB)",
+    )
+    ap.add_argument("--out-dir", type=Path, default=None, help="directory for the output TSVs (default: results/)")
+    return ap.parse_args(argv)
+
+
+def ensure_validation_alignment(val_pool: list[str], train_seqs: dict[str, str], train_db: Path) -> Path:
+    """
+    DIAMOND (--more-sensitive -k 1000) alignment of exactly this script's validation pool against the
+    training DIAMOND DB. The cache file name is keyed by a hash of the sorted validation IDs and of the
+    DB identity (file name + size), so an alignment built for another protein set (e.g. the
+    `val_600_vs_train_sensitive.m8` of run_cafa_time_and_homology_splits.py, which shares only 8 of
+    these 600 proteins) is never reused.
+
+    The DB holds the full pre-t0 training corpus, exactly as for `wg_all7_vs_train.m8` (the test-genome
+    queries). Per-split purging is applied downstream in run_diamond_knn by restricting hits to the
+    split's sub-training set (which also removes the validation proteins themselves) and to
+    pident <= max_pid, identically for validation and test queries.
+    """
+    ids_sorted = sorted(val_pool)
+    h = hashlib.sha1()
+    h.update("\n".join(ids_sorted).encode())
+    h.update(f"|{train_db.name}|{train_db.stat().st_size}".encode())
+    key = h.hexdigest()[:12]
+    m8 = CACHE_DIR / f"val{len(ids_sorted)}_{key}_vs_{train_db.stem}.m8"
+    val_set = set(ids_sorted)
+    if m8.exists():
+        with open(m8) as fh:
+            q_seen = {ln.split("\t", 1)[0] for ln in fh if ln.strip()}
+        if q_seen <= val_set:
+            log(f"Reusing validation alignment {m8.name} ({len(q_seen)}/{len(val_set)} validation proteins with hits)")
+            return m8
+        log(f"Validation alignment {m8.name} has foreign queries; rebuilding")
+    val_fasta = CACHE_DIR / f"val{len(ids_sorted)}_{key}.fasta"
+    with open(val_fasta, "w") as fh:
+        for p in ids_sorted:
+            fh.write(f">{p}\n{train_seqs[p]}\n")
+    cmd = [
+        "diamond", "blastp",
+        "-q", str(val_fasta),
+        "-d", str(train_db),
+        "-o", str(m8) + ".tmp",
+        "--more-sensitive", "-k", "1000",
+        "--outfmt", "6", "qseqid", "sseqid", "bitscore", "pident",
+    ]
+    log(f"Building validation alignment: {' '.join(cmd)}")
+    t0 = time.time()
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    os.replace(str(m8) + ".tmp", m8)
+    with open(m8) as fh:
+        q_seen = {ln.split("\t", 1)[0] for ln in fh if ln.strip()}
+    log(f"Built {m8.name} in {time.time() - t0:.1f}s ({len(q_seen)}/{len(val_set)} validation proteins with hits)")
+    return m8
+
+# ==============================================================================
 def main():
     import gc
 
+    args = parse_args()
+    out_dir = args.out_dir if args.out_dir is not None else RESULTS_DIR
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     log(f"Starting Whole-Genome Withheld CAFA Benchmark on device={dev}")
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    log(f"Options: hom_scale={args.hom_scale} fam_candidates={args.fam_candidates} out_dir={out_dir}")
 
     dag_path = CAFA_DIR / "go-dag.tsv"
     obo_path = CAFA_DIR / "go.obo"
@@ -1349,6 +1509,15 @@ def main():
         f"{sum(len(v) for v in genome_operons.values()):,} operons, "
         f"{sum(len(v) for v in genome_gaps.values()):,} metabolic gaps"
     )
+    for ginfo in TEST_GENOMES:
+        _t = ginfo["tag"]
+        log(
+            f"  {_t}: {len(genome_prots[_t]):,} ORFs, "
+            f"{sum(1 for p in genome_prots[_t] if p in gt_all_exp):,} exp targets, "
+            f"{sum(1 for p in genome_prots[_t] if p in gt_post_t0):,} post-t0 targets, "
+            f"{len(genome_operons[_t]):,} operons (>=2 members in the proteome), "
+            f"{len(genome_gaps[_t]):,} gapseq gaps (GO-mappable)"
+        )
 
     # Load sequences for training set and 6 withheld genomes
     train_seqs = read_fasta(RECON_DIR / "cnn_work" / "train.fasta")
@@ -1410,25 +1579,41 @@ def main():
         ]
     )
     val_pool = list(rng_val.choice(eligible_val, size=600, replace=False))
-    val_m8 = RECON_DIR / "split_cache" / "val_600_vs_train_sensitive.m8"
-    if not val_m8.exists():
-        val_fasta = CACHE_DIR / "val_600.fasta"
-        with open(val_fasta, "w") as fh:
-            for p in val_pool:
-                fh.write(f">{p}\n{train_seqs[p]}\n")
-        subprocess.run(
-            [
-                "diamond", "blastp",
-                "-q", str(val_fasta),
-                "-d", str(RECON_DIR / "cnn_work" / "train_db.dmnd"),
-                "-o", str(val_m8),
-                "--more-sensitive", "-k", "1000",
-                "--outfmt", "6", "qseqid", "sseqid", "bitscore", "pident",
-            ],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+    if args.val_m8 is not None:
+        val_m8 = args.val_m8
+        with open(val_m8) as fh:
+            q_seen = {ln.split("\t", 1)[0] for ln in fh if ln.strip()}
+        log(
+            f"WARNING: using override validation alignment {val_m8} "
+            f"({len(q_seen & set(val_pool))}/{len(val_pool)} validation proteins covered)"
         )
+    else:
+        val_m8 = ensure_validation_alignment(val_pool, train_seqs, RECON_DIR / "cnn_work" / "train_db.dmnd")
+
+    prot_ipr, direct_interpro = {}, defaultdict(dict)
+    if not all_caches_present:
+        # InterPro domain annotations for train + val + 6 withheld genomes (only needed to retrain InterPro-LR)
+        for ipr_file in (RECON_DIR / "interpro" / "train_ipr.tsv", RECON_DIR / "interpro" / "val_test.tsv"):
+            if ipr_file.exists():
+                with open(ipr_file) as fh:
+                    for line in fh:
+                        p = line.rstrip("\n").split("\t")
+                        if len(p) >= 2 and p[1]:
+                            prot_ipr[p[0]] = [x for x in p[1].split(";") if x]
+        prot_ipr.update(wg_ipr)
+        dip_path = RECON_DIR / "cleaneval_comps" / "interpro.tsv"
+        if dip_path.exists():
+            val_set = set(val_pool)
+            with open(dip_path) as fh:
+                for line in fh:
+                    p = line.rstrip("\n").split("\t")
+                    if len(p) >= 3 and p[0] in val_set:
+                        try:
+                            direct_interpro[p[0]][p[1]] = float(p[2])
+                        except ValueError:
+                            pass
+        for pid, dmap in wg_direct_ipr2go.items():
+            direct_interpro[pid].update(dmap)
 
     if all_caches_present:
         del train_seqs, wg_seqs
@@ -1546,7 +1731,7 @@ def main():
             f"Whole-Genome ORFs: {len(all_wg_prots):,} | Eval Targets: {len(gt_dict):,} ==="
         )
 
-        gpu_only = "--gpu-only" in sys.argv
+        gpu_only = args.gpu_only
         neural_cache_file = CACHE_DIR / f"{cache_tag}_neural_{esm_tag}_wg20697.pkl"
         if neural_cache_file.exists():
             log(f"  [{split_id}] Loading cached split-retrained GPU predictions from {neural_cache_file.name}")
@@ -1561,7 +1746,46 @@ def main():
             preds_eknn = cached["eknn"]
             del cached
         else:
-            raise RuntimeError(f"Missing GPU cache {neural_cache_file}; run with --gpu-only on GPU cluster first.")
+            # Build the split-retrained neural cache (GPU recommended; run with --gpu-only on the cluster).
+            eval_seqs = {p: train_seqs[p] for p in val_prots if p in train_seqs}
+            eval_seqs.update({p: wg_seqs[p] for p in all_wg_prots if p in wg_seqs})
+            val_emb_list = [p for p in val_prots if p in tr_id_to_idx]
+            wg_emb_list = [p for p in all_wg_prots if p in wg_id_to_idx]
+            eval_emb_ids = val_emb_list + wg_emb_list
+            eval_emb = np.vstack(
+                [tr_emb[[tr_id_to_idx[p] for p in val_emb_list]], wg_emb[[wg_id_to_idx[p] for p in wg_emb_list]]]
+            )
+            eval_emb_norm = np.vstack(
+                [tr_emb_norm[[tr_id_to_idx[p] for p in val_emb_list]], wg_emb_norm[[wg_id_to_idx[p] for p in wg_emb_list]]]
+            )
+            prev_cnn_cache = CACHE_DIR / f"{cache_tag}_neural_wg20697.pkl"
+            if prev_cnn_cache.exists():
+                log(f"  [{split_id}] Reusing 16-kernel DeepGOCNN from {prev_cnn_cache.name}")
+                with open(prev_cnn_cache, "rb") as fh:
+                    preds_cnn = pickle.load(fh)["cnn"]
+            else:
+                log(f"  [{split_id}] Retraining DeepGOCNN on {len(sub_train_prots):,} proteins ...")
+                preds_cnn = train_and_predict_deepgocnn(
+                    sub_train_prots, train_labels, train_seqs, eval_prots, eval_seqs, dev
+                )
+            log(f"  [{split_id}] Retraining InterPro-LR on {len(sub_train_prots):,} proteins ...")
+            preds_ipr = run_interpro_lr(sub_train_prots, train_labels, eval_prots, prot_ipr, direct_interpro, dev=dev)
+            log(f"  [{split_id}] Retraining ESM-2 ({esm_tag.upper()}) MLP (BCE) & C-HMCNN (MCLoss) ...")
+            preds_ebce, preds_emcm = train_and_predict_esm2_heads_batched(
+                sub_train_prots, train_labels, tr_ids, tr_emb, eval_emb_ids, eval_emb, anc, dev
+            )
+            log(f"  [{split_id}] Running ESM-2 ({esm_tag.upper()}) embedding kNN ...")
+            preds_eknn = run_esm2_knn_fast(
+                sub_train_prots, train_labels, tr_ids, tr_emb_norm, eval_emb_ids, eval_emb_norm, max_cos_sim=max_cos
+            )
+            with open(neural_cache_file, "wb") as fh:
+                pickle.dump(
+                    {"cnn": preds_cnn, "ebce": preds_ebce, "emcm": preds_emcm, "ipr": preds_ipr, "eknn": preds_eknn}, fh
+                )
+            del eval_emb, eval_emb_norm
+            if gpu_only:
+                log(f"  [{split_id}] Saved GPU predictions to {neural_cache_file.name}")
+                continue
 
         # 2. Retrain / run Naive and DIAMOND-kNN baselines across eval targets + whole-genome ORFs
         preds_naive = run_naive_frequency(sub_train_prots, train_labels, list(gt_dict.keys()))
@@ -1586,6 +1810,7 @@ def main():
             preds_fba_gaps,
             preds_constraints,
             preds_gspa_full,
+            gspa_info,
         ) = run_whole_genome_gspa_ablations(
             channels=channels,
             val_prots=val_prots,
@@ -1609,7 +1834,12 @@ def main():
             get_forbidden_for_taxon=get_forbidden_for_taxon,
             max_pid=max_pid,
             rollover_known_gt=rollover_gt,
+            hom_scale_mode=args.hom_scale,
+            fam_mode=args.fam_candidates,
+            log_prefix=f"[{split_id}] ",
         )
+        hom_sel = gspa_info["hom_scale_selected"]
+        log(f"  [{split_id}] Stacker/Stage-0 blend beta: {gspa_info['beta_by_asp']} | operon family expansion: {gspa_info['fam_expansion']}")
 
         # Tune DeepGOPlus alpha_a in [0, 1] per aspect strictly on `val_prots` using already-propagated prop_raw
         val_gt_dict = {p: train_labels[p] for p in val_prots if p in train_labels}
@@ -1679,7 +1909,7 @@ def main():
 
         print(
             f"\n{'Method':<60} | {'fw_MF':>6} {'fw_BP':>6} {'fw_CC':>6} {'fw_Mean':>7} | "
-            f"{'Fmax_MF':>7} {'Fmax_BP':>7} {'Fmax_CC':>7} {'Fmax_Mn':>7} | {'Smin_Mn':>7} | {'Viol':>5}"
+            f"{'Fmax_MF':>7} {'Fmax_BP':>7} {'Fmax_CC':>7} {'Fmax_Mn':>7} | {'Smin_Mn':>7} | {'Viol':>5} {'V@.50':>5}"
         )
         print("-" * 139)
         for m_name, m_preds, is_prop in method_map:
@@ -1689,7 +1919,7 @@ def main():
             print(
                 f"{m_name:<60} | {res['fw_MF']:6.4f} {res['fw_BP']:6.4f} {res['fw_CC']:6.4f} {res['fw_mean']:7.4f} | "
                 f"{res['fmax_MF']:7.4f} {res['fmax_BP']:7.4f} {res['fmax_CC']:7.4f} {res['fmax_mean']:7.4f} | "
-                f"{res['smin_mean']:7.4f} | {res['violations']:5d}"
+                f"{res['smin_mean']:7.4f} | {res['violations']:5d} {res['violations_050']:5d}"
             )
             all_rows.append(
                 {
@@ -1714,6 +1944,8 @@ def main():
                     "smin_CC": f"{res['smin_CC']:.4f}",
                     "smin_mean": f"{res['smin_mean']:.4f}",
                     "violations": res["violations"],
+                    "violations_050": res["violations_050"],
+                    "hom_scale_selected": hom_sel if m_name.startswith("GSPA") else "NA",
                 }
             )
 
@@ -1760,17 +1992,19 @@ def main():
                         "smin_CC": f"{gres['smin_CC']:.4f}",
                         "smin_mean": f"{gres['smin_mean']:.4f}",
                         "violations": gres["violations"],
+                        "violations_050": gres["violations_050"],
+                        "hom_scale_selected": hom_sel if m_name.startswith("GSPA") else "NA",
                     }
                 )
 
         del preds_cnn, preds_ebce, preds_emcm, preds_ipr, preds_eknn, channels, prop_raw, sota_cached
         gc.collect()
 
-    if "--gpu-only" in sys.argv:
+    if args.gpu_only:
         log("Completed all GPU neural training splits (--gpu-only mode).")
         return
 
-    out_tsv = RESULTS_DIR / "cafa_whole_genome_time_and_homology_splits.tsv"
+    out_tsv = out_dir / "cafa_whole_genome_time_and_homology_splits.tsv"
     fieldnames = [
         "split_id",
         "split_label",
@@ -1793,6 +2027,8 @@ def main():
         "smin_CC",
         "smin_mean",
         "violations",
+        "violations_050",
+        "hom_scale_selected",
     ]
     with open(out_tsv, "w") as fh:
         fh.write("\t".join(fieldnames) + "\n")
@@ -1800,7 +2036,7 @@ def main():
             fh.write("\t".join(str(row[k]) for k in fieldnames) + "\n")
     log(f"Saved {len(all_rows)} rows to {out_tsv}")
 
-    sp_tsv = RESULTS_DIR / "cafa_whole_genome_per_species.tsv"
+    sp_tsv = out_dir / "cafa_whole_genome_per_species.tsv"
     sp_fields = [
         "split_id",
         "genome",
@@ -1820,6 +2056,8 @@ def main():
         "smin_CC",
         "smin_mean",
         "violations",
+        "violations_050",
+        "hom_scale_selected",
     ]
     with open(sp_tsv, "w") as fh:
         fh.write("\t".join(sp_fields) + "\n")

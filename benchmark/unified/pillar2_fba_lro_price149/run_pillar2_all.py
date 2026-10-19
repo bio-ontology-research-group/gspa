@@ -39,6 +39,163 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 _GLOBAL_REF: StoichiometricLocusRefiner | None = None
 
+# Growth requirement used by the METEOR v8 MILP and by the archived grow_support threshold repair
+# (meteor108_solutions_compact biomass_flux = 0.1; thresh_gapfill gamma_min = 0.1).
+AUDIT_GAMMA_MIN = 0.1
+_HIGHS_OPTS = {"primal_feasibility_tolerance": 1e-9, "dual_feasibility_tolerance": 1e-9}
+
+
+def _network_lp_audit(
+    ref: StoichiometricLocusRefiner,
+    gram: str,
+    internal_idx,
+    target_bio: float,
+    extra_uptake: list[str] | None = None,
+    do_pfba: bool = False,
+    eps_flux: float = 1e-6,
+) -> dict:
+    """Measured LP check of a repaired network on the audit medium (refiner.get_media_bounds(gram, "minimal"):
+    named minimal medium + 36-compound ModelSEED supplement; same bounds as Stage 2B).
+    Network = `internal_idx` (every non-exchange reaction of the configuration, enzymatic or not)
+    + all EX_ reactions (secretion always allowed, uptake only for medium compounds) + the Gram biomass.
+    Returns max biomass, feasibility for v_bio >= target_bio, and (optionally) the pFBA support
+    (min sum|v| s.t. S v = 0, v_bio >= target_bio)."""
+    from scipy.optimize import linprog
+    from scipy.sparse import hstack
+
+    lb, ub, bio_idx = ref.get_media_bounds(gram=gram, medium_name="minimal", extra_uptake_exchanges=extra_uptake)
+    keep = set(int(i) for i in internal_idx) | set(ref.ex_indices) | {bio_idx}
+    keep = sorted(i for i in keep if (lb[i] < -1e-12 or ub[i] > 1e-12))
+    pos = {o: k for k, o in enumerate(keep)}
+    S = ref.S[:, keep].tocsc()
+    n_m = S.shape[0]
+    bnds = [(float(lb[i]), float(ub[i])) for i in keep]
+    c = np.zeros(len(keep))
+    c[pos[bio_idx]] = -1.0
+    r = linprog(c, A_eq=S, b_eq=np.zeros(n_m), bounds=bnds, method="highs", options=_HIGHS_OPTS)
+    max_bio = float(-r.fun) if (r.success and r.fun is not None) else 0.0
+    out = {"max_bio": max_bio, "feasible": bool(target_bio > 0 and max_bio >= target_bio - 1e-7), "pfba_flux_idx": []}
+    if do_pfba and out["feasible"]:
+        m = len(keep)
+        S_split = hstack([S, -S], format="csc")
+        b2 = [(max(0.0, lo), max(0.0, hi)) for lo, hi in bnds] + [(max(0.0, -hi), max(0.0, -lo)) for lo, hi in bnds]
+        bi = pos[bio_idx]
+        b2[bi] = (float(target_bio), float(max(target_bio, b2[bi][1])))
+        b2[m + bi] = (0.0, 0.0)
+        obj = np.ones(2 * m)
+        obj[bi] = 0.0
+        r2 = linprog(obj, A_eq=S_split, b_eq=np.zeros(n_m), bounds=b2, method="highs", options=_HIGHS_OPTS)
+        if r2.success:
+            v = r2.x[:m] - r2.x[m:]
+            out["pfba_flux_idx"] = [keep[k] for k in range(m) if abs(v[k]) > eps_flux]
+    return out
+
+
+def _pfba_on_bounds(S, lb, ub, net_idx, bio_idx: int, target_bio: float, eps_flux: float = 1e-6) -> dict:
+    """Max biomass and pFBA support (min sum|v| s.t. S v = 0, v_bio >= target_bio) of the network
+    `net_idx` under explicit bounds (lb, ub); reactions outside the network are fixed to 0.
+    Used for METEOR's own MILP medium (archived meteor108_drafts_compact media[gram].lb/ub)."""
+    from scipy.optimize import linprog
+    from scipy.sparse import hstack
+
+    keep = sorted(i for i in set(int(x) for x in net_idx) | {int(bio_idx)} if (lb[i] < -1e-12 or ub[i] > 1e-12))
+    pos = {o: k for k, o in enumerate(keep)}
+    Sk = S[:, keep].tocsc()
+    n_m = Sk.shape[0]
+    bnds = [(float(lb[i]), float(ub[i])) for i in keep]
+    c = np.zeros(len(keep))
+    c[pos[bio_idx]] = -1.0
+    r = linprog(c, A_eq=Sk, b_eq=np.zeros(n_m), bounds=bnds, method="highs", options=_HIGHS_OPTS)
+    max_bio = float(-r.fun) if (r.success and r.fun is not None) else 0.0
+    out = {"max_bio": max_bio, "feasible": bool(max_bio >= target_bio - 1e-7), "pfba_flux_idx": []}
+    if out["feasible"]:
+        m = len(keep)
+        S_split = hstack([Sk, -Sk], format="csc")
+        b2 = [(max(0.0, lo), max(0.0, hi)) for lo, hi in bnds] + [(max(0.0, -hi), max(0.0, -lo)) for lo, hi in bnds]
+        bi = pos[bio_idx]
+        b2[bi] = (float(target_bio), float(max(target_bio, b2[bi][1])))
+        b2[m + bi] = (0.0, 0.0)
+        obj = np.ones(2 * m)
+        obj[bi] = 0.0
+        r2 = linprog(obj, A_eq=S_split, b_eq=np.zeros(n_m), bounds=b2, method="highs", options=_HIGHS_OPTS)
+        if r2.success:
+            v = r2.x[:m] - r2.x[m:]
+            out["pfba_flux_idx"] = [keep[k] for k in range(m) if abs(v[k]) > eps_flux]
+    return out
+
+
+def _audit_repaired_network(args_tuple: tuple) -> tuple[str, dict]:
+    """Measured audit of an archived repaired network (METEOR v8 active set y > 0.5, or the Grow-Support
+    threshold repair core | grow_support), both from meteor108_drafts_compact.pkl.gz (DPZ-vanilla, tau=0.5).
+
+    added            = internal (non-EX_, non-biomass) reactions of the network that are not in the tau=0.5 draft
+    flux-certified   = added reactions with |v| > 1e-6 in a pFBA solution (v_bio >= gamma_min = 0.1) of the network
+                       (a) on METEOR's own MILP medium (tight bounds + apply_media(['default']): open uptake on
+                           every exchange the network contains), and
+                       (b) on the audit medium (refiner "minimal" + 36-compound supplement), augmented with the
+                           greedy-minimal set of non-medium uptakes the network needs to reach gamma_min when the
+                           strict audit medium is infeasible (the strict-medium result is reported separately)
+    zero-flux padding = added - flux-certified (per medium)."""
+    gca, gram, net_indices, draft_indices, slr_target, own_lb, own_ub, own_bio_idx, fba_dir_str = args_tuple
+    ref = _GLOBAL_REF if _GLOBAL_REF is not None else StoichiometricLocusRefiner(Path(fba_dir_str))
+    ex_set = set(ref.ex_indices)
+    net = set(int(x) for x in net_indices)
+    internal = net - ex_set
+    strict = _network_lp_audit(ref, gram, internal, AUDIT_GAMMA_MIN, do_pfba=True)
+    strict_slr = strict["max_bio"] >= slr_target - 1e-7
+    # Diagnose infeasibility: uptake exchanges the network uses that the audit medium blocks.
+    lb, ub, _ = ref.get_media_bounds(gram=gram, medium_name="minimal")
+    own_extra = sorted(ref.allrxns[i] for i in net & ex_set if ub[i] <= 1e-12 and ref.allrxns[i] != "EX_biomass")
+    own = _network_lp_audit(ref, gram, internal, AUDIT_GAMMA_MIN, extra_uptake=own_extra, do_pfba=True)
+    required_extra = list(own_extra)
+    if own["feasible"] and not strict["feasible"]:
+        # Greedy minimal subset of non-medium uptakes needed to reach v_bio >= gamma_min.
+        for ex in list(own_extra):
+            trial = [e for e in required_extra if e != ex]
+            if _network_lp_audit(ref, gram, internal, AUDIT_GAMMA_MIN, extra_uptake=trial)["feasible"]:
+                required_extra = trial
+    elif strict["feasible"]:
+        required_extra = []
+    if strict["feasible"]:
+        aud = strict
+    elif own["feasible"]:
+        aud = _network_lp_audit(ref, gram, internal, AUDIT_GAMMA_MIN, extra_uptake=required_extra, do_pfba=True)
+    else:
+        aud = own
+    aud_flux = set(aud["pfba_flux_idx"]) if aud["feasible"] else set()
+    # (a) METEOR's own MILP medium
+    om = _pfba_on_bounds(ref.S, own_lb, own_ub, net, own_bio_idx, AUDIT_GAMMA_MIN)
+    om_flux = set(om["pfba_flux_idx"])
+    nonbio_internal = {i for i in internal if not ref.allrxns[i].startswith("biomass_")}
+    added = nonbio_internal - set(int(x) for x in draft_indices)
+    cert_own = added & om_flux
+    cert_aud = added & aud_flux
+    return gca, {
+        "strict_max_bio": strict["max_bio"],
+        "strict_feasible": strict["feasible"],
+        "strict_feasible_slr_target": bool(strict_slr),
+        "own_uptake_max_bio": own["max_bio"],
+        "own_uptake_feasible": own["feasible"],
+        "non_medium_uptakes_in_network": own_extra,
+        "required_non_medium_uptakes": required_extra if own["feasible"] else own_extra,
+        "pfba_n_flux_carrying": len(set(own["pfba_flux_idx"]) & net) if own["feasible"] else 0,
+        "n_active": len(net),
+        "n_internal": len(nonbio_internal),
+        "n_added": len(added),
+        "n_added_imbalanced": len(added & ref.imbalanced_rxn_indices),
+        "n_added_exchange_not_medium": len(own_extra),
+        "own_medium_max_bio": om["max_bio"],
+        "own_medium_feasible": om["feasible"],
+        "own_medium_n_flux_carrying": len(om_flux & net),
+        "own_medium_n_flux_certified_added": len(cert_own),
+        "audit_medium_feasible_with_required": aud["feasible"],
+        "audit_medium_n_flux_carrying": len(aud_flux & net),
+        "audit_medium_n_flux_certified_added": len(cert_aud),
+        "added_idx": sorted(added),
+        "cert_own_idx": sorted(cert_own),
+        "cert_aud_idx": sorted(cert_aud),
+    }
+
 
 def _solve_single_genome_slr(args_tuple: tuple) -> tuple[str, dict]:
     gca, gram, act_indices, flx_indices, dpz_ec_scores, fba_dir_str = args_tuple
@@ -53,7 +210,16 @@ def _solve_single_genome_slr(args_tuple: tuple) -> tuple[str, dict]:
             if sc > rxn_probs.get(rxn_id, 0.0):
                 rxn_probs[rxn_id] = float(sc)
     # Reactions in zero_flx_core were activated without carrying flux in METEOR, which occurs
-    # if and only if their sequence probability exceeded tau_core = 0.50 in the baseline draft
+    # if and only if their sequence probability exceeded tau_core = 0.50 in the baseline draft.
+    #
+    # INDEPENDENCE CAVEAT (state this in Methods): the archive holds DeepProZyme EC scores only for
+    # the evaluated proteins of 95/108 genomes (full_genome_eval_*.pkl "score_changes"), not the full
+    # per-genome tau=0.5 draft. The GSPA draft core is therefore seeded from METEOR's own archived
+    # solution: every balanced enzymatic reaction METEOR switched on (y > 0.5) without flux is given
+    # p = 0.75 (>= tau_core, i.e. forced into the GSPA core). GSPA and METEOR thus share most of the
+    # draft core (it is taken from METEOR's output, not re-derived from sequence); the comparison
+    # isolates the repair policy (positive-cost LP + pFBA vs negative-cost MILP), not an independent
+    # reconstruction. GSPA's core also inherits any METEOR-selected reactions with p < 0.5.
     for r_i in zero_flx_core:
         if r_i in ref.enz_rxn_indices and r_i not in ref.imbalanced_rxn_indices:
             rxn_id = ref.allrxns[r_i]
@@ -61,6 +227,25 @@ def _solve_single_genome_slr(args_tuple: tuple) -> tuple[str, dict]:
     res = ref.solve_flux_certified_repair(
         rxn_probs, gram=gram, medium_name="minimal", tau_core=0.50, alpha_bio=0.10, compute_certificates=True
     )
+    # Measured LP check of the GSPA-repaired network (core enzymatic + added enzymatic + the
+    # non-EC/transport reactions Stage 2B routed flux through at zero cost) on the same audit medium.
+    ex_set = set(ref.ex_indices)
+    gspa_internal = {ref.rxn_to_idx[r] for r in res["active_rxns"]} | {
+        ref.rxn_to_idx[r] for r in res["pfba_flux_by_rxn"] if ref.rxn_to_idx[r] not in ex_set
+    }
+    nonenz_free = {
+        ref.rxn_to_idx[r] for r in res["pfba_flux_by_rxn"]
+        if ref.rxn_to_idx[r] not in ex_set and ref.rxn_to_idx[r] not in ref.enz_rxn_indices
+        and not r.startswith("biomass_")
+    }
+    tgt = float(res["target_bio"])
+    a_gamma = _network_lp_audit(ref, gram, gspa_internal, AUDIT_GAMMA_MIN)
+    res["_lp_audit"] = {
+        "max_bio": a_gamma["max_bio"],
+        "feasible_gamma_min": a_gamma["feasible"],
+        "feasible_slr_target": bool(tgt > 0 and a_gamma["max_bio"] >= tgt - 1e-7),
+        "n_nonec_internal_flux": len(nonenz_free),
+    }
     return gca, res
 
 
@@ -71,7 +256,8 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
       - CarveMe (Machado et al. 2018) on 6 BiGG curated GEMs & 98-genome tool_compare.tsv
       - Reconstructor (Jenior et al. 2023) on 6 BiGG curated GEMs
       - METEOR v8 (Negative-Cost MILP) on 108 genomes
-      - Grow-Support Repaired Baseline (thresh_gapfill_deadends_summary.json, n=108)
+      - Grow-Support Repaired Baseline (per-genome networks re-derived on ibex, meteor108_drafts_compact.pkl.gz;
+        counts verified against psb_revision tgd_<GCA>.json for 108/108 genomes)
       - GSPA StoichiometricLocusRefiner (Positive-Cost LP + pFBA Support Certificate across all 108 real genomes)
     """
     import concurrent.futures
@@ -83,19 +269,34 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
     global _GLOBAL_REF
     _GLOBAL_REF = refiner
     # Pre-warm universal biomass LP cache for Gram-negative and Gram-positive media once
-    refiner.solve_flux_certified_repair({}, gram="neg", medium_name="minimal", compute_certificates=False)
-    refiner.solve_flux_certified_repair({}, gram="pos", medium_name="minimal", compute_certificates=False)
+    slr_target_by_gram = {
+        g: float(refiner.solve_flux_certified_repair({}, gram=g, medium_name="minimal", compute_certificates=False)["target_bio"])
+        for g in ("neg", "pos")
+    }
 
     table1_dir = REF_DIR / "meteor_v8_release" / "results" / "table1"
     flux_stats_json = REF_DIR / "meteor108_flux_stats.json"
     flux_stats = json.loads(flux_stats_json.read_text(encoding="utf-8")) if flux_stats_json.exists() else {}
     sols_compact = pickle.load(gzip.open(REF_DIR / "meteor108_solutions_compact.pkl.gz", "rb"))
+    # Per-genome tau=0.5 DeepProZyme-vanilla draft, METEOR active set + MILP fluxes, Grow-Support repair and
+    # METEOR's own MILP bounds, extracted on ibex (paper-reproducibility/pipelines/P07_invariant_audit).
+    drafts = pickle.load(gzip.open(REF_DIR / "meteor108_drafts_compact.pkl.gz", "rb"))
+    if list(drafts["allrxns"]) != list(refiner.allrxns):
+        raise RuntimeError("meteor108_drafts_compact allrxns order differs from the refiner's universal model")
+    dg = drafts["genomes"]
+    dmedia = drafts["media"]
+    n_act_mismatch = sum(
+        1 for g, r in dg.items()
+        if g in sols_compact and set(map(int, r["meteor_active_idx"])) != set(map(int, sols_compact[g]["active_indices"]))
+    )
+    print(f"[2A] drafts archive: {len(dg)} genomes; METEOR active sets differing from meteor108_solutions_compact: {n_act_mismatch}")
 
     thresh_repair_json = REF_DIR / "ibex_extracted" / "psb_revision" / "results" / "thresh_gapfill_deadends_summary.json"
     thresh_repair = json.loads(thresh_repair_json.read_text(encoding="utf-8"))
-    mean_repair_added = float(thresh_repair["n_added_by_repair"]["mean"])
-    grow_active = round(float(thresh_repair["n_selected"]["repaired_baseline"]["mean"]), 1)
-    grow_deadend = round(float(thresh_repair["deadends"]["repaired_baseline"]["mean"]), 2)
+    # Archived aggregate of the Grow-Support repair, kept only as a cross-check of the re-derived networks.
+    print(f"[2A] archived Grow-Support aggregate: n_added_by_repair mean = {thresh_repair['n_added_by_repair']['mean']}, "
+          f"n_selected mean = {thresh_repair['n_selected']['repaired_baseline']['mean']}; re-derived genomes matching "
+          f"tgd_<GCA>.json counts: {sum(1 for r in dg.values() if r.get('tgd_match'))}/{len(dg)}")
 
     tve_path = REF_DIR / "meteor_v8_release" / "results" / "toolcompare" / "ablation_thresh_vs_evw.json"
     tve_by_acc = {x["acc"]: x for x in json.loads(tve_path.read_text(encoding="utf-8"))} if tve_path.exists() else {}
@@ -125,7 +326,22 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         t1_records.append((gca, gram, d))
 
     slr_by_gca = {}
+    met_lp_by_gca = {}
+    gs_lp_by_gca = {}
+
+    def _net_task(gca, gram, net_key):
+        r = dg[gca]
+        med = dmedia["positive" if gram == "pos" else "negative"]
+        return (gca, gram, r[net_key], r["draft_idx"], slr_target_by_gram[gram], med["lb"], med["ub"],
+                int(med["biomass_idx"]), fba_dir_str)
+
+    met_tasks = [_net_task(gca, gram, "meteor_active_idx") for gca, gram, _ in t1_records]
+    gs_tasks = [_net_task(gca, gram, "gs_repaired_idx") for gca, gram, _ in t1_records]
     with concurrent.futures.ProcessPoolExecutor(max_workers=16, mp_context=mp.get_context("fork")) as ex:
+        for gca, res in ex.map(_audit_repaired_network, met_tasks):
+            met_lp_by_gca[gca] = res
+        for gca, res in ex.map(_audit_repaired_network, gs_tasks):
+            gs_lp_by_gca[gca] = res
         for gca, res in ex.map(_solve_single_genome_slr, tasks):
             slr_by_gca[gca] = res
 
@@ -153,21 +369,16 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         slr_fva_ess = len(slr_res.get("fva_essential_rxns", []))
         slr_ko_ess = len(slr_res.get("ko_essential_rxns", []))
 
+        # MEASURED (meteor108_drafts_compact): added = METEOR internal active (y > 0.5) minus the tau=0.5
+        # DeepProZyme-vanilla draft; flux-certified = added with |v| > 1e-6 under pFBA (v_bio >= 0.1), on
+        # METEOR's own MILP medium and on the audit medium; padding = added - flux-certified.
+        mres = met_lp_by_gca[gca]
+        gres = gs_lp_by_gca[gca]
+        drec = dg[gca]
+        met_v = dict(zip(map(int, drec["meteor_v_idx"]), map(float, drec["meteor_v_val"])))
+        met_milp_cert = sum(1 for i in mres["added_idx"] if abs(met_v.get(i, 0.0)) > 1e-6)
         meteor_net_added_over_raw = max(0, n_met_sel - n_base_sel)
-        flx_set = set(int(x) for x in s_vec.get("flux_indices", []))
-        ec_sc = dpz_ec_by_gcf.get(gca, {})
-        non_core_flx = []
-        for r_i in flx_set:
-            if r_i not in refiner.enz_rxn_indices:
-                non_core_flx.append(r_i)
-            else:
-                rid = refiner.allrxns[r_i]
-                ecs = refiner.r2ec.get(rid, [])
-                known = [ec_sc[e] for e in ecs if e in ec_sc]
-                if known and max(known) < 0.50:
-                    non_core_flx.append(r_i)
-        meteor_flux_added = min(meteor_net_added_over_raw, len(non_core_flx))
-        meteor_uncert = max(0, meteor_net_added_over_raw - meteor_flux_added)
+        gs_tgd = drec.get("tgd", {}).get("repaired", {})
 
         audit_rows.append({
             "organism_id": gca,
@@ -178,10 +389,19 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "meteor_n_active_total": n_active_y,
             "meteor_n_flux_carrying_total": n_flux_y,
             "meteor_n_zero_flux_active": n_zero_flux_y,
-            "meteor_n_added": meteor_net_added_over_raw,
-            "meteor_n_flux_certified_added": meteor_flux_added,
-            "meteor_n_uncertified_padding": meteor_uncert,
-            "meteor_uncertified_pct": round(100.0 * meteor_uncert / max(meteor_net_added_over_raw, 1), 2),
+            "n_draft_rxns": len(drec["draft_idx"]),
+            "meteor_n_net_count_diff": meteor_net_added_over_raw,
+            "meteor_n_added": mres["n_added"],
+            "meteor_n_added_imbalanced": mres["n_added_imbalanced"],
+            "meteor_n_flux_certified_added": mres["own_medium_n_flux_certified_added"],
+            "meteor_n_uncertified_padding": mres["n_added"] - mres["own_medium_n_flux_certified_added"],
+            "meteor_uncertified_pct": round(100.0 * (mres["n_added"] - mres["own_medium_n_flux_certified_added"]) / max(mres["n_added"], 1), 2),
+            "meteor_n_flux_certified_added_audit_medium": mres["audit_medium_n_flux_certified_added"],
+            "meteor_n_uncertified_padding_audit_medium": mres["n_added"] - mres["audit_medium_n_flux_certified_added"],
+            "meteor_n_added_flux_in_milp_solution": met_milp_cert,
+            "meteor_pfba_n_flux_carrying_own_medium": mres["own_medium_n_flux_carrying"],
+            "meteor_pfba_n_flux_carrying_audit_medium": mres["audit_medium_n_flux_carrying"],
+            "meteor_lp_feasible_own_medium": int(mres["own_medium_feasible"]),
             "meteor_imbalanced_active": int(met_dpz["mass_imbal"]),
             "meteor_deadend_active": int(met_dpz["deadends"]),
             "slr_n_added": slr_added,
@@ -194,6 +414,41 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "slr_imbalanced_added": slr_imbal,
             "slr_deadend_added": slr_deadend,
             "slr_solve_time_sec": round(float(slr_res["solve_time_sec"]), 4),
+            # Measured LP audit columns (audit medium = refiner "minimal" + 36-compound supplement)
+            "base_archived_fba_growth": float(base_dpz.get("fba_growth", 0.0)),
+            "meteor_archived_fba_growth": float(met_dpz.get("fba_growth", 0.0)),
+            "slr_target_bio": round(slr_target_by_gram[gram], 4),
+            "meteor_lp_max_bio_audit_medium": round(met_lp_by_gca[gca]["strict_max_bio"], 6),
+            "meteor_lp_feasible_gamma_min": int(met_lp_by_gca[gca]["strict_feasible"]),
+            "meteor_lp_feasible_slr_target": int(met_lp_by_gca[gca]["strict_feasible_slr_target"]),
+            "meteor_lp_max_bio_own_uptake": round(met_lp_by_gca[gca]["own_uptake_max_bio"], 6),
+            "meteor_lp_feasible_own_uptake": int(met_lp_by_gca[gca]["own_uptake_feasible"]),
+            "meteor_non_medium_uptakes": ";".join(met_lp_by_gca[gca]["non_medium_uptakes_in_network"]),
+            "meteor_required_non_medium_uptakes": ";".join(met_lp_by_gca[gca]["required_non_medium_uptakes"]),
+            "meteor_pfba_n_flux_carrying_own_uptake": met_lp_by_gca[gca]["pfba_n_flux_carrying"],
+            "slr_lp_max_bio_audit_medium": round(slr_res["_lp_audit"]["max_bio"], 6),
+            "slr_lp_feasible_gamma_min": int(slr_res["_lp_audit"]["feasible_gamma_min"]),
+            "slr_lp_feasible_slr_target": int(slr_res["_lp_audit"]["feasible_slr_target"]),
+            "slr_n_nonec_internal_flux": slr_res["_lp_audit"]["n_nonec_internal_flux"],
+            # Grow-Support threshold repair (core | grow_support), re-derived on ibex with the archived code
+            "gs_tgd_match": int(bool(drec.get("tgd_match"))),
+            "gs_n_active_total": gres["n_active"],
+            "gs_n_added": gres["n_added"],
+            "gs_n_added_imbalanced": gres["n_added_imbalanced"],
+            "gs_n_flux_certified_added": gres["own_medium_n_flux_certified_added"],
+            "gs_n_uncertified_padding": gres["n_added"] - gres["own_medium_n_flux_certified_added"],
+            "gs_n_flux_certified_added_audit_medium": gres["audit_medium_n_flux_certified_added"],
+            "gs_n_uncertified_padding_audit_medium": gres["n_added"] - gres["audit_medium_n_flux_certified_added"],
+            "gs_pfba_n_flux_carrying_own_medium": gres["own_medium_n_flux_carrying"],
+            "gs_pfba_n_flux_carrying_audit_medium": gres["audit_medium_n_flux_carrying"],
+            "gs_imbalanced_active": gs_tgd.get("mass_imbal", ""),
+            "gs_deadend_active": gs_tgd.get("deadends", ""),
+            "gs_lp_feasible_own_medium": int(gres["own_medium_feasible"]),
+            "gs_lp_max_bio_audit_medium": round(gres["strict_max_bio"], 6),
+            "gs_lp_feasible_gamma_min": int(gres["strict_feasible"]),
+            "gs_lp_feasible_slr_target": int(gres["strict_feasible_slr_target"]),
+            "gs_lp_feasible_own_uptake": int(gres["own_uptake_feasible"]),
+            "gs_required_non_medium_uptakes": ";".join(gres["required_non_medium_uptakes"]),
         })
 
     out_path = RESULTS_DIR / "pillar2_invariant_audit_108.tsv"
@@ -261,89 +516,146 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         writer.writerows(gem_rows)
 
     summary_path = RESULTS_DIR / "pillar2_invariant_audit_summary.tsv"
-    b_act = float(np.mean([r["n_core_rxns"] for r in audit_rows]))
-    m_act = float(np.mean([r["meteor_n_active_total"] for r in audit_rows]))
-    m_flx_tot = float(np.mean([r["meteor_n_flux_carrying_total"] for r in audit_rows]))
-    m_zflx = float(np.mean([r["meteor_n_zero_flux_active"] for r in audit_rows]))
-    m_add = float(np.mean([r["meteor_n_added"] for r in audit_rows]))
-    m_flx = float(np.mean([r["meteor_n_flux_certified_added"] for r in audit_rows]))
-    m_unc = float(np.mean([r["meteor_n_uncertified_padding"] for r in audit_rows]))
-    s_add = float(np.mean([r["slr_n_added"] for r in audit_rows]))
-    s_flx_cert = float(np.mean([r["slr_n_flux_certified_added"] for r in audit_rows]))
-    s_unc = float(np.mean([r["slr_n_uncertified_padding"] for r in audit_rows]))
-    s_imbal = float(np.mean([r["slr_imbalanced_added"] for r in audit_rows]))
-    s_dead = float(np.mean([r["slr_deadend_added"] for r in audit_rows]))
+    n_aud = max(len(audit_rows), 1)
 
-    with open(summary_path, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "method", "n_genomes", "mean_active_rxns", "mean_flux_carrying_active",
-                "mean_zero_flux_active", "mean_added_rxns", "mean_flux_certified_added",
-                "mean_uncertified_padding", "uncertified_padding_pct",
-                "mean_imbalanced_added_or_active", "mean_deadend_active", "lp_biomass_feasible_pct",
-            ],
-            delimiter="\t",
-        )
-        writer.writeheader()
-        writer.writerow({
+    def _mean(key: str) -> float:
+        return float(np.mean([float(r[key]) for r in audit_rows]))
+
+    def _pct(key: str) -> float:
+        return round(100.0 * sum(int(r[key]) for r in audit_rows) / n_aud, 2)
+
+    def _padpct(unc: float, add: float) -> float:
+        return round(100.0 * unc / max(add, 1e-6), 2)
+
+    # Two media (see paper-reproducibility/pipelines/P07_invariant_audit/README.md):
+    #   own medium   = METEOR's MILP bounds (FVA-tight bounds + apply_media(['default'])); with the reversed
+    #                  exchange sign every non-medium exchange is open for UPTAKE (lb=0, ub=1000), secretion closed.
+    #   audit medium = refiner "minimal" + 36-compound supplement (Stage 2B); for flux certification the
+    #                  greedy-minimal set of non-medium uptakes is added when the strict medium is infeasible.
+    # lp_biomass_feasible_pct = strict audit medium, v_bio >= gamma_min = 0.1 (measured for METEOR,
+    # Grow-Support and GSPA; Raw threshold = archived table1 baseline_dpz.fba_growth > 0).
+    base_feas_pct = round(100.0 * sum(1 for r in audit_rows if r["base_archived_fba_growth"] > 1e-9) / n_aud, 2)
+    raw_own_pct = round(100.0 * sum(1 for g in dg.values() if g.get("gs_draft_growth_milp_medium", 0.0) >= 0.1 - 1e-7) / max(len(dg), 1), 2)
+
+    fields = [
+        "method", "n_genomes", "mean_active_rxns", "mean_flux_carrying_active",
+        "mean_zero_flux_active", "mean_added_rxns", "mean_flux_certified_added",
+        "mean_uncertified_padding", "uncertified_padding_pct",
+        "mean_imbalanced_added_or_active", "mean_deadend_active", "lp_biomass_feasible_pct",
+        "lp_biomass_feasible_pct_slr_target",
+        "mean_flux_carrying_active_audit_medium", "mean_flux_certified_added_audit_medium",
+        "mean_uncertified_padding_audit_medium", "uncertified_padding_pct_audit_medium",
+        "mean_imbalanced_added", "lp_biomass_feasible_pct_own_medium",
+    ]
+    m_act = _mean("meteor_n_active_total")
+    m_flx = _mean("meteor_pfba_n_flux_carrying_own_medium")
+    m_add = _mean("meteor_n_added")
+    m_cert = _mean("meteor_n_flux_certified_added")
+    m_unc = _mean("meteor_n_uncertified_padding")
+    m_cert_a = _mean("meteor_n_flux_certified_added_audit_medium")
+    m_unc_a = _mean("meteor_n_uncertified_padding_audit_medium")
+    g_act = _mean("gs_n_active_total")
+    g_flx = _mean("gs_pfba_n_flux_carrying_own_medium")
+    g_add = _mean("gs_n_added")
+    g_cert = _mean("gs_n_flux_certified_added")
+    g_unc = _mean("gs_n_uncertified_padding")
+    g_cert_a = _mean("gs_n_flux_certified_added_audit_medium")
+    g_unc_a = _mean("gs_n_uncertified_padding_audit_medium")
+    s_act = float(np.mean([r["n_core_rxns"] + r["slr_n_added"] for r in audit_rows]))
+    s_flx = _mean("slr_n_flux_carrying_total")
+    s_add = _mean("slr_n_added")
+    s_cert = _mean("slr_n_flux_certified_added")
+    s_unc = _mean("slr_n_uncertified_padding")
+    b_act = _mean("n_core_rxns")
+    gs_imb = [float(r["gs_imbalanced_active"]) for r in audit_rows if r["gs_imbalanced_active"] != ""]
+    gs_de = [float(r["gs_deadend_active"]) for r in audit_rows if r["gs_deadend_active"] != ""]
+
+    rows_out = [
+        {
             "method": "Raw Sequence Threshold (DeepProZyme >= 0.5)",
-            "n_genomes": len(audit_rows),
             "mean_active_rxns": round(b_act, 1),
             "mean_flux_carrying_active": 0.0,
             "mean_zero_flux_active": round(b_act, 1),
-            "mean_added_rxns": 0.0,
-            "mean_flux_certified_added": 0.0,
-            "mean_uncertified_padding": 0.0,
+            "mean_added_rxns": 0.0, "mean_flux_certified_added": 0.0, "mean_uncertified_padding": 0.0,
             "uncertified_padding_pct": 0.0,
-            "mean_imbalanced_added_or_active": round(float(np.mean([r["base_imbalanced_active"] for r in audit_rows])), 1),
-            "mean_deadend_active": round(float(np.mean([r["base_deadend_active"] for r in audit_rows])), 2),
-            "lp_biomass_feasible_pct": 0.0,
-        })
-        writer.writerow({
+            "mean_imbalanced_added_or_active": round(_mean("base_imbalanced_active"), 1),
+            "mean_deadend_active": round(_mean("base_deadend_active"), 2),
+            "lp_biomass_feasible_pct": base_feas_pct,
+            "lp_biomass_feasible_pct_slr_target": "",
+            "mean_flux_carrying_active_audit_medium": "", "mean_flux_certified_added_audit_medium": 0.0,
+            "mean_uncertified_padding_audit_medium": 0.0, "uncertified_padding_pct_audit_medium": 0.0,
+            "mean_imbalanced_added": 0.0,
+            "lp_biomass_feasible_pct_own_medium": raw_own_pct,
+        },
+        {
             "method": "METEOR v8 (Negative-Cost MILP)",
-            "n_genomes": len(audit_rows),
             "mean_active_rxns": round(m_act, 1),
-            "mean_flux_carrying_active": round(m_flx_tot, 1),
-            "mean_zero_flux_active": round(m_zflx, 1),
+            "mean_flux_carrying_active": round(m_flx, 1),
+            "mean_zero_flux_active": round(m_act - m_flx, 1),
             "mean_added_rxns": round(m_add, 2),
-            "mean_flux_certified_added": round(m_flx, 2),
+            "mean_flux_certified_added": round(m_cert, 2),
             "mean_uncertified_padding": round(m_unc, 2),
-            "uncertified_padding_pct": round(100.0 * m_unc / max(m_add, 1e-6), 2),
-            "mean_imbalanced_added_or_active": round(float(np.mean([r["meteor_imbalanced_active"] for r in audit_rows])), 1),
-            "mean_deadend_active": round(float(np.mean([r["meteor_deadend_active"] for r in audit_rows])), 2),
-            "lp_biomass_feasible_pct": 100.0,
-        })
-        writer.writerow({
+            "uncertified_padding_pct": _padpct(m_unc, m_add),
+            "mean_imbalanced_added_or_active": round(_mean("meteor_imbalanced_active"), 1),
+            "mean_deadend_active": round(_mean("meteor_deadend_active"), 2),
+            "lp_biomass_feasible_pct": _pct("meteor_lp_feasible_gamma_min"),
+            "lp_biomass_feasible_pct_slr_target": _pct("meteor_lp_feasible_slr_target"),
+            "mean_flux_carrying_active_audit_medium": round(_mean("meteor_pfba_n_flux_carrying_audit_medium"), 1),
+            "mean_flux_certified_added_audit_medium": round(m_cert_a, 2),
+            "mean_uncertified_padding_audit_medium": round(m_unc_a, 2),
+            "uncertified_padding_pct_audit_medium": _padpct(m_unc_a, m_add),
+            "mean_imbalanced_added": round(_mean("meteor_n_added_imbalanced"), 2),
+            "lp_biomass_feasible_pct_own_medium": _pct("meteor_lp_feasible_own_medium"),
+        },
+        {
             "method": "Grow-Support Threshold Repair (Positive-Cost LP)",
-            "n_genomes": len(audit_rows),
-            "mean_active_rxns": grow_active,
-            "mean_flux_carrying_active": round(m_flx_tot, 1),
-            "mean_zero_flux_active": round(grow_active - m_flx_tot, 1),
-            "mean_added_rxns": round(mean_repair_added, 2),
-            "mean_flux_certified_added": round(mean_repair_added, 2),
-            "mean_uncertified_padding": 0.0,
-            "uncertified_padding_pct": 0.0,
-            "mean_imbalanced_added_or_active": 0.0,
-            "mean_deadend_active": grow_deadend,
-            "lp_biomass_feasible_pct": 100.0,
-        })
-        s_act = float(np.mean([r["n_core_rxns"] + r["slr_n_added"] for r in audit_rows]))
-        s_flx_tot = float(np.mean([r["slr_n_flux_carrying_total"] for r in audit_rows]))
-        writer.writerow({
+            "mean_active_rxns": round(g_act, 1),
+            "mean_flux_carrying_active": round(g_flx, 1),
+            "mean_zero_flux_active": round(g_act - g_flx, 1),
+            "mean_added_rxns": round(g_add, 2),
+            "mean_flux_certified_added": round(g_cert, 2),
+            "mean_uncertified_padding": round(g_unc, 2),
+            "uncertified_padding_pct": _padpct(g_unc, g_add),
+            # archived MEMOTE profile of the repaired network (tgd_<GCA>.json "repaired"), as table1 for METEOR
+            "mean_imbalanced_added_or_active": round(float(np.mean(gs_imb)), 1) if gs_imb else "",
+            "mean_deadend_active": round(float(np.mean(gs_de)), 2) if gs_de else "",
+            "lp_biomass_feasible_pct": _pct("gs_lp_feasible_gamma_min"),
+            "lp_biomass_feasible_pct_slr_target": _pct("gs_lp_feasible_slr_target"),
+            "mean_flux_carrying_active_audit_medium": round(_mean("gs_pfba_n_flux_carrying_audit_medium"), 1),
+            "mean_flux_certified_added_audit_medium": round(g_cert_a, 2),
+            "mean_uncertified_padding_audit_medium": round(g_unc_a, 2),
+            "uncertified_padding_pct_audit_medium": _padpct(g_unc_a, g_add),
+            "mean_imbalanced_added": round(_mean("gs_n_added_imbalanced"), 2),
+            "lp_biomass_feasible_pct_own_medium": _pct("gs_lp_feasible_own_medium"),
+        },
+        {
+            # GSPA is solved and certified on the audit medium itself (its pFBA certificate), so the
+            # audit-medium columns repeat the main ones; it is not re-run on METEOR's open-uptake medium.
             "method": "GSPA StoichiometricLocusRefiner (Positive-Cost + pFBA Support Certificate)",
-            "n_genomes": len(audit_rows),
             "mean_active_rxns": round(s_act, 1),
-            "mean_flux_carrying_active": round(s_flx_tot, 1),
-            "mean_zero_flux_active": round(round(s_act, 1) - round(s_flx_tot, 1), 1),
+            "mean_flux_carrying_active": round(s_flx, 1),
+            "mean_zero_flux_active": round(round(s_act, 1) - round(s_flx, 1), 1),
             "mean_added_rxns": round(s_add, 2),
-            "mean_flux_certified_added": round(s_flx_cert, 2),
+            "mean_flux_certified_added": round(s_cert, 2),
             "mean_uncertified_padding": round(s_unc, 2),
-            "uncertified_padding_pct": round(100.0 * s_unc / max(s_add, 1e-6), 2),
-            "mean_imbalanced_added_or_active": round(s_imbal, 2),
-            "mean_deadend_active": round(s_dead, 2),
-            "lp_biomass_feasible_pct": 100.0,
-        })
+            "uncertified_padding_pct": _padpct(s_unc, s_add),
+            "mean_imbalanced_added_or_active": round(_mean("slr_imbalanced_added"), 2),
+            "mean_deadend_active": round(_mean("slr_deadend_added"), 2),
+            "lp_biomass_feasible_pct": _pct("slr_lp_feasible_gamma_min"),
+            "lp_biomass_feasible_pct_slr_target": _pct("slr_lp_feasible_slr_target"),
+            "mean_flux_carrying_active_audit_medium": round(s_flx, 1),
+            "mean_flux_certified_added_audit_medium": round(s_cert, 2),
+            "mean_uncertified_padding_audit_medium": round(s_unc, 2),
+            "uncertified_padding_pct_audit_medium": _padpct(s_unc, s_add),
+            "mean_imbalanced_added": round(_mean("slr_imbalanced_added"), 2),
+            "lp_biomass_feasible_pct_own_medium": "",
+        },
+    ]
+    with open(summary_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fields, delimiter="\t")
+        writer.writeheader()
+        for row in rows_out:
+            writer.writerow({"n_genomes": len(audit_rows), **row})
     print(f"[2A] Wrote 108-genome audit to {out_path.name} and 6-GEM comparison to {gem_out.name}")
     return out_path
 
@@ -450,7 +762,7 @@ def run_15_genome_stratified_lro(refiner: StoichiometricLocusRefiner) -> Path:
     methods_256 = [
         ("Sequence_Only_Candidate_Rank (results_protein.tsv)", rk_seq_naive),
         ("Function_Prior_Only (results_function.tsv)", rk_func_naive),
-        ("METEOR_Uniform_Boost (Rank-Invariance = Sequence_Only)", rk_seq_naive),
+        ("METEOR_Uniform_Boost (ASSERTED_NOT_COMPUTED: ranks copied from Sequence_Only; METEOR v8 not run on LRO)", rk_seq_naive),
         ("RLGC_Kernel_Density_Only (results_rlgc_mg1655.tsv)", rk_rlgc_256),
         ("RLGC_Plus_CrossGenome_Orthogroup (results_rlgc_cg_mg1655.tsv)", rk_rlgc_cg_256),
         ("RLGC_Plus_GBDT (results_rlgc_gbdt_mg1655.tsv)", rk_rlgc_gbdt_256),
@@ -546,6 +858,17 @@ def run_15_genome_stratified_lro(refiner: StoichiometricLocusRefiner) -> Path:
                 "method": mname,
                 **st,
             })
+
+    # Provenance column: every row is computed from a per-case ranking table except the METEOR row,
+    # whose ranks are asserted equal to Sequence_Only (METEOR v8 cannot be run locally on the LRO
+    # cases: universal.pickle, the emit_v8.py driver, MG1655 EC-prediction input and the per-case
+    # ablated claims/suggestion files are not available; MG1655 is not in the METEOR 108-genome panel).
+    for _r in summary_rows:
+        _r["provenance"] = (
+            "asserted_not_computed (copy of results_protein.tsv ranks)"
+            if _r["method"].startswith("METEOR_Uniform_Boost")
+            else "computed"
+        )
 
     out_path = RESULTS_DIR / "pillar2_lro15_summary.tsv"
     with open(out_path, "w", encoding="utf-8", newline="") as f:

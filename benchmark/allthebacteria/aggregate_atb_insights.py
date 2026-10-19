@@ -12,6 +12,12 @@ Produces five publication-ready TSV tables plus a unified JSON summary in `--out
   3. `insight3_pathway_and_essential_completeness.tsv`
   3b. `insight3b_phylum_summary.tsv`
   4. `insight4_taxon_anatomical_suppression.tsv`
+
+WARNING (2026-10-19): this aggregator summarises `delta_events.tsv`, which Stage C computes with a
+Python heuristic (stageC_whole_genome_integrate.py, per-protein rescue/suppression rules), NOT with the
+GSPA integrator.  Its tables (results/allthebacteria/insight*.tsv without `_java`) are not GSPA output.
+Use aggregate_atb_java.py (JVM noisy_or.tsv / gspa_full.tsv only) instead; see
+paper-reproducibility/pipelines/P11_allthebacteria/README.md.
 """
 from __future__ import annotations
 
