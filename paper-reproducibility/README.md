@@ -17,6 +17,8 @@ Layout
 | `checks/check_numbers.py` | Extracts every numeric value in the manuscript prose and verifies it against a results file or a documented derivation (`checks/number_ledger.tsv`) |
 | `env/` | Environment specs (pixi/conda/requirements) for local, orix, ibex, unimatrix01 runs |
 
+Large inputs excluded from git (Stage 2B ModelSEED bundle; whole-genome CAFA caches, embeddings, retrained-baseline predictions, GSPA-Seq checkpoint) are published as checksummed archives at https://bio2vec.net/data/gspa/ ; extract them at the repository root.
+
 Regeneration order: `make results` (runs or re-aggregates each pipeline),
 `make tables`, `make figures`, `make check`, then build the paper.
 
