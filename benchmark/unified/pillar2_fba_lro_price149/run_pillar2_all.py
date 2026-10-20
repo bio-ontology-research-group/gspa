@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT / "benchmark" / "manifests"))
 from stoichiometric_locus_refiner import StoichiometricLocusRefiner
+from meteor_threshold_repair import UniversalData, NetworkProfiler
 import eval_price149_real_all6
 
 MANIFEST_DIR = ROOT / "benchmark" / "manifests"
@@ -38,6 +39,34 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 _GLOBAL_REF: StoichiometricLocusRefiner | None = None
+_GLOBAL_PROF: NetworkProfiler | None = None
+_MILP_BOUNDS: dict[str, tuple] = {}
+
+
+def _profiler(fba_dir_str: str) -> NetworkProfiler:
+    """GSPA's structural profiler (scripts/meteor_threshold_repair.py), one per process."""
+    global _GLOBAL_PROF
+    if _GLOBAL_PROF is None:
+        _GLOBAL_PROF = NetworkProfiler(UniversalData(Path(fba_dir_str)))
+    return _GLOBAL_PROF
+
+
+def _milp_bounds(prof: NetworkProfiler, gram: str):
+    """METEOR's MILP medium bounds for a Gram ("neg" / "pos"), cached per process."""
+    if gram not in _MILP_BOUNDS:
+        lb, ub, _, _ = prof.U.milp_bounds("positive" if gram == "pos" else "negative")
+        _MILP_BOUNDS[gram] = (lb, ub)
+    return _MILP_BOUNDS[gram]
+
+
+def _structural_profile(prof: NetworkProfiler, net_idx, gram: str, lb, ub, added_idx=()) -> dict:
+    """One structural profile for every method of the audit: dead-end metabolites of the network, elementally
+    unbalanced internal reactions of the network, unbalanced reactions among the added ones, FBA growth."""
+    keep = np.zeros(len(prof.U.allrxns), dtype=bool)
+    keep[list(net_idx)] = True
+    prof_d = prof.profile(keep, "positive" if gram == "pos" else "negative", np.asarray(lb, dtype=float), np.asarray(ub, dtype=float))
+    prof_d["imbalanced_added"] = sum(1 for i in added_idx if not prof.balanced[prof.U.allrxns[int(i)]])
+    return prof_d
 
 # Growth requirement used by the METEOR v8 MILP and by the archived grow_support threshold repair
 # (meteor108_solutions_compact biomass_flux = 0.1; thresh_gapfill gamma_min = 0.1).
@@ -170,7 +199,9 @@ def _audit_repaired_network(args_tuple: tuple) -> tuple[str, dict]:
     added = nonbio_internal - set(int(x) for x in draft_indices)
     cert_own = added & om_flux
     cert_aud = added & aud_flux
+    profile = _structural_profile(_profiler(fba_dir_str), net, gram, own_lb, own_ub, added)
     return gca, {
+        "profile": profile,
         "strict_max_bio": strict["max_bio"],
         "strict_feasible": strict["feasible"],
         "strict_feasible_slr_target": bool(strict_slr),
@@ -239,6 +270,11 @@ def _solve_single_genome_slr(args_tuple: tuple) -> tuple[str, dict]:
         and not r.startswith("biomass_")
     }
     tgt = float(res["target_bio"])
+    prof = _profiler(fba_dir_str)
+    lb_m, ub_m = _milp_bounds(prof, gram)
+    gspa_net = gspa_internal | {ref.rxn_to_idx[r] for r in res["pfba_flux_by_rxn"] if ref.rxn_to_idx[r] in ex_set}
+    res["_profile"] = _structural_profile(prof, gspa_net, gram, lb_m, ub_m,
+                                          [ref.rxn_to_idx[r] for r in res["repaired_rxns"]])
     a_gamma = _network_lp_audit(ref, gram, gspa_internal, AUDIT_GAMMA_MIN)
     res["_lp_audit"] = {
         "max_bio": a_gamma["max_bio"],
@@ -346,9 +382,18 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             slr_by_gca[gca] = res
 
     audit_rows = []
+    n_own_profiles = sum(1 for r in dg.values() if r.get("profiles"))
+    print(f"[2A] network profiles (dead ends, mass balance, FBA growth) computed by GSPA's own code: "
+          f"{n_own_profiles}/{len(dg)} genomes" + ("" if n_own_profiles == len(dg) else "; archived MEMOTE profiles used for the rest"))
     for gca, gram, d in t1_records:
-        base_dpz = d["baseline_dpz"]
-        met_dpz = d["meteor_dpz"]
+        # Structural profiles of the raw threshold draft and of the METEOR network: GSPA's own
+        # NetworkProfiler (scripts/meteor_threshold_repair.py) when the drafts archive carries them,
+        # otherwise the archived METEOR Table 1 (MEMOTE) values.
+        own = dg.get(gca, {}).get("profiles") or {}
+        base_dpz = own.get("raw_threshold") or d["baseline_dpz"]
+        met_dpz = own.get("meteor") or d["meteor_dpz"]
+        _med = dmedia["positive" if gram == "pos" else "negative"]
+        base_prof = _structural_profile(_profiler(fba_dir_str), set(map(int, dg[gca]["draft_idx"])), gram, _med["lb"], _med["ub"])
         fstat = flux_stats.get(gca, {})
         s_vec = sols_compact.get(gca, {})
 
@@ -378,11 +423,29 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
         met_v = dict(zip(map(int, drec["meteor_v_idx"]), map(float, drec["meteor_v_val"])))
         met_milp_cert = sum(1 for i in mres["added_idx"] if abs(met_v.get(i, 0.0)) > 1e-6)
         meteor_net_added_over_raw = max(0, n_met_sel - n_base_sel)
-        gs_tgd = drec.get("tgd", {}).get("repaired", {})
+        gs_tgd = (drec.get("profiles") or {}).get("repaired") or drec.get("tgd", {}).get("repaired", {})
 
+        met_prof = mres["profile"]
+        gs_prof = gres["profile"]
+        slr_prof = slr_res["_profile"]
         audit_rows.append({
             "organism_id": gca,
             "gram": gram,
+            # One structural profile for all four methods (GSPA NetworkProfiler): dead-end metabolites of the
+            # network, elementally unbalanced internal reactions of the network, unbalanced added reactions
+            "base_deadends_network": base_prof["deadends"],
+            "base_imbalanced_internal": base_prof["mass_imbal_internal"],
+            "base_n_rxn_network": base_prof["n_rxn"],
+            "meteor_deadends_network": met_prof["deadends"],
+            "meteor_imbalanced_internal": met_prof["mass_imbal_internal"],
+            "meteor_added_imbalanced_formula": met_prof["imbalanced_added"],
+            "gs_deadends_network": gs_prof["deadends"],
+            "gs_imbalanced_internal": gs_prof["mass_imbal_internal"],
+            "gs_added_imbalanced_formula": gs_prof["imbalanced_added"],
+            "slr_deadends_network": slr_prof["deadends"],
+            "slr_imbalanced_internal": slr_prof["mass_imbal_internal"],
+            "slr_added_imbalanced_formula": slr_prof["imbalanced_added"],
+            "slr_n_rxn_network": slr_prof["n_rxn"],
             "n_core_rxns": n_base_sel,
             "base_imbalanced_active": int(base_dpz["mass_imbal"]),
             "base_deadend_active": int(base_dpz["deadends"]),
@@ -430,8 +493,11 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "slr_lp_feasible_gamma_min": int(slr_res["_lp_audit"]["feasible_gamma_min"]),
             "slr_lp_feasible_slr_target": int(slr_res["_lp_audit"]["feasible_slr_target"]),
             "slr_n_nonec_internal_flux": slr_res["_lp_audit"]["n_nonec_internal_flux"],
-            # Grow-Support threshold repair (core | grow_support), re-derived on ibex with the archived code
+            # Grow-Support threshold repair (core | grow_support), re-derived on ibex with GSPA's own code;
+            # gs_tgd_match: draft, core and added counts equal the archived tgd_<GCA>.json
+            # (the LP has several optimal supports, so the added count may differ by a few reactions)
             "gs_tgd_match": int(bool(drec.get("tgd_match"))),
+            "gs_draft_core_match": int(bool(drec.get("tgd_match_draft_core", drec.get("tgd_match")))),
             "gs_n_active_total": gres["n_active"],
             "gs_n_added": gres["n_added"],
             "gs_n_added_imbalanced": gres["n_added_imbalanced"],
@@ -567,8 +633,6 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
     s_cert = _mean("slr_n_flux_certified_added")
     s_unc = _mean("slr_n_uncertified_padding")
     b_act = _mean("n_core_rxns")
-    gs_imb = [float(r["gs_imbalanced_active"]) for r in audit_rows if r["gs_imbalanced_active"] != ""]
-    gs_de = [float(r["gs_deadend_active"]) for r in audit_rows if r["gs_deadend_active"] != ""]
 
     rows_out = [
         {
@@ -578,8 +642,8 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "mean_zero_flux_active": round(b_act, 1),
             "mean_added_rxns": 0.0, "mean_flux_certified_added": 0.0, "mean_uncertified_padding": 0.0,
             "uncertified_padding_pct": 0.0,
-            "mean_imbalanced_added_or_active": round(_mean("base_imbalanced_active"), 1),
-            "mean_deadend_active": round(_mean("base_deadend_active"), 2),
+            "mean_imbalanced_added_or_active": round(_mean("base_imbalanced_internal"), 1),
+            "mean_deadend_active": round(_mean("base_deadends_network"), 2),
             "lp_biomass_feasible_pct": base_feas_pct,
             "lp_biomass_feasible_pct_slr_target": "",
             "mean_flux_carrying_active_audit_medium": "", "mean_flux_certified_added_audit_medium": 0.0,
@@ -596,15 +660,15 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "mean_flux_certified_added": round(m_cert, 2),
             "mean_uncertified_padding": round(m_unc, 2),
             "uncertified_padding_pct": _padpct(m_unc, m_add),
-            "mean_imbalanced_added_or_active": round(_mean("meteor_imbalanced_active"), 1),
-            "mean_deadend_active": round(_mean("meteor_deadend_active"), 2),
+            "mean_imbalanced_added_or_active": round(_mean("meteor_imbalanced_internal"), 1),
+            "mean_deadend_active": round(_mean("meteor_deadends_network"), 2),
             "lp_biomass_feasible_pct": _pct("meteor_lp_feasible_gamma_min"),
             "lp_biomass_feasible_pct_slr_target": _pct("meteor_lp_feasible_slr_target"),
             "mean_flux_carrying_active_audit_medium": round(_mean("meteor_pfba_n_flux_carrying_audit_medium"), 1),
             "mean_flux_certified_added_audit_medium": round(m_cert_a, 2),
             "mean_uncertified_padding_audit_medium": round(m_unc_a, 2),
             "uncertified_padding_pct_audit_medium": _padpct(m_unc_a, m_add),
-            "mean_imbalanced_added": round(_mean("meteor_n_added_imbalanced"), 2),
+            "mean_imbalanced_added": round(_mean("meteor_added_imbalanced_formula"), 2),
             "lp_biomass_feasible_pct_own_medium": _pct("meteor_lp_feasible_own_medium"),
         },
         {
@@ -616,16 +680,15 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "mean_flux_certified_added": round(g_cert, 2),
             "mean_uncertified_padding": round(g_unc, 2),
             "uncertified_padding_pct": _padpct(g_unc, g_add),
-            # archived MEMOTE profile of the repaired network (tgd_<GCA>.json "repaired"), as table1 for METEOR
-            "mean_imbalanced_added_or_active": round(float(np.mean(gs_imb)), 1) if gs_imb else "",
-            "mean_deadend_active": round(float(np.mean(gs_de)), 2) if gs_de else "",
+            "mean_imbalanced_added_or_active": round(_mean("gs_imbalanced_internal"), 1),
+            "mean_deadend_active": round(_mean("gs_deadends_network"), 2),
             "lp_biomass_feasible_pct": _pct("gs_lp_feasible_gamma_min"),
             "lp_biomass_feasible_pct_slr_target": _pct("gs_lp_feasible_slr_target"),
             "mean_flux_carrying_active_audit_medium": round(_mean("gs_pfba_n_flux_carrying_audit_medium"), 1),
             "mean_flux_certified_added_audit_medium": round(g_cert_a, 2),
             "mean_uncertified_padding_audit_medium": round(g_unc_a, 2),
             "uncertified_padding_pct_audit_medium": _padpct(g_unc_a, g_add),
-            "mean_imbalanced_added": round(_mean("gs_n_added_imbalanced"), 2),
+            "mean_imbalanced_added": round(_mean("gs_added_imbalanced_formula"), 2),
             "lp_biomass_feasible_pct_own_medium": _pct("gs_lp_feasible_own_medium"),
         },
         {
@@ -639,15 +702,15 @@ def run_108_genome_invariant_audit(refiner: StoichiometricLocusRefiner) -> Path:
             "mean_flux_certified_added": round(s_cert, 2),
             "mean_uncertified_padding": round(s_unc, 2),
             "uncertified_padding_pct": _padpct(s_unc, s_add),
-            "mean_imbalanced_added_or_active": round(_mean("slr_imbalanced_added"), 2),
-            "mean_deadend_active": round(_mean("slr_deadend_added"), 2),
+            "mean_imbalanced_added_or_active": round(_mean("slr_imbalanced_internal"), 1),
+            "mean_deadend_active": round(_mean("slr_deadends_network"), 2),
             "lp_biomass_feasible_pct": _pct("slr_lp_feasible_gamma_min"),
             "lp_biomass_feasible_pct_slr_target": _pct("slr_lp_feasible_slr_target"),
             "mean_flux_carrying_active_audit_medium": round(s_flx, 1),
             "mean_flux_certified_added_audit_medium": round(s_cert, 2),
             "mean_uncertified_padding_audit_medium": round(s_unc, 2),
             "uncertified_padding_pct_audit_medium": _padpct(s_unc, s_add),
-            "mean_imbalanced_added": round(_mean("slr_imbalanced_added"), 2),
+            "mean_imbalanced_added": round(_mean("slr_added_imbalanced_formula"), 2),
             "lp_biomass_feasible_pct_own_medium": "",
         },
     ]

@@ -26,8 +26,5 @@ print("RR SOL keys", list(s2.keys()), "n_repaired", s2.get("n_repaired"))
 print("TGD", json.load(open(f"{F}/psb_revision/results/thresh_gapfill_deadends/tgd_{G}.json")))
 t = json.load(open(f"{F}/psb_revision/results/table1_v2/table1_{G}.json"))
 print("T1V2 keys", list(t.keys())); print({k: t[k] for k in t if k.startswith(("baseline_dpz", "meteor_dpz"))})
-from importlib import import_module
-sys.path.insert(0, f"{F}/psb_revision/code_snapshot/src")
-from meteor_v8.utils import load_universal
-u, allrxns, allmet = load_universal()
-print("universal", len(allrxns), len(allmet), "y len", len(y))
+meta = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "universal_metadata.json")))
+print("universal", len(meta["allrxns"]), len(meta["allmet"]), "y len", len(y))

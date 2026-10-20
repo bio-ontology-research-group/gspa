@@ -8,11 +8,11 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=24G
 #SBATCH --time=08:00:00
-#SBATCH --output=/ibex/scratch/projects/c2014/hohndor/allthebacteria/repro_2026-10-19/logs/sumC_%A_%a.out
-#SBATCH --error=/ibex/scratch/projects/c2014/hohndor/allthebacteria/repro_2026-10-19/logs/sumC_%A_%a.err
+#SBATCH --output=/encrypted/e3008/allthebacteria/repro_2026-10-19/logs/sumC_%A_%a.out
+#SBATCH --error=/encrypted/e3008/allthebacteria/repro_2026-10-19/logs/sumC_%A_%a.err
 set -euo pipefail
 S=/ibex/scratch/projects/c2014/hohndor/allthebacteria
-R=$S/repro_2026-10-19
+R=/encrypted/e3008/allthebacteria/repro_2026-10-19   # Stage D tree (moved from $S/repro_2026-10-19 on 2026-10-20 when c2014 hit its quota)
 PY=/ibex/scratch/projects/c2014/rob/envs/gspa-neural/bin/python
 : "${BATCH_LIST:?set BATCH_LIST}"
 LINE=$(sed -n "${SLURM_ARRAY_TASK_ID}p" "$BATCH_LIST")

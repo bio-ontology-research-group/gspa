@@ -52,7 +52,7 @@ The legacy batches w2_0001, w2_0009 and w2_0017 (6,854 genomes) have JVM outputs
   per genome. `n_gap_filling_fired_rows` and `n_gap_filling_rescued_pairs` count the gspa_full rows
   where the gap_filling prior fired, and the subset where it crossed 0.50.
 
-## Intermediate files on Ibex (`/ibex/scratch/projects/c2014/hohndor/allthebacteria/repro_2026-10-19/`)
+## Intermediate files on Ibex (`/encrypted/e3008/allthebacteria/repro_2026-10-19/`)
 
 - `survey/batch_inventory.tsv`, `survey/java_runtime.tsv`: batch inventory and every JVM runtime
   row joined with n_proteins (job 53986011).

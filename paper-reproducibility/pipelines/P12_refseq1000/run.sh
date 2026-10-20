@@ -19,7 +19,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../../.." && pwd)
 R=/ibex/scratch/projects/c2014/hohndor/refseq1000_repro_2026-10-19
 U=/data/hohndor/gspa/refseq1000_repro_2026-10-19
-C=/ibex/scratch/projects/c2014/annot_evaluation
+C=/encrypted/e3008/annot_evaluation
 PY_U=/storage/miniforge3/envs/metagenomics/bin/python3
 cmd=${1:-help}; shift || true
 case $cmd in

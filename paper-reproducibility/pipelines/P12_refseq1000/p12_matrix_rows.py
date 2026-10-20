@@ -4,7 +4,7 @@ annot_evaluation derived matrices (no re-computation from predictions).
 
 This is the *matrix reproduction*: it reads the per-genome matrices written
 by the annot_evaluation pipeline on IBEX
-(/ibex/scratch/projects/c2014/annot_evaluation, read-only) and averages them
+(/encrypted/e3008/annot_evaluation, read-only) and averages them
 exactly the way the published numbers were averaged:
 
   essential_core22_pct  essential_terms/core_new_GO_<m>_term_presence_matrix.tsv
@@ -162,7 +162,7 @@ def mean(xs):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--annot-eval", default="/ibex/scratch/projects/c2014/annot_evaluation")
+    ap.add_argument("--annot-eval", default="/encrypted/e3008/annot_evaluation")
     ap.add_argument("--out-json", required=True)
     ap.add_argument("--no-taxon", action="store_true")
     a = ap.parse_args()

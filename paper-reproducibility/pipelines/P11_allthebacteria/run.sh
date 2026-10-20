@@ -10,6 +10,7 @@
 #   bash run.sh test                   # (ibex, debug) byte-compat test on batch_0001 (20 genomes)
 #   bash run.sh stageD-wave1           # (ibex) Java integrate on all genomes of the 43 wave-1 batches
 #   bash run.sh stageD-wave2 FROM TO   # (ibex) same for lines FROM..TO of the completed wave-2 list
+#   bash run.sh stageD-resume [CONC]   # (ibex) resubmit every wave-2 batch without a partial (resume after the 2026-10-20 quota stop)
 #   bash run.sh summarize-existing     # (ibex) run (a): summarise Java outputs Stage C already wrote
 #   bash run.sh combine PARTIALS TAG   # (ibex job) merge partials -> tables; TAG = file suffix after _java ("" for run (a), _legacy, _stageD)
 #   bash run.sh fetch TAG              # copy tables back into results/allthebacteria/
@@ -18,7 +19,7 @@
 # 53958xxx / wave-2 array 53958302); this script only adds Stage D and the aggregation.
 set -euo pipefail
 S=/ibex/scratch/projects/c2014/hohndor/allthebacteria
-R=$S/repro_2026-10-19
+R=/encrypted/e3008/allthebacteria/repro_2026-10-19   # Stage D tree; moved here from $S/repro_2026-10-19 on 2026-10-20 when c2014 hit its 145 TB quota
 PY=/ibex/scratch/projects/c2014/rob/envs/gspa-neural/bin/python
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO=$(cd "$HERE/../../.." && pwd)
@@ -57,6 +58,16 @@ case "$mode" in
     from=${2:?FROM}; to=${3:?TO}; list=${4:-$R/batch_lists/wave2_done_2026-10-19a.txt}
     ssh ibex "sbatch --array=${from}-${to}%12 --cpus-per-task=16 --mem=64G --time=1-00:00:00 \
       --export=ALL,BATCH_LIST=$list $R/scripts/stageD_java_integrate_all.sbatch"
+    ;;
+  stageD-resume)
+    # Resubmit every wave-2 batch that has no partial yet (genomes already written inside a batch are skipped
+    # by stageD_java_integrate_batch.py, so partly finished batches resume). Optional arg: array concurrency.
+    conc=${2:-20}
+    ssh ibex "list=$R/batch_lists/wave2_remaining_\$(date +%F).txt; \
+      awk -F'\t' -v P=$R/partials_stageD '{ if (system(\"test -f \" P \"/\" \$2 \".genomes.tsv\") != 0) print }' $R/batch_lists/wave2_done_2026-10-19a.txt > \$list; \
+      n=\$(wc -l < \$list); echo \"\$n batches -> \$list\"; \
+      sbatch --array=1-\$n%$conc --cpus-per-task=16 --mem=64G --time=1-00:00:00 \
+        --export=ALL,BATCH_LIST=\$list $R/scripts/stageD_java_integrate_all.sbatch"
     ;;
   summarize-existing)
     ssh ibex "n=\$(wc -l < $R/batch_lists/existing_current.txt); \

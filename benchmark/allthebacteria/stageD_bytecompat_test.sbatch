@@ -8,10 +8,10 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=60G
 #SBATCH --time=02:00:00
-#SBATCH --output=/ibex/scratch/projects/c2014/hohndor/allthebacteria/repro_2026-10-19/logs/bytecompat_%j.out
+#SBATCH --output=/encrypted/e3008/allthebacteria/repro_2026-10-19/logs/bytecompat_%j.out
 set -euo pipefail
 S=/ibex/scratch/projects/c2014/hohndor/allthebacteria
-R=$S/repro_2026-10-19
+R=/encrypted/e3008/allthebacteria/repro_2026-10-19   # Stage D tree (moved from $S/repro_2026-10-19 on 2026-10-20 when c2014 hit its quota)
 PY=/ibex/scratch/projects/c2014/rob/envs/gspa-neural/bin/python
 : "${WAVE:=wave1}"; : "${BATCH:=batch_0001}"
 if [ "$WAVE" = wave1 ]; then MANIFEST=$S/wave1/batches/$BATCH.tsv; else MANIFEST=$S/wave2/manifests/$BATCH.tsv; fi

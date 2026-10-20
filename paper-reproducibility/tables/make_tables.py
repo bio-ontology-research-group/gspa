@@ -1478,7 +1478,7 @@ def tab_supp_invariant_audit():
     out.append("    \\midrule")
     out.append("    Method & Active & \\shortstack{Flux-carrying /\\\\zero-flux (own)} & \\shortstack{Flux-carrying\\\\(audit)} & Added & "
                "\\shortstack{Certified / padding\\\\(own, \\% padding)} & \\shortstack{Certified / padding\\\\(audit, \\% padding)} & "
-               "\\shortstack{Imbalanced\\\\added} & \\shortstack{Imbalanced added\\\\or active$^{a}$} & \\shortstack{Dead-end\\\\active} & "
+               "\\shortstack{Imbalanced\\\\added} & \\shortstack{Imbalanced\\\\active} & \\shortstack{Dead-end\\\\active} & "
                "\\shortstack{Grows, audit\\\\medium (\\%)} & \\shortstack{Grows, own\\\\medium (\\%)} \\\\")
     out.append("    \\midrule")
     for meth, lab in AUD_LABEL.items():

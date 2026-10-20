@@ -7,8 +7,9 @@ Compute: IBEX (Slurm, account `pi-hohndor`), plus two GOA scans on unimatrix01
 The audit compares six published GO predictors and GSPA on 1,000 RefSeq
 bacterial assemblies (`annot_evaluation/1000files`). The six tool rows come
 from the predictions and derived matrices of the `annot_evaluation` project
-(`/ibex/scratch/projects/c2014/annot_evaluation`, read-only, a colleague's
-project). Before this package existed there were no GSPA outputs for these
+(`/encrypted/e3008/annot_evaluation`, read-only, a colleague's project; it was
+`/ibex/scratch/projects/c2014/annot_evaluation` until 2026-10-20, when it was moved to the e3008
+project space with the same layout). Before this package existed there were no GSPA outputs for these
 genomes. The old Stage 0 and Stage 1+2 rows, and every CAFA, Smin, runtime and
 RAM value in the old table, had no producer.
 

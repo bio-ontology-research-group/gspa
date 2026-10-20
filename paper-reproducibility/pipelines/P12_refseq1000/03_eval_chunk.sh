@@ -8,7 +8,7 @@
 # usage: METHODS=tools|gspa|all CHUNK=25 [GAEF_METHODS=regex] sbatch --array=0-39 03_eval_chunk.sh
 set -euo pipefail
 R=${R:-/ibex/scratch/projects/c2014/hohndor/refseq1000_repro_2026-10-19}
-C=/ibex/scratch/projects/c2014/annot_evaluation
+C=/encrypted/e3008/annot_evaluation
 JAVA=${JAVA:-/ibex/scratch/projects/c2014/rob/jdk-21/bin/java}
 JAR=$R/bin/gspa-unified.jar
 REF=$R/ref

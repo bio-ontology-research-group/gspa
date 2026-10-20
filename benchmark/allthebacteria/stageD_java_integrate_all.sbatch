@@ -14,12 +14,12 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=60G
 #SBATCH --time=16:00:00
-#SBATCH --output=/ibex/scratch/projects/c2014/hohndor/allthebacteria/repro_2026-10-19/logs/stageD_%A_%a.out
-#SBATCH --error=/ibex/scratch/projects/c2014/hohndor/allthebacteria/repro_2026-10-19/logs/stageD_%A_%a.err
+#SBATCH --output=/encrypted/e3008/allthebacteria/repro_2026-10-19/logs/stageD_%A_%a.out
+#SBATCH --error=/encrypted/e3008/allthebacteria/repro_2026-10-19/logs/stageD_%A_%a.err
 set -euo pipefail
 
 S=/ibex/scratch/projects/c2014/hohndor/allthebacteria
-R=$S/repro_2026-10-19
+R=/encrypted/e3008/allthebacteria/repro_2026-10-19   # Stage D tree (moved from $S/repro_2026-10-19 on 2026-10-20 when c2014 hit its quota)
 PY=/ibex/scratch/projects/c2014/rob/envs/gspa-neural/bin/python
 export JAVA_BIN=/ibex/scratch/projects/c2014/rob/jdk-21/bin/java
 : "${BATCH_LIST:?set BATCH_LIST}"

@@ -1,7 +1,9 @@
 # P11: AllTheBacteria pan-phylum analysis from GSPA integrator output
 
-Host: KAUST Ibex. Base `S=/ibex/scratch/projects/c2014/hohndor/allthebacteria`. New outputs go to
-`$S/repro_2026-10-19/`. Driver: `run.sh`. Output files are described in `OUTPUTS.md`. Checksums of
+Host: KAUST Ibex. Stage A–C inputs stay under `S=/ibex/scratch/projects/c2014/hohndor/allthebacteria`
+(read only). Stage D outputs go to `R=/encrypted/e3008/allthebacteria/repro_2026-10-19/`; they lived
+under `$S/repro_2026-10-19/` until 2026-10-20, when the c2014 project reached its 145 TB quota mid-run
+and the tree was moved (rsync array 54046232, source removed after verification). Driver: `run.sh`. Output files are described in `OUTPUTS.md`. Checksums of
 the inputs are in `manifest_rows.tsv`, in the column layout of `../../manifest/data_manifest.tsv`.
 
 ## Why this pipeline exists
@@ -98,10 +100,14 @@ Cost of running the JVM on **all** genomes of the completed batches, at 258 CPU-
 | 53986479 | Stage D, wave 1, `--array=1-43%20`, 8 CPU / 60 GB / 16 h | list `batch_lists/wave1.txt` |
 | 53986492 | Stage D, wave 2, lines 1–60 of `batch_lists/wave2_done_2026-10-19a.txt`, `%12`, 16 CPU / 64 GB / 24 h | — |
 | 54001443 | Stage D, wave 2, lines 61–197, `%12`, starts after 53986492 ends (`afterany`) | 7 or more wave-2 batches that finished after the list was written are not included |
+| 53986492 + 54001443 outcome | 12 of 60 tasks of the first array completed; the c2014 quota filled at 04:19 on 2026-10-20, the running tasks died (Python exit 120, unflushable stdout) and every later task failed at start (Slurm signal 53, log file not writable) | 55 of 240 batches had partials; 12 wave-2 batches had partial Java output, which the batch script resumes |
+| 54046232 | 78-task rsync of `repro_2026-10-19` from c2014 to `/encrypted/e3008/allthebacteria/` (177 GB, 124,770 files; dry-run comparison 54047473 showed no file differences; source removed by 54047617) | stale `w2_*/tmp` chunk files (39 GB) dropped from the copy; the batch script regenerates them |
+| 54047084 | 694-task array gzipping every per-genome `claims.jsonl` of the Stage C complete wave-1 and wave-2 batches in place (pigz -6, integrity test); nothing downstream reads these files | frees about 17 TB on c2014 |
+| 54047618 | `run.sh stageD-resume 20`: Stage D on the 185 wave-2 batches without a partial (`batch_lists/wave2_remaining_2026-10-20.txt`), 16 CPU / 64 GB / 1 day per task, 20 concurrent, outputs under the e3008 tree | 12 of them resume from partial Java output |
 | 53986460 / 53986461 | run (a) summarise, array version | slow to schedule, pending tasks cancelled |
 | 53994239 | run (a) summarise, serial version (2 CPU) | completed. Partials in `partials_stageC/` (230 batches) and `partials_stageC_legacy/` (6) |
 
-Batch lists live in `$S/repro_2026-10-19/batch_lists/`, one `wave<TAB>batch` per line: `wave1.txt`
+Batch lists live in `$R/batch_lists/`, one `wave<TAB>batch` per line: `wave1.txt`
 (43), `wave2_done_2026-10-19a.txt` (197 batches complete when it was written), `existing_current.txt`
 (230), `existing_legacy.txt` (6).
 

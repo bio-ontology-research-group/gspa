@@ -38,7 +38,7 @@ MO_MAIN = f"{F}/meteor_v8_evw_p2mu3_run/meteor_out"
 PA = f"{F}/paperA_2026"
 REINFER_ROOT = f"{F}/meteor_v7_run/reinfer"
 BACDIVE_ROOT = f"{F}/dpec2_result/result_bacdive"
-ANNOT_EVAL = "/ibex/scratch/projects/c2014/annot_evaluation"
+ANNOT_EVAL = "/encrypted/e3008/annot_evaluation"
 OUT_DIR = "/ibex/scratch/projects/c2014/hohndor/gspa_extracted"
 os.makedirs(OUT_DIR, exist_ok=True)
 

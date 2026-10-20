@@ -9,7 +9,7 @@
 # build operons and the organism-taxon map.  Idempotent.
 set -euo pipefail
 R=${R:-/ibex/scratch/projects/c2014/hohndor/refseq1000_repro_2026-10-19}
-C=/ibex/scratch/projects/c2014/annot_evaluation
+C=/encrypted/e3008/annot_evaluation
 P=$R/scripts
 type module >/dev/null 2>&1 || source /etc/profile.d/modules.sh
 module load diamond/2.1.8 hmmer/3.3.2

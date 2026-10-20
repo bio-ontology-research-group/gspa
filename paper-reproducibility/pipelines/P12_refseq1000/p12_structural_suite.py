@@ -344,7 +344,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--genome", required=True, nargs="+")
     ap.add_argument("--methods", default="all", choices=["all", "tools", "gspa"])
-    ap.add_argument("--annot-eval", default="/ibex/scratch/projects/c2014/annot_evaluation")
+    ap.add_argument("--annot-eval", default="/encrypted/e3008/annot_evaluation")
     ap.add_argument("--gspa-work", default="/ibex/scratch/projects/c2014/hohndor/refseq1000_repro_2026-10-19/work")
     ap.add_argument("--gspa-threshold", type=float, default=0.5)
     ap.add_argument("--out-jsonl", required=True)
