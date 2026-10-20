@@ -351,6 +351,9 @@ def cmd_prep(a):
         loci_by_contig[c].append((s, e, pid))
 
     def gene_to_loci(gid):
+        # gapsmith gene products are protein ids (G_<protein_id>, DIAMOND on the proteome)
+        if gid and gid.startswith('G_') and gid[2:] in faa_ids:
+            return 'protein', [gid[2:]]
         # gapseq gene products: G_<contig>_<sstart>_<send> (tblastn coordinates)
         m = re.match(r'^G_(.+)_(\d+)_(\d+)$', gid or '')
         if not m:
@@ -370,6 +373,7 @@ def cmd_prep(a):
     rtbl = read_tbl(os.path.join(a.gapseq_dir, f'{mag}-all-Reactions.tbl'))
     seed2pwy = defaultdict(set)
     seed2hits = defaultdict(list)   # gapseq tblastn hits (any status) of the reaction's reference proteins
+    seed2ec_tbl = defaultdict(set)  # EC numbers of the MetaCyc reactions a SEED reaction is a hit of
     for r in rtbl:
         pw = (r.get('pathway') or '').strip('|')
         for s in (r.get('dbhit') or '').split():
@@ -377,8 +381,23 @@ def cmd_prep(a):
                 continue
             if pw:
                 seed2pwy[s].add(pw)
+            seed2ec_tbl[s].update(split_ecs(r.get('ec')))
             if r.get('stitle') not in (None, '', 'NA') and (r.get('sstart') or '').isdigit() and (r.get('send') or '').isdigit():
                 seed2hits[s].append(r)
+    # Optional EC sources beyond the SBML annotations (gapsmith models carry none): the Reactions.tbl
+    # column `ec` via `dbhit`, and the ModelSEED Enzyme Class alias table (rxn ids in columns 1-2, EC in 3).
+    seed2ec_alias = defaultdict(set)
+    if getattr(a, 'reaction_ec_aliases', None):
+        with open(a.reaction_ec_aliases) as fh:
+            next(fh)
+            for line in fh:
+                f = line.rstrip('\n').split('\t')
+                if len(f) < 3 or not EC_FULL.match(f[2]):
+                    continue
+                for s in re.split(r'[|;, ]+', f[0] + '|' + f[1]):
+                    if s.startswith('rxn'):
+                        seed2ec_alias[s].add(f[2])
+    use_tbl_ecs = bool(getattr(a, 'ec_from_reactions_tbl', False))
     rank = {'good_blast': 3, 'bad_blast': 2}
 
     def hit_loci(seed):
@@ -391,6 +410,10 @@ def cmd_prep(a):
                 bits = max(bits, float(r.get('bitscore') or 0))
             except ValueError:
                 pass
+            pid = r['stitle'].split()[0]
+            if pid in faa_ids:          # gapsmith: subject is the protein itself
+                loci.add(pid)
+                continue
             contig = cmap.get(norm(r['stitle']))
             if contig is None:
                 continue
@@ -402,7 +425,10 @@ def cmd_prep(a):
     with open(P('gaps.jsonl'), 'w') as gj:
         for seed in sorted(set(final) - set(draft)):
             info = final[seed]
-            ecs = sorted(info['ecs'])
+            ecs = set(info['ecs']) | seed2ec_alias.get(seed, set())
+            if use_tbl_ecs:
+                ecs |= seed2ec_tbl.get(seed, set())
+            ecs = sorted(ecs)
             full = [e for e in ecs if EC_FULL.match(e)]
             gos = sorted({g for e in full for g in ec2go.get(e, ())})
             pw = sorted(seed2pwy.get(seed, ()))
@@ -768,6 +794,10 @@ def main():
     p = sp.add_parser('prep')
     for k in ('--mag-id', '--bin', '--mag-fasta', '--bakta-dir', '--gapseq-dir', '--ec2go', '--out-dir'):
         p.add_argument(k, required=True)
+    p.add_argument('--reaction-ec-aliases', default=None,
+                   help='ModelSEED Enzyme Class alias table; adds its EC numbers to the gap reactions (for models without SBML EC annotations, e.g. gapsmith)')
+    p.add_argument('--ec-from-reactions-tbl', action='store_true',
+                   help='also take EC numbers from the Reactions.tbl rows whose dbhit names the gap reaction')
     p.set_defaults(fn=cmd_prep)
     c = sp.add_parser('score')
     for k in ('--mag-id', '--prep-dir', '--stage0', '--stage12', '--ec2go', '--go-dag', '--essential',
