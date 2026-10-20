@@ -179,7 +179,8 @@ def main():
                     "gram": gram, "essential_profile": "archaea" if dom == "Archaea" else "bacteria",
                     "mag_fasta": fa, "bakta_dir": bd, "gapseq_dir": "", "dataset": CULTURE_DATASET[r["batch"]],
                 })
-    rows.sort(key=lambda r: (r["class"] != "HQ", r["mag_id"]))
+    # culture genomes first (few, and the pangenome results are wanted early), then HQ before MQ
+    rows.sort(key=lambda r: (r["dataset"] == "soil_bin", r["class"] != "HQ", r["mag_id"]))
     if a.limit:
         rows = rows[:a.limit]
     cols = list(rows[0].keys())
