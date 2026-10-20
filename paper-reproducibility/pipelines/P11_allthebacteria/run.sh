@@ -11,6 +11,7 @@
 #   bash run.sh stageD-wave1           # (ibex) Java integrate on all genomes of the 43 wave-1 batches
 #   bash run.sh stageD-wave2 FROM TO   # (ibex) same for lines FROM..TO of the completed wave-2 list
 #   bash run.sh stageD-resume [CONC]   # (ibex) resubmit every wave-2 batch without a partial (resume after the 2026-10-20 quota stop)
+#   bash run.sh stageD-autoresume ARRAY [CONC]  # (ibex) chain job: when ARRAY ends, resubmit the batches without a partial (24 h time-outs), repeating until none is left
 #   bash run.sh summarize-existing     # (ibex) run (a): summarise Java outputs Stage C already wrote
 #   bash run.sh combine PARTIALS TAG   # (ibex job) merge partials -> tables; TAG = file suffix after _java ("" for run (a), _legacy, _stageD)
 #   bash run.sh fetch TAG              # copy tables back into results/allthebacteria/
@@ -68,6 +69,13 @@ case "$mode" in
       n=\$(wc -l < \$list); echo \"\$n batches -> \$list\"; \
       sbatch --array=1-\$n%$conc --cpus-per-task=16 --mem=64G --time=1-00:00:00 \
         --export=ALL,BATCH_LIST=\$list $R/scripts/stageD_java_integrate_all.sbatch"
+    ;;
+  stageD-autoresume)
+    # The 4,000-genome batches run 20-29 h on 16 CPUs and hit the 24 h wall; their finished genomes are kept
+    # (stageD_java_integrate_batch.py skips genomes with both .gz outputs), so a chained resubmission
+    # completes them. stageD_autoresume.sbatch recomputes the list when ARRAY has ended and chains itself.
+    arr=${2:?Stage D ARRAY job id}; conc=${3:-60}
+    ssh ibex "sbatch --dependency=afterany:$arr --export=ALL,CONC=$conc $R/scripts/stageD_autoresume.sbatch"
     ;;
   summarize-existing)
     ssh ibex "n=\$(wc -l < $R/batch_lists/existing_current.txt); \
