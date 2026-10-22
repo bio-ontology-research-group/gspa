@@ -21,7 +21,8 @@ only for comparison.
 | `*_java_legacy.tsv`, `atb_java_summary_legacy.json` | (a-legacy) | the 3,312 genomes in w2_0013/0018/0019/0020/0021/0024 that an older Stage C integrated with `max_iter 5` and pairwise `operons.tsv` | same tables. Not pooled with (a), because the configuration differs |
 | `*_java_stageD_snapshot.tsv`, `atb_java_summary_stageD_snapshot.json` | (b) snapshot | all 7,009 genomes of the 15 wave-1 batches Stage D had finished by 2026-10-19 14:04 | same tables |
 | `heuristic_vs_java_same_genomes_java.tsv` | — | the 1,138 genomes present in both the heuristic insight3 table and run (a) | heuristic event totals against JVM totals (`compare_heuristic_vs_java.py`) |
-| `*_java_stageD.tsv`, `atb_java_summary_stageD.json` | (b) | every genome of the batches Stage D has finished | same tables. Written when the Stage D arrays finish (see README for the command) |
+| `*_java_stageD.tsv`, `atb_java_summary_stageD.json` | (b) | every genome of all 240 completed batches (454,691 genomes; wave-1 species representatives that reappear in a wave-2 batch counted once) | same tables; `insight3_per_genome_java_stageD.tsv.gz` is gzipped (103 MB uncompressed). Combined 2026-10-22 (job 54246242) |
+| `insight3b_phylum_summary_java_stageD.tsv` | (b) | same | alignment survey per domain × phylum from the per-genome table: genomes, species, ORFs, dark / zero-alignment / twilight ORFs, genomes with a taxid in the jar hierarchy (`aggregate_atb_java.py combine`, or `survey --per-genome`); source of Supplementary Table S16 |
 
 The legacy batches w2_0001, w2_0009 and w2_0017 (6,854 genomes) have JVM outputs with
 `n_claims = 0`: the older Stage C passed empty claims files. They are excluded everywhere.

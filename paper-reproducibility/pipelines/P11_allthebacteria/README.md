@@ -104,7 +104,8 @@ Cost of running the JVM on **all** genomes of the completed batches, at 258 CPU-
 | 54046232 | 78-task rsync of `repro_2026-10-19` from c2014 to `/encrypted/e3008/allthebacteria/` (177 GB, 124,770 files; dry-run comparison 54047473 showed no file differences; source removed by 54047617) | stale `w2_*/tmp` chunk files (39 GB) dropped from the copy; the batch script regenerates them |
 | 54047084 | 694-task array gzipping every per-genome `claims.jsonl` of the Stage C complete wave-1 and wave-2 batches in place (pigz -6, integrity test); nothing downstream reads these files | frees about 17 TB on c2014 |
 | 54047618 | `run.sh stageD-resume 20`: Stage D on the 185 wave-2 batches without a partial (`batch_lists/wave2_remaining_2026-10-20.txt`), 16 CPU / 64 GB / 1 day per task, 20 concurrent, outputs under the e3008 tree | 12 of them resume from partial Java output |
-| 54100832 | `run.sh stageD-autoresume 54047618 60`: chain job after the resume array. The 4,000-genome batches run 20 to 29 h on 16 CPUs (96 genomes per 40 min) and hit the 24 h wall; the job resubmits every batch without a partial (the finished genomes are skipped) and chains itself until none is left (`batch_lists/autoresume_chain.tsv`) | at 02:40 on 2026-10-21: 80 of 185 tasks done, 59 running, 46 pending; 6 running tasks projected past 24 h |
+| 54100832 → 54232400 → 54232401 | `run.sh stageD-autoresume 54047618 60`: chain job after the resume array. The 4,000-genome batches run 20 to 29 h on 16 CPUs (96 genomes per 40 min) and hit the 24 h wall; the job resubmits every batch without a partial (the finished genomes are skipped) and chains itself until none is left (`batch_lists/autoresume_chain.tsv`) | 54047618 ended 2026-10-22 07:38 with 179 completed and 6 timed-out tasks (84–96 % of their genomes written); 54232400 finished the 6 batches by 11:36; 54232401 found no batch without a partial. 240 partials, no errors in the logs |
+| 54246242 | `run.sh combine $R/partials_stageD _stageD` → `results_stageD/`, fetched into `results/allthebacteria/` | 454,691 genomes from 240 partials, 2,979 duplicate copies of wave-1 representatives dropped |
 | 53986460 / 53986461 | run (a) summarise, array version | slow to schedule, pending tasks cancelled |
 | 53994239 | run (a) summarise, serial version (2 CPU) | completed. Partials in `partials_stageC/` (230 batches) and `partials_stageC_legacy/` (6) |
 
@@ -113,6 +114,36 @@ Batch lists live in `$R/batch_lists/`, one `wave<TAB>batch` per line: `wave1.txt
 (230), `existing_legacy.txt` (6).
 
 ## Results
+
+### Stage D: every genome of all completed batches (2026-10-22)
+
+454,691 genomes in 240 batches (43 wave-1 + 197 wave-2), 37 phyla, 11,633 species, 1,779,514,422 ORFs;
+each wave-1 species representative that reappears in a wave-2 batch is counted once (2,979 copies dropped).
+Files: `*_java_stageD.tsv`, `insight3b_phylum_summary_java_stageD.tsv`, `atb_java_summary_stageD.json`.
+Supplementary Tables S16 (survey) and S17 (integrator) are generated from these files.
+
+| Regime | % of ORFs | rescued proteins | % of regime | % of regime unannotated by noisy-OR |
+|---|---|---|---|---|
+| dark < 30% id | 34.33 | 70,628 | 0.01 | 0.01 |
+| (zero alignment, a subset of dark) | 29.51 | 14 | 0.00 | — |
+| twilight 30–50% | 20.76 | 311,765 | 0.08 | 0.38 |
+| moderate 50–70% | 7.76 | 12,435 | 0.01 | 0.08 |
+| close ≥ 70% | 37.14 | 224,301 | 0.03 | 0.20 |
+
+- 619,129 proteins (0.03% of ORFs) and 5,230,969 protein–GO pairs crossed 0.50; no protein lost all its
+  ≥ 0.50 terms.
+- Rescued proteins by prior (a protein can count under several): essentiality 478,313, coherence 129,053,
+  stage2_relax 62,140, genomic_context 13,402, anatomical 2, gap_filling 0, consistency 0.
+- Suppressed pairs, 47,506,880 in total: genome-wide SAT co-annotation conflict 26,363,207; taxon-forbidden
+  18,985,742; other 2,021,859; removed by Stage 2A with no forbidden-table hit 136,072. 245,342 genomes
+  (54.0%) have a taxid inside the jar's hierarchy.
+- 1,897,198 KEGG-coverage gap claims; the gap_filling prior fired on 0 rows.
+- Dark fraction by phylum: 28.9% in Pseudomonadota (261,841 genomes, 58% of the collection) to 65.2% in
+  Bacteroidota; the species-representative snapshot (7,009 genomes, below) gives 49.5%.
+- Spearman ρ against n_orfs (n = 454,691): rescued proteins per ORF −0.20; rescued pairs per ORF −0.81;
+  dark fraction −0.51 overall (−0.34 below the median of 4,326 ORFs, +0.62 above).
+- Median JVM time per genome inside the 96-genome batch runs: 216 s (Stage 0 + full run).
+- The rates agree with run (a) and the snapshot (below), which are subsets of this run.
 
 ### Run (a): JVM outputs that Stage C already wrote (2026-10-19)
 

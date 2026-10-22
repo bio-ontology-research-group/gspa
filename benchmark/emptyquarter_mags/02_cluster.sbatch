@@ -61,12 +61,17 @@ if [[ "${RESUBMIT_ONLY:-0}" != "1" ]]; then
 fi
 
 # --- 4. submit downstream jobs ---------------------------------------------------------------------
+# sbatch is retried while the user's submitted-job cap (2,000, array tasks included) is reached
+submit() { local id; for (( i = 0; i < 144; i++ )); do
+  if id=$(sbatch --parsable "$@" 2> sbatch.err); then echo "$id"; return 0; fi
+  grep -q "QOSMaxSubmitJobPerUserLimit\|job submit limit" sbatch.err || { cat sbatch.err >&2; return 1; }
+  echo "submit limit reached, retrying in 10 min ($(date -Is))" >&2; sleep 600; done; return 1; }
 NC=$(wc -l < $LISTS/chunks.txt)
-JC=$(sbatch --parsable --array=0-$(( NC - 1 ))%${THROTTLE_CH:-140} --export=ALL,OUT=$OUT,BINS=$BINS,WORK=$WORK,CL=$CL,CHUNKS=$CHUNKS,CBS=$CBS,LISTS=$LISTS -o $LOGS/chunk_%A_%a.out $CODE/03_chunk_channels.sbatch)
-JS=$(sbatch --parsable --dependency=afterok:$JC -p batch -t 12:00:00 -c 4 --mem=64G -J eq-scatter -o $LOGS/scatter_%j.out \
-      --export=ALL,OUT=$OUT,BINS=$BINS,WORK=$WORK,CL=$CL,CHUNKS=$CHUNKS,CBS=$CBS,LISTS=$LISTS \
+EXP=ALL,OUT=$OUT,BINS=$BINS,WORK=$WORK,CL=$CL,CHUNKS=$CHUNKS,CBS=$CBS,LISTS=$LISTS,LOGS=$LOGS,GENOMES_PER_TASK=$GENOMES_PER_TASK
+JC=$(submit --array=0-$(( NC - 1 ))%${THROTTLE_CH:-140} --export=$EXP -o $LOGS/chunk_%A_%a.out $CODE/03_chunk_channels.sbatch)
+JS=$(submit --dependency=afterok:$JC -p batch -t 12:00:00 -c 4 --mem=64G -J eq-scatter -o $LOGS/scatter_%j.out --export=$EXP \
       --wrap="module load python/3.11.0; python3 $CODE/04_scatter.py --bins $BINS --cluster $CL --chunks $CHUNKS --out $CBS")
 DEP="afterok:$JS"; [[ -n "${GAPSMITH_JOB:-}" ]] && DEP="$DEP,aftercorr:$GAPSMITH_JOB"
-NT=$(n_tasks); JI=$(sbatch --parsable --array=0-$(( NT - 1 ))%${THROTTLE_IN:-60} --dependency=$DEP --export=ALL,OUT=$OUT,BINS=$BINS,WORK=$WORK,CL=$CL,CHUNKS=$CHUNKS,CBS=$CBS,LISTS=$LISTS -o $LOGS/in_%A_%a.out $CODE/06_integrate.sbatch)
+NT=$(n_tasks); JI=$(submit --array=0-$(( NT - 1 ))%${THROTTLE_IN:-60} --dependency=$DEP --export=$EXP -o $LOGS/in_%A_%a.out $CODE/06_integrate.sbatch)
 printf 'chunks\t%s\nscatter\t%s\nintegrate\t%s\n' $JC $JS $JI >> ${JOBS_TSV:-$OUT/jobs.tsv}
 echo "submitted: chunk array $JC ($NC chunks), scatter $JS, integrate array $JI ($NT tasks of $GENOMES_PER_TASK genomes; dependency $DEP)"

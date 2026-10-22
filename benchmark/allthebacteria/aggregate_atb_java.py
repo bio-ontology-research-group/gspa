@@ -464,6 +464,44 @@ def pct(a: float, b: float) -> str:
     return f"{100.0 * a / b:.2f}" if b else "NA"
 
 
+SURVEY_COLS = ["domain", "phylum", "n_genomes", "n_species", "n_orfs", "n_dark_orfs_lt30", "pct_dark_orfs",
+               "n_zero_alignment_orfs", "pct_zero_alignment_of_dark", "n_twilight_orfs_30_50", "pct_twilight_orfs",
+               "n_genomes_taxid_in_jar_hierarchy"]
+
+
+def write_phylum_survey(genomes: dict[str, dict[str, str]], out: Path) -> None:
+    """Alignment survey per domain x phylum from the per-genome rows: genomes, species, ORFs and the ORFs in the
+    dark (< 30 % identity), zero-alignment (subset of dark) and twilight (30-50 %) regimes. Only the alignment
+    columns of the per-genome table are read, so the survey is independent of the integrator output."""
+    acc: dict[tuple[str, str], Counter] = defaultdict(Counter)
+    species: dict[tuple[str, str], set] = defaultdict(set)
+    for r in genomes.values():
+        k = (r["domain"], r["phylum"])
+        acc[k].update({"n_genomes": 1, "n_orfs": int(r["n_orfs"]), "n_dark": int(r["n_dark_lt30"]),
+                       "n_zero": int(r["n_zero_alignment"]), "n_twi": int(r["n_twilight_30_50"]),
+                       "n_tax": int(r.get("taxid_in_jar_hierarchy", "0") or 0)})
+        species[k].add(r["species"])
+    with open(out, "w") as fo:
+        fo.write("\t".join(SURVEY_COLS) + "\n")
+        for k in sorted(acc, key=lambda k: (-acc[k]["n_genomes"], k)):
+            c = acc[k]
+            row = [k[0], k[1], c["n_genomes"], len(species[k]), c["n_orfs"], c["n_dark"], pct(c["n_dark"], c["n_orfs"]),
+                   c["n_zero"], pct(c["n_zero"], c["n_dark"]), c["n_twi"], pct(c["n_twi"], c["n_orfs"]), c["n_tax"]]
+            fo.write("\t".join(map(str, row)) + "\n")
+
+
+def cmd_survey(a: argparse.Namespace) -> None:
+    """Rebuild the per-phylum alignment survey from a per-genome table (insight3_per_genome*.tsv[.gz])."""
+    genomes = {}
+    with opener(a.per_genome) as fh:
+        hdr = fh.readline().rstrip("\n").split("\t")
+        for line in fh:
+            row = dict(zip(hdr, line.rstrip("\n").split("\t")))
+            genomes[row["genome_id"]] = row
+    write_phylum_survey(genomes, a.out)
+    log(f"survey: {len(genomes)} genomes -> {a.out}")
+
+
 def cmd_combine(a: argparse.Namespace) -> None:
     from scipy.stats import spearmanr
 
@@ -533,6 +571,7 @@ def cmd_combine(a: argparse.Namespace) -> None:
         fo.write("\t".join(gcols) + "\n")
         for g in sorted(genomes):
             fo.write("\t".join(genomes[g].get(c, "") for c in gcols) + "\n")
+    write_phylum_survey(genomes, a.out_dir / f"insight3b_phylum_summary{sfx}.tsv")
 
     # genome-size strata + Spearman
     def f(r, k):
@@ -683,8 +722,11 @@ def main() -> None:
     c.add_argument("--out-dir", type=Path, required=True)
     c.add_argument("--suffix", default="_java")
     c.add_argument("--summary-tag", default="")
+    v = sub.add_parser("survey", help="per-phylum alignment survey from a per-genome table")
+    v.add_argument("--per-genome", type=Path, required=True, help="insight3_per_genome*.tsv[.gz]")
+    v.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
-    cmd_summarize(a) if a.cmd == "summarize" else cmd_combine(a)
+    {"summarize": cmd_summarize, "combine": cmd_combine, "survey": cmd_survey}[a.cmd](a)
 
 
 if __name__ == "__main__":

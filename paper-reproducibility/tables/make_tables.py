@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import json
 import math
 import re
@@ -83,7 +84,8 @@ _CACHE: dict = {}
 
 def load(rel: str) -> list:
     if rel not in _CACHE:
-        with open(REPO / rel, newline="") as fh:
+        op = gzip.open(REPO / rel, "rt", newline="") if rel.endswith(".gz") else open(REPO / rel, newline="")
+        with op as fh:
             _CACHE[rel] = list(csv.DictReader(fh, delimiter="\t"))
     return _CACHE[rel]
 
@@ -1692,8 +1694,7 @@ def tab_supp_1000bacteria():
 
 
 ATB_DIR = "results/allthebacteria/"
-ATB_3B = ATB_DIR + "insight3b_phylum_summary.tsv"
-ATB_5B = ATB_DIR + "insight5b_phylum_nogd_vs_divergent.tsv"
+ATB_3B = ATB_DIR + "insight3b_phylum_summary_java_stageD.tsv"   # written by aggregate_atb_java.py combine / survey
 ATB_MIN_GENOMES = 15
 
 
@@ -1702,56 +1703,52 @@ def _phy(s):
 
 
 def tab_supp_atb_survey():
-    """Alignment survey only: genomes, species, ORFs, dark (<30% identity to the CAFA Swiss-Prot training set),
-    zero-alignment and twilight (30-50%) ORFs per phylum. All counts derive from rep_max_pident (DIAMOND);
-    the rescue / suppression columns of the same files come from the Stage C heuristic and are not read."""
+    """Alignment survey over every Stage D genome: genomes, species, ORFs, dark (<30% identity to the CAFA Swiss-Prot
+    training set), zero-alignment and twilight (30-50%) ORFs per phylum. All counts derive from rep_max_pident
+    (DIAMOND) through the per-genome table; no integrator output is read."""
     cx = Ctx("supp_atb_survey")
     out = []
-    rows = load(ATB_3B)
-    zero = {r["phylum"]: r for r in load(ATB_5B)}
-    rows = sorted(rows, key=lambda r: (-int(r["n_genomes"]), r["phylum"]))
-    keys = ["n_genomes", "n_species", "n_orfs", "n_dark_orfs_lt30", "n_twilight_orfs_30_50"]
+    rows = sorted(load(ATB_3B), key=lambda r: (-int(r["n_genomes"]), r["phylum"]))
+    keys = ["n_genomes", "n_species", "n_orfs", "n_dark_orfs_lt30", "n_zero_alignment_orfs", "n_twilight_orfs_30_50"]
 
-    def line(lab, dom, v, z):
+    def line(lab, dom, v):
         dpct = 100.0 * v["n_dark_orfs_lt30"] / v["n_orfs"]
-        zpct = 100.0 * z / v["n_dark_orfs_lt30"] if v["n_dark_orfs_lt30"] else None
+        zpct = 100.0 * v["n_zero_alignment_orfs"] / v["n_dark_orfs_lt30"] if v["n_dark_orfs_lt30"] else None
         tpct = 100.0 * v["n_twilight_orfs_30_50"] / v["n_orfs"]
         return (f"    {dom} & {lab} & ${ith(v['n_genomes'])}$ & ${ith(v['n_species'])}$ & ${ith(v['n_orfs'])}$ & "
-                f"${ith(v['n_dark_orfs_lt30'])}$ (${fx(dpct, 1)}\\%$) & ${ith(z)}$ (${fx(zpct, 1)}\\%$) & "
+                f"${ith(v['n_dark_orfs_lt30'])}$ (${fx(dpct, 1)}\\%$) & ${ith(v['n_zero_alignment_orfs'])}$ (${fx(zpct, 1)}\\%$) & "
                 f"${ith(v['n_twilight_orfs_30_50'])}$ (${fx(tpct, 1)}\\%$) \\\\")
     rest = {k: 0.0 for k in keys}
-    rest_z, n_rest = 0.0, 0
+    n_rest = 0
     tot = {k: 0.0 for k in keys}
-    tot_z = 0.0
     for r in rows:
         crit = {"phylum": r["phylum"]}
         v = {k: cx.get(ATB_3B, crit, k, "survey", r["phylum"], k) for k in keys}
-        z = cx.get(ATB_5B, crit, "n_zero_align_orphan_orfs", "survey", r["phylum"], "zero alignment")
-        if r["phylum"] in zero and zero[r["phylum"]]["n_total_dark_orfs_lt30"] != r["n_dark_orfs_lt30"]:
-            warn(f"tab:supp_atb_survey {r['phylum']}: dark ORF counts differ between insight3b and insight5b")
         for k in keys:
             tot[k] += v[k]
-        tot_z += z
         if v["n_genomes"] >= ATB_MIN_GENOMES:
-            out.append(line(_phy(r["phylum"]), _phy(r["domain"]), v, z))
+            out.append(line(_phy(r["phylum"]), _phy(r["domain"]), v))
         else:
             for k in keys:
                 rest[k] += v[k]
-            rest_z += z
             n_rest += 1
     if n_rest:
         cx.rec("survey", "other phyla", "all", ATB_3B, f"n_genomes<{ATB_MIN_GENOMES}", "*", "sum over phyla", n_rest)
-        out.append(line(f"{n_rest} further phyla (fewer than {ATB_MIN_GENOMES} genomes each)", "Mixed", rest, rest_z))
+        out.append(line(f"{n_rest} further phyla (fewer than {ATB_MIN_GENOMES} genomes each)", "Mixed", rest))
     out.append("    \\midrule")
     cx.rec("survey", "total", "all", ATB_3B, "all phyla", "*", "sum over phyla", tot["n_genomes"])
-    out.append(line(f"All {len(rows)} phyla", "", tot, tot_z).replace("    \\textbf", "    "))
+    # species are counted per phylum; the total of distinct species is in the summary JSON
+    n_sp = _jget(json.loads((REPO / ATB_RUNS[0][0]).read_text()), "n_species")
+    cx.rec("survey", "total", "n_species", ATB_RUNS[0][0], "json:n_species", "n_species", "", n_sp)
+    tot["n_species"] = n_sp
+    out.append(line(f"All {len(rows)} phyla", "", tot).replace("    \\textbf", "    "))
     return out
 
 
-ATB_RUNS = [(ATB_DIR + "atb_java_summary_stageD_snapshot.json", "Stage D snapshot"),
+ATB_RUNS = [(ATB_DIR + "atb_java_summary_stageD.json", "Stage D (all batches)"),
             (ATB_DIR + "atb_java_summary.json", "Run (a)")]
 ATB_PG = {ATB_DIR + "atb_java_summary.json": ATB_DIR + "insight3_per_genome_java.tsv",
-          ATB_DIR + "atb_java_summary_stageD_snapshot.json": ATB_DIR + "insight3_per_genome_java_stageD_snapshot.tsv"}
+          ATB_DIR + "atb_java_summary_stageD.json": ATB_DIR + "insight3_per_genome_java_stageD.tsv.gz"}
 
 
 def _jget(d, path):
@@ -1817,8 +1814,6 @@ def tab_supp_atb_integrator():
         lambda rel, d: f"${ith(val(rel, d, 'gaps_jsonl_total', 'gaps'))}$ (${ith(val(rel, d, 'gap_filling_fired_rows', 'gf'))}$)")
 
     def rt(rel, d):
-        if "stageD" in rel:
-            return "--"
         pg = ATB_PG[rel]
         v = [float(r["java_runtime_sec_full"]) + float(r["java_runtime_sec_noisy_or"]) for r in load(pg)
              if r.get("java_runtime_sec_full") not in ("", "NA", None) and r.get("java_runtime_sec_noisy_or") not in ("", "NA", None)]
