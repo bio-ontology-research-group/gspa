@@ -121,8 +121,10 @@ now joins the name fields with `;` and reruns `gapsmith fill` on the draft it al
 (`gapseq_source = computed_gapsmith_refill`). One genome (`47Sr1__SemiBin_52`) had an infeasible fill
 (`solver error: NoSolutionFound`); such genomes keep their draft, are integrated without gap reactions and
 are counted as `gapsmith_fill_failed` in the summary. The block exit code is 0 in both cases, so the
-`aftercorr` integration task runs; the five blocks that had already failed were rerun by hand (`ROW=r`) and
-their integration tasks released from the gapsmith dependency.
+`aftercorr` integration task runs. Slurm runs the copy of the script it spooled at submission, so the fix
+applies to arrays submitted afterwards; the blocks of the production array that failed (six, one genome
+each) were rerun by hand (`ROW=r bash 05_gapsmith.sbatch` in a debug job) and their integration tasks
+released from the gapsmith dependency (`scontrol update JobId=<integrate>_<block> Dependency=afterok:<scatter>`).
 
 ## Reused code and data
 
