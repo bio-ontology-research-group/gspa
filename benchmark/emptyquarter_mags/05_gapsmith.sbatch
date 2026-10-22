@@ -10,6 +10,8 @@
 #   A gapseq 1.4.0 model of the HQ run (05_metabolism), when one exists, is linked under gapseq_ref/ for
 #   comparison only (run.sh compare); it is not used as the prior, so that all bins share one model source.
 # Output under $WORK/<mag>/gapseq/: <mag>.xml (gap-filled), <mag>-draft.xml, <mag>-all-{Pathways,Reactions}.tbl, ...
+# DONE_gapseq column 2: computed_gapsmith | computed_gapsmith_refill (medium CSV repaired, fill rerun) |
+#   gapsmith_fill_failed (draft only, no <mag>.xml; integration runs without gap reactions).
 set -euo pipefail
 # start from a clean module environment: the submitting shell may export LD_LIBRARY_PATH/PYTHONPATH of
 # loaded modules (python/gcc), which breaks the conda tools and the static-linked gapsmith binary
@@ -50,13 +52,50 @@ export PATH=$(dirname $DIAMOND_FOR_GAPSMITH):$PATH
 TAX=Bacteria; [[ "$DOMAIN" == "Archaea" ]] && TAX=Archaea
 TV="/usr/bin/time -v"
 mkdir -p gapseq/run
-$TV -o times/gapsmith.time $GAPSMITH doall annot/$G.faa -A diamond -K $T -t $TAX --data-dir $GAPSMITH_DATA -f gapseq/run > gapseq/gapsmith.log 2>&1 \
-  || { echo "gapsmith failed (see gapseq/gapsmith.log)"; tail -5 gapseq/gapsmith.log; exit 1; }
+SRC=computed_gapsmith
+if ! $TV -o times/gapsmith.time $GAPSMITH doall annot/$G.faa -A diamond -K $T -t $TAX --data-dir $GAPSMITH_DATA -f gapseq/run > gapseq/gapsmith.log 2>&1; then
+  # The find / draft / medium steps succeeded when the draft and the medium exist; only the fill step failed.
+  [[ -s gapseq/run/$G-draft.gmod.cbor && -s gapseq/run/$G-medium.csv ]] || { echo "gapsmith failed before the fill step (see gapseq/gapsmith.log)"; tail -5 gapseq/gapsmith.log; exit 1; }
+  if grep -q "malformed media row" gapseq/gapsmith.log; then
+    # gapsmith 0.1.0 writes compound names that contain commas (e.g. "starch (n=27, 3xalpha1-6, 23xalpha1-4)")
+    # unquoted into its medium CSV and then fails to parse its own file: join the name fields with ";" and
+    # run the fill step alone on the draft it already built (same arguments as doall: reaction weights
+    # from the Reactions.tbl, data dir, threads).
+    python3 - gapseq/run/$G-medium.csv gapseq/run/$G-medium.fixed.csv <<'PY'
+import sys
+src, dst = sys.argv[1:3]
+with open(src) as fi, open(dst, "w") as fo:
+    for i, line in enumerate(fi):
+        f = line.rstrip("\n").split(",")
+        if i == 0 or len(f) <= 3:
+            fo.write(line)
+        else:
+            fo.write(f[0] + "," + "; ".join(x.strip() for x in f[1:-1]) + "," + f[-1] + "\n")
+PY
+    if $TV -o times/gapsmith_fill.time $GAPSMITH fill --media gapseq/run/$G-medium.fixed.csv -r gapseq/run/$G-all-Reactions.tbl -K $T \
+         --data-dir $GAPSMITH_DATA -o gapseq/run gapseq/run/$G-draft.gmod.cbor >> gapseq/gapsmith.log 2>&1; then
+      SRC=computed_gapsmith_refill; echo "$G: medium CSV repaired, fill step rerun"
+    else
+      SRC=gapsmith_fill_failed; echo "$G: fill failed after the medium repair (see gapseq/gapsmith.log)"; tail -3 gapseq/gapsmith.log
+    fi
+  else
+    # e.g. "solver error: ... NoSolutionFound": no gap-filled model for this genome; the draft is kept and
+    # 06_integrate runs without gap reactions (gapseq_source records it)
+    SRC=gapsmith_fill_failed; echo "$G: gapsmith fill failed (see gapseq/gapsmith.log)"; tail -3 gapseq/gapsmith.log
+  fi
+fi
+if [[ "$SRC" == "gapsmith_fill_failed" ]]; then
+  for f in gapseq/run/$G*; do ln -sfn run/$(basename $f) gapseq/$(basename $f); done
+  $GAPSMITH --version > tool_versions_gapsmith.txt 2>&1 || true
+  printf 'gapsmith\t%s\t%s\n' "$(grep 'Elapsed (wall' times/gapsmith.time | awk '{print $NF}')" "$(grep 'Maximum resident' times/gapsmith.time | awk '{print $NF}')" > timing_gapseq.tsv
+  printf '%s\t%s\t%s\t%s\n' "$G" "$SRC" "$D/gapseq/run" "$(date -Is)" > DONE_gapseq
+  echo "DONE_gapseq $G $SRC (draft only) $(date -Is)"; exit 0
+fi
 # gapsmith names its outputs after the FASTA stem ($G); expose the gap-filled model as <mag>.xml
 for f in gapseq/run/$G*; do ln -sfn run/$(basename $f) gapseq/$(basename $f); done
 ln -sfn run/$G-filled.xml gapseq/$G.xml
 [[ -s gapseq/$G.xml && -s gapseq/$G-draft.xml && -s gapseq/$G-all-Reactions.tbl ]] || { echo "gapsmith outputs incomplete"; ls gapseq/run; exit 1; }
 $GAPSMITH --version > tool_versions_gapsmith.txt 2>&1 || true
 printf 'gapsmith\t%s\t%s\n' "$(grep 'Elapsed (wall' times/gapsmith.time | awk '{print $NF}')" "$(grep 'Maximum resident' times/gapsmith.time | awk '{print $NF}')" > timing_gapseq.tsv
-printf '%s\tcomputed_gapsmith\t%s\t%s\n' "$G" "$D/gapseq/run" "$(date -Is)" > DONE_gapseq
-echo "DONE_gapseq $G gapsmith $(date -Is)"
+printf '%s\t%s\t%s\t%s\n' "$G" "$SRC" "$D/gapseq/run" "$(date -Is)" > DONE_gapseq
+echo "DONE_gapseq $G $SRC $(date -Is)"

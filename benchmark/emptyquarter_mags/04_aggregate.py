@@ -125,6 +125,8 @@ def main():
             "gapseq_done": sum(r["gapseq_done"] for r in sub), "integrated": len(done),
             "pyrodigal_bins": sum(1 for r in sub if r["protein_source"] == "pyrodigal"),
             "gapsmith_computed": sum(1 for r in sub if r["gapseq_source"] == "computed_gapsmith"),
+            "gapsmith_refilled": sum(1 for r in sub if r["gapseq_source"] == "computed_gapsmith_refill"),
+            "gapsmith_fill_failed": sum(1 for r in sub if r["gapseq_source"] == "gapsmith_fill_failed"),
             "median_proteins": med("n_proteins"), "median_claims": med("n_claims"),
             "median_stage0_proteins": med("stage0_proteins"), "median_stage12_proteins": med("stage12_proteins"),
             "median_stage12_rows": med("stage12_rows"), "median_stage2_actions": med("stage2_actions"),

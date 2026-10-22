@@ -113,6 +113,17 @@ Observations on the inputs: isolate `MR59-1` (RAK-PR, Staphylococcus epidermidis
 BUSCO) is an 8.1 Mb assembly in 528 contigs with 11,133 proteins, about three times the size of the
 species; it is annotated as delivered, but its catalogue entry deserves a look.
 
+Model failures in the production run: of the first 235 blocks (about 11,750 genomes) five genomes had no
+gap-filled model. Four failed in gapsmith's own fill step because gapsmith 0.1.0 writes compound names that
+contain commas (`starch (n=27, 3xalpha1-6, 23xalpha1-4)`, `Inulin (2,1-beta-D-fructan)`) unquoted into its
+medium CSV and then rejects the file (`malformed media row ...: maxFlux not numeric`); `05_gapsmith.sbatch`
+now joins the name fields with `;` and reruns `gapsmith fill` on the draft it already built
+(`gapseq_source = computed_gapsmith_refill`). One genome (`47Sr1__SemiBin_52`) had an infeasible fill
+(`solver error: NoSolutionFound`); such genomes keep their draft, are integrated without gap reactions and
+are counted as `gapsmith_fill_failed` in the summary. The block exit code is 0 in both cases, so the
+`aftercorr` integration task runs; the five blocks that had already failed were rerun by hand (`ROW=r`) and
+their integration tasks released from the gapsmith dependency.
+
 ## Reused code and data
 
 `bgc_benchmark.py build-claims` (claims), `mag_pathway_gaps.py prep` and `score` (gap reactions and
