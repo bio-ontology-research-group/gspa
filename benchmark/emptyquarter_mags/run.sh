@@ -14,6 +14,7 @@
 #   bash run.sh compare [WORKDIR]     # ibex: gapsmith vs gapseq reaction sets for bins that have both
 #   bash run.sh aggregate             # ibex job: results/eq_mags_{per_bin,summary}.tsv
 #   bash run.sh fetch                 # local: copy results/ to benchmark/emptyquarter_mags/results/
+#   python3 07_report.py              # local: results/eq_mags_{by_dataset,phyla}.tsv from the per-genome table
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd); root=$(cd "$here/../.." && pwd)
 OUT=${OUT:-/encrypted/e3008/gspa/eq_mags}
