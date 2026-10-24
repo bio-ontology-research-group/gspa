@@ -35,6 +35,8 @@ def load_dag(path):
     child, anc = [], []
     with open(path) as fh:
         for line in fh:
+            if line.startswith("#") or not line.strip():
+                continue
             a, b = line.rstrip("\n").split("\t")
             child.append(a); anc.append(b)
     vocab = sorted(set(child) | set(anc))
