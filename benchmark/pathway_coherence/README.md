@@ -123,3 +123,26 @@ recovers more hidden steps, 104 more than module mode, but adds 688 wrong annota
 refinement comes from the other priors and from claims whose remaining support stays above threshold.
 The targets were chosen from module-mode assessments of the unperturbed run, so they are steps the module
 assessment can see; the comparison between variants uses the same targets.
+
+## Final configuration (v2.2.2) and checks on the live pipeline
+
+Round 4 showed that the coherence prior's has_part process rescues and complex-partner boosts add mostly wrong
+annotations even when gated (29 % precise). From v2.2.2, module mode applies only the module-step rescues and the
+complex-singleton penalty. Round 5 (`results_v5/`) and the held-out rerun with the same 774 targets
+(`results_held_out_v2/`):
+
+| | F-max micro, all | F-max CAFA, all | added correct | added wrong | hidden steps recovered | other wrong added |
+|---|---|---|---|---|---|---|
+| refinement off | 0.7746 | 0.8066 | | | 233 (30.1 %) | |
+| v2.1.0 coherence prior | 0.7734 | 0.8057 | 191 | 674 | 488 (63.0 %) | 688 |
+| module mode, v2.2.2 | 0.7748 | 0.8067 | 37 | 17 | 379 (49.0 %) | 10 |
+
+On the unperturbed genomes refinement adds 37 correct and 17 wrong annotations (precision 0.69). With correct
+steps hidden it recovers 146 more of them than no refinement, in every genome, for 10 wrong annotations elsewhere.
+
+**Live pipeline (`live_check/`).** `validate_live.py` ran the deployed image on the E. coli K-12 MG1655 example
+input against the curated annotation (RefSeq to UniProt). As deployed (GO predictions below 0.5 dropped before
+integration), module refinement and no refinement give identical annotations: E. coli's module enzymes are
+annotated from Swiss-Prot, which contains E. coli, and the 76 open steps of activated modules have no supporting
+candidate. Passing the DIAMOND transfers between 30 % and 50 % identity through as claims produced one rescue and
+lowered precision from 0.782 to 0.778 through the other priors, so the service keeps its 0.5 floor.

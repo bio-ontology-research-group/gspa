@@ -29,7 +29,7 @@ each step see [concepts](../concepts/index.md).
 ## Conventions used on these pages
 
 - `gspa` stands for the repository launcher `./gspa` or, equivalently,
-  `java -Xmx8g -jar gspa-2.2.1.jar`. The launcher sets `-Xmx8g` unless
+  `java -Xmx8g -jar gspa-2.2.2.jar`. The launcher sets `-Xmx8g` unless
   `GSPA_JVM_OPTS` is set, and dispatches `gspa agent` to the Python agent
   sidecar. The `agent` subcommand exists only in the launcher, not in the JAR.
 - Python helper scripts live in `benchmark/` and `scripts/` and are run with
@@ -40,7 +40,7 @@ each step see [concepts](../concepts/index.md).
   [Bundled resources](../reference/bundled-resources.md) for what ships inside
   the JAR.
 - Output snippets marked "real output" were produced with
-  `gspa-cli/build/libs/gspa-2.2.1.jar` on the *Mycoplasma genitalium* test data in
+  `gspa-cli/build/libs/gspa-2.2.2.jar` on the *Mycoplasma genitalium* test data in
   `test-data/`. Other snippets show the format only.
 
 ## The common core

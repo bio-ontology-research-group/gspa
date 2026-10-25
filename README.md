@@ -1,6 +1,6 @@
-# GSPA v2.2.1 — Genome-Scale Protein Annotation
+# GSPA v2.2.2 — Genome-Scale Protein Annotation
 
-[![Release](https://img.shields.io/badge/release-v2.2.1-blue.svg)](https://github.com/bio-ontology-research-group/gspa/releases/tag/v2.2.1)
+[![Release](https://img.shields.io/badge/release-v2.2.2-blue.svg)](https://github.com/bio-ontology-research-group/gspa/releases/tag/v2.2.2)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Java 21+](https://img.shields.io/badge/Java-21%2B-orange.svg)](https://adoptium.net/)
 
@@ -26,7 +26,7 @@ Whereas standard annotation pipelines and protein language model (PLM) predictor
 
 ## Quickstart (Stand-Alone Tool)
 
-### 1. Build or Download Stand-Alone Release (`v2.2.1`)
+### 1. Build or Download Stand-Alone Release (`v2.2.2`)
 
 ```bash
 git clone https://github.com/bio-ontology-research-group/gspa.git

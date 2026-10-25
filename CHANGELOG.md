@@ -10,6 +10,14 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-10-25
+
+### Changed
+- Coherence prior in module mode (`--module-defs`): applies only module-step rescues and the complex-singleton
+  penalty; the has_part process rescues and complex-partner boosts, validated at 16-29 % precision, are no longer
+  applied in this mode. Nine reference genomes: refinement adds 37 correct and 17 wrong annotations (2.1.0 prior:
+  191 and 674); with 774 correct steps hidden it recovers 379 (off: 233) for 10 wrong additions elsewhere.
+
 ## [2.2.1] - 2026-10-25
 
 ### Changed

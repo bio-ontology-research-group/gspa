@@ -157,7 +157,7 @@ to combine all evidence into unified posterior annotations:
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `gspa_jar` | file | `null` | Path to compiled `gspa-2.2.1.jar`. |
+| `gspa_jar` | file | `null` | Path to compiled `gspa-2.2.2.jar`. |
 | `goa` | file | `null` | Reference Swiss-Prot GOA annotation file (`.gaf` or `.gaf.gz`). |
 | `pfam2go` | file | `null` | External Pfam-to-GO mapping file. |
 | `ec2go` | file | `null` | External EC-to-GO mapping file. |
