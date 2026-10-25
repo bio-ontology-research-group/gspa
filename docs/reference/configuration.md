@@ -11,9 +11,12 @@ When `gspa annotate` runs, settings are merged hierarchically in the following
 precedence order (later sources override earlier sources):
 
 1. **Built-in class defaults**: Hardcoded default values in the `GspaConfig` model classes.
-2. **Kingdom preset**: One of the bundled profiles (`bacteria`, `archaea`, `eukaryote`, `mag`) loaded from jar resources via `-k` or `--kingdom`.
-3. **User configuration file**: A YAML file provided via `-c` or `--config`.
-4. **Command-line overrides**: Explicit CLI arguments passed to `gspa annotate`.
+2. **Kingdom preset**: A legacy profile (`bacteria`, `archaea`, `eukaryote`) loaded via `-k` or `--kingdom`.
+3. **Workflow preset**: Optional `--preset` defaults; see [workflow presets](../scenarios/presets.md).
+4. **User configuration file**: A YAML file provided via `-c` or `--config`.
+5. **Command-line overrides**: Explicit CLI arguments passed to `gspa annotate`.
+
+Only keys actually present in the YAML override inherited settings; a missing config file is an error. `--print-config` prints the merged YAML without starting a run.
 
 Nested maps are merged recursively. Scalar values, lists, and sets from higher-precedence sources replace lower-precedence values.
 
@@ -31,6 +34,7 @@ Configures genome sequence format, taxonomic kingdom, and coordinates.
 | `proteinFasta` | string | `null` | Path to a pre-called protein FASTA file. Joined to contigs via `gff3` when provided. |
 | `gff3` | string | `null` | Path to an existing GFF3 annotation paired with the genome FASTA. CDS features are translated against the genome rather than re-called. |
 | `translateAltStart` | boolean | `true` | Emit Methionine for alternative initiator codons (GTG, TTG) when translating CDS features. |
+| `requireExistingGenes` | boolean | `false` | Refuse fallback gene calling when no proteins/CDS were loaded; enabled by the eukaryote workflow preset. |
 | `proteinsOnly` | boolean | `false` | When true, annotate a bare protein FASTA on a single synthetic contig without chromosomal operon context. |
 
 ### Predictor section (`predictors`)
@@ -213,7 +217,7 @@ Controls completeness, coherence, consistency metrics, and deterministic post-pr
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `profile` | string | `auto` | Essential function profile name: `auto`, `bacteria`, `archaea`, `eukaryote`, or `virus`. |
+| `profile` | string | `auto` | Essential function profile name: `auto`, `bacteria`, `archaea`, `eukaryote`, `virus`, or `skip` (omit completeness scoring). |
 | `addTerms` | list of string | `[]` | Additional essential GO terms added to the profile for this run. |
 | `removeTerms` | list of string | `[]` | GO terms excluded from the completeness evaluation profile. |
 | `customFile` | string | `null` | Path to a custom essential functions TSV file (overrides `profile`). |
@@ -293,7 +297,9 @@ Sub-configs within `integration`:
 
 ## Bundled profiles comparison
 
-GSPA ships with four preset profiles in `gspa-core/src/main/resources/config/`. Selecting a profile with `-k` or `--kingdom` preconfigures biological assumptions:
+These are legacy kingdom/configuration profiles; the new `--preset` workflows are described in [workflow presets](../scenarios/presets.md).
+
+GSPA ships with four legacy preset profiles in `gspa-core/src/main/resources/config/`. Selecting a profile with `-k` or `--kingdom` preconfigures biological assumptions:
 
 | Parameter | `bacteria.yaml` | `archaea.yaml` | `eukaryote.yaml` | `mag.yaml` |
 |---|---|---|---|---|
@@ -311,7 +317,7 @@ GSPA ships with four preset profiles in `gspa-core/src/main/resources/config/`. 
 
 Key biological distinctions:
 - **Eukaryote profile (`eukaryote.yaml`)**: Operon detection is disabled because polycistronic transcription units are absent in canonical eukaryotic nuclear genomes. The completeness profile uses the eukaryotic essential set.
-- **MAG profile (`mag.yaml`)**: Metabolic crossfeeding analysis is enabled to model incomplete metabolic networks across metagenomic communities. Completeness defaults to `auto` so the domain is dynamically inferred.
+- **MAG profile (`mag.yaml`)**: Metabolic crossfeeding analysis is enabled to model incomplete metabolic networks across metagenomic communities. Completeness defaults to `auto`, which falls back to the bacterial essential set; this does not dynamically infer the domain. Use `--preset mag` for conservative defaults without an assumed essential set.
 
 ## Command-line overrides
 

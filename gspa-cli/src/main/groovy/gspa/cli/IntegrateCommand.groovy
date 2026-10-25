@@ -64,6 +64,23 @@ import picocli.CommandLine.Option
 )
 class IntegrateCommand implements Runnable {
 
+    @picocli.CommandLine.Mixin PresetOptions preset = new PresetOptions()
+    @picocli.CommandLine.Spec picocli.CommandLine.Model.CommandSpec spec
+
+    void applyPreset() {
+        if (!preset.name) return
+        gspa.config.WorkflowPresets.integrationDefaults(preset.name).each { name, value ->
+            def option = spec.findOption(name)
+            // An explicit request to infer taxonomy must not be shadowed by
+            // the broad domain taxon supplied by the workflow.
+            if (name == '--taxon' && inferTaxon) return
+            if (!spec.commandLine().parseResult.hasMatchedOption(option)) {
+                option.setValue(value)
+            }
+        }
+    }
+
+
     @Option(names = ['--claims'], required = false,
             description = 'JSONL file of evidence claims (one per line). Required unless --batch-manifest is given.')
     File claimsFile
@@ -138,7 +155,7 @@ class IntegrateCommand implements Runnable {
             description = 'Optional TSV of complex GO terms (term<TAB>h|n|a); defaults to bundled complex_terms.tsv.')
     File complexTermsFile
 
-    @Option(names = ['--enforce-stage2'],
+    @Option(names = ['--enforce-stage2'], negatable = true,
             description = 'Run Stage 2 Symbolic Constraint & Coherence Enforcement after Stage 1 refinement.')
     boolean enforceStage2 = false
 
@@ -170,7 +187,7 @@ class IntegrateCommand implements Runnable {
             description = 'Which priors to enable (comma-separated). Default: all.')
     String enabledPriors = 'essentiality,coherence,consistency,anatomical,gap_filling,genomic_context'
 
-    @Option(names = ['--lite'], description = 'Skip ELK initialization (no process coherence).')
+    @Option(names = ['--lite'], negatable = true, description = 'Skip ELK initialization (no process coherence).')
     boolean lite = false
 
     @Option(names = ['--reasoner-cache'],
@@ -370,6 +387,15 @@ class IntegrateCommand implements Runnable {
 
     @Override
     void run() {
+        applyPreset()
+        if (preset.printConfig) {
+            Map settings = spec.options().findAll {
+                !it.usageHelp() && !it.versionHelp() && !(it.longestName() in ['--preset', '--print-config'])
+            }.collectEntries { option -> [(option.longestName()): option.getValue()] }
+            spec.commandLine().out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(settings))
+            return
+        }
+        if (preset.name) println "Preset: ${gspa.config.WorkflowPresets.canonicalName(preset.name)}"
         validatePhase10Flags()
         if (batchManifestFile != null) {
             runBatchManifest()

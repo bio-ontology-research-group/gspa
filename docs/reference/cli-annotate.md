@@ -10,9 +10,19 @@ gspa annotate (-i FILE | --genome FILE | --gff3 FILE | --proteins FILE) [options
 ```
 
 Settings are merged in this order, later sources overriding earlier ones:
-built-in defaults, the kingdom preset selected with `-k`, the YAML file given
+built-in defaults, the kingdom preset selected with `-k`, the workflow preset
+selected with `--preset`, the YAML file given
 with `-c`, and finally the command-line options on this page. See
 [Configuration files](configuration.md).
+
+## Workflow defaults
+
+Use `--preset prokaryote|bacteria|archaea|eukaryote|mag|metagenome`.
+`metagenomics` is an alias for `metagenome`. Run `gspa presets` for guidance or
+add `--print-config` to print resolved YAML and exit without running tools.
+See [workflow presets](../scenarios/presets.md) for dependencies and assumptions.
+All existing options remain available. Enforcement flags also accept `--no-`
+forms, such as `--no-enforce-consistency`, to disable preset defaults.
 
 ## Examples
 
@@ -58,7 +68,7 @@ gspa annotate --proteins proteome.faa -k eukaryote -o out/
 | `--gff3`, `--gff` | file | none | GFF3 annotation. With `--genome`, CDS coordinates are reused and translated; with `--proteins`, supplied proteins are joined to contigs through the CDS attributes `protein_id`, `ID` or `locus_tag`; alone, it is the primary input. |
 | `--proteins` | file | none | Pre-called protein FASTA. Alone, proteins are annotated on one synthetic contig named `proteins`; operons and per-contig metrics are then not meaningful. With `--gff3`, proteins without a matching CDS are placed on a contig named `unplaced`. |
 | `--mag` | flag | off | Treat the input as a MAG: gene calling runs in metagenomic mode and completeness is evaluated with MAG adjustments. Sets `input.type` to `mag`. Does not load the `mag.yaml` preset; pass `-c` for that. |
-| `-k`, `--kingdom` | string | none (equivalent to `auto`) | Organism kingdom: `bacteria`, `archaea`, `eukaryote`, `virus` or `auto`. For `bacteria`, `archaea` and `eukaryote` the matching bundled preset is loaded. `virus` and `auto` have no preset (a warning is logged and built-in defaults are used). The kingdom also selects the essential-function profile for completeness (`auto` uses the bacterial profile) and the SignalP organism group. There is no automatic kingdom detection in this release. |
+| `-k`, `--kingdom` | string | none (equivalent to `auto`) | Organism kingdom: `bacteria`, `archaea`, `eukaryote`, `virus` or `auto`. For `bacteria`, `archaea` and `eukaryote` the matching bundled preset is loaded. `virus` and `auto` have no legacy preset (built-in defaults are used). Without `--preset`, the kingdom also selects the essential-function profile for completeness (`auto` uses the bacterial profile) and the SignalP organism group. There is no automatic kingdom detection in this release. |
 
 At least one of `-i`, `--genome`, `--gff3` or `--proteins` is required. The
 genome identifier used in output file names is the input file name without
@@ -68,7 +78,7 @@ its FASTA or GFF3 extension.
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `-c`, `--config` | file | none | YAML configuration file ([schema](configuration.md)). A path that does not exist is silently ignored. |
+| `-c`, `--config` | file | none | YAML configuration file ([schema](configuration.md)). A missing file is an error. |
 | `-o`, `--output` | directory | `gspa_output` | Output directory; created if needed. Contents are listed under [annotate output directory](file-formats.md#annotate-output-directory). |
 | `--no-provenance` | flag | off | Do not record enforcement provenance: omits the `provenance` column of the annotations TSV and `<genome>_enforcement_actions.tsv`. |
 | `--min-score` | double in [0, 1] | none (keep everything) | Drop GO annotations scoring below this value right after prediction, before metrics and output. Also raises the emission threshold of the DeepGO-PlusPlus-Light sidecar to this value so the low-score tail is never computed. `0` keeps everything. |

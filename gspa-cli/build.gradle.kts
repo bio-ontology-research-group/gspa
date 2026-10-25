@@ -23,6 +23,29 @@ tasks.named<ProcessResources>("processResources") {
     }
 }
 
+// A stdlib-only Python zipapp keeps the standalone jar's downloader identical
+// to scripts/gspa_resources.py and includes small models/reference tables offline.
+val resourceManager by tasks.registering(Zip::class) {
+    archiveFileName.set("gspa-resources.pyz")
+    destinationDirectory.set(layout.buildDirectory.dir("resource-manager"))
+    from(rootProject.file("scripts/gspa_resources.py")) { rename { "__main__.py" } }
+    from(rootProject.file("gspa-core/src/main/resources/downloads/catalog.json"))
+    from(rootProject.file("gspa-core/src/main/resources")) {
+        include("taxon-constraints/**", "anatomical-constraints/**", "complex-terms/**", "essential-functions/**")
+        into("bundled")
+    }
+    from(rootProject.file("deepgo-plusplus/models")) { include("*.json"); into("bundled/models") }
+    from(rootProject.file("benchmark/neural")) {
+        include("run_neural_predictors.py", "run_region_predictors.py", "run_term_predictors.py",
+                "run_site_predictors.py", "run_genomic_predictors.py")
+        into("bundled/sidecars")
+    }
+}
+
+tasks.named<ProcessResources>("processResources") {
+    from(resourceManager) { into("downloads") }
+}
+
 tasks.named<JavaExec>("run") {
     standardInput = System.`in`
 }

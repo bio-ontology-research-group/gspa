@@ -1,0 +1,20 @@
+# Dependency layers are independent of the GSPA source/build, so rebuilding
+# the engine does not require downloading PyTorch/CUDA again.
+FROM ubuntu:24.04 AS dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates python3 python3-venv libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=ghcr.io/astral-sh/uv@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff /uv /usr/local/bin/uv
+ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
+ENV UV_HTTP_TIMEOUT=3600
+ENV UV_CONCURRENT_DOWNLOADS=1
+ENV UV_LINK_MODE=copy
+RUN --mount=type=cache,id=gspa-tutorial-uv,target=/root/.cache/uv uv venv /opt/neural \
+    && uv pip install --python /opt/neural/bin/python torch==2.7.1 --index-url ${TORCH_INDEX} \
+    && uv pip install --python /opt/neural/bin/python fair-esm==2.0.0 numpy==1.26.4
+FROM gspa-tutorial:cpu
+COPY --from=dependencies /opt/neural /opt/neural
+ENV PATH="/opt/neural/bin:${PATH}"
+ENV TORCH_HOME=/work/torch
+ENV OMP_NUM_THREADS=2
+ENV MKL_NUM_THREADS=2

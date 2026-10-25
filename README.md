@@ -35,6 +35,37 @@ cd gspa
 ./gspa --version
 ```
 
+### Choose a workflow preset
+
+```bash
+./gspa presets
+./gspa integrate --preset bacteria --claims claims.jsonl --out integrated.tsv
+./gspa annotate --preset eukaryote --proteins proteome.faa --db reference.dmnd -o out/
+./gspa annotate --preset metagenomics --print-config
+```
+
+Presets cover prokaryotes, bacteria, archaea, eukaryotes, individual MAGs and
+mixed metagenomes. Explicit command-line options override their defaults.
+Sequence annotation needs installed predictors and their data; integration can
+use the bundled references. See [workflow presets](docs/scenarios/presets.md)
+for setup, biological assumptions and overrides.
+
+### Download references and models
+
+```bash
+./gspa resources
+./gspa download --group annotation --dir /data/gspa
+./gspa download deepgo-plusplus-models --dir /data/gspa
+./gspa download --all --dry-run
+# To attempt every optional resource as well:
+./gspa download --all --dir /data/gspa
+```
+
+Individual IDs and groups use one catalog. Downloads write reusable paths and
+integrity receipts; unavailable or licensed assets are reported explicitly.
+See [resource downloads](docs/reference/resources.md) for prerequisites,
+large-download sizes, model coverage and custom bundles.
+
 ### 2. Run Genome-Scale Integration (`gspa integrate`)
 
 ```bash
@@ -114,3 +145,12 @@ Full tables, immutable manifests (`MANIFEST_CHECKSUMS.sha256`), and reports are 
 
 GSPA is licensed under the **GNU General Public License v3.0 or later (`GPL-3.0-or-later`)**. See [`LICENSE`](LICENSE) for full details.
 
+
+### Executed tutorials
+
+Start with the [Showboat tutorial collection](docs/tutorials/index.md): build GSPA
+from a clean Ubuntu container, prepare small public datasets, and run bacterial,
+archaeal, eukaryotic, MAG, mixed-community and phage workflows. Each page captures
+real commands and outputs, with result charts and an interactive browser. The
+[neural tutorial](docs/tutorials/neural.md) includes separate CPU-only and CUDA
+installations and compares real ESM-2 inference on both devices.

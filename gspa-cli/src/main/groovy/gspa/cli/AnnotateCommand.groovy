@@ -8,9 +8,15 @@ import gspa.predictor.AnnotationPipeline
 import gspa.predictor.context.OperonPredictor
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
+import picocli.CommandLine.Mixin
+import picocli.CommandLine.Spec
+import picocli.CommandLine.Model.CommandSpec
 
 @Command(name = 'annotate', description = 'Annotate a genome or set of genomes', mixinStandardHelpOptions = true)
 class AnnotateCommand implements Runnable {
+
+    @Mixin PresetOptions preset = new PresetOptions()
+    @Spec CommandSpec spec
 
     @Option(names = ['-i', '--input'],
             description = 'Primary input: nucleotide FASTA (genes called), or a GFF3 '
@@ -34,7 +40,7 @@ class AnnotateCommand implements Runnable {
                     + 'on a single synthetic contig.')
     File proteins
 
-    @Option(names = ['-o', '--output'], description = 'Output directory', defaultValue = 'gspa_output')
+    @Option(names = ['-o', '--output'], description = 'Output directory (default: gspa_output)')
     File outputDir
 
     @Option(names = ['-c', '--config'], description = 'Configuration YAML file')
@@ -56,24 +62,24 @@ class AnnotateCommand implements Runnable {
             description = 'Granularity of genome-scale metrics: contig (default, per contig), genome (pooled), or both')
     String metricsScope
 
-    @Option(names = ['--enforce-consistency'],
+    @Option(names = ['--enforce-consistency'], negatable = true,
             description = 'Run the SAT taxon-constraint enforcement post-pass on predicted GO annotations')
-    boolean enforceConsistency
+    Boolean enforceConsistency
 
     @Option(names = ['--enforce-consistency-mode'],
             description = 'Action for inconsistent annotations: remove (default), downrank, flag, or '
                     + 'minimal-flip (joint weighted-MaxSAT min-cost demotion, resolves co-annotation conflicts)')
     String enforceConsistencyMode
 
-    @Option(names = ['--enforce-completeness'],
+    @Option(names = ['--enforce-completeness'], negatable = true,
             description = 'Promote each missing essential function onto the best-evidenced candidate protein '
                     + '(imputed annotation, evidence ISC). Provenance records the basis.')
-    boolean enforceCompleteness
+    Boolean enforceCompleteness
 
-    @Option(names = ['--enforce-coherence'],
+    @Option(names = ['--enforce-coherence'], negatable = true,
             description = 'Fix obligate heteromeric-complex singletons (demote / promote partner) and promote '
                     + 'missing has_part partners. Needs ELK (full init) and, for complexes, --complex-terms.')
-    boolean enforceCoherence
+    Boolean enforceCoherence
 
     @Option(names = ['--complex-terms'],
             description = 'TSV of complex GO terms (term<TAB>h|n|a) for complex-coherence enforcement')
@@ -226,6 +232,15 @@ class AnnotateCommand implements Runnable {
 
     @Override
     void run() {
+        def config = resolveConfiguration()
+        if (preset.printConfig) {
+            spec.commandLine().out.print(ConfigLoader.toYaml(config))
+            spec.commandLine().out.flush()
+            return
+        }
+        outputDir = new File(config.output.outputDir)
+        goOwl = config.quality.goOwlFile
+
         // Resolve the primary input across the supported forms:
         //   --genome g.fna [--gff3 a.gff3] [--proteins p.faa]
         //   -i annotated.gff3            (GFF3, possibly with ##FASTA)
@@ -246,41 +261,20 @@ class AnnotateCommand implements Runnable {
             throw new IllegalArgumentException(
                 "No input given. Use --genome/-i (FASTA), --gff3 (GFF3), or --proteins (protein FASTA).")
         }
+        if (config.input.requireExistingGenes && !config.input.proteinFasta && !config.input.gff3 &&
+                !(primary.name.toLowerCase(Locale.ROOT) ==~ /.*\.gff3?(\.gz)?/)) {
+            throw new IllegalArgumentException('The eukaryote workflow requires --proteins proteome.faa or --genome genome.fna --gff3 genes.gff3. GSPA has no splice-aware eukaryotic gene caller.')
+        }
 
         println "GSPA annotate: ${primary}"
         if (gff3) println "GFF3: ${gff3}"
         if (proteins) println "Proteins: ${proteins}"
         println "Output: ${outputDir}"
-        println "Kingdom: ${kingdom ?: 'auto'}"
-        println "MAG mode: ${mag}"
+        println "Kingdom: ${config.input.kingdom}"
+        println "Input type: ${config.input.type}"
+        if (preset.name) println "Preset: ${gspa.config.WorkflowPresets.canonicalName(preset.name)}"
         println ""
 
-        def overrides = [:]
-        if (kingdom) overrides['kingdom'] = kingdom
-        if (goOwl) overrides['go-owl'] = goOwl
-        if (database) overrides['database'] = database
-        def config = ConfigLoader.buildConfig(configFile, kingdom, overrides)
-        if (mag) config.input.type = 'mag'
-        if (gff3) config.input.gff3 = gff3.absolutePath
-        if (proteins) config.input.proteinFasta = proteins.absolutePath
-        config.input.proteinsOnly = proteinsOnly
-
-        // Genome-scale metrics + SAT enforcement toggles
-        if (noMetrics) config.quality.enabled = false
-        if (metricsScope) config.quality.scope = metricsScope
-        if (enforceConsistency) config.quality.consistency.enforce = true
-        if (enforceConsistencyMode) config.quality.consistency.enforceMode = enforceConsistencyMode
-        if (taxonConstraintsFile) config.quality.consistency.constraintsFile = taxonConstraintsFile
-        if (taxonomyFile) config.quality.consistency.taxonomyFile = taxonomyFile
-        if (organismTaxon) config.quality.consistency.organismTaxon = organismTaxon
-        // Inference needs the constraints loaded even when enforcement is off.
-        if (inferTaxon && !organismTaxon) config.quality.consistency.taxonConstraints = true
-        if (inferTaxonMinScore != null) config.quality.consistency.inferTaxonMinScore = inferTaxonMinScore
-        if (enforceCompleteness) config.quality.completeness.enforce = true
-        if (enforceCoherence) config.quality.coherence.enforce = true
-        if (noProvenance) config.quality.provenance = false
-
-        applyPredictorFlags(config)
 
         // Wall-clock timing per phase — written to <genome>_timing.tsv and echoed,
         // so genome-scale runs report where the time went (prediction vs ontology
@@ -297,6 +291,12 @@ class AnnotateCommand implements Runnable {
         // Build and configure annotation pipeline
         def pipeline = new AnnotationPipeline(config)
         pipeline.configure()
+        if (preset.name && !pipeline.registry.available.any {
+            !(it instanceof gspa.predictor.GenomePredictor) &&
+                (gspa.model.AnnotationType.GO in it.outputTypes || gspa.model.AnnotationType.EC in it.outputTypes)
+        }) {
+            throw new IllegalArgumentException('No functional predictor is available. Install InterProScan, supply --db with DIAMOND installed, or configure --neural-sidecar and --deepgo-plusplus-light-assets. See docs/scenarios/presets.md.')
+        }
         lap('setup')
 
         // Run annotation
@@ -323,11 +323,11 @@ class AnnotateCommand implements Runnable {
         // Write output
         pipeline.writeOutput(genome, outputDir)
 
-        // Always persist operon detection alongside the annotations so
+        // Persist enabled operon detection alongside the annotations so
         // downstream `gspa integrate --operons` and `gspa visualize` find it
         // without manual prep. Cheap to re-detect (O(n log n) over CDS).
         try {
-            writeOperonFiles(genome, outputDir, config)
+            if (config.predictors.operons.enabled) writeOperonFiles(genome, outputDir, config)
         } catch (Exception e) {
             System.err.println "  [warn] Failed to write operon TSVs: ${e.message}"
         }
@@ -535,6 +535,41 @@ class AnnotateCommand implements Runnable {
         } else {
             println "Organism taxon could not be inferred (no constraint-bearing terms predicted)."
         }
+    }
+
+    GspaConfig resolveConfiguration() {
+        def overrides = [:]
+        if (kingdom) overrides['kingdom'] = kingdom
+        if (goOwl) overrides['go-owl'] = goOwl
+        if (database) overrides['database'] = database
+        def config = ConfigLoader.buildConfig(configFile, kingdom, overrides, preset.name)
+        if (mag) config.input.type = 'mag'
+        if (outputDir != null) config.output.outputDir = outputDir.path
+        if (gff3) config.input.gff3 = gff3.absolutePath
+        if (proteins) config.input.proteinFasta = proteins.absolutePath
+        config.input.proteinsOnly = proteins != null && !input && !genomeFasta && !gff3
+
+        // Genome-scale metrics + SAT enforcement toggles
+        if (noMetrics) config.quality.enabled = false
+        if (metricsScope) config.quality.scope = metricsScope
+        if (enforceConsistency != null) config.quality.consistency.enforce = enforceConsistency
+        if (enforceConsistencyMode) config.quality.consistency.enforceMode = enforceConsistencyMode
+        if (taxonConstraintsFile) config.quality.consistency.constraintsFile = taxonConstraintsFile
+        if (taxonomyFile) config.quality.consistency.taxonomyFile = taxonomyFile
+        if (organismTaxon) config.quality.consistency.organismTaxon = organismTaxon
+        // Inference needs the constraints loaded even when enforcement is off.
+        if (inferTaxon && !organismTaxon) {
+            config.quality.consistency.taxonConstraints = true
+            config.quality.consistency.organismTaxon = null
+        }
+        if (inferTaxonMinScore != null) config.quality.consistency.inferTaxonMinScore = inferTaxonMinScore
+        if (enforceCompleteness != null) config.quality.completeness.enforce = enforceCompleteness
+        if (enforceCoherence != null) config.quality.coherence.enforce = enforceCoherence
+        if (noProvenance) config.quality.provenance = false
+
+        applyPredictorFlags(config)
+
+        config
     }
 
     private void applyPredictorFlags(GspaConfig config) {

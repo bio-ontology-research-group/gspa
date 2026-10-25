@@ -4,6 +4,14 @@
 
 ---
 
+**Workflow defaults:** `gspa presets` lists the presets for `annotate` and
+`integrate`. Use `--preset NAME --print-config` to inspect settings; see the
+[workflow preset guide](scenarios/presets.md).
+
+**Resources and models:** `gspa resources` lists downloadable IDs;
+`gspa download ID`, `--group NAME`, or `--all` retrieves them.
+See [resource downloads](reference/resources.md).
+
 ## Table of Contents
 
 1. [System Requirements & Installation](#1-system-requirements--installation)

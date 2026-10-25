@@ -592,10 +592,10 @@ def load_genome_meta():
             for k, v in zip(header, row): d[k] = v
             return d
     checkm = parse_one(W / "input" / "checkm.tsv", {
-        "Genome_Size": "0", "Total_Contigs": "0", "GC_Content": "0",
-        "Completeness": "0", "Contamination": "0",
+        "Genome_Size": None, "Total_Contigs": None, "GC_Content": None,
+        "Completeness": None, "Contamination": None,
     })
-    busco = parse_one(W / "input" / "busco.tsv", {"Complete": "0"})
+    busco = parse_one(W / "input" / "busco.tsv", {"Complete": None})
     gtdb = parse_one(W / "input" / "gtdbtk.tsv", {
         "classification": "", "closest_genome_taxonomy": "",
         "closest_genome_ani": "N/A", "closest_genome_af": "N/A",
@@ -629,7 +629,7 @@ def build_cds_gff3(proteins_dict):
         if p.get("product"): attrs += f";product={gff_escape(p['product'])}"
         if p.get("gene"): attrs += f";gene={gff_escape(p['gene'])}"
         out.append("\t".join([
-            p["contig"], "Prokka", "CDS", str(p["start"]), str(p["end"]), ".",
+            p["contig"], "input", "CDS", str(p["start"]), str(p["end"]), ".",
             p["strand"], "0", attrs,
         ]))
     return "\n".join(out) + "\n"
@@ -889,10 +889,37 @@ def main():
     qpath = RUN_DIR / "quality_gspa.json"
     if not qpath.exists():
         qpath = W / "gspa_full2_out" / "quality_gspa.json"
-    quality = json.load(open(qpath))
+    quality_available = qpath.exists()
+    if quality_available:
+        with qpath.open() as fh:
+            quality = json.load(fh)
+    else:
+        print("  no quality report; metrics will be shown as not measured", flush=True)
+        quality = {
+            "summary": {"annotated_proteins": None, "annotation_coverage": None, "composite_score": None},
+            "completeness": {"score": None, "present_count": None, "missing_count": None, "missing_functions": []},
+            "coherence": {"process_coherence": None, "pathway_coherence": None, "complex_coherence": None},
+            "consistency": {"consistent": None, "violation_count": None},
+        }
 
     print("Loading sample meta ...", flush=True)
     meta = load_genome_meta()
+    # Sequence-derived size/GC need no external QC program. Keep completeness
+    # and contamination absent unless a real measurement was supplied.
+    if FASTA_PATH.exists():
+        bases = gc = contigs = 0
+        with FASTA_PATH.open() as fh:
+            for line in fh:
+                if line.startswith(">"):
+                    contigs += 1
+                else:
+                    seq = line.strip().upper()
+                    bases += len(seq)
+                    gc += seq.count("G") + seq.count("C")
+        for key, value in {"Genome_Size": bases, "Total_Contigs": contigs,
+                           "GC_Content": (100 * gc / bases if bases else None)}.items():
+            if meta["checkm"].get(key) in (None, "", "N/A"):
+                meta["checkm"][key] = value
 
     # Annotate operons with names + dominant pathway, and cross-reference
     # pathways with the operons they belong to. Reads pathway_detail straight
@@ -1087,16 +1114,19 @@ def main():
     used_ecs = set(a["term"] for a in annos if a["term"].startswith("EC:"))
     ec_dict = {ec: ec_name[ec] for ec in used_ecs if ec in ec_name}
 
+    def optional_number(value, convert=float):
+        return convert(value) if value not in (None, "", "N/A") else None
+
     payload = {
         "genome": {
             "id": GENOME_ID,
-            "size_bp": int(meta["checkm"]["Genome_Size"]),
-            "n_contigs": int(meta["checkm"]["Total_Contigs"]),
+            "size_bp": optional_number(meta["checkm"]["Genome_Size"], int),
+            "n_contigs": optional_number(meta["checkm"]["Total_Contigs"], int),
             "n_proteins": len(proteins),
-            "gc": float(meta["checkm"]["GC_Content"]),
-            "completeness": float(meta["checkm"]["Completeness"]),
-            "contamination": float(meta["checkm"]["Contamination"]),
-            "busco": float(meta["busco"]["Complete"]),
+            "gc": optional_number(meta["checkm"]["GC_Content"]),
+            "completeness": optional_number(meta["checkm"]["Completeness"]),
+            "contamination": optional_number(meta["checkm"]["Contamination"]),
+            "busco": optional_number(meta["busco"]["Complete"]),
             "ani": meta["gtdb"].get("closest_genome_ani", "N/A"),
             "ani_af": meta["gtdb"].get("closest_genome_af", "N/A"),
             "closest_species": meta["gtdb"].get("closest_genome_taxonomy", "").split(";s__")[-1] or "—",
@@ -1104,6 +1134,7 @@ def main():
             "culture": meta["culture"],
         },
         "quality": {
+            "available": quality_available,
             "annotated_proteins": quality["summary"]["annotated_proteins"],
             "annotation_coverage": quality["summary"]["annotation_coverage"],
             "completeness_score": quality["completeness"]["score"],
@@ -1165,39 +1196,15 @@ def main():
             "n_with_ipr": sum(1 for p in proteins.values() if p.get("ipr_count", 0) > 0),
         },
         "build": {
-            "tutorial": "MR59-6 (Pontibacter sp. nov., Empty Quarter desert sample)",
+            "tutorial": GENOME_ID,
             "generated": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
-            "predictors_run": [
-                "Prokka (gene calling)",
-                "DIAMOND vs Swiss-Prot   (→ integrator)",
-                "InterProScan: Pfam / Gene3D / SUPERFAMILY / PANTHER / CDD / SMART / ProSite / NCBIfam / MobiDBLite   (→ integrator)",
-                "eggNOG-mapper   (→ integrator)",
-                "FoldSeek (ProstT5 → 3Di) vs AFDB-Swissprot   (→ integrator)",
-                "mDeepFRI (sequence ONNX)   (→ integrator, as SEQUENCE_DEEPLEARNING)",
-                "ProteInfer (CNN)   (→ integrator, as SEQUENCE_DEEPLEARNING)",
-                "CLEAN (EC, contrastive)   (→ integrator, as SEQUENCE_DEEPLEARNING; EC mapped via ec2go → GO)",
-                "GSPA OperonPredictor (intergenic + same strand)   (→ integrator, --operons)",
-                "AmrFinderPlus 4.2.7 (2026-03-26 DB)   (→ Special features + AMR table; GO claim wiring is a v1.6 task)",
-                "antiSMASH 7   (→ Genome browser + BGC table; per-CDS BGC claim wiring is a v1.6 task)",
-            ],
-            "skipped": [
-                "DeepEC (transformers shim incompatible)",
-                "PSORTb (Brinkmanlab container SCLBlast bug)",
-                "DarkMatter / iterative refinement (off, by design)",
-            ],
-            "predictors_in_integrator": [
-                "diamond", "interproscan", "pfam", "eggnog-mapper", "foldseek",
-                "mdf", "proteinfer", "clean", "operon",
-            ],
-            "predictors_tool_only": [
-                "AmrFinderPlus — categorical hit, surfaced via the AMR table + genome browser; not yet a Bayesian claim source",
-                "antiSMASH — categorical regions, surfaced via the BGC table + genome browser; not yet a Bayesian claim source",
-            ],
-            "fix_notes": [
-                "v1.5 fix: ClaimExtractor.SOURCE_TO_TYPE now maps `mdf`, `mdeepfri`, `proteinfer`, `clean` to SEQUENCE_DEEPLEARNING. Before this fix the 261k claims from these 3 tools were silently dropped because their source name was not in the lookup table (line 158: `if (type == null) return // unresolved claim; skip`). Discovered by the MR59-6 tutorial visualisation showing only 5 of 10 tools contributing to the posterior.",
-                "v1.5 GAEF detail: missing essential GO terms, incoherent process pairs, and incoherent pathways now ship with human-readable names instead of bare IDs.",
-                "v1.5 operons: a Python sibling of OperonPredictor produces operons.tsv next to the other sidecar outputs; passed to `gspa integrate --operons` so GenomicContextPrior fires.",
-            ],
+            "predictors_run": sorted(predictor_dict),
+            "skipped": [],  # Absence of evidence is not proof that a tool was skipped.
+            "predictors_in_integrator": sorted({name for a in annos if not a.get("tool_only")
+                for index, _ in a["src"] for name, value in predictor_dict.items() if value == index}),
+            "predictors_tool_only": sorted({name for a in annos if a.get("tool_only")
+                for index, _ in a["src"] for name, value in predictor_dict.items() if value == index}),
+            "fix_notes": [],
         },
     }
 
@@ -1516,7 +1523,7 @@ TEMPLATE = r"""<!doctype html>
       <label>only
         <select id="flag-sel">
           <option value="">all proteins</option>
-          <option value="hyp">hypothetical (Prokka)</option>
+          <option value="hyp">hypothetical (input)</option>
           <option value="amr">AMR</option>
           <option value="bgc">BGC region</option>
           <option value="operon">in operon</option>
@@ -1546,7 +1553,7 @@ TEMPLATE = r"""<!doctype html>
       <div class="table-head">
         <div data-sort="i">protein</div>
         <div data-sort="l">aa</div>
-        <div data-sort="pr">product (Prokka)</div>
+        <div data-sort="pr">product (input)</div>
         <div data-sort="bl">best GO term</div>
         <div data-sort="mp">max post</div>
         <div data-sort="nh">high</div>
@@ -1592,12 +1599,12 @@ TEMPLATE = r"""<!doctype html>
   <section id="tab-genome">
     <div class="panel">
       <h3>Genome browser (igv.js, <span class="mono small" id="contig-name"></span>)</h3>
-      <p class="small">Five tracks loaded inline (no server, no network): CDS (Prokka), GSPA operons, antiSMASH BGCs,
+      <p class="small">Five tracks loaded inline (no server, no network): CDS (input), GSPA operons, antiSMASH BGCs,
         AmrFinder hits, and a localisation track derived from high-conf cellular-component GO terms.
         Pan with click-and-drag; zoom with the mouse wheel or the controls in the toolbar; click a feature for details.</p>
       <div id="igv-host" style="height:520px;"></div>
       <div class="legend">
-        <span><i style="background:#1f4e79"></i> CDS (Prokka)</span>
+        <span><i style="background:#1f4e79"></i> CDS (input)</span>
         <span><i style="background:var(--bgc)"></i> antiSMASH BGCs</span>
         <span><i style="background:var(--amr)"></i> AMR hits</span>
         <span><i style="background:#2c7a7b"></i> Operons (GSPA)</span>
@@ -1703,19 +1710,18 @@ TEMPLATE = r"""<!doctype html>
   <section id="tab-pipeline">
     <div class="grid-2">
       <div class="panel">
-        <h3>Predictors run on this genome</h3>
+        <h3>Evidence sources present in this workspace</h3>
         <ul class="pipeline-list" id="preds-run"></ul>
       </div>
       <div class="panel">
-        <h3>Skipped (documented)</h3>
+        <h3>Recorded skipped tools</h3>
         <ul class="pipeline-list" id="preds-skipped"></ul>
       </div>
     </div>
     <div class="panel" style="margin-top:14px">
-      <h3>Categorical predictors (not Bayesian sources)</h3>
-      <p class="small">Per-region / per-hit findings that don't fit the (protein, GO term, posterior) shape
-        of the integrator. They show up in the genome browser, AMR table, and BGC table but don't update
-        any function posterior. Wiring them as integrator claim sources is on the v1.6 backlog.</p>
+      <h3>Additional tool-only annotation sources</h3>
+      <p class="small">These sources have additional annotations displayed alongside the integrated results.
+        Their tool-only annotations do not update the integrated posterior.</p>
       <ul class="pipeline-list" id="preds-not-integrator"></ul>
     </div>
     <div class="panel" style="margin-top:14px">
@@ -1761,9 +1767,9 @@ for (const a of DATA.annotations) ANNOS_BY_P[a[0]].push(a);
 
 // ----- Header
 document.getElementById("genome-id").textContent = DATA.genome.id;
-document.getElementById("closest-sp").innerHTML =
-  "novel <i>Pontibacter</i> sp. (closest <i>" + (DATA.genome.closest_species || "—") + "</i>, ANI " +
-  '<span class="ani">' + DATA.genome.ani + "%</span>; below 95% species cutoff)";
+document.getElementById("closest-sp").textContent = DATA.genome.classification
+  ? "Closest reference: " + DATA.genome.closest_species + "; ANI " + DATA.genome.ani
+  : "Taxonomy not supplied";
 const lineageRanks = (DATA.genome.classification || "").split(";").map(r => r.replace(/^[a-z]__/, ""));
 document.getElementById("lineage").innerHTML = lineageRanks.map(r =>
   '<span class="rank">' + r + '</span>'
@@ -1773,22 +1779,25 @@ document.getElementById("env").innerHTML = DATA.genome.culture.replace(/\n/g, " 
 const cards = document.getElementById("cards");
 function makeCard(label, value, unit, cls) {
   const d = document.createElement("div");
-  d.className = "card " + (cls || "");
+  d.className = "card " + (String(value).includes("Not measured") ? "" : (cls || ""));
   d.innerHTML = '<div class="label">' + label + '</div><div class="value">' + value +
-    (unit ? '<span class="unit">' + unit + '</span>' : "") + '</div>';
+    (unit && !String(value).includes("Not measured") ? '<span class="unit">' + unit + '</span>' : "") + '</div>';
   return d;
 }
+function measured(value, digits=1, scale=1) {
+  return value == null ? "Not measured" : (value*scale).toFixed(digits);
+}
 cards.append(
-  makeCard("Genome size", (DATA.genome.size_bp/1e6).toFixed(2), "Mb"),
+  makeCard("Genome size", measured(DATA.genome.size_bp, 2, 1e-6), "Mb"),
   makeCard("CDS", DATA.genome.n_proteins.toLocaleString()),
   makeCard("CheckM2 / BUSCO",
-    DATA.genome.completeness.toFixed(1) + " / " + DATA.genome.busco.toFixed(1), "%", "green"),
-  makeCard("GSPA coverage", (DATA.quality.annotation_coverage*100).toFixed(1), "% of CDS",
+    measured(DATA.genome.completeness) + " / " + measured(DATA.genome.busco), "%", "green"),
+  makeCard("GSPA coverage", measured(DATA.quality.annotation_coverage, 1, 100), "% of CDS",
     DATA.quality.annotation_coverage >= 0.5 ? "green" : "amber"),
-  makeCard("(prot, GO) hypotheses", DATA.stats.n_annotations.toLocaleString()),
+  makeCard("(protein, function) hypotheses", DATA.stats.n_annotations.toLocaleString()),
   makeCard("High-conf (≥0.7)", DATA.stats.n_high.toLocaleString(), "", "green"),
-  makeCard("GAEF Composite", DATA.quality.composite.toFixed(3), "", "green"),
-  makeCard("Process coherence", (DATA.quality.process_coherence*100).toFixed(1), "%", "green"),
+  makeCard("GAEF Composite", measured(DATA.quality.composite, 3), "", "green"),
+  makeCard("Process coherence", measured(DATA.quality.process_coherence, 1, 100), "%", "green"),
 );
 
 // ----- Tabs
@@ -2008,7 +2017,7 @@ function openDetail(pid, keepThresh) {
     (p.g ? ' · gene <span class="mono">'+escapeHtml(p.g)+'</span>' : "") +
     (p.ec ? ' · EC <span class="mono">'+escapeHtml(p.ec)+'</span>' : "") +
     (flagPills.length ? " · " + flagPills.join(" ") : "");
-  document.getElementById("d-product").innerHTML = "<i>Prokka:</i> " + escapeHtml(p.pr || "hypothetical protein");
+  document.getElementById("d-product").innerHTML = "<i>Input annotation:</i> " + escapeHtml(p.pr || "hypothetical protein");
 
   // Operon / BGC context block.
   const ctxBits = [];
@@ -2023,7 +2032,7 @@ function openDetail(pid, keepThresh) {
           (op.name_p != null
             ? ' <span class="small">(GO BP enrichment: '+op.name_count+'/'+op.n+' members, p='+fmtP(op.name_p)+
               (op.name_fold != null ? ', '+op.name_fold.toFixed(1)+'× over background' : '')+')</span>'
-            : (op.name_count > 1 ? ' <span class="small">(top Prokka product, '+op.name_count+'/'+op.n+' members)</span>' : ''))
+            : (op.name_count > 1 ? ' <span class="small">(top input product, '+op.name_count+'/'+op.n+' members)</span>' : ''))
         : '';
       // Top-3 enriched pathways (the dominant one shown promoted; the rest as
       // small-text additional hits).
@@ -2196,7 +2205,7 @@ function renderGenomeBrowser(sec) {
   document.getElementById("contig-name").textContent = contigName;
   const tracks = [];
   if (DATA.browser.tracks.cds) tracks.push({
-    name: "CDS (Prokka)", url: DATA.browser.tracks.cds, indexed: false, format: "gff3",
+    name: "CDS (input)", url: DATA.browser.tracks.cds, indexed: false, format: "gff3",
     type: "annotation", displayMode: "EXPANDED", color: "#1f4e79", height: 60,
   });
   if (DATA.browser.tracks.operons) tracks.push({
@@ -2525,6 +2534,10 @@ function goToOperon(opId) {
 function renderQuality(sec) {
   sec.dataset.rendered = "1";
   const q = DATA.quality;
+  if (!q.available) {
+    sec.innerHTML = '<h3>Quality metrics not measured</h3><p>No quality report was supplied for this run. Generate one with <code>gspa evaluate</code> and rebuild the browser to display these metrics.</p>';
+    return;
+  }
   function metric(label, value, denom) {
     const pct = (value*100).toFixed(1)+"%";
     const color = value >= 0.9 ? "var(--high)" : value >= 0.7 ? "var(--med)" : "var(--low)";

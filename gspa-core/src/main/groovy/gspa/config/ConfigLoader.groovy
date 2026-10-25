@@ -36,14 +36,14 @@ class ConfigLoader {
      * Load a kingdom preset from built-in resources.
      */
     static GspaConfig loadPreset(String presetName) {
-        String resourcePath = "/config/${presetName}.yaml"
+        String resourcePath = "config/${presetName}.yaml"
         def stream = ConfigLoader.classLoader.getResourceAsStream(resourcePath)
         if (stream == null) {
             log.warn("No built-in preset found for: ${presetName}, using defaults")
             return new GspaConfig()
         }
         log.info("Loading preset: ${presetName}")
-        mapper.readValue(stream, GspaConfig)
+        stream.withCloseable { mapper.readValue(it, GspaConfig) }
     }
 
     /**
@@ -54,24 +54,29 @@ class ConfigLoader {
      * @param cliOverrides Map of CLI flag overrides
      */
     static GspaConfig buildConfig(File userConfigFile = null, String kingdom = null,
-                                   Map<String, Object> cliOverrides = [:]) {
-        // Start with defaults
-        GspaConfig config = new GspaConfig()
-
-        // Apply kingdom preset if specified
+                                   Map<String, Object> cliOverrides = [:], String workflowPreset = null) {
+        // Merge sparse YAML maps BEFORE constructing typed configs. Deserializing
+        // a partial YAML into GspaConfig first fills absent keys with class defaults
+        // and would silently erase settings inherited from the preset.
+        Map values = mapper.convertValue(new GspaConfig(), Map)
         if (kingdom) {
-            config.input.kingdom = kingdom
-            def preset = loadPreset(kingdom)
-            config = merge(config, preset)
+            values.input.kingdom = kingdom
+            def stream = ConfigLoader.classLoader.getResourceAsStream("config/${kingdom}.yaml")
+            if (stream != null) {
+                Map preset = stream.withCloseable { mapper.readValue(it, Map) }
+                values = deepMerge(values, preset, true)
+            }
         }
-
-        // Apply user config file
-        if (userConfigFile?.exists()) {
-            def userConfig = loadFromFile(userConfigFile)
-            config = merge(config, userConfig)
+        if (workflowPreset) {
+            values = deepMerge(values, WorkflowPresets.annotationDefaults(workflowPreset, kingdom), true)
         }
-
-        // Apply CLI overrides
+        if (userConfigFile != null) {
+            if (!userConfigFile.isFile()) {
+                throw new IllegalArgumentException("Configuration file does not exist: ${userConfigFile}")
+            }
+            values = deepMerge(values, mapper.readValue(userConfigFile, Map) ?: [:], true)
+        }
+        GspaConfig config = mapper.convertValue(values, GspaConfig)
         applyOverrides(config, cliOverrides)
 
         config
@@ -88,12 +93,12 @@ class ConfigLoader {
         mapper.convertValue(merged, GspaConfig)
     }
 
-    private static Map deepMerge(Map base, Map override) {
+    private static Map deepMerge(Map base, Map override, boolean replaceNulls = false) {
         Map result = new LinkedHashMap(base)
         override.each { key, value ->
             if (value instanceof Map && result[key] instanceof Map) {
-                result[key] = deepMerge(result[key] as Map, value as Map)
-            } else if (value != null) {
+                result[key] = deepMerge(result[key] as Map, value as Map, replaceNulls)
+            } else if (value != null || replaceNulls) {
                 result[key] = value
             }
         }
@@ -117,6 +122,7 @@ class ConfigLoader {
                     break
                 case 'database':
                     config.predictors.similarity.database = value as String
+                    config.predictors.similarity.enabled = true
                     break
                 case 'evalue':
                     config.predictors.similarity.evalue = value as double
@@ -138,5 +144,9 @@ class ConfigLoader {
      */
     static void writeConfig(GspaConfig config, File outputFile) {
         mapper.writeValue(outputFile, config)
+    }
+
+    static String toYaml(GspaConfig config) {
+        mapper.writeValueAsString(config)
     }
 }

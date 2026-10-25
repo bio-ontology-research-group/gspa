@@ -42,6 +42,8 @@ class GspaConfig {
         boolean translateAltStart = true
         /** Annotate a bare protein FASTA on a single synthetic contig (no genome/GFF3) */
         boolean proteinsOnly = false
+        /** Require supplied proteins/CDS instead of falling back to a prokaryotic gene caller. */
+        boolean requireExistingGenes = false
     }
 
     static class PredictorConfig {

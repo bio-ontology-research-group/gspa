@@ -25,6 +25,15 @@ The concepts behind each layer are described in
 gspa integrate (--claims FILE --out FILE | --batch-manifest FILE) [options]
 ```
 
+## Workflow defaults
+
+Use `--preset prokaryote|bacteria|archaea|eukaryote|mag|metagenome`.
+`metagenomics` is an alias for `metagenome`. Run `gspa presets` for guidance;
+`--print-config` prints resolved options as JSON and exits without reading
+claims. See [workflow presets](../scenarios/presets.md) for the settings and
+biological assumptions. Explicit options always win, including
+`--no-enforce-stage2` and `--no-lite`. Batch row overrides still take precedence.
+
 ## Examples
 
 Minimal run with default priors and default hyperparameters:

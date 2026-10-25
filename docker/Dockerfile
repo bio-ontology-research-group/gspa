@@ -10,6 +10,9 @@ COPY gradle/ gradle/
 COPY gspa-core/ gspa-core/
 COPY gspa-predictors/ gspa-predictors/
 COPY gspa-cli/ gspa-cli/
+COPY scripts/gspa_resources.py scripts/gspa_resources.py
+COPY deepgo-plusplus/models/ deepgo-plusplus/models/
+COPY benchmark/neural/run_*predictors.py benchmark/neural/
 
 RUN ./gradlew :gspa-cli:installDist --no-daemon
 

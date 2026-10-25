@@ -1,5 +1,9 @@
 # Installation
 
+For a recorded installation from a clean Ubuntu container, follow the
+[executable installation tutorial](tutorials/install.md). Separate
+[CPU and NVIDIA GPU neural setups](tutorials/neural.md) are also demonstrated.
+
 GSPA consists of a Java command-line engine (`gspa`) and three optional Python sidecars: the neural predictor runner, the flux-balance refiner, and the Stage 3 agent. The engine alone is enough to run Stages 1 and 2A on existing per-protein predictions.
 
 ## Requirements
@@ -70,3 +74,13 @@ The sidecars use only the Python standard library except where noted:
 ```
 
 Continue with the [quickstart](quickstart.md).
+
+## Download reference data and models
+
+After building or obtaining the standalone jar, run `./gspa resources` to list
+all resource IDs. `./gspa download --group core --dir /data/gspa` obtains the
+core reference set; `./gspa download MODEL_ID --dir /data/gspa` fetches one model.
+Use `./gspa download --all --dry-run` to inspect all optional downloads.
+The manager needs Python 3.9+ and does not install predictor software.
+See [resource downloads](reference/resources.md) for model coverage, paths,
+checksums, unavailable assets and commands for downloading everything.

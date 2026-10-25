@@ -2,6 +2,10 @@
 
 This page runs GSPA Stages 1 and 2A on a tiny hand-written set of per-protein predictions. It needs only Java and the GSPA jar; all taxonomic, anatomical, complex, and essentiality resources are bundled.
 
+For ordinary runs, start with a [workflow preset](scenarios/presets.md):
+`./gspa integrate --preset bacteria --claims claims.jsonl --out integrated.tsv`.
+Use `./gspa presets` to see the choices; the walkthrough below spells out the flags.
+
 ## 1. Per-protein evidence
 
 GSPA does not predict functions from sequence by itself. It integrates *claims*: calibrated per-protein predictions from any predictor, one JSON object per line. Create `claims.jsonl`:

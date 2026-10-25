@@ -70,6 +70,7 @@ class AnnotationPipeline {
     }
 
     private void configureGeneCaller() {
+        if (config.input.requireExistingGenes || config.input.proteinsOnly || config.input.proteinFasta || config.input.gff3) return
         def domain = config.resolveOrganismDomain()
 
         boolean isMeta = config.input.type in ['mag', 'metagenome']
@@ -439,6 +440,9 @@ class AnnotationPipeline {
         log.info("Loaded: ${genome}")
 
         // 2. Call genes if needed
+        if (genome.proteinCount == 0 && config.input.requireExistingGenes) {
+            throw new IllegalArgumentException('This workflow requires existing gene models. Use --proteins proteome.faa or --genome genome.fna --gff3 genes.gff3; GSPA has no splice-aware eukaryotic gene caller.')
+        }
         if (genome.proteinCount == 0 && geneCaller != null) {
             log.info("Calling genes with ${geneCaller.name}...")
             geneCaller.callGenes(genome)

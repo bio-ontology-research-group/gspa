@@ -36,8 +36,22 @@ jobs:
       - name: Run tests
         run: ./gradlew clean test
 
+      - name: Test resource downloads (offline fixtures)
+        run: python3 -m unittest discover -s scripts/tests -p test_gspa_resources.py -v
+
+      - name: Test browser without optional QC
+        run: python3 -m unittest discover -s scripts/tests -p test_visualize_optional_quality.py -v
+
       - name: Build shadowJar
         run: ./gradlew :gspa-cli:shadowJar
+
+      - name: Verify standalone resource manager
+        run: |
+          ./gspa resources --json > /tmp/gspa-resource-catalog.json
+          python3 -c 'import json; assert json.load(open("/tmp/gspa-resource-catalog.json"))["resources"]'
+          ./gspa download --all --dry-run --dir /tmp/gspa-dry-run
+          test ! -e /tmp/gspa-dry-run
+          ./gspa download --group bundled --dir /tmp/gspa-bundled
 
       - name: Verify version metadata
         run: |

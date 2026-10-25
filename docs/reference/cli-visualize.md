@@ -46,6 +46,12 @@ The options are passed to the script as environment variables
 `GSPA_EC2GO`, `GSPA_FASTA`; see [Environment variables](environment.md#launcher-environment-gspa)).
 If the script exits with a non-zero status, the command fails.
 
+A missing quality report is shown as **not measured**, and the annotation
+browser remains usable. Missing CheckM/BUSCO values are also unmeasured, not
+zero. Genome size and GC content can be derived from the supplied FASTA.
+The header and evidence-source lists describe the current workspace rather
+than a built-in example sample.
+
 ## Workspace layout
 
 Paths are relative to `--workdir`; `<id>` is the genome identifier and `<run>`
