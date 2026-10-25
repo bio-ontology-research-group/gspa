@@ -60,7 +60,7 @@ Host: KAUST ibex, work area `/encrypted/e3008/gspa/macroevo` (`code/`, `ref/`, `
 
 **What the priors change at genome level (t1, t9, t10).** The set of annotated proteins is the same under
 both configurations (annotated fraction +0.0005), as in the paper's Stage D summary, but the genome-level
-function profile is not. At 0.50 full GSPA adds about 25 terms per genome and removes about 8, raises the
+function profile is not. At 0.50 full GSPA adds 25 to 60 terms per genome by phylum and removes about 8, raises the
 bacterial essential-function completeness from 0.27 to 0.48 in every phylum, and removes the eukaryotic
 cellular-component terms that homology transfer puts into bacteria: Stage 0 alone places `chloroplast` in
 11,436 of the 11,438 species, `nucleus` in 11,432 and `peroxisome` in 9,462 (t4a, t4d). Table t9 splits
@@ -123,7 +123,7 @@ batch deployment, not of the method.
 **Caveats to state with any of this.** The Stage D posteriors come from the batch pipeline with one merged
 evidence source per claim, never exceed 0.59, and reach the 0.50 threshold for only about 480 terms per
 genome; AllTheBacteria is dominated by clinical isolates (Pseudomonadota 263 k, Bacillota 92 k genomes;
-Escherichia and Salmonella alone 251 k), so species-level profiles with the majority rule are the unit of
+the 17 reference species alone 251 k), so species-level profiles with the majority rule are the unit of
 every phylogenetic analysis; 41,140 genomes have no GTDB species ("unknown") and are in the genome-level
 tables only; the reference set is 17 species; and the 454 wave-2 batches still in Stage D are not yet
 included.
