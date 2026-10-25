@@ -153,3 +153,11 @@ SAMD00389893, 2.8 substitutions per site from the nearest experimentally annotat
 steps, 1 essential function), 53 of 121 activated modules complete after refinement against 43 before, mean module
 completeness 0.73 to 0.78; each change is listed with its evidence on the Pathways tab. This strain has no curated
 annotation, so these changes are not validated individually; the precision of such rescues is the one measured above.
+
+**Selection against the candidate pool (`candidate_pool.py`, `results_v5/candidate_pool.tsv`).** On the unperturbed
+genomes, the module rescues were compared with every borderline claim they could have been chosen from: all
+(protein, GO term) pairs with a Stage 0 likelihood in [0.16, 0.50) on an open required step of an activated module.
+Of 482 such candidates, 27.8 % are in the curated annotation; of the 119 that module refinement rescued, 73.9 % are
+(one-sided binomial p = 2e-25), and rescue precision exceeds pool precision in eight of the nine genomes
+(M. tuberculosis: 2 of 7 against 6 of 50). Promoting the pool would add mostly wrong annotations; the evidence
+the refinement weighs selects the correct ones.
