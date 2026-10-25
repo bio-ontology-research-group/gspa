@@ -92,6 +92,13 @@ class IntegrationState {
     Map<String, Double> pinnedFloors = new LinkedHashMap<>()
 
     /**
+     * Rescues made by the targeted priors (one map per rescued claim: prior, mode,
+     * category, functionKey, likelihood, score, target). Written by
+     * {@code gspa integrate} next to the output as {@code <out>.rescues.tsv}.
+     */
+    List<Map> rescueLog = []
+
+    /**
      * Metabolic gaps already closed by DarkMatter singleton promotions.
      * {@code DarkMatterSuggester} skips any gap whose (pathwayId,
      * reactionId) is in this set — guarantees monotone outer-loop progress.

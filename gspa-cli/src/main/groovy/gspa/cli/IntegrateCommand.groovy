@@ -555,6 +555,7 @@ class IntegrateCommand implements Runnable {
         // --- Write output TSV ---
         writeIntegratedOutputTsv(integrated, outFile)
         println "  Wrote: ${outFile}"
+        writeRescueLog(state, outFile)
 
         // --- Optional provenance JSON ---
         if (provenanceFile != null) {
@@ -576,6 +577,24 @@ class IntegrateCommand implements Runnable {
             mapper.writerWithDefaultPrettyPrinter().writeValue(provenanceFile, provList)
             println "  Provenance: ${provenanceFile}"
         }
+    }
+
+    /** Rescues made by the targeted priors, as {@code <out>.rescues.tsv} (only when any were made). */
+    private static void writeRescueLog(IntegrationState state, File targetOutFile) {
+        if (state == null || state.rescueLog == null || state.rescueLog.isEmpty()) return
+        File f = new File(targetOutFile.parentFile ?: new File('.'), "${targetOutFile.name}.rescues.tsv")
+        f.withWriter('UTF-8') { w ->
+            w.writeLine("prior\tmode\tcategory\tprotein_id\tfunction_id\tlikelihood_prob\tscore\ttarget")
+            for (Map r : state.rescueLog) {
+                String[] parts = IntegrationState.splitFunctionKey(r.functionKey as String)
+                String pid = parts != null ? parts[0] : ''
+                String fid = parts != null ? parts[2] : (r.functionKey as String)
+                String sc = (r.score instanceof Number && !Double.isNaN((r.score as Number).doubleValue())) ? String.format(Locale.ROOT, '%.4f', (r.score as Number).doubleValue()) : ''
+                String tg = (r.target instanceof Number && !Double.isNaN((r.target as Number).doubleValue())) ? String.format(Locale.ROOT, '%.2f', (r.target as Number).doubleValue()) : ''
+                w.writeLine("${r.prior}\t${r.mode}\t${r.category}\t${pid}\t${fid}\t${String.format(Locale.ROOT, '%.4f', (r.likelihood as Number).doubleValue())}\t${sc}\t${tg}")
+            }
+        }
+        println "  Wrote: ${f} (${state.rescueLog.size()} rescues)"
     }
 
     private static void writeIntegratedOutputTsv(IntegratedAnnotationSet integrated, File targetOutFile) {
@@ -778,6 +797,7 @@ class IntegrateCommand implements Runnable {
                     runStage2Enforcement(state, integrated, rowEnforceMode, null, false)
                 }
                 writeIntegratedOutputTsv(integrated, rowOutFile)
+                writeRescueLog(state, rowOutFile)
 
                 double elapsedSec = (System.nanoTime() - tStart) / 1e9d
                 Runtime rt = Runtime.getRuntime()
@@ -1488,6 +1508,14 @@ class IntegrateCommand implements Runnable {
         if ('essentiality' in enabled) {
             def p = new EssentialityPrior()
             if (theta.alpha_ess != null) p.alphaEss = (theta.alpha_ess as Number).doubleValue()
+            if (theta.ess_rescue_mode != null) p.rescueMode = theta.ess_rescue_mode as String
+            if (theta.ess_rescue_target != null) p.rescueTarget = (theta.ess_rescue_target as Number).doubleValue()
+            if (theta.ess_min_candidate != null) p.minCandidate = (theta.ess_min_candidate as Number).doubleValue()
+            if (theta.ess_max_rescue != null) p.maxRescuePerCategory = (theta.ess_max_rescue as Number).intValue()
+            if (theta.ess_w_support != null) p.wSupport = (theta.ess_w_support as Number).doubleValue()
+            if (theta.ess_w_free != null) p.wFree = (theta.ess_w_free as Number).doubleValue()
+            if (theta.ess_w_competing != null) p.wCompeting = (theta.ess_w_competing as Number).doubleValue()
+            if (theta.ess_w_context != null) p.wContext = (theta.ess_w_context as Number).doubleValue()
             engine.register(p, (priorWeights.essentiality ?: 1.0) as double)
         }
         if ('coherence' in enabled) {
