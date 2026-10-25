@@ -20,7 +20,7 @@ Inputs
 ------
 Two REST endpoints (no API key, no auth):
   https://rest.kegg.jp/list/module          module_id<TAB>name
-  https://rest.kegg.jp/link/ec/module       md:M*<TAB>ec:*
+  https://rest.kegg.jp/link/enzyme/module       md:M*<TAB>ec:*
 
 Plus the ec2go file already on disk to map EC -> GO.
 
@@ -81,7 +81,7 @@ def main() -> None:
 
     print("Fetching module -> EC links ...", flush=True)
     pairs: list[tuple[str, str]] = []
-    for line in fetch("https://rest.kegg.jp/link/ec/module").splitlines():
+    for line in fetch("https://rest.kegg.jp/link/enzyme/module").splitlines():
         f = line.split("\t")
         if len(f) < 2:
             continue

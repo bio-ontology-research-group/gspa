@@ -52,6 +52,34 @@ zero. Genome size and GC content can be derived from the supplied FASTA.
 The header and evidence-source lists describe the current workspace rather
 than a built-in example sample.
 
+## Explore the results
+
+The opening summary distinguishes proteins from integrated annotations. A protein
+without an integrated annotation is not necessarily without function. Sequence
+statistics and supplied CheckM/BUSCO measurements are available under
+**Sequence and external quality measurements**; missing quality assessments stay
+explicitly unmeasured.
+
+Search by protein, gene, contig, GO/EC identifier, or a term name supplied by the
+label files. The table shows a matching annotation and its evidence source.
+**Refine results** exposes the score, annotation category, source and protein
+feature filters. Annotation filters must match the same annotation: an unrelated
+high score cannot rescue a low-scoring search hit. A positive integrated-score
+threshold excludes tool-only predictions. **Reset search and filters** restores
+the complete protein list.
+
+Open a protein to inspect all annotations, with search matches highlighted.
+Integrated and tool-only scores are labelled separately. Protein-only inputs
+show coordinates as unavailable. Use Escape to close the details and return to
+the selected protein. Tabs support arrow-key navigation; the protein list supports
+keyboard scrolling. On phones, protein, matching annotation and score remain
+visible together; opening a protein reveals the full evidence.
+
+The **Functions** view summarizes integrated scores and excludes raw tool-only
+scores from its distributions. Select a common annotation to open its candidate
+proteins at the indicated score threshold. The annotations table works offline;
+the genome viewer loads its library from the internet.
+
 ## Workspace layout
 
 Paths are relative to `--workdir`; `<id>` is the genome identifier and `<run>`

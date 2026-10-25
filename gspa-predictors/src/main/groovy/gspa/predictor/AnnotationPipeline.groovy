@@ -126,6 +126,7 @@ class AnnotationPipeline {
                         database: config.predictors.similarity.database,
                         evalue: config.predictors.similarity.evalue,
                         maxTargetSeqs: config.predictors.similarity.maxTargetSeqs,
+                        assignProductNames: config.predictors.similarity.assignProductNames,
                     )
                     predictors << p
                     break
@@ -729,6 +730,30 @@ class AnnotationPipeline {
      */
     void writeOutput(Genome genome, File outputDir) {
         outputDir.mkdirs()
+        gspa.io.FastaWriter.writeProteins(genome.proteins, new File(outputDir, "${genome.id}.faa"))
+        new File(outputDir, "${genome.id}_proteins.tsv").withWriter { w ->
+            w.writeLine('protein_id\tcontig\tstart\tend\tstrand\tlocus_tag\tgene\tproduct\tproduct_source\thomology_accession\tidentity\tquery_coverage\tsubject_coverage\tlength_aa')
+            genome.proteins.each { p ->
+                def f = p.sourceFeature
+                String product = f?.attributes?.get('product')?.first() ?: ''
+                String origin = product ? 'input annotation' : ''
+                def hit = p.annotations.annotations.findAll { it.type == gspa.model.AnnotationType.CUSTOM && it.metadata?.annotationType == 'product' }.max { it.metadata.bitscore ?: it.score }
+                if ((!product || product.toLowerCase().startsWith('hypothetical') || product.toLowerCase().startsWith('uncharacterized') || product == 'Predicted CDS') && hit) {
+                    product = hit.value
+                    origin = 'Swiss-Prot homology (putative)'
+                    if (f != null) {
+                        f.attributes['product'] = [product]
+                        f.attributes['product_source'] = [origin]
+                        f.attributes['homology_accession'] = [hit.metadata.hitAccession ?: '']
+                    }
+                }
+                def row = [p.id, p.contig?.id ?: '', p.start, p.end, p.strand.symbol,
+                    f?.locusTag ?: p.id, f?.attributes?.get('gene')?.first() ?: '', product, origin,
+                    hit?.metadata?.hitAccession ?: '', hit?.metadata?.pident ?: '',
+                    hit?.metadata?.queryCoverage ?: '', hit?.metadata?.subjectCoverage ?: '', p.length]
+                w.writeLine(row.collect { it.toString().replaceAll(/[\t\r\n]/, ' ') }.join('\t'))
+            }
+        }
 
         if (config.output.formats.contains('gff3')) {
             def gffFile = new File(outputDir, "${genome.id}.gff3")

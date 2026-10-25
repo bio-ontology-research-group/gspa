@@ -117,11 +117,53 @@ def browser(case):
             out.write('\t'.join(f) + '\n')
     operons = base / 'annot/operons.tsv'
     if operons.exists(): shutil.copyfile(operons, base / 'gspa_out/operons.tsv')
-    # Explicit empty lookups avoid machine-specific defaults. GO IDs remain visible.
-    (ROOT / 'data/no-labels.obo').write_text('format-version: 1.2\n')
+    # A small, sourced display dictionary makes lesson terms searchable by name.
+    # It is passed only to visualization, never integration or quality evaluation.
+    shutil.copyfile(Path(__file__).with_name('lesson-terms.obo'), ROOT / 'data/browser-labels.obo')
     (ROOT / 'data/no-ec-labels.txt').write_text('! No EC labels installed in this compact tutorial\n')
     print('Browser metadata prepared from real CDS coordinates / supplied protein identifiers.')
 
 
+# Only these lesson terms are named here; the browser still shows all original IDs.
+LESSON_TERMS = {
+    'bacteria': [('GO:0009088', 'L-threonine biosynthetic process')],
+    'archaea': [('GO:0005634', 'nucleus')],
+    'eukaryote': [('GO:0005634', 'nucleus'), ('GO:0005739', 'mitochondrion')],
+    'mag': [('GO:0009088', 'L-threonine biosynthetic process')],
+    'metagenome': [('GO:0009088', 'L-threonine biosynthetic process'), ('GO:0019073', 'viral DNA genome packaging')],
+    'virus': [('GO:0019073', 'viral DNA genome packaging')],
+    'prokaryote': [('GO:0009088', 'L-threonine biosynthetic process')],
+}
+
+
+def inspect(case):
+    base = ROOT / case
+    stat = json.loads((base / 'summary.json').read_text())
+    with (base / 'gspa_out/integrated.tsv').open() as handle:
+        rows = list(csv.DictReader(handle, delimiter='\t'))
+    raw = annotations(case)
+    action_path = base / 'gspa_out/actions.tsv'
+    actions = []
+    if action_path.exists():
+        with action_path.open() as handle:
+            actions = list(csv.DictReader(handle, delimiter='\t'))
+    print(f"\n{case}: {stat['with_go_ec']:,} of {stat['proteins']:,} proteins have GO/EC sequence evidence.")
+    print(f"Proteins without GO/EC sequence evidence: {stat['proteins'] - stat['with_go_ec']:,}")
+    coordinates = dict(features(case))
+    for term, label in LESSON_TERMS[case]:
+        direct = {r['protein_id'] for r in raw if r['source'] == 'diamond' and r['value'] == term}
+        retained = {r['protein_id'] for r in rows if r['function_id'] == term}
+        removed = {r['protein_id'] for r in actions if r['term'] == term and r['action'] == 'remove'}
+        print(f'{term} ({label}): {len(direct)} direct candidates; {len(retained)} retained; {len(removed)} removals recorded.')
+        for pid in sorted(retained)[:5]:
+            feature = coordinates.get(pid)
+            location = f'{feature[0]}:{feature[3]}-{feature[4]}' if feature else 'supplied protein; no genomic position'
+            print(f'  {pid}  {location}')
+        if case == 'metagenome':
+            origins = Counter(coordinates[pid][0].rsplit('_', 1)[0] for pid in retained)
+            print('  Teaching contig origins: ' + ', '.join(f'{origin}={n}' for origin, n in sorted(origins.items())))
+    print('Candidate functions are hypotheses; these counts do not measure accuracy or pathway completeness.')
+
+
 if __name__ == '__main__':
-    {'claims': claims, 'summary': summary, 'browser': browser}[sys.argv[1]](sys.argv[2])
+    {'claims': claims, 'summary': summary, 'browser': browser, 'inspect': inspect}[sys.argv[1]](sys.argv[2])

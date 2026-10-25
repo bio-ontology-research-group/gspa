@@ -44,6 +44,21 @@ protein_003\tsp|P22222|ATPB_ECOLI\t45.3\t250\t300\t280\t5.0e-20\t120\tATP syntha
         outputDir.deleteDir()
     }
 
+    def "product transfer is independent of GO and EC, conservative and optional"() {
+        given:
+        def dir = File.createTempDir('diamond_names_', '')
+        new File(dir, 'diamond_results.tsv').text = "p1\tsp|P1|GENE_ECOLI\t85\t90\t100\t100\t1e-30\t100\tsp|P1|GENE_ECOLI Useful protein OS=Escherichia coli\n" +
+            "p2\tsp|P1|GENE_ECOLI\t85\t50\t100\t100\t1e-30\t100\tsp|P1|GENE_ECOLI Useful protein OS=Escherichia coli\n"
+        when:
+        def result = new DiamondPredictor().parseOutput(dir)
+        then:
+        result.p1.any { it.type == AnnotationType.CUSTOM && it.value == 'Useful protein' && it.metadata.queryCoverage == 90.0 }
+        !result.p2
+        new DiamondPredictor(assignProductNames: false).parseOutput(dir).isEmpty()
+        cleanup:
+        dir.deleteDir()
+    }
+
     def "should handle empty results"() {
         given:
         def predictor = new DiamondPredictor()

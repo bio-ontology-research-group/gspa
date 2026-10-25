@@ -137,6 +137,7 @@ class GffWriter {
      * Add functional annotations to a feature's GFF3 attributes.
      */
     private static void addAnnotationAttributes(gspa.model.Feature feature, Protein protein) {
+        feature.attributes['protein_id'] = [protein.id]
         def goTerms = protein.annotations.byType(AnnotationType.GO).collect { it.value }.unique()
         if (goTerms) {
             feature.attributes['Ontology_term'] = goTerms

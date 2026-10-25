@@ -4,6 +4,15 @@ import spock.lang.Specification
 
 class GoOntologySpec extends Specification {
 
+    def "xref annotation labels do not replace the GO class label"() {
+        given:
+        def go = new GoOntology()
+        go.loadOwl(new File(getClass().getResource('/test-ontology/go-xref-label.owl').toURI()))
+
+        expect:
+        go.getLabel('GO:0006457') == 'protein folding'
+    }
+
     def "getLabel returns the rdfs:label literal, not Boolean.toString()"() {
         // Regression: in Groovy, OWLLiteral.literal resolves to
         // OWLAnnotationValue.isLiteral() (boolean true) instead of

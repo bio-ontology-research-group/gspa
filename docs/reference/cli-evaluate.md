@@ -32,8 +32,9 @@ gspa evaluate -i genome.gff3 -a predictions.gaf --go-owl go.owl --lite \
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `-i`, `--input` | file | required | GFF3 file with the genome structure. Every CDS feature becomes a protein, identified by its GFF3 `ID`. |
-| `-a`, `--annotations` | file | none | GO annotations in GAF 2.x format (plain or `.gz`). Column 2 (`DB_Object_ID`) must match the CDS `ID` in the GFF3. Lines with a `NOT` qualifier and lines with fewer than 15 columns are skipped; the annotation score is derived from the evidence code. Without this option no proteins are created and the metrics are computed on an empty annotation. |
+| `-i`, `--input` | file | required | GFF3 file with the genome structure. Non-pseudogene CDS features are grouped by `protein_id`, falling back to `ID` then `locus_tag`. |
+| `--proteins` | file | none | Protein FASTA for evaluation without genomic coordinates, as an alternative to GFF3. |
+| `-a`, `--annotations` | file | none | GO annotations in GAF 2.x format (plain or `.gz`). Column 2 (`DB_Object_ID`) must match that protein identifier. Lines with a `NOT` qualifier and lines with fewer than 15 columns are skipped; the annotation score is derived from the evidence code. Without this option no proteins are created and the metrics are computed on an empty annotation. |
 | `--go-owl` | path | required | GO in OWL format. |
 | `-k`, `--kingdom` | string | `bacteria` | Selects the essential-function profile (`bacteria`, `archaea`, `eukaryote`/`eukarya`/`eukaryota`, `virus`/`viruses`; anything else uses the bacterial profile). When `--taxon` is not given, the kingdom is also asserted as the organism taxon for the consistency check (`bacteria`, `archaea`, `eukaryote` and `eukaryota` are mapped to NCBI taxa; other strings are passed through unchanged). |
 | `--taxon` | string | none | Organism taxon asserted during the consistency check: `NCBITaxon_562`, `NCBITaxon:562`, `562`, or one of `bacteria`, `archaea`, `eukaryote`, `eukaryota`, `fungi`, `yeast`, `metazoa`, `viridiplantae`, `plant`. Overrides the taxon implied by `-k`. |

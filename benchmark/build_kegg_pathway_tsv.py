@@ -70,14 +70,14 @@ def main():
             if pid_raw.startswith('ec'):
                 pid_numeric = pid_raw[2:]
             elif pid_raw.startswith('map'):
-                continue  # handled via the ec-prefixed duplicate
+                pid_numeric = pid_raw[3:]
             else:
                 pid_numeric = pid_raw
             if args.skip_global and pid_numeric in drop:
                 continue
             go_term = ec2go.get(ec, '')
             # Reaction ID = pathway-local index (we don't have KEGG reactions linked here)
-            pathway_reactions.setdefault(pid_numeric, []).append((ec, go_term))
+            pathway_reactions.setdefault(pid_numeric, set()).add((ec, go_term))
 
     with open(args.out, 'w') as out:
         out.write('pathway_id\tpathway_name\tgo_term\treaction_id\tec_number\tdepends_on\n')
@@ -85,7 +85,7 @@ def main():
         for pid_numeric, ecs in pathway_reactions.items():
             name = names.get(pid_numeric, f'pathway {pid_numeric}')
             pathway_id = f'KEGG:{pid_numeric}'
-            for idx, (ec, go) in enumerate(ecs):
+            for idx, (ec, go) in enumerate(sorted(ecs)):
                 rxn = f'RXN-{pid_numeric}-{idx+1}'
                 out.write(f'{pathway_id}\t{name}\t{go}\t{rxn}\tEC:{ec}\t\n')
                 total_rows += 1

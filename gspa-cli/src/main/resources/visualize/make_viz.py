@@ -107,6 +107,12 @@ def load_prokka(tsv_path: Path, gff_path: Path):
                 "ec_prokka": row.get("EC_number", "") or None,
                 "cog": row.get("COG", "") or None,
                 "product": row.get("product", "") or "",
+                "product_source": row.get("product_source", ""),
+                "original_locus_tag": row.get("original_locus_tag", ""),
+                "homology_accession": row.get("homology_accession", ""),
+                "identity": row.get("identity", ""),
+                "query_coverage": row.get("query_coverage", ""),
+                "subject_coverage": row.get("subject_coverage", ""),
             }
     # GFF: contig, start, end, strand
     with open(gff_path) as fh:
@@ -226,7 +232,7 @@ def _hypergeom_sf(k, M, K, N):
         if log_pmf > -700: p += math.exp(log_pmf)
     return min(1.0, p)
 
-def name_operons(operons, annos, go_dict, proteins_dict, pathway_detail):
+def name_operons(operons, annos, go_dict, proteins_dict, pathway_detail, ec_to_go=None):
     """Annotate each operon dict in-place with `name`, `name_term`, `name_pvalue`,
     `name_fold`, `pathways` (top-3 enriched, each with id/name/k/M/K/N/p/fold),
     `dominant_pathway` / `dominant_pathway_name` / `n_in_pathway` (set only when
@@ -250,8 +256,9 @@ def name_operons(operons, annos, go_dict, proteins_dict, pathway_detail):
     by_protein_any = defaultdict(set)
     for a in annos:
         if a["post"] < 0.5 or a.get("tool_only"): continue
-        if not a["term"].startswith("GO:"): continue
-        by_protein_any[a["protein_id"]].add(a["term"])
+        term = (ec_to_go or {}).get(a["term"], a["term"])
+        if not term.startswith("GO:"): continue
+        by_protein_any[a["protein_id"]].add(term)
         if a["aspect"] == "P":
             by_protein_bp[a["protein_id"]].add(a["term"])
     # Genome backgrounds for hypergeometric (N = annotated proteins; K = proteins
@@ -335,12 +342,13 @@ def name_operons(operons, annos, go_dict, proteins_dict, pathway_detail):
             prods = Counter()
             for pid in op["members"]:
                 p = proteins_dict.get(pid)
-                if p and p.get("product") and not p["product"].lower().startswith("hypothetical"):
+                if p and p.get("product") and not re.match(r"^(hypothetical|predicted CDS|uncharacterized|supplied protein)", p["product"], re.I):
                     prods[p["product"]] += 1
             if prods:
                 lab, n = prods.most_common(1)[0]
-                op["name"] = lab
-                op["name_count"] = n
+                if n >= 2:
+                    op["name"] = lab
+                    op["name_count"] = n
 
         # ---- Pathway enrichment
         members_with_any = sum(1 for pid in op["members"] if by_protein_any.get(pid))
@@ -362,7 +370,8 @@ def name_operons(operons, annos, go_dict, proteins_dict, pathway_detail):
             fold = (k / members_with_any) / (K / n_proteins_with_any) if K > 0 else 0
             req = pw_required_count.get(pw_id) or 1
             # Coverage: fraction of pathway enzymes the operon contributes.
-            coverage = k / req if req > 0 else 0
+            matched_terms = set().union(*(by_protein_any.get(pid, set()) for pid in mems)) & pw_to_terms[pw_id]
+            coverage = len(matched_terms) / req if req > 0 else 0
             scored.append({
                 "id": pw_id,
                 "name": pw_name.get(pw_id, pw_id),
@@ -569,8 +578,8 @@ PREDICTOR_LABELS = {
     "proteinfer": "ProteInfer (CNN, EC + GO)",
     "clean": "CLEAN (EC, contrastive ESM1b)",
     "deepec": "DeepEC (EC)",
-    "amrfinder": "AmrFinderPlus (AMR HMM/blast)",
-    "amrfinderplus": "AmrFinderPlus (AMR HMM/blast)",
+    "amrfinder": "AMRFinderPlus (AMR, stress, virulence)",
+    "amrfinderplus": "AMRFinderPlus (AMR, stress, virulence)",
     "antismash": "antiSMASH (BGCs)",
     "psortb": "PSORTb (localization)",
 }
@@ -779,7 +788,7 @@ def main():
 
     print("Loading AMR ...", flush=True)
     amr = load_amr(W / "amrfinder_out" / f"{GENOME_ID}.amr.tsv")
-    amr_pids = {r["Protein id"] for r in amr}
+    amr_pids = {r["Protein id"] for r in amr if r.get("Type", "AMR") == "AMR"}
     print(f"  {len(amr)} AMR hits", flush=True)
 
     print("Loading BGCs ...", flush=True)
@@ -889,8 +898,12 @@ def main():
     qpath = RUN_DIR / "quality_gspa.json"
     if not qpath.exists():
         qpath = W / "gspa_full2_out" / "quality_gspa.json"
-    quality_available = qpath.exists()
-    if quality_available:
+    analysis_path = RUN_DIR / "analyses.json"
+    analysis_status = json.loads(analysis_path.read_text()) if analysis_path.exists() else {}
+    manifest_path = W / 'manifest.json'
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+    quality_available = qpath.exists() and analysis_status.get("quality", {}).get("status") != "skipped"
+    if qpath.exists():
         with qpath.open() as fh:
             quality = json.load(fh)
     else:
@@ -901,6 +914,23 @@ def main():
             "coherence": {"process_coherence": None, "pathway_coherence": None, "complex_coherence": None},
             "consistency": {"consistent": None, "violation_count": None},
         }
+
+    if analysis_status.get("quality", {}).get("status") == "skipped":
+        quality["summary"] = {"annotated_proteins": None, "annotation_coverage": None, "composite_score": None}
+        quality["completeness"] = {"score": None, "present_count": None, "missing_count": None, "missing_functions": []}
+        quality["consistency"] = {"consistent": None, "violation_count": None}
+        quality.setdefault("coherence", {}).update(process_coherence=None, complex_coherence=None)
+    if analysis_status.get("pathways", {}).get("status") == "skipped":
+        quality.setdefault("coherence", {}).update(pathway_detail=[], pathway_coherence=None)
+
+    # Module report written by `gspa integrate --module-defs` next to integrated.tsv:
+    # evidence-gated KEGG module completeness before/after refinement, changed annotations, gaps.
+    mpath = RUN_DIR / "integrated.tsv.modules.json"
+    modules_report = None
+    if mpath.exists():
+        with mpath.open() as fh:
+            modules_report = json.load(fh)
+        print(f"  module report: {modules_report['summary'].get('modules_activated_after')} activated modules", flush=True)
 
     print("Loading sample meta ...", flush=True)
     meta = load_genome_meta()
@@ -929,7 +959,7 @@ def main():
         # Build a quick {GO id: [name, ns]} dict from go.obo for naming.
         used_terms = set(a["term"] for a in annos if a["term"].startswith("GO:"))
         go_dict_for_naming = {t: list(go[t]) for t in used_terms if t in go}
-        name_operons(operons, annos, go_dict_for_naming, proteins, pathway_detail_raw)
+        name_operons(operons, annos, go_dict_for_naming, proteins, pathway_detail_raw, ec_to_go)
         enrich_pathways_with_operons(pathway_detail_raw, operons)
         named = sum(1 for op in operons if op.get("name"))
         with_pw = sum(1 for op in operons if op.get("dominant_pathway"))
@@ -1015,6 +1045,8 @@ def main():
     term_protein_med = defaultdict(set)   # term -> set(pids) at posterior >= 0.5
     posterior_hist = [0]*20  # 0.05 bins
     for a in annos:
+        if a.get("tool_only"):
+            continue
         if a["aspect"] in ("P","F","C"):
             aspect_count_all[a["aspect"]] += 1
             if a["post"] >= 0.7: aspect_count_high[a["aspect"]] += 1
@@ -1025,11 +1057,11 @@ def main():
             if a["post"] >= 0.7:
                 term_protein_high[a["term"]].add(a["protein_id"])
 
-    top_terms = sorted(term_protein_high.items(), key=lambda kv: -len(kv[1]))[:60]
+    top_terms = sorted(term_protein_med.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:60]
     top_terms_data = []
     for term, pids in top_terms:
-        label, ns = go.get(term, (term, "?"))
-        top_terms_data.append({"term": term, "label": label, "aspect": ns, "n_high": len(pids), "n_med": len(term_protein_med.get(term, set()))})
+        label, ns = (ec_name.get(term, term), "EC") if term.startswith("EC:") else go.get(term, (term, "?"))
+        top_terms_data.append({"term": term, "label": label, "aspect": ns, "n_high": len(term_protein_high.get(term, set())), "n_med": len(pids)})
 
     # Predictor stats: count claims supported per predictor
     pred_counts = Counter()
@@ -1078,6 +1110,7 @@ def main():
             "st": p.get("strand", "+"),
             "l": p.get("length_aa", 0),
             "pr": p.get("product", ""),
+            "product_evidence": {key: p.get(key, "") for key in ("product_source", "original_locus_tag", "homology_accession", "identity", "query_coverage", "subject_coverage")},
             "g": p.get("gene"),
             "ec": p.get("ec_prokka"),
             "f": flags,
@@ -1117,9 +1150,25 @@ def main():
     def optional_number(value, convert=float):
         return convert(value) if value not in (None, "", "N/A") else None
 
+    analysis_path = RUN_DIR / "analyses.json"
+    analysis_status = json.loads(analysis_path.read_text()) if analysis_path.exists() else {}
+    metabolism = {}
+    model_path = RUN_DIR / "metabolism/fba_output.json"
+    if model_path.exists():
+        result = json.loads(model_path.read_text())
+        metabolism = {k: v for k, v in result.items() if not isinstance(v, (list, dict))}
+        metabolism["model"] = result.get("model", {})
+        conditions = model_path.parent / "conditions.json"
+        metabolism["conditions"] = json.loads(conditions.read_text()) if conditions.exists() else {}
+        metabolism["downloads"] = {name: (model_path.parent / name).read_text() for name in
+            ("metabolic_model.xml", "reactions.tsv") if (model_path.parent / name).exists()}
     payload = {
+        "analyses": analysis_status,
+        "metabolism": metabolism,
         "genome": {
             "id": GENOME_ID,
+            "display_name": manifest.get('input_name', GENOME_ID),
+            "context": manifest.get('preset', ''),
             "size_bp": optional_number(meta["checkm"]["Genome_Size"], int),
             "n_contigs": optional_number(meta["checkm"]["Total_Contigs"], int),
             "n_proteins": len(proteins),
@@ -1146,6 +1195,10 @@ def main():
                 [{"id": t, "name": go.get(t, [t])[0]} for t in quality["completeness"]["missing_functions"]],
             "process_coherence": quality["coherence"]["process_coherence"],
             "pathway_coherence": quality["coherence"]["pathway_coherence"],
+            "module_coherence": quality["coherence"].get("module_coherence"),
+            "modules_activated": quality["coherence"].get("modules_activated"),
+            "modules_complete": quality["coherence"].get("modules_complete"),
+            "modules_assessed": quality["coherence"].get("modules_assessed"),
             "complex_coherence": quality["coherence"]["complex_coherence"],
             "process_unsatisfied": quality["coherence"].get("process_unsatisfied_pairs") or [],
             "pathway_detail": quality["coherence"].get("pathway_detail") or [],
@@ -1153,6 +1206,7 @@ def main():
             "violation_count": quality["consistency"]["violation_count"],
             "composite": quality["summary"]["composite_score"],
         },
+        "modules": modules_report,
         "predictors": predictors_data,
         "go": go_dict,
         "ec": ec_dict,
@@ -1182,10 +1236,10 @@ def main():
                                          fasta_path=FASTA_PATH),
         "stats": {
             "n_annotations": len(annos),
-            "n_high": sum(1 for a in annos if a["post"] >= 0.7),
-            "n_med": sum(1 for a in annos if 0.5 <= a["post"] < 0.7),
-            "n_low": sum(1 for a in annos if 0.3 <= a["post"] < 0.5),
-            "n_spec": sum(1 for a in annos if a["post"] < 0.3),
+            "n_high": sum(1 for a in annos if not a.get("tool_only") and a["post"] >= 0.7),
+            "n_med": sum(1 for a in annos if not a.get("tool_only") and 0.5 <= a["post"] < 0.7),
+            "n_low": sum(1 for a in annos if not a.get("tool_only") and 0.3 <= a["post"] < 0.5),
+            "n_spec": sum(1 for a in annos if not a.get("tool_only") and a["post"] < 0.3),
             "aspect_high": dict(aspect_count_high),
             "aspect_all": dict(aspect_count_all),
             "posterior_hist": posterior_hist,
@@ -1218,7 +1272,7 @@ def main():
 # 11. HTML template
 
 def build_html(payload: dict) -> str:
-    payload_json = json.dumps(payload, separators=(",", ":"))
+    payload_json = json.dumps(payload, separators=(",", ":")).replace("<", "\\u003c")
     return TEMPLATE.replace("__PAYLOAD__", payload_json)
 
 
@@ -1226,16 +1280,17 @@ TEMPLATE = r"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GSPA annotation browser</title>
 <style>
   :root {
-    --bg: #fafaf8;
+    --bg: #f4f7f8;
     --panel: #ffffff;
-    --ink: #1c2433;
-    --muted: #6b7383;
-    --line: #e2e5ec;
+    --ink: #203343;
+    --muted: #536575;
+    --line: #d6e1e5;
     --accent: #1f4e79;
-    --accent2: #2b6cb0;
+    --accent2: #156e70;
     --high: #2f855a;
     --med: #b7791f;
     --low: #c05621;
@@ -1257,7 +1312,7 @@ TEMPLATE = r"""<!doctype html>
   code, .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; }
 
   header {
-    background: linear-gradient(180deg, #ffffff 0%, #f1f3f9 100%);
+    background: var(--panel);
     border-bottom: 1px solid var(--line);
     padding: 18px 28px 14px;
   }
@@ -1278,7 +1333,7 @@ TEMPLATE = r"""<!doctype html>
     padding: 10px 14px; min-width: 140px;
     box-shadow: 0 1px 1px rgba(0,0,0,.02);
   }
-  .card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .card .label { font-size: 11px; color: var(--muted);  }
   .card .value { font-size: 22px; font-weight: 600; color: var(--ink); margin-top: 2px; }
   .card .unit { font-size: 12px; color: var(--muted); margin-left: 4px; }
   .card.green .value { color: var(--high); }
@@ -1319,13 +1374,13 @@ TEMPLATE = r"""<!doctype html>
   .table-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
   .table-head, .table-row {
     display: grid;
-    grid-template-columns: 160px 60px 250px 100px 80px 60px 80px 80px 60px 110px;
+    grid-template-columns: 190px minmax(160px, 1fr) minmax(240px, 1.4fr) 100px 100px 160px;
     gap: 8px;
     padding: 6px 12px; align-items: center;
     border-bottom: 1px solid var(--line);
     font-size: 13px;
   }
-  .table-head { background: #f6f7fb; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .table-head { background: #f6f7fb; font-weight: 600; color: var(--muted); font-size: 11px;  }
   .table-head > div { cursor: pointer; user-select: none; }
   .table-head > div:hover { color: var(--ink); }
   .table-row { cursor: pointer; }
@@ -1361,6 +1416,14 @@ TEMPLATE = r"""<!doctype html>
   .chip.high { background: #e6f4ec; color: var(--high); }
   .chip.med { background: #fdf2dc; color: var(--med); }
   .chip.low { background: #fae5d3; color: var(--low); }
+  .rxn.changed { background: #d9f0e3; color: #1e6b45; border: 1px dashed #2f855a; }
+  .rxn.evidence { background: #fdf2dc; color: var(--med); }
+  .rxn.partial { background: #fde8d0; color: var(--low); }
+  .rxn.unmappable { background: #eef0f4; color: #667085; }
+  .rxn.forbidden { background: #eef0f4; color: #98a2b3; text-decoration: line-through; }
+  .mod-steps { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .mod-change { font-size:12px; margin-top:4px; padding:4px 8px; background:#f6fbf8; border-left:3px solid #2f855a; }
+  .mod-gap { font-size:12px; margin-top:4px; padding:4px 8px; background:#fbf7f2; border-left:3px solid #b7791f; }
   .chip.spec { background: #f6e1ee; color: var(--spec); }
   .chip.amr { background: #fdd7d4; color: var(--amr); }
   .chip.bgc { background: #e9e0fa; color: var(--bgc); }
@@ -1417,7 +1480,7 @@ TEMPLATE = r"""<!doctype html>
   #detail .product { font-size: 14px; margin-bottom: 12px; color: var(--ink); }
   #detail .aspect-block { margin-top: 14px; }
   #detail .aspect-block h3 {
-    font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em;
+    font-size: 12px; color: var(--muted);
     margin: 0 0 6px; border-bottom: 1px solid var(--line); padding-bottom: 4px;
   }
   #detail .anno {
@@ -1446,7 +1509,7 @@ TEMPLATE = r"""<!doctype html>
   .donut { width: 140px; height: 140px; }
 
   .top-terms { display: grid; grid-template-columns: 60px 1fr 80px 80px; gap: 8px; padding: 4px 0; font-size: 13px; align-items: center; border-bottom: 1px solid #f1f2f6; }
-  .top-terms.head { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  .top-terms.head { font-size: 11px; color: var(--muted);  border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 
   .hist { display: flex; gap: 1px; align-items: flex-end; height: 80px; padding: 4px; background: #f7f8fb; border-radius: 4px; }
   .hist > div { flex: 1; background: var(--accent2); min-height: 1px; opacity: .8; }
@@ -1484,113 +1547,218 @@ TEMPLATE = r"""<!doctype html>
   table.amr-table th, table.bgc-table th {
     padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top;
   }
-  table.amr-table th, table.bgc-table th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  table.amr-table th, table.bgc-table th { font-size: 11px; color: var(--muted);  }
+
+  /* Exploration first: restrained summary, readable evidence, optional specialist controls. */
+  button, input, select { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible,
+  summary:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent2); outline-offset: 3px; }
+  [hidden] { display: none !important; }
+  .intro { max-width: 74ch; margin: 8px 0 0; }
+  .metric-cards { gap: 24px; padding: 14px 0 4px; }
+  .card { padding: 0 24px 0 0; min-width: 0; border: 0; border-right: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+  .card:last-child { border-right: 0; }
+  .card .label { font-size: 13px; }
+  .card .value { font-size: 24px; font-variant-numeric: tabular-nums; }
+  #sample-details { margin-top: 10px; color: var(--muted); font-size: 13px; }
+  #sample-details summary { cursor: pointer; }
+  #sample-measurements { display: grid; grid-template-columns: minmax(160px, 240px) 1fr; max-width: 580px; gap: 6px; }
+  #sample-measurements dd { margin: 0; color: var(--ink); }
+  .availability { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+  .text-button { padding: 0; color: var(--accent2); border: 0; background: none; text-decoration: underline; }
+  nav.tabs { overflow-x: auto; }
+  nav.tabs button { flex-shrink: 0; white-space: nowrap; }
+  .explore-heading { margin: 0 0 12px; font-size: 20px; font-weight: 600; }
+  .search-box { display: block; font-weight: 600; }
+  #search { display: block; width: 100%; margin-top: 6px; padding: 12px; border: 1px solid #8199a7; border-radius: 4px; background: white; }
+  .search-help { margin: 6px 0 12px; max-width: 78ch; color: var(--muted); }
+  .filters { background: white; border: 1px solid var(--line); border-radius: 4px; }
+  .filters summary { cursor: pointer; padding: 10px 14px; font-weight: 600; }
+  .filters .filter-bar { margin: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+  .filter-bar label { font-size: 13px; }
+  .filter-note { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 12px; }
+  .results-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 14px 0 8px; }
+  #row-count { font-weight: 600; }
+  #filter-status { color: var(--muted); font-size: 13px; }
+  .secondary-button { border: 1px solid #8199a7; border-radius: 4px; background: white; color: var(--ink); padding: 6px 12px; }
+  #reset-filters { margin-left: auto; }
+  #tab-proteins .table-wrap { overflow-x: auto; }
+  #tab-proteins .table-head, #tab-proteins .virt { min-width: 1030px; }
+  #tab-proteins .table-head { min-height: 44px; font-size: 12px; }
+  #tab-proteins .table-head button { border: 0; padding: 4px 0; text-align: left; color: inherit; background: none; font-weight: 600; }
+  #tab-proteins .table-row { height: 68px; }
+  #tab-proteins .table-row > div { min-width: 0; }
+  #tab-proteins .table-row .best-term { overflow: hidden; }
+  #tab-proteins .table-row .best-term b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .protein-link { background: none; border: 0; color: var(--accent); padding: 2px 0; font: inherit; font-weight: 600; text-align: left; }
+  .row-note { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .score-number { font-variant-numeric: tabular-nums; font-weight: 600; }
+  #empty-results { padding: 28px 16px; background: white; border: 1px solid var(--line); }
+  #empty-results h3 { margin: 0 0 8px; }
+  #empty-results p { margin: 0; max-width: 70ch; }
+  #detail-backdrop { position: fixed; inset: 0; background: rgba(32,51,67,.25); z-index: 99; }
+  #detail { width: 620px; max-width: 100%; visibility: hidden; }
+  #detail.open { visibility: visible; }
+  #detail h2 { padding-right: 32px; overflow-wrap: anywhere; }
+  #detail .meta, #detail .product { overflow-wrap: anywhere; }
+  #detail .close { width: 36px; height: 36px; }
+  #detail .anno.search-match { border-left: 3px solid var(--accent2); padding-left: 10px; background: #edf7f6; }
+  #detail .detail-help { margin: 12px 0; color: var(--muted); font-size: 13px; max-width: 68ch; }
+  @media (max-width: 700px) {
+    header, main { padding: 16px; }
+    header h1 .sub { display: block; margin: 6px 0 0; }
+    nav.tabs { padding: 0 4px; }
+    .metric-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .card { border: 0; padding: 0; }
+    .card .value { font-size: 22px; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .panel { min-width: 0; overflow-x: auto; }
+    .filter-bar { gap: 16px; }
+    .filter-bar input[type=search] { width: 100%; }
+    #detail { padding: 20px 16px 40px; }
+    .top-terms { grid-template-columns: 44px minmax(140px, 1fr) 60px 60px; }
+    #tab-proteins .table-head, #tab-proteins .virt { min-width: 0; }
+    #tab-proteins .table-head, #tab-proteins .table-row { grid-template-columns: minmax(110px, .9fr) minmax(120px, 1fr) 52px; gap: 6px; padding: 8px; }
+    #tab-proteins .table-head > :nth-child(2), #tab-proteins .table-row > :nth-child(2),
+    #tab-proteins .table-head > :nth-child(5), #tab-proteins .table-row > :nth-child(5),
+    #tab-proteins .table-head > :nth-child(6), #tab-proteins .table-row > :nth-child(6) { display: none; }
+    #tab-proteins .protein-link { font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .virt { height: 55vh; min-height: 300px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+  }
+
 </style>
 </head>
 <body>
 
 <header>
-  <h1>GSPA · <span id="genome-id"></span> <span class="sub" id="closest-sp"></span></h1>
+  <h1>GSPA: <span id="genome-id"></span> <span class="sub" id="closest-sp"></span></h1>
   <div class="lineage" id="lineage"></div>
   <div class="lineage" style="margin-top:4px;" id="env"></div>
+  <p class="intro">Explore candidate protein functions, inspect their supporting evidence, and connect them with genomic context.</p>
   <div class="metric-cards" id="cards"></div>
+  <p class="availability"><span id="quality-status"></span> <button class="text-button" id="quality-link">View quality assessment</button></p>
+  <details id="sample-details" hidden><summary>Sequence and external quality measurements</summary><dl id="sample-measurements"></dl></details>
 </header>
 
-<nav class="tabs">
+<nav class="tabs" role="tablist" aria-label="Explore annotation results">
   <button data-tab="proteins" class="active">Proteins</button>
+  <button data-tab="enzymes">Enzymes (EC)</button>
   <button data-tab="functions">Functions</button>
   <button data-tab="genome">Genome browser</button>
   <button data-tab="operons">Operons</button>
   <button data-tab="pathways">Pathways</button>
   <button data-tab="special">Special features</button>
-  <button data-tab="quality">Quality (GAEF)</button>
-  <button data-tab="pipeline">Pipeline</button>
+  <button data-tab="metabolism">Metabolism</button>
+  <button data-tab="quality">Quality assessment</button>
+  <button data-tab="pipeline">Evidence sources</button>
 </nav>
 
 <main>
   <section id="tab-proteins" class="active">
-    <div class="filter-bar">
-      <input type="search" id="search" placeholder="Search protein ID, product, gene, EC, GO term ..." />
-      <label>min posterior <input type="range" id="thresh" min="0" max="100" value="0" step="5"> <span id="thresh-val">0.00</span></label>
-      <label>aspect
-        <label><input type="checkbox" data-aspect="P" checked> P</label>
-        <label><input type="checkbox" data-aspect="F" checked> F</label>
-        <label><input type="checkbox" data-aspect="C" checked> C</label>
-      </label>
-      <label>predictor
-        <select id="pred-sel"><option value="">any</option></select>
-      </label>
-      <label>only
-        <select id="flag-sel">
-          <option value="">all proteins</option>
-          <option value="hyp">hypothetical (input)</option>
-          <option value="amr">AMR</option>
-          <option value="bgc">BGC region</option>
-          <option value="operon">in operon</option>
-          <option value="not_operon">not in operon</option>
-          <option value="membrane">membrane (CC)</option>
-          <option value="secreted">secreted/extracellular</option>
-          <option value="enzyme">enzyme (catalytic)</option>
-          <option value="hi">≥1 high-conf</option>
-          <option value="lo">no high-conf</option>
-        </select>
-      </label>
-      <span class="count" id="row-count"></span>
-    </div>
-
-    <div class="legend">
-      <span><i style="background:var(--amr)"></i> AMR</span>
-      <span><i style="background:var(--bgc)"></i> BGC region</span>
-      <span><i style="background:var(--tm)"></i> Membrane (CC)</span>
-      <span><i style="background:var(--sigp)"></i> Secreted</span>
-      <span><i style="background:var(--high)"></i> high (≥0.7)</span>
-      <span><i style="background:var(--med)"></i> medium (0.5–0.7)</span>
-      <span><i style="background:var(--low)"></i> low (0.3–0.5)</span>
-      <span><i style="background:var(--spec)"></i> speculative (&lt;0.3)</span>
-    </div>
-
-    <div class="table-wrap" style="margin-top:10px">
-      <div class="table-head">
-        <div data-sort="i">protein</div>
-        <div data-sort="l">aa</div>
-        <div data-sort="pr">product (input)</div>
-        <div data-sort="bl">best GO term</div>
-        <div data-sort="mp">max post</div>
-        <div data-sort="nh">high</div>
-        <div data-sort="na">total</div>
-        <div data-sort="ap">P/F/C</div>
-        <div>flags</div>
-        <div>preds</div>
+    <h2 class="explore-heading">Which proteins are you interested in?</h2>
+    <label class="search-box" for="search">Search proteins and functions</label>
+    <input type="search" id="search" placeholder="Protein ID, gene, GO or EC identifier, function name…" aria-describedby="search-help" />
+    <p class="search-help" id="search-help">Search across all annotations, then open a protein to inspect its evidence.</p>
+    <details class="filters">
+      <summary>Refine results <span id="active-filter-count"></span></summary>
+      <div class="filter-bar">
+        <label for="thresh">Minimum integrated score <input type="range" id="thresh" min="0" max="100" value="0" step="5"> <span id="thresh-val">0.00</span></label>
+        <label for="aspect-sel">Annotation category
+          <select id="aspect-sel">
+            <option value="">All categories</option>
+            <option value="F">Molecular function</option><option value="P">Biological process</option>
+            <option value="C">Cellular component</option><option value="EC">Enzyme (EC)</option>
+            <option value="?">GO category unavailable</option>
+          </select>
+        </label>
+        <label for="pred-sel">Evidence source <select id="pred-sel"><option value="">All sources</option></select></label>
+        <label for="flag-sel">Protein features
+          <select id="flag-sel">
+            <option value="">All proteins</option>
+            <option value="annotated">With integrated annotations</option>
+            <option value="unannotated">Without integrated annotations</option>
+            <option value="hyp">Uncharacterized product</option>
+            <option value="amr">Antimicrobial resistance hit</option><option value="bgc">Biosynthetic gene cluster</option>
+            <option value="operon">In a predicted operon</option><option value="not_operon">Outside predicted operons</option>
+            <option value="membrane">Membrane annotation</option><option value="secreted">Secreted / extracellular annotation</option>
+            <option value="enzyme">Catalytic activity annotation</option>
+            <option value="hi">At least one integrated score ≥ 0.7</option><option value="lo">No integrated score ≥ 0.7</option>
+          </select>
+        </label>
+        <p class="filter-note">The score, category and annotation-source filters apply to the same annotation. A score threshold excludes tool-only predictions, whose scores are not integrated probabilities.</p>
       </div>
-      <div class="virt" id="virt">
+    </details>
+    <div class="results-toolbar">
+      <span id="row-count" role="status" aria-live="polite"></span>
+      <span id="filter-status"></span>
+      <button class="secondary-button" id="reset-filters">Reset search and filters</button>
+    </div>
+    <div class="table-wrap" id="protein-table" tabindex="0" role="region" aria-label="Protein results. Scroll horizontally on narrow screens.">
+      <div class="table-head">
+        <button data-sort="i">Protein ↑</button>
+        <button data-sort="pr">Protein product</button>
+        <button data-sort="bl" id="term-column">Top annotation</button>
+        <div>Score</div>
+        <button data-sort="na">Annotations</button>
+        <div>Evidence for annotation</div>
+      </div>
+      <div class="virt" id="virt" tabindex="0" aria-label="Protein list. Use arrow keys or Page Down to scroll.">
         <div class="virt-spacer" id="spacer"></div>
         <div class="virt-rows" id="rows"></div>
       </div>
+    </div>
+    <div id="empty-results" hidden>
+      <h3>No proteins match this search</h3>
+      <p>Try a protein ID or GO/EC identifier, lower the score threshold, or reset the filters. No matching annotation does not establish that a biological function is absent.</p>
+    </div>
+    <p class="small">Annotations are functional hypotheses. Scores depend on the model and calibration; they are not experimental confirmation. Each row shows one annotation; open the protein to see all evidence.</p>
+  </section>
+
+  <section id="tab-enzymes">
+    <div class="panel">
+      <h3>Which enzyme activities are predicted?</h3>
+      <p id="ec-summary"></p>
+      <p class="small">Each row is a protein–EC prediction. A protein can have several enzyme activities. Open its protein link to inspect the evidence. Predictions do not establish experimental activity.</p>
+      <div class="filter-bar">
+        <label for="ec-search">Find an enzyme <input type="search" id="ec-search" placeholder="EC number, enzyme name, gene or protein…"></label>
+        <label for="ec-scope">Evidence <select id="ec-scope"><option value="integrated">Integrated predictions</option><option value="all">Include tool-only predictions</option></select></label>
+        <label for="ec-score">Minimum integrated score <select id="ec-score"><option value="0">All scores</option><option value="0.5">0.5</option><option value="0.7">0.7</option></select></label>
+        <button class="secondary-button" id="ec-download">Download filtered EC table (TSV)</button>
+      </div>
+      <p id="ec-count" class="small" role="status" aria-live="polite"></p>
+      <div style="overflow-x:auto"><table class="amr-table"><thead><tr><th>EC number</th><th>Enzyme activity</th><th>Protein / gene</th><th>Protein product</th><th>Score</th><th>Evidence sources</th></tr></thead><tbody id="ec-rows"></tbody></table></div>
+      <p id="ec-empty" hidden>No matching EC predictions. Try another search, lower the score threshold, or include tool-only predictions if available. No prediction does not establish absence of enzyme activity.</p>
+      <div class="results-toolbar"><button class="secondary-button" id="ec-prev">Previous</button><span id="ec-page"></span><button class="secondary-button" id="ec-next">Next</button></div>
     </div>
   </section>
 
   <section id="tab-functions">
     <div class="grid-2">
       <div class="panel">
-        <h3>Confidence distribution</h3>
+        <h3>Integrated score distribution</h3>
+        <p class="small">Tool-only predictions are excluded. Score bands describe model output, not measured accuracy.</p>
         <div class="hist" id="hist"></div>
         <div class="axis"><span>0.0</span><span>0.5</span><span>1.0</span></div>
         <div style="margin-top:10px" id="conf-counts"></div>
       </div>
       <div class="panel">
-        <h3>GO aspect breakdown (high-conf, ≥0.7)</h3>
+        <h3>GO categories (integrated score ≥ 0.7)</h3>
         <svg class="donut" id="aspect-donut" viewBox="0 0 32 32"></svg>
         <div id="aspect-counts" style="margin-left:14px; display:inline-block; vertical-align:top;"></div>
       </div>
     </div>
 
     <div class="panel" style="margin-top:14px">
-      <h3>Top GO terms by # proteins assigned (high-conf)</h3>
+      <h3>Common functional annotations (integrated score ≥ 0.5)</h3>
       <div class="top-terms head">
         <div>aspect</div>
         <div>label / id</div>
-        <div>n high</div>
-        <div>n med+</div>
+        <div>Proteins ≥ 0.7</div>
+        <div>Proteins ≥ 0.5</div>
       </div>
       <div id="top-terms-body"></div>
     </div>
@@ -1599,7 +1767,7 @@ TEMPLATE = r"""<!doctype html>
   <section id="tab-genome">
     <div class="panel">
       <h3>Genome browser (igv.js, <span class="mono small" id="contig-name"></span>)</h3>
-      <p class="small">Five tracks loaded inline (no server, no network): CDS (input), GSPA operons, antiSMASH BGCs,
+      <p class="small">Available tracks use data embedded in this file; the viewer library requires internet access. Tracks can include CDS (input), GSPA operons, antiSMASH BGCs,
         AmrFinder hits, and a localisation track derived from high-conf cellular-component GO terms.
         Pan with click-and-drag; zoom with the mouse wheel or the controls in the toolbar; click a feature for details.</p>
       <div id="igv-host" style="height:520px;"></div>
@@ -1615,7 +1783,7 @@ TEMPLATE = r"""<!doctype html>
 
   <section id="tab-operons">
     <div class="panel">
-      <h3>Operons (GSPA OperonPredictor — intergenic ≤ 300 bp + same strand)</h3>
+      <h3>Candidate operons · same strand, intergenic gap ≤300 bp</h3><p class="small">Proximity predicts possible cotranscription; it does not establish a known operon. Functional labels describe enriched GO processes or repeated informative products. Dominant pathways require at least two members, ≥25% of mapped functions, and an exploratory, unadjusted enrichment p&lt;0.05.</p><p class="small" id="operons-status"></p>
       <p class="small"><span id="op-summary"></span></p>
       <div class="filter-bar">
         <input type="search" id="op-search" placeholder="Search operon ID, member protein, product ..." />
@@ -1632,8 +1800,31 @@ TEMPLATE = r"""<!doctype html>
   </section>
 
   <section id="tab-pathways">
-    <div class="panel">
-      <h3>KEGG pathway coverage</h3>
+    <div class="panel" id="module-panel">
+      <h3>KEGG module completeness (functional)</h3>
+      <p class="small" id="mod-summary"></p>
+      <div class="filter-bar">
+        <input type="search" id="mod-search" placeholder="Search module name or id ..." />
+        <label>show
+          <select id="mod-filter">
+            <option value="activated">activated by evidence</option>
+            <option value="changed">changed by refinement</option>
+            <option value="gaps">activated with open gaps</option>
+            <option value="complete">complete</option>
+            <option value="all">all assessed</option>
+          </select>
+        </label>
+        <span class="count" id="mod-count"></span>
+      </div>
+      <div class="small" style="margin:6px 0 2px;">Step colours:
+        <span class="rxn present">present</span> <span class="rxn changed">present after refinement</span>
+        <span class="rxn evidence">evidence below threshold</span> <span class="rxn missing">missing</span>
+        <span class="rxn partial">complex incomplete</span> <span class="rxn unmappable">no GO mapping (KEGG/ec2go)</span>
+        <span class="rxn forbidden">excluded for this taxon</span></div>
+      <div id="mod-rows" style="margin-top:8px"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>KEGG pathway-map coverage (breadth)</h3><p class="small" id="pathways-status"></p><p class="small">Coverage counts distinct EC-mapped GO functions. It does not resolve every alternative enzyme or branch in a KEGG module definition.</p>
       <p class="small"><span id="pw-summary"></span></p>
       <div class="filter-bar">
         <input type="search" id="pw-search" placeholder="Search pathway name or id ..." />
@@ -1660,27 +1851,26 @@ TEMPLATE = r"""<!doctype html>
 
   <section id="tab-special">
     <div class="panel">
-      <h3>AMR hits (AmrFinderPlus)</h3>
+      <h3>AMR and other Plus hits (AMRFinderPlus)</h3><p class="small" id="amr-status"></p>
       <table class="amr-table">
         <thead><tr><th>protein</th><th>symbol</th><th>name</th><th>class / subclass</th><th>%id</th><th>%cov</th><th>method</th></tr></thead>
         <tbody id="amr-body"></tbody>
       </table>
     </div>
     <div class="panel" style="margin-top:14px">
-      <h3>Biosynthetic gene clusters (antiSMASH)</h3>
+      <h3>Biosynthetic gene clusters (antiSMASH)</h3><p class="small" id="bgc-status"></p>
       <table class="bgc-table">
         <thead><tr><th>contig</th><th>region</th><th>type</th><th>start</th><th>end</th><th>length (kb)</th><th>CDS in region</th></tr></thead>
         <tbody id="bgc-body"></tbody>
       </table>
     </div>
     <div class="panel" style="margin-top:14px">
-      <h3>Subcellular signature (derived from high-conf CC GO terms)</h3>
-      <p class="small">SignalP / TMHMM were not run in this InterProScan invocation, so localisation is read off the
-        cellular-component GO terms that survived the integrator at posterior ≥ 0.7.</p>
+      <h3>Subcellular signatures</h3><p class="small" id="localization-status"></p><p class="small">Membrane and exported/periplasmic candidates are derived from cellular-component GO evidence at integrated score ≥0.5, including PSORTb when run. These are localization hypotheses, not direct signal-peptide or transmembrane-helix measurements.</p>
       <div id="surf-counts"></div>
     </div>
   </section>
 
+  <section id="tab-metabolism"><div class="panel"><h3>Can the reconstructed network support biomass production?</h3><div id="metabolism-body"></div></div></section>
   <section id="tab-quality">
     <div class="grid-2">
       <div class="panel">
@@ -1708,6 +1898,7 @@ TEMPLATE = r"""<!doctype html>
   </section>
 
   <section id="tab-pipeline">
+    <div class="panel" style="margin-bottom:14px"><h3>Analysis coverage and methods</h3><div id="analysis-status"></div></div>
     <div class="grid-2">
       <div class="panel">
         <h3>Evidence sources present in this workspace</h3>
@@ -1741,22 +1932,24 @@ TEMPLATE = r"""<!doctype html>
   </section>
 </main>
 
-<aside id="detail" aria-hidden="true">
-  <button class="close" onclick="closeDetail()">&times;</button>
+<div id="detail-backdrop" hidden></div>
+<aside id="detail" role="dialog" aria-modal="true" aria-labelledby="d-id" aria-hidden="true" inert>
+  <button class="close" aria-label="Close protein details" onclick="closeDetail()">&times;</button>
   <h2 id="d-id"></h2>
   <div class="meta" id="d-meta"></div>
   <div class="product" id="d-product"></div>
   <div id="d-context"></div>
   <div class="filter-detail">
-    <label>min posterior <input type="range" id="d-thresh" min="0" max="100" step="5" value="0"> <span id="d-thresh-val">0.00</span></label>
+    <label>Minimum integrated score <input type="range" id="d-thresh" min="0" max="100" step="5" value="0"> <span id="d-thresh-val">0.00</span></label>
   </div>
+  <p class="detail-help">Integrated scores combine the supplied evidence and biological assumptions. Tool-only scores are shown separately. Highlighted annotations match your search.</p>
   <div id="d-annos"></div>
 </aside>
 
 <script>
 const DATA = __PAYLOAD__;
 
-const ASPECT_NAMES = {P: "Biological Process", F: "Molecular Function", C: "Cellular Component"};
+const ASPECT_NAMES = {P: "Biological Process", F: "Molecular Function", C: "Cellular Component", EC: "Enzyme (EC) predictions"};
 const PRED_NAME = Object.fromEntries(DATA.predictors.map(p => [p.id, p.label]));
 const PRED_KEY = Object.fromEntries(DATA.predictors.map(p => [p.id, p.key]));
 
@@ -1766,15 +1959,15 @@ for (let i = 0; i < DATA.proteins.length; i++) ANNOS_BY_P[i] = [];
 for (const a of DATA.annotations) ANNOS_BY_P[a[0]].push(a);
 
 // ----- Header
-document.getElementById("genome-id").textContent = DATA.genome.id;
+document.getElementById("genome-id").textContent = DATA.genome.display_name || DATA.genome.id;
 document.getElementById("closest-sp").textContent = DATA.genome.classification
   ? "Closest reference: " + DATA.genome.closest_species + "; ANI " + DATA.genome.ani
-  : "Taxonomy not supplied";
+  : (DATA.genome.context ? "Analysis context: " + DATA.genome.context : "Reference taxonomy unavailable");
 const lineageRanks = (DATA.genome.classification || "").split(";").map(r => r.replace(/^[a-z]__/, ""));
 document.getElementById("lineage").innerHTML = lineageRanks.map(r =>
-  '<span class="rank">' + r + '</span>'
+  '<span class="rank">' + escapeHtml(r) + '</span>'
 ).join(" › ");
-document.getElementById("env").innerHTML = DATA.genome.culture.replace(/\n/g, " · ");
+document.getElementById("env").innerHTML = escapeHtml(DATA.genome.culture).replace(/\n/g, " · ");
 
 const cards = document.getElementById("cards");
 function makeCard(label, value, unit, cls) {
@@ -1787,30 +1980,70 @@ function makeCard(label, value, unit, cls) {
 function measured(value, digits=1, scale=1) {
   return value == null ? "Not measured" : (value*scale).toFixed(digits);
 }
+const integratedAnnotations = DATA.annotations.filter(a => !a[6]);
+const withIntegrated = new Set(integratedAnnotations.map(a => a[0])).size;
 cards.append(
-  makeCard("Genome size", measured(DATA.genome.size_bp, 2, 1e-6), "Mb"),
-  makeCard("CDS", DATA.genome.n_proteins.toLocaleString()),
-  makeCard("CheckM2 / BUSCO",
-    measured(DATA.genome.completeness) + " / " + measured(DATA.genome.busco), "%", "green"),
-  makeCard("GSPA coverage", measured(DATA.quality.annotation_coverage, 1, 100), "% of CDS",
-    DATA.quality.annotation_coverage >= 0.5 ? "green" : "amber"),
-  makeCard("(protein, function) hypotheses", DATA.stats.n_annotations.toLocaleString()),
-  makeCard("High-conf (≥0.7)", DATA.stats.n_high.toLocaleString(), "", "green"),
-  makeCard("GAEF Composite", measured(DATA.quality.composite, 3), "", "green"),
-  makeCard("Process coherence", measured(DATA.quality.process_coherence, 1, 100), "%", "green"),
+  makeCard("Proteins", DATA.proteins.length.toLocaleString()),
+  makeCard("With integrated annotations", withIntegrated.toLocaleString()),
+  makeCard("Without integrated annotations", (DATA.proteins.length - withIntegrated).toLocaleString()),
+  makeCard("Integrated annotations", integratedAnnotations.length.toLocaleString()),
+  makeCard('<a href="#enzymes">Enzyme (EC) predictions →</a>', integratedAnnotations.filter(a => a[1].startsWith('EC:')).length.toLocaleString()),
 );
+document.getElementById("quality-status").textContent = DATA.quality.available
+  ? "A quality assessment is available for this run."
+  : "Quality metrics were not measured in this run.";
+document.getElementById("quality-link").addEventListener("click", () => document.querySelector('[data-tab="quality"]').click());
+if (DATA.annotations.some(a => a[1].startsWith("GO:") && !DATA.go[a[1]])) {
+  document.getElementById("search-help").textContent += " Some term names are unavailable; use GO/EC identifiers for those annotations.";
+}
+
+const sampleMeasurements = [
+  ["Sequence length", DATA.genome.size_bp, v => v.toLocaleString() + " bp"],
+  ["Contigs", DATA.genome.n_contigs, v => v.toLocaleString()],
+  ["GC content", DATA.genome.gc, v => v.toFixed(1) + "%"],
+  ["CheckM completeness", DATA.genome.completeness, v => v.toFixed(1) + "%"],
+  ["CheckM contamination", DATA.genome.contamination, v => v.toFixed(1) + "%"],
+  ["BUSCO complete", DATA.genome.busco, v => v.toFixed(1) + "%"],
+].filter(item => item[1] != null);
+document.getElementById("sample-details").hidden = sampleMeasurements.length === 0;
+document.getElementById("sample-measurements").innerHTML = sampleMeasurements.map(([label, value, format]) =>
+  '<dt>' + label + '</dt><dd>' + escapeHtml(format(value)) + '</dd>').join("");
 
 // ----- Tabs
-document.querySelectorAll("nav.tabs button").forEach(btn => {
+document.querySelectorAll("nav.tabs button").forEach((btn, index) => {
+  btn.id = "tab-button-" + btn.dataset.tab;
+  btn.setAttribute("role", "tab");
+  btn.setAttribute("aria-controls", "tab-" + btn.dataset.tab);
+  btn.setAttribute("aria-selected", index === 0 ? "true" : "false");
+  btn.tabIndex = index === 0 ? 0 : -1;
+  const panel = document.getElementById("tab-" + btn.dataset.tab);
+  panel.setAttribute("role", "tabpanel");
+  panel.setAttribute("aria-labelledby", btn.id);
+  btn.addEventListener("keydown", event => {
+    const buttons = [...document.querySelectorAll("nav.tabs button")];
+    let next;
+    if (event.key === "ArrowRight") next = (index + 1) % buttons.length;
+    if (event.key === "ArrowLeft") next = (index + buttons.length - 1) % buttons.length;
+    if (event.key === "Home") next = 0;
+    if (event.key === "End") next = buttons.length - 1;
+    if (next == null) return;
+    event.preventDefault(); buttons[next].click(); buttons[next].focus();
+  });
   btn.addEventListener("click", () => {
-    document.querySelectorAll("nav.tabs button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll("nav.tabs button").forEach(b => {
+      b.classList.remove("active"); b.setAttribute("aria-selected", "false"); b.tabIndex = -1;
+    });
     document.querySelectorAll("main section").forEach(s => s.classList.remove("active"));
     btn.classList.add("active");
+    btn.setAttribute("aria-selected", "true"); btn.tabIndex = 0;
     const sec = document.getElementById("tab-" + btn.dataset.tab);
     sec.classList.add("active");
+    history.replaceState(null, '', '#'+btn.dataset.tab);
+    if (btn.dataset.tab === "enzymes" && !sec.dataset.rendered) renderEnzymes(sec);
     if (btn.dataset.tab === "genome" && !sec.dataset.rendered) renderGenomeBrowser(sec);
     if (btn.dataset.tab === "functions" && !sec.dataset.rendered) renderFunctions(sec);
     if (btn.dataset.tab === "special" && !sec.dataset.rendered) renderSpecial(sec);
+    if (btn.dataset.tab === "metabolism" && !sec.dataset.rendered) renderMetabolism(sec);
     if (btn.dataset.tab === "quality" && !sec.dataset.rendered) renderQuality(sec);
     if (btn.dataset.tab === "pipeline" && !sec.dataset.rendered) renderPipeline(sec);
     if (btn.dataset.tab === "operons" && !sec.dataset.rendered) renderOperons(sec);
@@ -1830,24 +2063,20 @@ DATA.predictors.forEach(p => {
 const state = {
   query: "",
   thresh: 0,
-  aspects: new Set(["P","F","C"]),
+  aspect: "",
   predictor: "",
   flag: "",
   sortBy: "i",
   sortDir: 1,
 };
 
-document.getElementById("search").addEventListener("input", e => { state.query = e.target.value.toLowerCase(); rerender(); });
+document.getElementById("search").addEventListener("input", e => { state.query = e.target.value.trim().toLowerCase(); rerender(); });
 document.getElementById("thresh").addEventListener("input", e => {
   state.thresh = +e.target.value / 100;
   document.getElementById("thresh-val").textContent = state.thresh.toFixed(2);
   rerender();
 });
-document.querySelectorAll("[data-aspect]").forEach(cb => cb.addEventListener("change", () => {
-  state.aspects = new Set(Array.from(document.querySelectorAll("[data-aspect]"))
-    .filter(c => c.checked).map(c => c.dataset.aspect));
-  rerender();
-}));
+document.getElementById("aspect-sel").addEventListener("change", e => { state.aspect = e.target.value; rerender(); });
 predSel.addEventListener("change", e => { state.predictor = e.target.value; rerender(); });
 document.getElementById("flag-sel").addEventListener("change", e => { state.flag = e.target.value; rerender(); });
 
@@ -1858,7 +2087,27 @@ document.querySelectorAll(".table-head [data-sort]").forEach(h => h.addEventList
   rerender();
 }));
 
-// ----- Filtering
+// ----- Filtering: every annotation criterion must be satisfied by the same claim.
+const PROTEIN_INDEX = new Map(DATA.proteins.map((p, i) => [p.i, i]));
+const ANNOTATION_SOURCES = new Set(DATA.annotations.flatMap(a => a[5].map(source => source[0])));
+const MATCHED = new Map();
+function termLabel(a) {
+  return a[1].startsWith("EC:") ? ((DATA.ec || {})[a[1]] || a[1]) : (DATA.go[a[1]] || [a[1]])[0];
+}
+function termMatches(a) {
+  return a[1].toLowerCase().includes(state.query) || termLabel(a).toLowerCase().includes(state.query);
+}
+function matchingAnnotations(p) {
+  const metadataMatch = !state.query || [p.i, p.pr, p.g || "", p.ec || "", p.c || "", p.product_evidence?.original_locus_tag || ""].join(" ").toLowerCase().includes(state.query);
+  return ANNOS_BY_P[PROTEIN_INDEX.get(p.i)].filter(a => {
+    if (!metadataMatch && !termMatches(a)) return false;
+    if (state.thresh > 0 && (a[6] || a[3] < state.thresh)) return false;
+    const category = a[1].startsWith("EC:") ? "EC" : a[2];
+    if (state.aspect && category !== state.aspect) return false;
+    if (state.predictor !== "" && ANNOTATION_SOURCES.has(+state.predictor) && !a[5].some(s => s[0] === +state.predictor)) return false;
+    return true;
+  });
+}
 function passes(p) {
   if (state.flag === "amr" && !(p.f & 1)) return false;
   if (state.flag === "bgc" && !(p.f & 2)) return false;
@@ -1870,33 +2119,30 @@ function passes(p) {
   if (state.flag === "hi" && p.nh === 0) return false;
   if (state.flag === "lo" && p.nh > 0) return false;
   if (state.flag === "hyp" && !(p.pr === "" || p.pr.toLowerCase().startsWith("hypothetical"))) return false;
+  if (state.flag === "annotated" && p.na === p.nt) return false;
+  if (state.flag === "unannotated" && p.na !== p.nt) return false;
   if (state.predictor !== "" && !p.pp.includes(+state.predictor)) return false;
-  if (state.thresh > 0 && p.mp < state.thresh) return false;
-  if (state.aspects.size < 3) {
-    const ok = (state.aspects.has("P") && p.ap[0] > 0) ||
-               (state.aspects.has("F") && p.ap[1] > 0) ||
-               (state.aspects.has("C") && p.ap[2] > 0);
-    if (!ok && (p.ap[0]+p.ap[1]+p.ap[2]) > 0) return false;
-  }
-  if (state.query) {
-    const q = state.query;
-    const hay = (p.i + " " + p.pr + " " + (p.g||"") + " " + (p.ec||"") + " " + (p.bt||"") + " " + (p.bl||"")).toLowerCase();
-    if (!hay.includes(q)) {
-      // also try GO terms inside annotations
-      const matches = (ANNOS_BY_P[DATA.proteins.indexOf(p)] || []).some(a =>
-        a[1].toLowerCase().includes(q) || (DATA.go[a[1]]||["",""])[0].toLowerCase().includes(q));
-      if (!matches) return false;
-    }
-  }
-  return true;
+  const matched = matchingAnnotations(p).sort((a, b) => (a[6] - b[6]) || b[3] - a[3]);
+  MATCHED.set(p.i, matched);
+  const needsAnnotation = state.thresh > 0 || state.aspect || (state.predictor !== "" && ANNOTATION_SOURCES.has(+state.predictor));
+  const metadataMatch = [p.i, p.pr, p.g || "", p.ec || "", p.c || "", p.product_evidence?.original_locus_tag || ""].join(" ").toLowerCase().includes(state.query);
+  return matched.length > 0 || (!needsAnnotation && (!state.query || metadataMatch));
 }
+function resetFilters() {
+  state.query = ""; state.thresh = 0; state.aspect = ""; state.predictor = ""; state.flag = "";
+  for (const id of ["search", "aspect-sel", "pred-sel", "flag-sel"]) document.getElementById(id).value = "";
+  document.getElementById("thresh").value = 0;
+  document.getElementById("thresh-val").textContent = "0.00";
+  rerender(); document.getElementById("search").focus();
+}
+document.getElementById("reset-filters").addEventListener("click", resetFilters);
 
 function sortKey(p) {
   switch(state.sortBy) {
     case "i": return p.i;
     case "l": return p.l;
     case "pr": return p.pr;
-    case "bl": return p.bl || "";
+    case "bl": return (MATCHED.get(p.i) || []).length ? termLabel(MATCHED.get(p.i)[0]) : "";
     case "mp": return p.mp;
     case "nh": return p.nh;
     case "na": return p.na;
@@ -1907,6 +2153,7 @@ function sortKey(p) {
 
 let visible = [];
 function applyFilter() {
+  MATCHED.clear();
   visible = DATA.proteins.filter(passes);
   visible.sort((a,b) => {
     const va = sortKey(a), vb = sortKey(b);
@@ -1915,39 +2162,39 @@ function applyFilter() {
     return 0;
   });
   document.getElementById("row-count").textContent = visible.length.toLocaleString() + " of " + DATA.proteins.length.toLocaleString() + " proteins";
+  const count = [state.thresh > 0, !!state.aspect, state.predictor !== "", !!state.flag].filter(Boolean).length;
+  document.getElementById("active-filter-count").textContent = count ? "(" + count + " active)" : "";
+  document.getElementById("filter-status").textContent = count ? count + " active filter" + (count === 1 ? "" : "s") : "";
+  document.getElementById("empty-results").hidden = visible.length > 0;
+  document.getElementById("protein-table").hidden = visible.length === 0;
+  document.getElementById("term-column").textContent = state.query || count ? "Matching annotation" : "Top annotation";
+  document.querySelectorAll("#protein-table [data-sort]").forEach(button => {
+    const base = button.id === "term-column" ? button.textContent : (button.dataset.label || button.textContent.replace(/ [↑↓]$/, ""));
+    button.dataset.label = base;
+    button.textContent = base + (button.dataset.sort === state.sortBy ? (state.sortDir === 1 ? " ↑" : " ↓") : "");
+  });
 }
 
 // ----- Virtualized rendering
-const ROW_H = 36;
+const ROW_H = 68;
 const virt = document.getElementById("virt");
 const spacer = document.getElementById("spacer");
 const rowsEl = document.getElementById("rows");
 let selectedPid = null;
+let detailOpener = null;
 
 function rowHtml(p) {
-  const aspChips = ["P","F","C"].map((k, i) => p.ap[i] > 0 ? '<span class="chip aspect '+k+'">'+k+":"+p.ap[i]+'</span>' : "").join("");
-  const flags = [];
-  if (p.f & 1) flags.push('<span class="chip amr">AMR</span>');
-  if (p.f & 2) flags.push('<span class="chip bgc">BGC</span>');
-  if (p.op) flags.push('<span class="chip" style="background:#e1f0ee; color:#1f5e5d;" title="operon '+p.op+'">op</span>');
-  if (p.f & 4) flags.push('<span class="chip tm">mem</span>');
-  if (p.f & 8) flags.push('<span class="chip sigp">sec</span>');
-  if (p.f & 16) flags.push('<span class="chip" style="background:#fff4e6; color:#a36500;">enz</span>');
-  const best = p.bl ? '<span title="'+p.bt+'"><b>'+escapeHtml(p.bl)+'</b></span>' : '<span style="color:#bbb">—</span>';
-  const pbar = p.mp > 0 ? '<span class="pbar"><i style="width:'+(p.mp*100)+'%; background:'+postColor(p.mp)+'"></i></span> '+ p.mp.toFixed(2) : '<span style="color:#bbb">—</span>';
-  const preds = p.pp.length ? p.pp.length + ' <span class="small">tools</span>' : '<span style="color:#bbb">—</span>';
-  return '<div class="table-row '+(p.i===selectedPid?"selected":"")+'" data-pid="'+p.i+'">'+
-    '<div class="pid">'+p.i+'</div>'+
-    '<div>'+p.l+'</div>'+
-    '<div class="product" title="'+escapeHtml(p.pr)+'">'+escapeHtml(p.pr || "—")+'</div>'+
-    '<div class="best-term">'+best+'</div>'+
-    '<div>'+pbar+'</div>'+
-    '<div>'+(p.nh||0)+'</div>'+
-    '<div>'+(p.na||0)+'</div>'+
-    '<div><div class="flags">'+aspChips+'</div></div>'+
-    '<div><div class="flags">'+flags.join("")+'</div></div>'+
-    '<div>'+preds+'</div>'+
-  '</div>';
+  const candidates = MATCHED.get(p.i) || [];
+  const a = candidates[0];
+  const term = a ? '<b title="'+escapeHtml(termLabel(a))+'">'+escapeHtml(termLabel(a))+'</b><span class="row-note">'+escapeHtml(termLabel(a) === a[1] ? (a[1].startsWith('EC:') ? 'Enzyme classification' : 'GO term') : a[1])+(candidates.length > 1 ? ' · '+(candidates.length-1)+' more' : '')+'</span>' : '<span class="small">No annotation available</span>';
+  const score = a ? '<span class="score-number">'+a[3].toFixed(2)+'</span><span class="row-note">'+(a[6] ? 'Tool-only score' : 'Integrated')+'</span>' : '—';
+  const sources = a ? [...new Set(a[5].map(s => (PRED_KEY[s[0]] === "diamond" ? "DIAMOND" : PRED_KEY[s[0]]) || PRED_NAME[s[0]] || "Unknown"))].join(', ') : '';
+  return '<div class="table-row '+(p.i===selectedPid ? "selected" : "")+'" data-pid="'+escapeHtml(p.i)+'">'+
+    '<div class="pid"><button class="protein-link" aria-haspopup="dialog">'+escapeHtml(p.i)+'</button><span class="row-note">'+p.l+' aa'+(p.op ? ' · Predicted operon' : '')+'</span></div>'+
+    '<div class="product" title="'+escapeHtml(p.pr)+'">'+escapeHtml(p.pr || 'No assigned product')+'</div>'+
+    '<div class="best-term">'+term+'</div><div>'+score+'</div>'+
+    '<div>'+p.na+'<span class="row-note">'+(p.nt ? p.nt+' tool-only' : 'Integrated')+'</span></div>'+
+    '<div class="product" title="'+escapeHtml(sources)+'">'+escapeHtml(sources || 'Not recorded')+'</div></div>';
 }
 
 function postColor(p) {
@@ -2003,6 +2250,9 @@ function openDetail(pid, keepThresh) {
   const idx = DATA.proteins.findIndex(p => p.i === pid);
   if (idx < 0) return;
   const p = DATA.proteins[idx];
+  selectedPid = pid;
+  const wasOpen = document.getElementById("detail").classList.contains("open");
+  if (!wasOpen) detailOpener = document.activeElement;
   document.getElementById("d-id").textContent = p.i;
   const flagPills = [];
   if (p.f & 1) flagPills.push('<span class="chip amr">AMR</span>');
@@ -2012,15 +2262,19 @@ function openDetail(pid, keepThresh) {
   if (p.f & 16) flagPills.push('<span class="chip" style="background:#fff4e6; color:#a36500;">enzyme</span>');
   if (p.ipr) flagPills.push('<span class="pill">'+p.ipr+' IPR domains</span>');
   document.getElementById("d-meta").innerHTML =
-    '<span class="mono">'+p.c+":"+p.s.toLocaleString()+"–"+p.e.toLocaleString()+" ("+p.st+")</span> · "+
+    (p.c && p.s > 0 ? '<span class="mono">'+escapeHtml(p.c)+":"+p.s.toLocaleString()+"–"+p.e.toLocaleString()+" ("+escapeHtml(p.st)+")</span> · " : "Genomic coordinates unavailable · ")+
     p.l+" aa" +
     (p.g ? ' · gene <span class="mono">'+escapeHtml(p.g)+'</span>' : "") +
     (p.ec ? ' · EC <span class="mono">'+escapeHtml(p.ec)+'</span>' : "") +
     (flagPills.length ? " · " + flagPills.join(" ") : "");
-  document.getElementById("d-product").innerHTML = "<i>Input annotation:</i> " + escapeHtml(p.pr || "hypothetical protein");
+  document.getElementById("d-product").innerHTML = "<i>Protein product:</i> " + escapeHtml(p.pr || "hypothetical protein");
 
   // Operon / BGC context block.
   const ctxBits = [];
+  const evidence=p.product_evidence||{};
+  if(evidence.product_source) ctxBits.push('<p class="small">Product: '+escapeHtml(evidence.product_source)+
+    (evidence.original_locus_tag ? ' · locus '+escapeHtml(evidence.original_locus_tag):'')+
+    (evidence.homology_accession ? ' · homolog '+escapeHtml(evidence.homology_accession)+' · '+escapeHtml(evidence.identity)+'% identity · query/subject coverage '+escapeHtml(evidence.query_coverage)+'% / '+escapeHtml(evidence.subject_coverage)+'%':'')+'</p>');
   if (p.op) {
     const op = (DATA.operons || []).find(o => o.id === p.op);
     if (op) {
@@ -2032,7 +2286,7 @@ function openDetail(pid, keepThresh) {
           (op.name_p != null
             ? ' <span class="small">(GO BP enrichment: '+op.name_count+'/'+op.n+' members, p='+fmtP(op.name_p)+
               (op.name_fold != null ? ', '+op.name_fold.toFixed(1)+'× over background' : '')+')</span>'
-            : (op.name_count > 1 ? ' <span class="small">(top input product, '+op.name_count+'/'+op.n+' members)</span>' : ''))
+            : (op.name_count > 1 ? ' <span class="small">(repeated product, '+op.name_count+'/'+op.n+' members)</span>' : ''))
         : '';
       // Top-3 enriched pathways (the dominant one shown promoted; the rest as
       // small-text additional hits).
@@ -2096,12 +2350,12 @@ function openDetail(pid, keepThresh) {
     document.getElementById("d-thresh-val").textContent = "0.00";
   }
   // Group annotations by aspect
-  const byAspect = {P: [], F: [], C: [], "?": []};
+  const byAspect = {EC: [], P: [], F: [], C: [], "?": []};
   for (const a of (ANNOS_BY_P[idx] || [])) {
-    if (a[3] < DETAIL_THRESH.v) continue;
-    (byAspect[a[2]] || byAspect["?"]).push(a);
+    if (DETAIL_THRESH.v > 0 && (a[6] || a[3] < DETAIL_THRESH.v)) continue;
+    (a[1].startsWith('EC:') ? byAspect.EC : (byAspect[a[2]] || byAspect["?"])).push(a);
   }
-  const aspectsOrder = ["F","P","C","?"];
+  const aspectsOrder = ["EC","F","P","C","?"];
   let h = "";
   let total = 0;
   for (const k of aspectsOrder) {
@@ -2125,8 +2379,7 @@ function openDetail(pid, keepThresh) {
         bandHtml = '<span class="chip tool-only" title="raw tool score '+post.toFixed(3)+' — not a posterior, this prediction was not ingested by the integrator">tool-only · '+post.toFixed(2)+'</span>';
       } else {
         const band = post >= 0.7 ? "high" : post >= 0.5 ? "med" : post >= 0.3 ? "low" : "spec";
-        const bandLabel = band === "high" ? "high" : band === "med" ? "medium" : band === "low" ? "low" : "speculative";
-        bandHtml = '<span class="chip '+band+'" title="posterior '+post.toFixed(3)+', '+a[4]+' supporting hits">'+bandLabel+' · '+post.toFixed(2)+'</span>';
+        bandHtml = '<span class="chip '+band+'" title="posterior '+post.toFixed(3)+', '+a[4]+' supporting hits">Integrated · '+post.toFixed(2)+'</span>';
       }
       const srcChips = a[5].map(s =>
         '<span class="chip predictor">'+escapeHtml(PRED_KEY[s[0]] || ("p"+s[0]))+'<i>×'+s[1]+'</i></span>'
@@ -2134,7 +2387,7 @@ function openDetail(pid, keepThresh) {
       const termHref = (term.indexOf("EC:") === 0)
         ? "https://enzyme.expasy.org/EC/" + term.substring(3).replace(/\.-/g,"")
         : "https://www.ebi.ac.uk/QuickGO/term/" + term;
-      h += '<div class="anno '+(isToolOnly?"tool-only":"")+'">'+
+      h += '<div class="anno '+(isToolOnly?"tool-only":"")+(state.query && termMatches(a) ? " search-match" : "")+'">'+
         '<div class="term-row">' +
           '<span class="chip aspect '+k+'">'+k+'</span>' +
           '<span class="label">'+escapeHtml(label)+'</span>' +
@@ -2146,32 +2399,97 @@ function openDetail(pid, keepThresh) {
     }
     h += '</div>';
   }
-  if (total === 0) h = '<div class="small" style="margin-top:14px">No annotations above threshold.</div>';
+  if (total === 0) h = '<p class="small">' + (DETAIL_THRESH.v > 0 ? 'No integrated annotations meet this threshold. Lower the threshold to inspect the available evidence.' : 'No functional annotations are available for this protein. This does not mean it has no biological function.') + '</p>';
   document.getElementById("d-annos").innerHTML = h;
   document.getElementById("detail").classList.add("open");
   document.getElementById("detail").setAttribute("aria-hidden","false");
+  document.getElementById("detail").inert = false;
+  document.getElementById("detail-backdrop").hidden = false;
+  document.querySelectorAll("header, nav.tabs, main").forEach(el => el.inert = true);
+  if (!wasOpen) document.querySelector("#detail .close").focus();
 }
 
 function closeDetail() {
-  document.getElementById("detail").classList.remove("open");
-  document.getElementById("detail").setAttribute("aria-hidden","true");
+  const panel = document.getElementById("detail");
+  if (!panel.classList.contains("open")) return;
+  panel.classList.remove("open"); panel.setAttribute("aria-hidden", "true"); panel.inert = true;
+  document.getElementById("detail-backdrop").hidden = true;
+  document.querySelectorAll("header, nav.tabs, main").forEach(el => el.inert = false);
+  if (detailOpener && detailOpener.isConnected) detailOpener.focus();
+  else document.getElementById("search").focus();
 }
-
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeDetail(); });
+document.getElementById("detail-backdrop").addEventListener("click", closeDetail);
+document.addEventListener("keydown", event => {
+  const panel = document.getElementById("detail");
+  if (!panel.classList.contains("open")) return;
+  if (event.key === "Escape") { event.preventDefault(); closeDetail(); }
+  if (event.key === "Tab") {
+    const controls = [...panel.querySelectorAll('button, a[href], input, select, [tabindex="0"]')];
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+});
 
 // ----- Functions tab
+// ----- Enzyme predictions: one searchable, exportable row per protein/EC claim.
+const EC_ANNOTATIONS = DATA.annotations.filter(a => a[1].startsWith('EC:')).sort((a,b) =>
+  DATA.proteins[a[0]].i.localeCompare(DATA.proteins[b[0]].i) || a[1].localeCompare(b[1]) || a[6]-b[6]);
+let ecPage = 0, ecMatches = [], ecDownloadUrl;
+const EC_PAGE_SIZE = 100;
+function renderEnzymes(sec) {
+  sec.dataset.rendered = '1';
+  const integrated = EC_ANNOTATIONS.filter(a => !a[6]);
+  document.getElementById('ec-summary').textContent = integrated.length.toLocaleString()+' integrated EC predictions across '+new Set(integrated.map(a=>a[0])).size.toLocaleString()+' proteins; '+new Set(integrated.map(a=>a[1])).size.toLocaleString()+' distinct EC numbers. '+(EC_ANNOTATIONS.length-integrated.length).toLocaleString()+' additional tool-only predictions.';
+  for (const id of ['ec-search','ec-scope','ec-score']) document.getElementById(id).addEventListener(id==='ec-search'?'input':'change',()=>{ecPage=0; updateEnzymes();});
+  document.getElementById('ec-prev').addEventListener('click',()=>{ecPage--; updateEnzymes();});
+  document.getElementById('ec-next').addEventListener('click',()=>{ecPage++; updateEnzymes();});
+  document.getElementById('ec-rows').addEventListener('click',event=>{
+    const button=event.target.closest('[data-ec-protein]'); if(button) openDetail(button.dataset.ecProtein);
+  });
+  document.getElementById('ec-download').addEventListener('click',()=>{
+    const lines=[['protein_id','gene','product','EC','enzyme_activity','score','score_type','sources']];
+    for(const a of ecMatches){const p=DATA.proteins[a[0]];lines.push([p.i,p.g||'',p.pr,a[1],termLabel(a),a[3],a[6]?'tool-only':'integrated',a[5].map(s=>PRED_KEY[s[0]]||s[0]).join(';')]);}
+    const tsv=lines.map(row=>row.map(v=>String(v??'').replace(/[\t\r\n]/g,' ')).join('\t')).join('\n')+'\n';
+    if(ecDownloadUrl)URL.revokeObjectURL(ecDownloadUrl);
+    ecDownloadUrl=URL.createObjectURL(new Blob([tsv],{type:'text/tab-separated-values;charset=utf-8'}));
+    const link=document.createElement('a');link.href=ecDownloadUrl;link.download='ec-predictions.tsv';link.click();
+  });
+  updateEnzymes();
+}
+function updateEnzymes(){
+  const query=document.getElementById('ec-search').value.trim().toLowerCase();
+  const all=document.getElementById('ec-scope').value==='all', threshold=+document.getElementById('ec-score').value;
+  ecMatches=EC_ANNOTATIONS.filter(a=>{
+    if((!all&&a[6])||(threshold>0&&(a[6]||a[3]<threshold)))return false;
+    const p=DATA.proteins[a[0]];
+    return [a[1],termLabel(a),p.i,p.g||'',p.pr,p.product_evidence?.original_locus_tag||''].join(' ').toLowerCase().includes(query);
+  });
+  const pages=Math.max(1,Math.ceil(ecMatches.length/EC_PAGE_SIZE));ecPage=Math.max(0,Math.min(ecPage,pages-1));
+  const start=ecPage*EC_PAGE_SIZE, end=Math.min(start+EC_PAGE_SIZE,ecMatches.length);
+  document.getElementById('ec-count').textContent=ecMatches.length.toLocaleString()+' matching predictions'+(ecMatches.length?' · showing '+(start+1).toLocaleString()+'–'+end.toLocaleString():'');
+  document.getElementById('ec-rows').innerHTML=ecMatches.slice(start,end).map(a=>{
+    const p=DATA.proteins[a[0]];
+    return '<tr><td class="mono">'+escapeHtml(a[1])+'</td><td>'+escapeHtml(termLabel(a))+'</td><td><button class="text-button" data-ec-protein="'+escapeHtml(p.i)+'">'+escapeHtml(p.i)+'</button><br>'+escapeHtml(p.g||'')+'</td><td>'+escapeHtml(p.pr||'Uncharacterized protein')+'</td><td>'+(a[6]?'Tool-only':'Integrated')+' · '+a[3].toFixed(2)+'</td><td>'+a[5].map(s=>escapeHtml(PRED_NAME[s[0]]||String(s[0]))).join(', ')+'</td></tr>';
+  }).join('');
+  document.getElementById('ec-empty').hidden=ecMatches.length>0;
+  document.getElementById('ec-download').disabled=!ecMatches.length;
+  document.getElementById('ec-prev').disabled=ecPage===0;document.getElementById('ec-next').disabled=ecPage===pages-1;
+  document.getElementById('ec-page').textContent='Page '+(ecPage+1)+' of '+pages;
+}
+
 function renderFunctions(sec) {
   sec.dataset.rendered = "1";
   const hist = document.getElementById("hist");
-  const max = Math.max(...DATA.stats.posterior_hist);
+  const max = Math.max(1, ...DATA.stats.posterior_hist);
   const colors = ["#97306c","#97306c","#97306c","#97306c","#97306c","#97306c","#c05621","#c05621","#c05621","#c05621","#b7791f","#b7791f","#b7791f","#b7791f","#2f855a","#2f855a","#2f855a","#2f855a","#2f855a","#2f855a"];
   hist.innerHTML = DATA.stats.posterior_hist.map((v,i) =>
     '<div title="'+(i*0.05).toFixed(2)+'–'+((i+1)*0.05).toFixed(2)+': '+v.toLocaleString()+'" style="height:'+(v/max*100)+'%; background:'+colors[i]+'"></div>').join("");
   document.getElementById("conf-counts").innerHTML =
-    '<span class="chip high">high ≥0.7: '+DATA.stats.n_high.toLocaleString()+'</span> ' +
-    '<span class="chip med">medium: '+DATA.stats.n_med.toLocaleString()+'</span> ' +
-    '<span class="chip low">low: '+DATA.stats.n_low.toLocaleString()+'</span> ' +
-    '<span class="chip spec">speculative: '+DATA.stats.n_spec.toLocaleString()+'</span>';
+    '<span class="chip high">≥ 0.7: '+DATA.stats.n_high.toLocaleString()+'</span> ' +
+    '<span class="chip med">0.5–0.7: '+DATA.stats.n_med.toLocaleString()+'</span> ' +
+    '<span class="chip low">0.3–0.5: '+DATA.stats.n_low.toLocaleString()+'</span> ' +
+    '<span class="chip spec">< 0.3: '+DATA.stats.n_spec.toLocaleString()+'</span>';
   // donut
   const ah = DATA.stats.aspect_high;
   const total = (ah.P||0) + (ah.F||0) + (ah.C||0);
@@ -2193,8 +2511,19 @@ function renderFunctions(sec) {
   // top terms
   const tt = document.getElementById("top-terms-body");
   tt.innerHTML = DATA.stats.top_terms.map(t =>
-    '<div class="top-terms"><span class="chip aspect '+t.aspect+'">'+t.aspect+'</span><div><b>'+escapeHtml(t.label)+'</b> <span class="small mono">'+t.term+'</span></div><div>'+t.n_high+'</div><div>'+t.n_med+'</div></div>'
-  ).join("");
+    '<div class="top-terms"><span class="chip aspect '+t.aspect+'">'+t.aspect+'</span><div><button class="text-button" data-term="'+escapeHtml(t.term)+'">'+escapeHtml(t.label)+'</button> <span class="small mono">'+escapeHtml(t.term)+'</span></div><div>'+t.n_high+'</div><div>'+t.n_med+'</div></div>'
+  ).join("") || '<p class="small">No integrated annotations meet the 0.5 threshold. Explore the Proteins tab to inspect lower-scoring candidates.</p>';
+  tt.addEventListener("click", event => {
+    const button = event.target.closest("[data-term]");
+    if (!button) return;
+    resetFilters();
+    state.query = button.dataset.term.toLowerCase(); state.thresh = 0.5;
+    document.getElementById("search").value = button.dataset.term;
+    document.getElementById("thresh").value = 50;
+    document.getElementById("thresh-val").textContent = "0.50";
+    document.querySelector('[data-tab="proteins"]').click(); rerender();
+    document.getElementById("search").focus();
+  });
 }
 
 // ----- Genome browser (igv.js)
@@ -2228,6 +2557,7 @@ function renderGenomeBrowser(sec) {
   // as a data URL so the page is fully self-contained. .fai is computed
   // server-side and embedded too (igv.js cannot index inline data on the fly).
   const cfg = {
+    loadDefaultGenomes: false,
     reference: {
       id: DATA.genome.id,
       name: DATA.genome.id,
@@ -2250,7 +2580,7 @@ function renderGenomeBrowser(sec) {
   // Lazy-load igv.js from CDN (one HTTP request; bundle is ~600 KB).
   if (!window.igv) {
     const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/igv@3.0.0/dist/igv.min.js";
+    s.src = "https://cdn.jsdelivr.net/npm/igv@3.8.10/dist/igv.min.js";
     s.onload = () => createIgv(host, cfg);
     s.onerror = () => {
       host.innerHTML = '<div class="small" style="padding:12px;color:var(--low);">' +
@@ -2281,6 +2611,7 @@ function createIgv(host, cfg) {
 
 // ----- Operons tab
 function renderOperons(sec) {
+  document.getElementById("operons-status").textContent=analysisText("operons");
   sec.dataset.rendered = "1";
   document.getElementById("op-summary").innerHTML =
     "<b>" + DATA.operons.length.toLocaleString() + "</b> operons (≥2 CDS, intergenic ≤ 300 bp, same strand) — " +
@@ -2361,13 +2692,14 @@ function renderOperons(sec) {
 
 // ----- Special features
 function renderSpecial(sec) {
+  for (const key of ["amr","bgc","localization"]) document.getElementById(key+"-status").textContent=analysisText(key);
   sec.dataset.rendered = "1";
   const amrBody = document.getElementById("amr-body");
   amrBody.innerHTML = DATA.amr.map(r =>
     '<tr><td class="mono"><a href="#" onclick="goToProtein(\''+r["Protein id"]+'\'); return false;">'+r["Protein id"]+'</a></td>'+
     '<td class="mono">'+escapeHtml(r["Element symbol"])+'</td>'+
     '<td>'+escapeHtml(r["Element name"])+'</td>'+
-    '<td>'+escapeHtml(r["Class"]+" / "+r["Subclass"])+'</td>'+
+    '<td>'+escapeHtml((r["Type"]||"AMR")+": "+r["Class"]+" / "+r["Subclass"])+'</td>'+
     '<td>'+r["% Identity to reference"]+'</td>'+
     '<td>'+r["% Coverage of reference"]+'</td>'+
     '<td>'+escapeHtml(r["Method"])+'</td></tr>').join("");
@@ -2387,6 +2719,7 @@ function renderSpecial(sec) {
 }
 
 function goToProtein(pid) {
+  resetFilters();
   document.querySelector('nav.tabs button[data-tab="proteins"]').click();
   document.getElementById("search").value = pid;
   state.query = pid.toLowerCase();
@@ -2426,9 +2759,102 @@ function fmtP(p) {
   return p.toPrecision(2);
 }
 
+// ----- Modules (evidence-gated KEGG module completeness from integrated.tsv.modules.json)
+function renderModules() {
+  const panel = document.getElementById("module-panel");
+  const rep = DATA.modules;
+  if (!rep) {
+    document.getElementById("mod-summary").textContent = "Module assessment not available for this run (integrate was run without --module-defs).";
+    document.getElementById("mod-rows").innerHTML = "";
+    return;
+  }
+  const S = rep.summary;
+  const mods = rep.modules.slice();
+  const pct = v => (v == null ? "n/a" : (v * 100).toFixed(0) + "%");
+  document.getElementById("mod-summary").innerHTML =
+    '<b>' + S.modules_activated_after + '</b> of ' + S.modules_assessed + ' KEGG modules are activated by the evidence ' +
+    '(a module counts once its present steps are specific to it or cover a third of it, enough of its steps map to GO, and KEGG finds it complete in other organisms of the same domain); <b>' + S.modules_complete_after + '</b> complete' +
+    (S.modules_complete_before !== S.modules_complete_after ? ' (' + S.modules_complete_before + ' before refinement)' : '') +
+    '. Mean completeness over activated modules: <b>' + pct(S.module_coherence_after) + '</b>' +
+    (S.module_coherence_before != null && S.module_coherence_before !== S.module_coherence_after ? ' (before: ' + pct(S.module_coherence_before) + ')' : '') +
+    '. <b>' + S.n_rescues + '</b> claims were rescued by the essentiality and pathway priors; steps a module cannot express through GO are shown but never counted.';
+  const search = document.getElementById("mod-search");
+  const filter = document.getElementById("mod-filter");
+  function passes(m) {
+    if (m.signature && filter.value !== "all") return false;
+    if (filter.value === "activated" && !m.activated) return false;
+    if (filter.value === "changed" && !(m.changes || []).length) return false;
+    if (filter.value === "gaps" && !(m.activated && m.steps.some(st => st.gap))) return false;
+    if (filter.value === "complete" && !m.complete) return false;
+    if (search.value) {
+      const q = search.value.toLowerCase();
+      if (!(m.name || "").toLowerCase().includes(q) && !(m.id || "").toLowerCase().includes(q)) return false;
+    }
+    return true;
+  }
+  function stepHtml(m, st) {
+    const changed = (m.changes || []).some(c => c.step === st.index);
+    const cls = st.status === "present" && changed ? "changed" : st.status;
+    const terms = (st.go_terms || []).map(t => resolveGoName(t, null)).join(", ");
+    const prots = (st.proteins || []).map(p => p.protein + " " + (p.posterior * 100).toFixed(0) + "%").join(", ");
+    const title = escapeHtml(st.label) + (terms ? " | GO: " + escapeHtml(terms) : "") + (prots ? " | proteins: " + escapeHtml(prots) : "") +
+      (st.specificity != null ? " | specificity " + st.specificity.toFixed(2) : "");
+    const short = (st.label || "").replace(/^K\d{5}(,K\d{5})*\s*/, "").split(" | ")[0].slice(0, 42);
+    return '<span class="rxn ' + cls + '" title="' + title + '">' + (st.index + 1) + '. ' + escapeHtml(short || st.label) + '</span>';
+  }
+  function modHtml(m) {
+    const colour = m.completeness >= 0.9 ? "var(--high)" : m.completeness >= 0.5 ? "var(--med)" : "var(--low)";
+    const before = m.completeness_before;
+    const complText = (before != null && before !== m.completeness)
+      ? '<span style="color:#667085">' + pct(before) + ' →</span> <span style="color:' + colour + '">' + pct(m.completeness) + '</span>'
+      : '<span style="color:' + colour + '">' + pct(m.completeness) + '</span>';
+    const badge = m.signature ? '<span class="chip" style="font-size:10px;background:#eef0f4;color:#475467;">signature module (not scored)</span>'
+      : m.activated ? '<span class="chip high" style="font-size:10px;">activated</span>'
+      : m.assessable === false ? '<span class="chip" style="font-size:10px;background:#eef0f4;color:#667085;" title="fewer than two required steps, or under half of them, map to GO through KEGG orthologs and ec2go">not assessable: reference mapping too sparse</span>'
+      : m.not_expected_reason ? '<span class="chip" style="font-size:10px;background:#eef0f4;color:#667085;" title="' + escapeHtml(m.not_expected_reason) + '">not expected in this organism</span>'
+      : '<span class="chip" style="font-size:10px;background:#eef0f4;color:#667085;" title="present steps are shared enzymes or cover too little of the module">insufficient evidence</span>';
+    const changes = (m.changes || []).map(c =>
+      '<div class="mod-change"><b>Step ' + (c.step + 1) + '</b> ' + escapeHtml(c.label) + ': ' + c.status_before + ' → ' + c.status_after + '. ' +
+      c.annotations.map(a => '<span class="mono">' + escapeHtml(a.protein) + '</span> ' + resolveGoName(a.term, null) + ' ' +
+        (a.posterior_before * 100).toFixed(0) + '% → ' + (a.posterior_after * 100).toFixed(0) + '%' +
+        (a.prior ? ' (' + a.prior + ' prior' + (a.evidence && a.evidence.operon_partner ? ', operon partner ' + escapeHtml(a.evidence.operon_partner) : '') +
+          (a.evidence && a.evidence.n_sup > 1 ? ', ' + a.evidence.n_sup + ' supporting claims' : '') + ')' : '')).join('; ') + '</div>').join("");
+    const gaps = m.steps.filter(st => st.gap).map(st =>
+      '<div class="mod-gap"><b>Step ' + (st.index + 1) + '</b> ' + escapeHtml(st.label.slice(0, 80)) + ' — ' + escapeHtml(st.gap.reason) +
+      (st.gap.best_candidate ? '; best candidate <span class="mono">' + escapeHtml(st.gap.best_candidate.protein || "") + '</span> at ' +
+        (st.gap.best_candidate.posterior * 100).toFixed(0) + '%' : '') + '</div>').join("");
+    const counts = m.n_present + ' present · ' + m.n_evidence + ' evidence · ' + m.n_missing + ' missing · ' + m.n_partial + ' partial' +
+      (m.n_unmappable ? ' · ' + m.n_unmappable + ' unmappable' : '') + (m.n_forbidden ? ' · ' + m.n_forbidden + ' excluded' : '');
+    return '<div class="pw-card">' +
+      '<div style="display:flex; align-items:center; gap:10px;">' +
+        '<div style="flex:1; min-width:0;">' + badge + ' <b>' + escapeHtml(m.name) + '</b> <span class="small mono">' + m.id + '</span> ' +
+          '<a href="https://www.kegg.jp/entry/' + m.id + '" target="_blank">KEGG ↗</a><div class="small">' + escapeHtml(m.class) + '</div></div>' +
+        '<div style="width:130px; text-align:right; font-weight:600;">' + complText + '</div>' +
+        '<div class="small" style="width:150px; text-align:right;">' + m.n_present + ' / ' + m.n_required + ' required steps</div>' +
+      '</div>' +
+      (m.not_expected_reason ? '<div class="small" style="margin-top:4px;color:#667085;">' + escapeHtml(m.not_expected_reason) + '</div>' : '') +
+      '<div class="mod-steps">' + m.steps.map(st => stepHtml(m, st)).join("") + '</div>' +
+      '<div class="small" style="margin-top:4px;">' + counts + (m.activation_score != null ? ' · activation ' + m.activation_score.toFixed(2) : '') + '</div>' +
+      changes + (m.activated ? gaps : '') +
+    '</div>';
+  }
+  function rerender() {
+    const filtered = mods.filter(passes);
+    document.getElementById("mod-count").textContent = filtered.length.toLocaleString() + " of " + mods.length.toLocaleString() + " modules";
+    const SHOW = 80;
+    document.getElementById("mod-rows").innerHTML = filtered.slice(0, SHOW).map(modHtml).join("") +
+      (filtered.length > SHOW ? '<div class="small" style="padding:8px;">… ' + (filtered.length - SHOW) + ' more not shown; refine search.</div>' : "");
+  }
+  search.addEventListener("input", rerender);
+  filter.addEventListener("change", rerender);
+  rerender();
+}
+
 // ----- Pathways tab
 function renderPathways(sec) {
+  document.getElementById("pathways-status").textContent=analysisText("pathways");
   sec.dataset.rendered = "1";
+  renderModules();
   const paths = (DATA.quality.pathway_detail || []).slice();
   paths.sort((a, b) => a.completeness - b.completeness);  // worst first
   const search = document.getElementById("pw-search");
@@ -2539,6 +2965,7 @@ function renderQuality(sec) {
     return;
   }
   function metric(label, value, denom) {
+    if (value == null) return '<p>'+escapeHtml(label)+': <span class="small">Not measured</span></p>';
     const pct = (value*100).toFixed(1)+"%";
     const color = value >= 0.9 ? "var(--high)" : value >= 0.7 ? "var(--med)" : "var(--low)";
     return '<div style="display:flex; align-items:center; gap:8px; padding: 4px 0;">' +
@@ -2551,7 +2978,8 @@ function renderQuality(sec) {
     metric("Coverage (annotated CDS)", q.annotation_coverage, q.annotated_proteins+"/"+DATA.genome.n_proteins) +
     metric("Completeness", q.completeness_score, q.completeness_present+"/"+(q.completeness_present+q.completeness_missing)+" essential terms") +
     metric("Process coherence", q.process_coherence) +
-    metric("Pathway coherence", q.pathway_coherence) +
+    (q.module_coherence != null ? metric("Module completeness (activated KEGG modules)", q.module_coherence, q.modules_complete+"/"+q.modules_activated+" complete") : "") +
+    metric("Pathway-map coverage (breadth)", q.pathway_coherence) +
     metric("Complex coherence", q.complex_coherence) +
     metric("Composite GAEF", q.composite) +
     '<div style="margin-top:10px;" class="small">Consistency (SAT4J): <b>'+(q.consistent?"consistent":"INCONSISTENT")+'</b>, '+q.violation_count+' taxon-constraint violations.</div>';
@@ -2623,8 +3051,35 @@ function renderQuality(sec) {
   }
 }
 
+function analysisText(key){
+ const item=(DATA.analyses||{})[key];
+ const counts=item ? ["hits","amr_hits","regions","assigned","ec_annotations"].filter(k=>item[k]!=null).map(k=>k.replaceAll("_"," ")+": "+item[k]).join(" · "):"";
+ return item ? item.status.replaceAll('_',' ')+' — '+item.detail+(counts?' '+counts+'.':'') : 'Analysis execution was not recorded for this older run.';
+}
+function renderMetabolism(sec){
+ sec.dataset.rendered='1';
+ const data=DATA.metabolism||{}, model=data.model;
+ const box=document.getElementById('metabolism-body');
+ box.innerHTML='<p>'+escapeHtml(analysisText('metabolism'))+'</p>';
+ if(!model)return;
+ for(const [name,content] of Object.entries(data.downloads||{})){
+  const a=document.createElement('a'); a.textContent=name==='metabolic_model.xml'?'Download metabolic model (SBML)':'Download reaction fluxes and bounds';a.download=name;a.href=URL.createObjectURL(new Blob([content],{type:'text/plain'}));a.style.marginRight='24px';box.append(a);
+ }
+ const medium=model.medium==='minimal'?'Supplemented glucose (reference medium)':model.medium;
+ const gram={neg:'Gram negative',pos:'Gram positive'}[model.biomass_template]||model.biomass_template;
+ const metrics=[['Reactions',model.reactions],['Metabolites',model.metabolites],['Biomass template',gram],['Medium',medium],['Objective reaction',model.objective],['Feasible biomass flux',model.objective_flux],['Maximum S·v residual',model.max_mass_balance_residual],['Core reactions',data.n_core_rxns],['Flux-certified repairs',data.n_flux_certified_repaired],['Chemically imbalanced repairs',data.n_imbalanced_repaired],['Target biomass flux',data.target_bio]];
+ const formatValue=v=>typeof v==='number'?(Number.isInteger(v)?v.toLocaleString():v.toPrecision(5)):String(v??'Not available');
+ box.innerHTML+='<table class="amr-table"><tbody>'+metrics.map(([k,v])=>'<tr><th>'+escapeHtml(k)+'</th><td>'+escapeHtml(formatValue(v))+'</td></tr>').join('')+'</tbody></table>';
+ box.innerHTML+='<p class="small">'+escapeHtml(model.medium_note||'')+'</p><p class="small">'+escapeHtml(model.gene_associations||'')+'</p><p class="small">'+escapeHtml(model.flux_solution||'')+'</p><p>The exported SBML model contains the stoichiometry, exchange bounds, biomass objective and candidate gene associations used by this analysis. The reaction table distinguishes evidence-supported reactions from flux-certified repairs. Repairs are hypotheses; they are not observed enzymes.</p>';
+ const conditions=data.conditions||{};
+ if(conditions.results){
+  box.innerHTML+='<h3 style="margin-top:24px">Which nutrient uptakes does this model depend on?</h3><p class="small">'+escapeHtml(conditions.method)+' '+escapeHtml(conditions.interpretation)+'</p><table class="amr-table"><thead><tr><th>Condition</th><th>Maximum biomass flux (model units)</th><th>Model prediction</th></tr></thead><tbody>'+conditions.results.map(r=>'<tr><td>'+escapeHtml(r.condition)+'</td><td>'+Number(r.maximum_biomass_flux).toPrecision(5)+'</td><td>'+escapeHtml(r.status)+'</td></tr>').join('')+'</tbody></table>';
+ }
+}
+
 // ----- Pipeline
 function renderPipeline(sec) {
+  document.getElementById("analysis-status").innerHTML=Object.keys(DATA.analyses||{}).map(key=>"<p><b>"+escapeHtml(key)+"</b> · "+escapeHtml(analysisText(key))+"</p>").join("") || "No analysis manifest was recorded for this run.";
   sec.dataset.rendered = "1";
   document.getElementById("preds-run").innerHTML = DATA.build.predictors_run.map(p =>
     '<li>✓ '+escapeHtml(p)+'</li>').join("");
@@ -2648,6 +3103,12 @@ function renderPipeline(sec) {
 // ----- Boot
 applyFilter();
 renderRows();
+function openLinkedTab(){
+  const button=[...document.querySelectorAll('nav.tabs button')].find(b=>'#'+b.dataset.tab===location.hash);
+  if(button)button.click();
+}
+window.addEventListener('hashchange',openLinkedTab);
+openLinkedTab();
 </script>
 </body>
 </html>

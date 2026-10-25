@@ -1,104 +1,60 @@
-# Eukaryotic proteome: budding yeast
+# Where might a yeast protein act within the cell?
 
-*2026-10-24T14:25:24Z by Showboat 0.6.1*
-<!-- showboat-id: 21668041-c575-45bf-a48d-88b3c16c2f35 -->
+Protein function includes cellular location. What does the annotation of a yeast
+proteome tell us about proteins associated with the nucleus and mitochondria?
 
-The reviewed Saccharomyces cerevisiae S288c proteome from [UniProt](https://www.uniprot.org/proteomes/UP000002311). Supply translated proteins or trusted splice-aware gene models for eukaryotes. This run uses the supplied proteins, so it makes no new CDS predictions and has no genomic coordinates.
+**You will learn to interpret cellular-component annotations and recognise the
+limits of starting from proteins rather than a genome.** Complete
+[setup](install.md) first. This lesson uses supplied, reviewed
+*Saccharomyces cerevisiae* S288c protein sequences.
 
-First complete [installation](install.md) and [data and resource setup](resources.md). Run every command from the checkout root; each command starts a new CPU container. Outputs persist in `.tutorial-work/eukaryote/`.
+## 1. Predict the contrast
 
-The compact teaching reference contains reviewed proteins from these same organisms, including self/close matches. These runs prove the workflow executes; they do not estimate accuracy. We use one DIAMOND hit per query and disable optional domain/neural predictors. No ontology was downloaded, so ontology-based quality metrics and ancestor relaxation are not demonstrated here; integration uses bundled constraint tables.
+In [the archaeal lesson](archaea.md), nuclear annotations were incompatible with
+the organism. Would the same objection apply to yeast? What information would
+still be missing if all you supplied were protein sequences?
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-gspa integrate --preset eukaryote --print-config > /work/eukaryote-settings.json
-python3 - <<'PYCONFIG'
-import json
-settings = json.load(open('/work/eukaryote-settings.json'))
-for key in ['--taxon', '--essential-profile', '--enable-priors', '--enforce-stage2', '--lite']:
-    print(key + ': ' + str(settings[key]))
-PYCONFIG
-GSPA
-```
-
-```output
---taxon: eukaryote
---essential-profile: eukaryote
---enable-priors: essentiality,coherence,consistency,anatomical
---enforce-stage2: True
---lite: True
-```
-
-Call genes where needed and search the annotation-bearing DIAMOND database. Logs retain the tool commands and diagnostics. Conversion keeps unique direct DIAMOND GO/EC claims; operon-propagated suggestions in the annotation TSV are excluded, because operon coordinates are supplied separately to integration. This avoids counting the same context twice. Its teaching score is percent identity / 100 clipped to [0.01, 0.99], not a calibrated likelihood. For production, use held-out calibration and a broader reference, and add independent predictors.
+## 2. Analyse the proteins
 
 ```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-mkdir -p /work/eukaryote/gspa_out
-gspa annotate --preset eukaryote --proteins /work/data/eukaryote.faa \
-  -c /work/data/cpu.json --db /work/data/reference.dmnd \
-  -o /work/eukaryote/annot -t 2 > /work/eukaryote/annotate.log 2>&1 || { tail -60 /work/eukaryote/annotate.log; exit 1; }
-python3 /tutorial/results.py claims eukaryote
-GSPA
+./tutorial run eukaryote
+./tutorial browser eukaryote
 ```
 
-```output
-49,880 unique DIAMOND GO/EC claims from 6,051 proteins
-Teaching score: DIAMOND identity fraction, clipped to [0.01, 0.99]; not a fitted probability.
-```
+No genes are called in this lesson: GSPA uses the supplied proteins. The recorded
+run finds GO/EC evidence for **6,051 of 6,733 input proteins**.
 
-Integrate the claims and retain provenance. Without a GO ontology, cellular consistency enforcement can remove incompatible terms but cannot relax them to an ancestor. Mixed-community and phage runs deliberately use evidence alone. The results below are counts of hypotheses, not validated functions.
+Search separately for these two identifiers in the annotations table:
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-gspa integrate --preset eukaryote \
-  --claims /work/eukaryote/claims.jsonl --out /work/eukaryote/gspa_out/integrated.tsv \
-  --provenance /work/eukaryote/gspa_out/provenance.json \
-  --enforcement-actions-out /work/eukaryote/gspa_out/actions.tsv \
-  > /work/eukaryote/integrate.log 2>&1 || { tail -60 /work/eukaryote/integrate.log; exit 1; }
-python3 /tutorial/results.py summary eukaryote
-GSPA
-```
+| Cellular component | Retained protein candidates |
+|---|---:|
+| [Nucleus, GO:0005634](https://amigo.geneontology.org/amigo/term/GO:0005634) | 1,939 |
+| [Mitochondrion, GO:0005739](https://amigo.geneontology.org/amigo/term/GO:0005739) | 1,153 |
 
-```output
-Proteins: 6,733; with GO/EC search evidence: 6,051
-Integrated hypotheses: GO=47,702; EC=2,161
-Hypotheses at posterior >= 0.5: 49,863
-These counts describe this teaching reference; they are not accuracy or completeness estimates.
-```
+For example, `A0A0B7P3V8` is among the nuclear candidates and `A0A023PZB3` among
+the mitochondrial candidates. Find each protein's other annotations.
+The counts above are not mutually exclusive groups: a protein can have more
+than one cellular-component annotation.
 
-```bash {image}
-![Actual annotation counts for eukaryote](.tutorial-work/eukaryote/summary.svg)
-```
+**Biological insight:** the results nominate proteins associated with distinct
+cellular compartments. Nuclear annotations that were incompatible with an
+archaeon can be plausible in yeast. Cellular context changes how we interpret
+transferred annotations, even when sequence matching uses the same reference.
 
-![Actual annotation counts for eukaryote](ac04fc13-2026-10-24.svg)
+## 3. Check your interpretation
 
-Build the interactive GSPA browser. The adapter supplies its expected metadata layout from the actual GSPA CDS coordinates (or protein IDs for yeast); it does not run Prokka or invent gene positions. GO/EC IDs remain visible because this compact example has no term-label ontology. The annotations table works locally; the genome tab may need internet access for igv.js.
+**Can we locate these genes next to one another on a chromosome, or infer the
+number of mitochondria in a cell?**
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-python3 /tutorial/results.py browser eukaryote
-gspa visualize -w /work/eukaryote -g eukaryote \
-  --go-obo /work/data/no-labels.obo --ec2go /work/data/no-ec-labels.txt \
-   \
-  > /work/eukaryote/visualize.log 2>&1 || { tail -60 /work/eukaryote/visualize.log; exit 1; }
-test -s /work/eukaryote/gspa_out/eukaryote_browser.html
-printf 'Interactive browser generated successfully.\n'
-GSPA
-```
+??? success "Worked answer"
 
-```output
-Browser metadata prepared from real CDS coordinates / supplied protein identifiers.
-Interactive browser generated successfully.
-```
+    Neither follows. This input contains protein sequences without genomic
+    coordinates, so the browser cannot establish gene neighbourhoods. Counts of
+    proteins annotated to a compartment do not count organelles or measure protein
+    abundance. These are annotation hypotheses, and the close/self matches in the
+    teaching reference make high coverage unsurprising.
 
-Open `.tutorial-work/eukaryote/gspa_out/eukaryote_browser.html` in your browser. Inspect `integrated.tsv` for final hypotheses, `provenance.json` for supporting evidence, and `actions.tsv` when enforcement acts. Keep the logs and `data/downloads.json` alongside results. For an actual project, replace the input and reference database; retain the biological assumptions appropriate to your unit of analysis.
-
-Re-run this document with `uvx showboat verify docs/tutorials/eukaryote.md` after installation and resource setup.
+For your own eukaryote, supply translated proteins or trusted splice-aware gene
+models; this lesson does not demonstrate eukaryotic gene prediction. Continue to
+[the eukaryotic workflow](../scenarios/eukaryote.md), or explore how missing sequence
+changes interpretation in [the incomplete-bin lesson](mag.md).

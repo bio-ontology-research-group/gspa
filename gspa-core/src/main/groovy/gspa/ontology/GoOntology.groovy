@@ -35,6 +35,7 @@ class GoOntology {
     OWLOntologyManager manager
     OWLOntology ontology
     OWLDataFactory factory
+    String sourceSha256
 
     // Caches (thread-safe for concurrent batch integration)
     private Map<String, Set<String>> ancestorCache = new java.util.concurrent.ConcurrentHashMap<>()
@@ -54,6 +55,12 @@ class GoOntology {
      */
     void loadOwl(File owlFile) {
         log.info("Loading GO ontology from: ${owlFile}")
+        def digest = java.security.MessageDigest.getInstance('SHA-256')
+        owlFile.withInputStream { input ->
+            def stream = new java.security.DigestInputStream(input, digest)
+            stream.transferTo(java.io.OutputStream.nullOutputStream())
+        }
+        sourceSha256 = digest.digest().encodeHex().toString()
         ontology = manager.loadOntologyFromOntologyDocument(owlFile)
         log.info("Loaded ${ontology.classesInSignature.size()} classes")
         buildLabelCache()
@@ -95,8 +102,8 @@ class GoOntology {
     String getLabel(String goId) {
         if (labelCache.containsKey(goId)) return labelCache[goId]
         def cls = getGoClass(goId)
-        for (OWLAnnotation ann : EntitySearcher.getAnnotations(cls, ontology, factory.getRDFSLabel())) {
-            if (ann.value instanceof OWLLiteral) {
+        for (OWLAnnotationAssertionAxiom ann : ontology.getAnnotationAssertionAxioms(cls.getIRI())) {
+            if (ann.property == factory.getRDFSLabel() && ann.value instanceof OWLLiteral) {
                 // Use getLiteral() explicitly: in Groovy, .literal resolves to
                 // OWLAnnotationValue.isLiteral() (boolean true) instead of
                 // OWLLiteral.getLiteral() (the lexical form).
@@ -285,8 +292,10 @@ class GoOntology {
     private void buildLabelCache() {
         ontology.classesInSignature.each { cls ->
             String goId = iriToGo(cls.getIRI())
-            for (OWLAnnotation ann : EntitySearcher.getAnnotations(cls, ontology, factory.getRDFSLabel())) {
-                if (ann.value instanceof OWLLiteral) {
+            // EntitySearcher also returns labels annotating xref axioms. Those
+            // describe the external pathway, not this GO class.
+            for (OWLAnnotationAssertionAxiom ann : ontology.getAnnotationAssertionAxioms(cls.getIRI())) {
+                if (ann.property == factory.getRDFSLabel() && ann.value instanceof OWLLiteral) {
                     // .literal would resolve to OWLAnnotationValue.isLiteral()
                     // (boolean true) instead of OWLLiteral.getLiteral().
                     labelCache[goId] = ((OWLLiteral) ann.value).getLiteral()

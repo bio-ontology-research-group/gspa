@@ -146,6 +146,7 @@ class StoichiometricLocusRefiner {
             '--fba-data-dir', fbaDataDir.absolutePath,
             '--input-json', inJson.absolutePath,
             '--output-json', outJson.absolutePath,
+            '--export-model', new File(tmpDir, 'metabolic_model.xml').absolutePath,
             '--gram', gram,
             '--medium', medium,
             '--tau-core', Double.toString(tauCore),
@@ -154,12 +155,13 @@ class StoichiometricLocusRefiner {
 
         ProcessBuilder pb = new ProcessBuilder(cmd)
         pb.redirectErrorStream(true)
+        File fbaLog = new File(tmpDir, 'fba.log')
+        pb.redirectOutput(fbaLog)
         Process proc = pb.start()
-        String procOut = proc.inputStream.text
         int exitCode = proc.waitFor()
+        String procOut = fbaLog.text
         if (exitCode != 0 || !outJson.exists()) {
-            System.err.println "  [warn] StoichiometricLocusRefiner sidecar exited with ${exitCode}: ${procOut}"
-            return summary
+            throw new IllegalStateException("StoichiometricLocusRefiner failed (${exitCode}): ${procOut}")
         }
 
         Map result = mapper.readValue(outJson, Map)

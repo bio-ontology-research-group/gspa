@@ -18,6 +18,30 @@ class CdsTranslatorSpec extends Specification {
         CdsTranslator.translate('ATGGCCTGA') == 'MA'
     }
 
+    def 'honours selenocysteine exceptions on either strand'() {
+        given:
+        def feature = new Feature(type: FeatureType.CDS, start: 1, end: 12, strand: strand, phase: 0,
+            attributes: ['ID':['sec'], 'transl_except':[exception]])
+        expect:
+        CdsTranslator.translateCds([feature], sequence) == 'MUA'
+        where:
+        strand       | sequence       | exception
+        Strand.PLUS  | 'ATGTGAGCCTAA' | '(pos:4..6,aa:Sec)'
+        Strand.MINUS | 'TTAGGCTCACAT' | '(pos:complement(7..9),aa:Sec)'
+    }
+
+    def 'does not translate annotated pseudogenes'() {
+        given:
+        def genome = new Genome(id:'g')
+        def contig = new Contig(id:'c',sequence:'ATGAAATAA')
+        genome.addContig(contig)
+        contig.addFeature(new Feature(type:FeatureType.CDS,start:1,end:9,strand:Strand.PLUS,phase:0,
+            attributes:['ID':['pseudo1'],'pseudo':['true']]))
+        expect:
+        CdsTranslator.populateProteins(genome) == 0
+        contig.proteins.empty
+    }
+
     def 'reverse-complements correctly'() {
         expect:
         CdsTranslator.reverseComplement('ATGC') == 'GCAT'
