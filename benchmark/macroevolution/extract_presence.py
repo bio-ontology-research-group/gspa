@@ -5,25 +5,27 @@ For every genome of the batch and for both integrator configurations (``noisy_or
 ``gspa_full`` = Stages 0-2 with all six whole-genome priors) this reads ``<gid>.<cfg>.tsv.gz``
 (protein_id, type, function_id, posterior_prob, ...) and derives:
 
-* the set of GO terms the genome has at posterior >= THRESHOLD on at least one protein, propagated to
-  all ``is_a``/``part_of`` ancestors with the GO DAG closure (``go-dag.tsv``: child, ancestor; the
-  closure includes the term itself) -- stored as a packed bit vector over the GO vocabulary;
-* the number of proteins with at least one GO term at or above the threshold, and the number of
-  distinct propagated terms;
-* per-protein counts for a slim: for each slim term, the number of proteins whose propagated term set
-  contains it (the slim is the union of ``goslim_prokaryote`` and ``goslim_metagenomics`` of go.obo);
-* essential-function completeness: the fraction of the bacterial and of the archaeal essential GO
-  terms (gspa-core ``essential-functions/*.tsv``) present in the propagated genome-level set;
-* the set of EC numbers at or above the threshold (written as JSON lines, one per genome and config).
+* for every GO term, the maximum posterior with which the genome carries the term on any protein,
+  after propagation to all ``is_a``/``part_of`` ancestors with the GO DAG closure (``go-dag.tsv``:
+  child, ancestor; the closure includes the term itself) -- stored as uint16 floor(posterior * 1000)
+  so that the downstream steps can threshold at any level (the paper's decision threshold 0.50, and
+  0.30 as a sensitivity analysis). The Stage D posteriors never exceed 0.60 (single merged evidence
+  source), so the threshold determines how deep the genome-level profile reaches;
+* per threshold in THRESHOLDS: the number of proteins with at least one GO term at or above it, and
+  per-protein counts for a slim (for each slim term, the number of proteins whose propagated term set
+  contains it; the slim is the union of ``goslim_prokaryote`` and ``goslim_metagenomics`` of go.obo);
+* the set of EC numbers at posterior >= 0.50 (written as JSON lines, one per genome and config).
 
 Output: ``<out>/<batch>.npz`` and ``<out>/<batch>.ec.jsonl.gz``. Vocabulary files (``go_vocab.txt``,
-``slim_terms.tsv``) are written once next to the outputs so every batch shares the same column order.
+``slim_terms.tsv``, ``essential_bac.txt``, ``essential_arc.txt``) are written once next to the outputs
+so every batch shares the same column order.
 """
 import argparse, csv, gzip, json, os, sys, time
 from multiprocessing import Pool
 import numpy as np
 
-THRESHOLD = 0.5
+THRESHOLDS = (0.5, 0.3)   # per-threshold protein and slim counts; term presence is thresholded downstream from maxp
+Q = 1000                  # maxp is stored as floor(posterior * Q) in uint16
 CFGS = ("noisy_or", "gspa_full")
 SLIM_SUBSETS = ("goslim_prokaryote", "goslim_metagenomics")
 
@@ -95,7 +97,7 @@ def one_genome(args):
     res = {}
     for cfg in CFGS:
         path = os.path.join(out_dir, f"{gid}.{cfg}.tsv.gz")
-        per_prot = {}
+        per_prot = {}            # protein -> list of (term index, posterior)
         ecs = set()
         try:
             with gzip.open(path, "rt") as fh:
@@ -106,28 +108,41 @@ def one_genome(args):
                         p = float(row[4])
                     except (ValueError, IndexError):
                         continue
-                    if p < THRESHOLD:
-                        continue
                     if row[1] == "GO":
                         i = idx.get(row[2])
                         if i is not None:
-                            per_prot.setdefault(row[0], []).append(i)
-                    elif row[1] == "EC":
+                            per_prot.setdefault(row[0], []).append((i, p))
+                    elif row[1] == "EC" and p >= 0.5:
                         ecs.add(row[2])
         except (OSError, EOFError) as e:
             return gid, None, f"{cfg}: {e}"
-        present = np.zeros(n_vocab, dtype=bool)
-        slim_counts = np.zeros(len(slim_idx), dtype=np.int32)
-        for terms in per_prot.values():
-            prop = np.unique(np.concatenate([ancestors[t] for t in terms]))
-            present[prop] = True
-            hit = slim_pos[prop]
-            hit = hit[hit >= 0]
-            slim_counts[hit] += 1
-        res[cfg] = dict(bits=np.packbits(present), n_prot=len(per_prot), n_terms=int(present.sum()),
-                        slim=slim_counts, ess_bac=float(present[_G["ess_bac"]].mean()) if _G["ess_bac"].size else np.nan,
-                        ess_arc=float(present[_G["ess_arc"]].mean()) if _G["ess_arc"].size else np.nan,
-                        ec=sorted(ecs))
+        # propagated maximum posterior per term: max over proteins and over the term's descendants
+        term_max = np.zeros(n_vocab, dtype=np.float64)
+        if per_prot:
+            ti = np.fromiter((t for v in per_prot.values() for t, _ in v), dtype=np.int32)
+            pp = np.fromiter((q for v in per_prot.values() for _, q in v), dtype=np.float64)
+            np.maximum.at(term_max, ti, pp)
+        maxp = np.zeros(n_vocab, dtype=np.float64)
+        for t in np.nonzero(term_max)[0]:
+            a = ancestors[t]
+            np.maximum.at(maxp, a, term_max[t])
+        out = dict(maxp=np.floor(maxp * Q + 1e-6).astype(np.uint16), ec=sorted(ecs))
+        for thr in THRESHOLDS:
+            slim_counts = np.zeros(len(slim_idx), dtype=np.int32)
+            n_prot = 0
+            for terms in per_prot.values():
+                keep = [t for t, q in terms if q >= thr]
+                if not keep:
+                    continue
+                n_prot += 1
+                prop = np.unique(np.concatenate([ancestors[t] for t in keep]))
+                hit = slim_pos[prop]
+                hit = hit[hit >= 0]
+                slim_counts[hit] += 1
+            k = f"t{int(round(thr * 100)):02d}"
+            out[f"n_prot_{k}"] = n_prot
+            out[f"slim_{k}"] = slim_counts
+        res[cfg] = out
     return gid, res, None
 
 
@@ -162,6 +177,9 @@ def main():
             fh.write("go_id\tname\tsubsets\n")
             for t, n, s in slim:
                 fh.write(f"{t}\t{n}\t{s}\n")
+        for name, key in (("essential_bac.txt", "ess_bac"), ("essential_arc.txt", "ess_arc")):
+            with open(os.path.join(a.out, name), "w") as fh:
+                fh.write("\n".join(vocab[i] for i in _G[key]) + "\n")
     else:
         with open(vpath) as fh:
             assert [l.rstrip("\n") for l in fh] == vocab, "GO vocabulary differs from the one already written"
@@ -180,14 +198,14 @@ def main():
                 errors.append((gid, err)); continue
             keep.append((gid, res))
     keep.sort()
-    arrays = {"genomes": np.array([g for g, _ in keep]), "slim_idx": slim_idx, "n_vocab": np.int64(len(vocab))}
+    arrays = {"genomes": np.array([g for g, _ in keep]), "slim_idx": slim_idx, "n_vocab": np.int64(len(vocab)),
+              "q": np.int64(Q), "thresholds": np.array(THRESHOLDS)}
     for cfg in CFGS:
-        arrays[f"{cfg}_bits"] = np.stack([r[cfg]["bits"] for _, r in keep]) if keep else np.zeros((0, 0), np.uint8)
-        arrays[f"{cfg}_n_prot"] = np.array([r[cfg]["n_prot"] for _, r in keep], dtype=np.int32)
-        arrays[f"{cfg}_n_terms"] = np.array([r[cfg]["n_terms"] for _, r in keep], dtype=np.int32)
-        arrays[f"{cfg}_slim"] = np.stack([r[cfg]["slim"] for _, r in keep]) if keep else np.zeros((0, len(slim)), np.int32)
-        arrays[f"{cfg}_ess_bac"] = np.array([r[cfg]["ess_bac"] for _, r in keep], dtype=np.float32)
-        arrays[f"{cfg}_ess_arc"] = np.array([r[cfg]["ess_arc"] for _, r in keep], dtype=np.float32)
+        arrays[f"{cfg}_maxp"] = np.stack([r[cfg]["maxp"] for _, r in keep]) if keep else np.zeros((0, len(vocab)), np.uint16)
+        for thr in THRESHOLDS:
+            k = f"t{int(round(thr * 100)):02d}"
+            arrays[f"{cfg}_n_prot_{k}"] = np.array([r[cfg][f"n_prot_{k}"] for _, r in keep], dtype=np.int32)
+            arrays[f"{cfg}_slim_{k}"] = np.stack([r[cfg][f"slim_{k}"] for _, r in keep]) if keep else np.zeros((0, len(slim)), np.int32)
     tmp = os.path.join(a.out, f"{a.batch}.npz.tmp.npz")
     np.savez_compressed(tmp, **arrays)
     os.replace(tmp, os.path.join(a.out, f"{a.batch}.npz"))

@@ -3,7 +3,8 @@
 #   bash run.sh deploy            # copy code and the gspa-core essential-function profiles to ibex
 #   bash run.sh extract [N]       # ibex: N looping jobs (default 3) over lists/batches.txt (per-batch presence files)
 #   bash run.sh list              # ibex: rebuild lists/batches.txt from the Stage D partials
-#   bash run.sh profiles [STEPS]  # ibex job: 02 species profiles, 03 tree + parsimony, 04 tables (default "02 03 04")
+#   bash run.sh profiles [STEPS]  # ibex job: 02 species profiles, 03 tree + parsimony, 04 tables (default "02 03 04");
+#                                 # env SUF=_test (output dir suffix) and THR=0.3 (presence threshold, default 0.5) pass through
 #   bash run.sh status            # ibex: job states and counts
 #   bash run.sh fetch             # local: results/, tree summaries and species table into benchmark/macroevolution/results/
 set -euo pipefail
@@ -23,7 +24,7 @@ case "${1:-help}" in
     n=${2:-3}
     ssh ibex "for o in \$(seq 0 $((n-1))); do sbatch --export=ALL,BATCH_LIST=$M/lists/batches.txt,STRIDE=$n,OFFSET=\$o $M/code/01_extract_loop.sbatch; done" ;;
   profiles)
-    ssh ibex "sbatch --export=ALL,STEPS='${2:-02 03 04}' $M/code/02_profiles.sbatch" ;;
+    ssh ibex "sbatch --export=ALL,STEPS='${2:-02 03 04}',SUF='${SUF:-}',THR='${THR:-0.5}' $M/code/02_profiles.sbatch" ;;
   status)
     ssh ibex "squeue -u hohndor -h -o '%i %j %T %M' | grep macroevo; echo presence: \$(ls $M/presence/*.npz 2>/dev/null | wc -l) of \$(wc -l < $M/lists/batches.txt); ls $M/results 2>/dev/null | head -20" ;;
   fetch)

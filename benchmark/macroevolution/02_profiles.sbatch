@@ -13,12 +13,12 @@ R=/encrypted/e3008/allthebacteria/repro_2026-10-19
 M=/encrypted/e3008/gspa/macroevo
 PY=/ibex/scratch/projects/c2014/rob/envs/gspa-neural/bin/python
 GTDB=/ibex/reference/KSL/gtdb-tk/release220
-: "${STEPS:=02 03 04}"; : "${SUF:=}"   # SUF=_test writes to profiles_test/ tree_test/ results_test/
+: "${STEPS:=02 03 04}"; : "${SUF:=}"; : "${THR:=0.5}"   # SUF=_test writes to profiles_test/ tree_test/ results_test/; THR=0.3 SUF=_t30 for the sensitivity run
 for step in $STEPS; do
   echo "[$(date '+%F %T')] step $step"
   case $step in
     02) $PY $M/code/02_species_profiles.py --presence $M/presence --manifests "$S/wave1/batches/batch_*.tsv" "$S/wave2/manifests/w2_*.tsv" \
-          --insight3 $R/results_stageD/insight3_per_genome_java_stageD.tsv --out $M/profiles$SUF ;;
+          --insight3 $R/results_stageD/insight3_per_genome_java_stageD.tsv --out $M/profiles$SUF --threshold $THR ;;
     03) $PY $M/code/03_tree.py --profiles $M/profiles$SUF --gtdb-metadata $M/ref/bac120_metadata_r220.tsv.gz \
           --tree $GTDB/pplacer/gtdb_r220_bac120.refpkg/gtdb_r220_bac120_decorated_unrooted.tree \
           --train-taxonomy $S/ref/train_taxonomy.tsv --go-vocab $M/presence/go_vocab.txt --obo $S/ref/go.obo --out $M/tree$SUF ;;
