@@ -902,6 +902,15 @@ def main():
             "consistency": {"consistent": None, "violation_count": None},
         }
 
+    # Module report written by `gspa integrate --module-defs` next to integrated.tsv:
+    # evidence-gated KEGG module completeness before/after refinement, changed annotations, gaps.
+    mpath = RUN_DIR / "integrated.tsv.modules.json"
+    modules_report = None
+    if mpath.exists():
+        with mpath.open() as fh:
+            modules_report = json.load(fh)
+        print(f"  module report: {modules_report['summary'].get('modules_activated_after')} activated modules", flush=True)
+
     print("Loading sample meta ...", flush=True)
     meta = load_genome_meta()
     # Sequence-derived size/GC need no external QC program. Keep completeness
@@ -1146,6 +1155,10 @@ def main():
                 [{"id": t, "name": go.get(t, [t])[0]} for t in quality["completeness"]["missing_functions"]],
             "process_coherence": quality["coherence"]["process_coherence"],
             "pathway_coherence": quality["coherence"]["pathway_coherence"],
+            "module_coherence": quality["coherence"].get("module_coherence"),
+            "modules_activated": quality["coherence"].get("modules_activated"),
+            "modules_complete": quality["coherence"].get("modules_complete"),
+            "modules_assessed": quality["coherence"].get("modules_assessed"),
             "complex_coherence": quality["coherence"]["complex_coherence"],
             "process_unsatisfied": quality["coherence"].get("process_unsatisfied_pairs") or [],
             "pathway_detail": quality["coherence"].get("pathway_detail") or [],
@@ -1153,6 +1166,7 @@ def main():
             "violation_count": quality["consistency"]["violation_count"],
             "composite": quality["summary"]["composite_score"],
         },
+        "modules": modules_report,
         "predictors": predictors_data,
         "go": go_dict,
         "ec": ec_dict,
@@ -1361,6 +1375,14 @@ TEMPLATE = r"""<!doctype html>
   .chip.high { background: #e6f4ec; color: var(--high); }
   .chip.med { background: #fdf2dc; color: var(--med); }
   .chip.low { background: #fae5d3; color: var(--low); }
+  .rxn.changed { background: #d9f0e3; color: #1e6b45; border: 1px dashed #2f855a; }
+  .rxn.evidence { background: #fdf2dc; color: var(--med); }
+  .rxn.partial { background: #fde8d0; color: var(--low); }
+  .rxn.unmappable { background: #eef0f4; color: #667085; }
+  .rxn.forbidden { background: #eef0f4; color: #98a2b3; text-decoration: line-through; }
+  .mod-steps { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .mod-change { font-size:12px; margin-top:4px; padding:4px 8px; background:#f6fbf8; border-left:3px solid #2f855a; }
+  .mod-gap { font-size:12px; margin-top:4px; padding:4px 8px; background:#fbf7f2; border-left:3px solid #b7791f; }
   .chip.spec { background: #f6e1ee; color: var(--spec); }
   .chip.amr { background: #fdd7d4; color: var(--amr); }
   .chip.bgc { background: #e9e0fa; color: var(--bgc); }
@@ -1632,8 +1654,31 @@ TEMPLATE = r"""<!doctype html>
   </section>
 
   <section id="tab-pathways">
-    <div class="panel">
-      <h3>KEGG pathway coverage</h3>
+    <div class="panel" id="module-panel">
+      <h3>KEGG module completeness (functional)</h3>
+      <p class="small" id="mod-summary"></p>
+      <div class="filter-bar">
+        <input type="search" id="mod-search" placeholder="Search module name or id ..." />
+        <label>show
+          <select id="mod-filter">
+            <option value="activated">activated by evidence</option>
+            <option value="changed">changed by refinement</option>
+            <option value="gaps">activated with open gaps</option>
+            <option value="complete">complete</option>
+            <option value="all">all assessed</option>
+          </select>
+        </label>
+        <span class="count" id="mod-count"></span>
+      </div>
+      <div class="small" style="margin:6px 0 2px;">Step colours:
+        <span class="rxn present">present</span> <span class="rxn changed">present after refinement</span>
+        <span class="rxn evidence">evidence below threshold</span> <span class="rxn missing">missing</span>
+        <span class="rxn partial">complex incomplete</span> <span class="rxn unmappable">no GO mapping (KEGG/ec2go)</span>
+        <span class="rxn forbidden">excluded for this taxon</span></div>
+      <div id="mod-rows" style="margin-top:8px"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>KEGG pathway-map coverage (breadth)</h3>
       <p class="small"><span id="pw-summary"></span></p>
       <div class="filter-bar">
         <input type="search" id="pw-search" placeholder="Search pathway name or id ..." />
@@ -2426,9 +2471,98 @@ function fmtP(p) {
   return p.toPrecision(2);
 }
 
+// ----- Modules (evidence-gated KEGG module completeness from integrated.tsv.modules.json)
+function renderModules() {
+  const panel = document.getElementById("module-panel");
+  const rep = DATA.modules;
+  if (!rep) {
+    document.getElementById("mod-summary").textContent = "Module assessment not available for this run (integrate was run without --module-defs).";
+    document.getElementById("mod-rows").innerHTML = "";
+    return;
+  }
+  const S = rep.summary;
+  const mods = rep.modules.slice();
+  const pct = v => (v == null ? "n/a" : (v * 100).toFixed(0) + "%");
+  document.getElementById("mod-summary").innerHTML =
+    '<b>' + S.modules_activated_after + '</b> of ' + S.modules_assessed + ' KEGG modules are activated by the evidence ' +
+    '(a module counts once its present steps are specific to it or cover a third of it); <b>' + S.modules_complete_after + '</b> complete' +
+    (S.modules_complete_before !== S.modules_complete_after ? ' (' + S.modules_complete_before + ' before refinement)' : '') +
+    '. Mean completeness over activated modules: <b>' + pct(S.module_coherence_after) + '</b>' +
+    (S.module_coherence_before != null && S.module_coherence_before !== S.module_coherence_after ? ' (before: ' + pct(S.module_coherence_before) + ')' : '') +
+    '. Refinement changed <b>' + S.n_rescues + '</b> annotations across all priors; steps a module cannot express through GO are shown but never counted.';
+  const search = document.getElementById("mod-search");
+  const filter = document.getElementById("mod-filter");
+  function passes(m) {
+    if (m.signature && filter.value !== "all") return false;
+    if (filter.value === "activated" && !m.activated) return false;
+    if (filter.value === "changed" && !(m.changes || []).length) return false;
+    if (filter.value === "gaps" && !(m.activated && m.steps.some(st => st.gap))) return false;
+    if (filter.value === "complete" && !m.complete) return false;
+    if (search.value) {
+      const q = search.value.toLowerCase();
+      if (!(m.name || "").toLowerCase().includes(q) && !(m.id || "").toLowerCase().includes(q)) return false;
+    }
+    return true;
+  }
+  function stepHtml(m, st) {
+    const changed = (m.changes || []).some(c => c.step === st.index);
+    const cls = st.status === "present" && changed ? "changed" : st.status;
+    const terms = (st.go_terms || []).map(t => resolveGoName(t, null)).join(", ");
+    const prots = (st.proteins || []).map(p => p.protein + " " + (p.posterior * 100).toFixed(0) + "%").join(", ");
+    const title = escapeHtml(st.label) + (terms ? " | GO: " + escapeHtml(terms) : "") + (prots ? " | proteins: " + escapeHtml(prots) : "") +
+      (st.specificity != null ? " | specificity " + st.specificity.toFixed(2) : "");
+    const short = (st.label || "").replace(/^K\d{5}(,K\d{5})*\s*/, "").split(" | ")[0].slice(0, 42);
+    return '<span class="rxn ' + cls + '" title="' + title + '">' + (st.index + 1) + '. ' + escapeHtml(short || st.label) + '</span>';
+  }
+  function modHtml(m) {
+    const colour = m.completeness >= 0.9 ? "var(--high)" : m.completeness >= 0.5 ? "var(--med)" : "var(--low)";
+    const before = m.completeness_before;
+    const complText = (before != null && before !== m.completeness)
+      ? '<span style="color:#667085">' + pct(before) + ' →</span> <span style="color:' + colour + '">' + pct(m.completeness) + '</span>'
+      : '<span style="color:' + colour + '">' + pct(m.completeness) + '</span>';
+    const badge = m.signature ? '<span class="chip" style="font-size:10px;background:#eef0f4;color:#475467;">signature module (not scored)</span>'
+      : m.activated ? '<span class="chip high" style="font-size:10px;">activated</span>'
+      : '<span class="chip" style="font-size:10px;background:#eef0f4;color:#667085;" title="present steps are shared enzymes or cover too little of the module">insufficient evidence</span>';
+    const changes = (m.changes || []).map(c =>
+      '<div class="mod-change"><b>Step ' + (c.step + 1) + '</b> ' + escapeHtml(c.label) + ': ' + c.status_before + ' → ' + c.status_after + '. ' +
+      c.annotations.map(a => '<span class="mono">' + escapeHtml(a.protein) + '</span> ' + resolveGoName(a.term, null) + ' ' +
+        (a.posterior_before * 100).toFixed(0) + '% → ' + (a.posterior_after * 100).toFixed(0) + '%' +
+        (a.prior ? ' (' + a.prior + ' prior' + (a.evidence && a.evidence.operon_partner ? ', operon partner ' + escapeHtml(a.evidence.operon_partner) : '') +
+          (a.evidence && a.evidence.n_sup > 1 ? ', ' + a.evidence.n_sup + ' supporting claims' : '') + ')' : '')).join('; ') + '</div>').join("");
+    const gaps = m.steps.filter(st => st.gap).map(st =>
+      '<div class="mod-gap"><b>Step ' + (st.index + 1) + '</b> ' + escapeHtml(st.label.slice(0, 80)) + ' — ' + escapeHtml(st.gap.reason) +
+      (st.gap.best_candidate ? '; best candidate <span class="mono">' + escapeHtml(st.gap.best_candidate.protein || "") + '</span> at ' +
+        (st.gap.best_candidate.posterior * 100).toFixed(0) + '%' : '') + '</div>').join("");
+    const counts = m.n_present + ' present · ' + m.n_evidence + ' evidence · ' + m.n_missing + ' missing · ' + m.n_partial + ' partial' +
+      (m.n_unmappable ? ' · ' + m.n_unmappable + ' unmappable' : '') + (m.n_forbidden ? ' · ' + m.n_forbidden + ' excluded' : '');
+    return '<div class="pw-card">' +
+      '<div style="display:flex; align-items:center; gap:10px;">' +
+        '<div style="flex:1; min-width:0;">' + badge + ' <b>' + escapeHtml(m.name) + '</b> <span class="small mono">' + m.id + '</span> ' +
+          '<a href="https://www.kegg.jp/entry/' + m.id + '" target="_blank">KEGG ↗</a><div class="small">' + escapeHtml(m.class) + '</div></div>' +
+        '<div style="width:130px; text-align:right; font-weight:600;">' + complText + '</div>' +
+        '<div class="small" style="width:150px; text-align:right;">' + m.n_present + ' / ' + m.n_required + ' required steps</div>' +
+      '</div>' +
+      '<div class="mod-steps">' + m.steps.map(st => stepHtml(m, st)).join("") + '</div>' +
+      '<div class="small" style="margin-top:4px;">' + counts + (m.activation_score != null ? ' · activation ' + m.activation_score.toFixed(2) : '') + '</div>' +
+      changes + (m.activated ? gaps : '') +
+    '</div>';
+  }
+  function rerender() {
+    const filtered = mods.filter(passes);
+    document.getElementById("mod-count").textContent = filtered.length.toLocaleString() + " of " + mods.length.toLocaleString() + " modules";
+    const SHOW = 80;
+    document.getElementById("mod-rows").innerHTML = filtered.slice(0, SHOW).map(modHtml).join("") +
+      (filtered.length > SHOW ? '<div class="small" style="padding:8px;">… ' + (filtered.length - SHOW) + ' more not shown; refine search.</div>' : "");
+  }
+  search.addEventListener("input", rerender);
+  filter.addEventListener("change", rerender);
+  rerender();
+}
+
 // ----- Pathways tab
 function renderPathways(sec) {
   sec.dataset.rendered = "1";
+  renderModules();
   const paths = (DATA.quality.pathway_detail || []).slice();
   paths.sort((a, b) => a.completeness - b.completeness);  // worst first
   const search = document.getElementById("pw-search");
@@ -2551,7 +2685,8 @@ function renderQuality(sec) {
     metric("Coverage (annotated CDS)", q.annotation_coverage, q.annotated_proteins+"/"+DATA.genome.n_proteins) +
     metric("Completeness", q.completeness_score, q.completeness_present+"/"+(q.completeness_present+q.completeness_missing)+" essential terms") +
     metric("Process coherence", q.process_coherence) +
-    metric("Pathway coherence", q.pathway_coherence) +
+    (q.module_coherence != null ? metric("Module completeness (activated KEGG modules)", q.module_coherence, q.modules_complete+"/"+q.modules_activated+" complete") : "") +
+    metric("Pathway-map coverage (breadth)", q.pathway_coherence) +
     metric("Complex coherence", q.complex_coherence) +
     metric("Composite GAEF", q.composite) +
     '<div style="margin-top:10px;" class="small">Consistency (SAT4J): <b>'+(q.consistent?"consistent":"INCONSISTENT")+'</b>, '+q.violation_count+' taxon-constraint violations.</div>';

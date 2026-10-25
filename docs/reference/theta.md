@@ -149,6 +149,27 @@ Defaults to `1.0` for all priors when omitted.
 - `alpha_ess` (float, default `1.5`): Positive log-odds boost applied to candidate
   proteins whose functions match an uncovered domain-essential core function.
   Capped at $2 \times \alpha_{\text{ess}}$ per claim.
+- `ess_rescue_mode` (string, default `targeted`): How the one candidate per uncovered
+  essential category is chosen and lifted. `targeted` scores the borderline candidates
+  (Stage 0 likelihood in `[ess_min_candidate, 0.50]`) and pins the best to the posterior
+  `ess_rescue_target` through the refiner's floor, so the rescued function is present at
+  the decision threshold by construction. `legacy` reproduces v2.1.0: tier ranking and a
+  boost of $\max(1.30\,\alpha_{\text{ess}},\, 0.14 - L^{(0)})$, which the refiner's
+  genome-scale cap and damping leave between about 0.47 and 0.53.
+- `ess_rescue_target` (float, default `0.60`): Posterior a rescued claim is pinned to
+  (`targeted` mode).
+- `ess_min_candidate` (float, default `0.16`): Lowest Stage 0 likelihood a rescue
+  candidate may have.
+- `ess_max_rescue` (int, default `1`): Candidates rescued per uncovered category.
+- `ess_w_support`, `ess_w_free`, `ess_w_competing`, `ess_w_context` (floats, defaults
+  `0.5`, `0.5`, `1.0`, `1.0`): Score weights in `targeted` mode, on the log-odds scale,
+  for corroboration across claims ($\ln n_{\text{sup}}$), a protein that is otherwise
+  unannotated, a protein already confidently annotated to another term of the same
+  aspect outside the category (penalty), and the fraction of operon partners annotated
+  to the essential domain.
+
+Every rescue is written next to the output as `<out>.rescues.tsv` (prior, mode,
+category, protein, term, Stage 0 likelihood, score, target).
 
 #### Coherence prior
 
@@ -160,6 +181,28 @@ Defaults to `1.0` for all priors when omitted.
 - `alpha_complex_penalty` (float, default `0.75`): Weight factor penalizing an
   isolated singleton subunit of an obligate heteromeric complex when no candidate
   partners exist.
+- `coh_pathway_mode` (string, default `auto`): Pathway refinement. `module` (the
+  default whenever `--module-defs` is given) assesses KEGG modules with their step
+  logic: a module is *activated* when its present steps are specific to it or cover
+  a third of it, and only an activated module that is at least
+  `coh_refine_min_completeness` complete is refined. For each open step the
+  sub-threshold claims on the step's enzymes are scored (Stage 0 log-odds,
+  `coh_w_support` $\times \ln n_{\text{sup}}$, `coh_w_free` for an otherwise
+  unannotated protein, `-coh_w_competing` for a protein already confidently
+  annotated to another function of the same aspect, `coh_w_operon` when an operon
+  partner carries a present step of the module, `coh_w_module` $\times$
+  completeness); the best candidate per step, if its score reaches `coh_min_score`,
+  is pinned to the posterior `coh_rescue_target` (default `0.60`), at most
+  `coh_max_rescue_per_module` steps per module. Steps without a candidate stay open.
+  `legacy` reproduces v2.1.0: every pathway with one annotated enzyme is triggered and
+  its missing enzymes boosted.
+- `coh_rescue_target` (float, `0.60`), `coh_refine_min_completeness` (float, `0.5`),
+  `coh_max_rescue_per_module` (int, `2`), `coh_min_candidate` (float, `0.16`),
+  `coh_min_score` (float, `-2.0`), `coh_w_support` (`0.5`), `coh_w_free` (`0.5`),
+  `coh_w_competing` (`1.0`), `coh_w_operon` (`1.0`), `coh_w_module` (`1.0`).
+
+Every module rescue is written to `<out>.rescues.tsv` (prior `coherence`, category
+`<module>:step<n>`) with its evidence, and to `<out>.modules.json`.
 
 #### Consistency prior
 

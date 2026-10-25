@@ -114,6 +114,12 @@ gspa integrate --batch-manifest manifest.tsv --batch-threads 16 \
 If neither `--batch-manifest` nor both `--claims` and `--out` are given, the
 command fails with exit status 1.
 
+When a targeted prior rescues a claim (the essentiality prior in `targeted` mode,
+see [theta](theta.md#essentiality-prior)), the rescues are written next to the
+output as `<out>.rescues.tsv` with the columns `prior`, `mode`, `category`,
+`protein_id`, `function_id`, `likelihood_prob`, `score` and `target`. The file is
+absent when no rescue was made.
+
 ## Ontology and reference data
 
 These files feed the priors and enforcement. Each one is optional; when a file
@@ -128,6 +134,7 @@ is absent the parts of the model that need it do nothing.
 | `--essential-profile` | string | none | Bundled essential-function profile: `bacteria`, `archaea`, `eukaryote` or `virus` (see [bundled resources](bundled-resources.md#essential-function-profiles-essential-functions)). Used only when `--essential-functions` is not given. An unknown name falls back to the bacterial profile with a warning. |
 | `--ec2go` | file | none | EC-to-GO mapping ([ec2go](file-formats.md#ec2go)). Required together with `--pathways`. |
 | `--pathways` | file | none | Pathway definitions TSV ([pathways](file-formats.md#pathways-and-modules-tsv)). Loaded only when `--ec2go` is also given. |
+| `--module-defs` | file | none | KEGG module definitions with step logic (`benchmark/pathway_coherence/data/kegg_module_defs.json`, built by `fetch_kegg_module_definitions.py`). Enables the evidence-gated module assessment, switches the coherence prior's pathway refinement to module mode (see [theta](theta.md#coherence-prior)) and writes `<out>.modules.json`: every module before and after refinement with per-step status (present, partial complex, sub-threshold evidence, missing, unmappable, excluded for the taxon), the proteins behind each present step, the annotations the priors changed with their evidence, and each open step with its best sub-threshold candidate and the reason it was left alone. |
 | `--modules` | file list (comma-separated, repeatable) | empty | Additional pathway TSVs in the same schema, stacked on top of `--pathways` (for example KEGG modules, MetaCyc). Pathway identifiers must be unique across files. If given without `--pathways`/`--ec2go`, an empty database is created and only the module files are loaded, with no EC-to-GO map. |
 | `--complex-terms` | file | bundled `complex_terms.tsv` | Classification of GO complex terms as homomeric (`h`), obligate heteromeric (`n`) or ambiguous (`a`) ([format](file-formats.md#complex-terms-tsv)). Used by the coherence prior and Stage 2A singleton pruning. |
 | `--operons` | file | none | Operons, one per line, tab-separated protein IDs ([operons](file-formats.md#operons-tsv)). `gspa annotate` writes this file as `operons_for_integrate.tsv`. Required for the genomic-context prior and the dark-matter suggester. |

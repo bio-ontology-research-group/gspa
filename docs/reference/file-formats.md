@@ -138,6 +138,17 @@ fewer than five columns are ignored.
 
 Producer: `benchmark/build_kegg_pathway_tsv.py`.
 
+### KEGG module definitions JSON {#module-defs-json}
+
+Read by `--module-defs` (integrate and evaluate). Written by
+`benchmark/pathway_coherence/fetch_kegg_module_definitions.py` from the KEGG REST
+API. Top level: `source`, `fetched_utc`, `modules`. Each module: `id`, `name`,
+`class`, `pathways`, `definition` (the KEGG expression), `tree` (the parsed boolean
+tree: `{"ko": "K00001"}`, `{"module": "M00002"}`, `{"op": "AND"|"OR"|"COMPLEX"|
+"OPTIONAL"|"GAP", "args": [...], "optional": [...]}`), `orthology` (KO to `ec`,
+`rn`, `desc`) and `complete_organisms` (KEGG organism codes in which KEGG finds the
+module complete). The top-level `AND` arguments are the module's steps.
+
 ### ec2go {#ec2go}
 
 Read by `--ec2go`. Either the GO `external2go/ec2go` format or a two-column

@@ -47,6 +47,7 @@ gspa evaluate -i genome.gff3 -a predictions.gaf --go-owl go.owl --lite \
 | `--ec2go` | file | none | EC-to-GO mapping ([format](file-formats.md#ec2go)). With `--pathways` it is used to resolve pathway steps; alone it builds a pathway database from the EC-to-GO map. |
 | `--pathways` | file | none | Pathway definitions TSV ([format](file-formats.md#pathways-and-modules-tsv)). Used only together with `--ec2go`. |
 | `--modules` | file list (comma-separated, repeatable) | empty | Additional pathway TSVs stacked on `--pathways` (KEGG modules, MetaCyc, BioCyc). Used only when both `--ec2go` and `--pathways` exist. |
+| `--module-defs` | file | none | KEGG module definitions with step logic (see [integrate](cli-integrate.md)). Adds `module_coherence` (mean completeness of the modules the evidence activates), `modules_assessed`, `modules_activated`, `modules_complete` and `module_detail` to the quality JSON. The historical `pathway_coherence` stays and is also written as `pathway_map_coverage`: the mean enzyme coverage of KEGG maps and modules with any enzyme, a breadth measure. When module definitions are loaded, the composite score uses module completeness in place of map coverage. |
 | `--taxonomy` | file | bundled hierarchy | Two-column taxonomy hierarchy (`child<TAB>parent`). See the warning below. |
 
 !!! warning "`--taxonomy` in evaluate"
