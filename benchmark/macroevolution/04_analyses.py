@@ -12,6 +12,7 @@ t6_pangenome              within-species core and accessory functions for specie
 t7_branch_rates           gain and loss events per unit branch length, by depth, and the busiest branches
 t8_ancestral              functions reconstructed at the root and at phylum crown nodes
 """
+import time
 import argparse, csv, gzip, os
 from collections import Counter, defaultdict
 import numpy as np
@@ -150,6 +151,7 @@ def main():
     ess_rows = [term_row(t) for t in essential]
     write(os.path.join(a.out, "t4e_essential_terms.tsv"), hdr, ess_rows)
 
+    print(f"[{time.strftime('%T')}] t1-t4 written", flush=True)
     # ---------------------------------------------------------------- t5 scaling laws (one genome per species)
     gs = np.load(os.path.join(a.profiles, "genome_slim.npz"))
     slim_terms = list(gs["slim_terms"]); n_orfs = gs["n_orfs"]; spi = gs["species_idx"]; slim = gs["slim"]
@@ -177,6 +179,7 @@ def main():
     with open(os.path.join(a.out, "t5_scaling.tsv"), "a") as fh:
         fh.write(f"# one genome per species (median genome size), species with >= 500 ORFs: {len(sel)} species\n")
 
+    print(f"[{time.strftime('%T')}] t5 written", flush=True)
     # ---------------------------------------------------------------- t6 pangenome
     sc = np.load(os.path.join(a.profiles, "species_counts.npz"))
     species = list(sc["species"]); ng = sc["n_genomes"]
@@ -184,12 +187,13 @@ def main():
     vidx = {t: i for i, t in enumerate(vocab)}
     ess_idx = np.array([vidx[t] for t in essential if t in vidx])
     big = np.where(ng >= 10)[0]
+    counts = {c: sc[f"{c}_counts"] for c in CFGS}   # read the compressed matrices once (npz access decompresses on every lookup)
     rows = []
     summ = {c: defaultdict(list) for c in CFGS}
     for s in big:
         r = [species[s], int(ng[s])]
         for c in CFGS:
-            cnt = sc[f"{c}_counts"][s]
+            cnt = counts[c][s]
             anyp = cnt > 0; core = cnt >= 0.95 * ng[s]
             n_any, n_core = int(anyp.sum()), int(core.sum())
             ess_core = int(core[ess_idx].sum()); ess_acc = int((anyp[ess_idx] & ~core[ess_idx]).sum()); ess_abs = int((~anyp[ess_idx]).sum())
@@ -211,6 +215,7 @@ def main():
             w = stats.wilcoxon(np.array(summ["noisy_or"]["core_frac"]), np.array(summ["gspa_full"]["core_frac"]), nan_policy="omit")
             fh.write(f"# paired Wilcoxon core_fraction noisy_or vs gspa_full: p = {w.pvalue:.3g}\n")
 
+    print(f"[{time.strftime('%T')}] t6 written", flush=True)
     # ---------------------------------------------------------------- t7 branch rates, t8 ancestral
     nodes = read_tsv(os.path.join(a.tree, "nodes.tsv"))
     depth = np.array([f(r["depth"]) for r in nodes]); length = np.array([f(r["length"]) for r in nodes]); ntip = np.array([int(r["n_tips"]) for r in nodes])
