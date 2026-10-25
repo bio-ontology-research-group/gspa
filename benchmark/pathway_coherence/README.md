@@ -158,6 +158,6 @@ annotation, so these changes are not validated individually; the precision of su
 genomes, the module rescues were compared with every borderline claim they could have been chosen from: all
 (protein, GO term) pairs with a Stage 0 likelihood in [0.16, 0.50) on an open required step of an activated module.
 Of 482 such candidates, 27.8 % are in the curated annotation; of the 119 that module refinement rescued, 73.9 % are
-(one-sided binomial p = 2e-25), and rescue precision exceeds pool precision in eight of the nine genomes
-(M. tuberculosis: 2 of 7 against 6 of 50). Promoting the pool would add mostly wrong annotations; the evidence
+(one-sided binomial p = 2e-25), and rescue precision exceeds pool precision in all nine genomes
+(lowest: M. tuberculosis, 2 of 7 against 6 of 50). Promoting the pool would add mostly wrong annotations; the evidence
 the refinement weighs selects the correct ones.
