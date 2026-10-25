@@ -10,6 +10,47 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-25
+
+### Changed
+- **Essentiality prior: targeted rescue (`EssentialityPrior`, theta `ess_rescue_mode`, default `targeted`)**.
+  For every uncovered essential category the borderline candidates (Stage 0 likelihood in `[0.16, 0.50]`) are
+  scored on the evidence that separates a missing essential gene from a spurious alignment: Stage 0 log-odds,
+  corroboration across claims, whether the protein is otherwise unannotated, whether it already carries a
+  confident annotation of the same aspect outside the category, and the fraction of its operon partners
+  annotated to the essential domain. The top candidate is pinned to the posterior `ess_rescue_target`
+  (default `0.60`) through the refiner's floor, so a rescued function is present at the decision threshold by
+  construction. In v2.1.0 the rescue boost was capped by the refiner's genome-scale limit on prior lifts
+  (log-odds 0.12) and damped, so rescued claims ended between 0.47 and 0.53; over the 458,223 AllTheBacteria
+  genomes only 44 % of the essential rescues crossed 0.50 (`benchmark/macroevolution/results/t10_rescue_floor.tsv`).
+  `ess_rescue_mode: legacy` reproduces the v2.1.0 behaviour exactly. Evaluation in `benchmark/essentiality_rescue/`:
+  on the nine reference genomes both modes choose the same proteins and F-max is unchanged; on 214 AllTheBacteria
+  genomes in the Stage D regime the share of rescues crossing 0.50 goes from 42.6 % to 99.8 % and mean essential
+  completeness from 15.1 to 23.7 of 32 categories (Stage 0: 8.9).
+- **Pathway coherence (`--module-defs`, experimental, opt-in)**: KEGG module definitions with step logic
+  (`benchmark/pathway_coherence/data/kegg_module_defs.json`) give an evidence-gated module completeness
+  (`gspa.ontology.ModuleAssessor`: per-step status present / partial complex / sub-threshold evidence / missing /
+  unmappable / excluded for the taxon; a module counts only once its present steps are specific to it or cover a
+  third of it), reported by `gspa evaluate` as `module_coherence` next to the historical `pathway_coherence`
+  (now also `pathway_map_coverage`, a breadth measure), and a module-based refinement in the coherence prior
+  (theta `coh_*`: only activated modules at least half complete, one scored candidate per open step, at most two
+  steps per module, pinned to 0.60, never forced to completion). `gspa integrate --module-defs` writes
+  `<out>.modules.json` (modules before and after refinement, changed annotations with evidence, open gaps with
+  their best candidate) and the results page shows it. Without `--module-defs` nothing changes.
+
+### Added
+- `<out>.rescues.tsv` next to every `gspa integrate` output that made a rescue: prior, mode, category,
+  protein, term, Stage 0 likelihood, score and target (`IntegrationState.rescueLog`).
+- Theta keys `ess_rescue_mode`, `ess_rescue_target`, `ess_min_candidate`, `ess_max_rescue`, `ess_w_support`,
+  `ess_w_free`, `ess_w_competing`, `ess_w_context` (see `docs/reference/theta.md`).
+- `benchmark/macroevolution/`: macro-evolution of bacterial function from the AllTheBacteria Stage D
+  annotation (458,223 genomes, 11,438 GTDB r220 species), Stage 0 versus full GSPA at posterior 0.50 and 0.30:
+  annotation by phylum and by distance to the experimentally annotated organisms, Fitch parsimony on the
+  bac120 tree, scaling exponents, within-species core and accessory functions, ancestral states, and the
+  effect of the integrator's taxonomy coverage on forbidden terms.
+- `benchmark/emptyquarter_mags/`: full-pipeline annotation of 16,333 Empty Quarter soil bins and 722 culture
+  genomes, reported by dataset.
+
 ## [2.1.0] - 2026-10-14
 
 ### Added

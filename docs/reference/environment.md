@@ -7,7 +7,7 @@ launcher, Python sidecar scripts, neural predictors, and the FastAPI web service
 
 | Variable | Target component | Default | Description |
 |---|---|---|---|
-| `GSPA_JAR` | Launcher (`./gspa`) | Auto-detected | Explicit path to `gspa-2.1.0.jar`. Overrides built-in lookup. |
+| `GSPA_JAR` | Launcher (`./gspa`) | Auto-detected | Explicit path to `gspa-2.2.0.jar`. Overrides built-in lookup. |
 | `GSPA_JVM_OPTS` | Launcher (`./gspa`) | `-Xmx8g` | Options passed directly to the Java Virtual Machine. |
 | `JAVA_HOME` | Launcher (`./gspa`) | Inherited from system | Path to JDK root directory; uses `$JAVA_HOME/bin/java`. |
 | `GSPA_AGENT_API_BASE` | Stage 3 agent sidecar | Auto-detected | Base URL of OpenAI-compatible LLM endpoint. Alias of `GSPA_LLM_URL`. |
@@ -39,8 +39,8 @@ Overrides the automatic jar resolution logic. By default, the launcher searches
 in this order:
 
 1. Path specified by `GSPA_JAR`.
-2. `./gspa-2.1.0.jar` adjacent to the launcher script.
-3. `./gspa-cli/build/libs/gspa-2.1.0.jar` (standard Gradle build location).
+2. `./gspa-2.2.0.jar` adjacent to the launcher script.
+3. `./gspa-cli/build/libs/gspa-2.2.0.jar` (standard Gradle build location).
 4. Invoking `./gradlew :gspa-cli:shadowJar --quiet` to compile on the fly.
 
 ### `GSPA_JVM_OPTS`

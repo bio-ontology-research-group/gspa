@@ -27,7 +27,7 @@ docker run --rm gspa-tutorial:cpu diamond version
 ```
 
 ```output
-gspa 2.1.0
+gspa 2.2.0
 diamond version 2.1.9
 ```
 
