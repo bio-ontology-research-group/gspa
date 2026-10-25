@@ -247,7 +247,8 @@ class CoherencePrior implements Prior {
                         state.sortCandidatesForRescue(cands)
                         String fk = cands[0].key
                         double pVal = cands[0].value as double
-                        if (state.candidateRescueTier(fk, pVal) >= 1 && (!moduleMode || passesSafeguard(state, fk))) {
+                        // Module mode leaves has_part process rescues out: validated at 16-29 % precision (benchmark/pathway_coherence, rounds 3-4).
+                        if (state.candidateRescueTier(fk, pVal) >= 1 && !moduleMode) {
                             double bVal = Math.max(1.80d * alphaCoh * w, 0.14d - state.getLikelihoodLogOdds(fk))
                             boosts[fk] = Math.max(boosts.getOrDefault(fk, 0.0d), bVal)
                         }
@@ -256,7 +257,8 @@ class CoherencePrior implements Prior {
             }
             for (Map.Entry<String, Double> ce : complexKeyWeights.entrySet()) {
                 // in module mode a positive complex-partner boost needs the same candidate evidence as a module rescue
-                if (moduleMode && ce.value > 0 && state.getLikelihoodProbability(ce.key) < IntegrationState.MAP_THRESHOLD && !passesSafeguard(state, ce.key)) continue
+                // Module mode keeps the singleton penalty but not the partner boosts (same validation).
+                if (moduleMode && ce.value > 0) continue
                 boosts[ce.key] = boosts.getOrDefault(ce.key, 0.0d) + alphaCoh * ce.value
             }
             for (Map.Entry<String, Double> mb : moduleBoosts.entrySet()) {
