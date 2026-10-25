@@ -27,10 +27,10 @@ case "${1:-help}" in
     ssh ibex "sbatch --export=ALL,STEPS='${2:-02 03 04}',SUF='${SUF:-}',THR='${THR:-0.5}' $M/code/02_profiles.sbatch" ;;
   status)
     ssh ibex "squeue -u hohndor -h -o '%i %j %T %M' | grep macroevo; echo presence: \$(ls $M/presence/*.npz 2>/dev/null | wc -l) of \$(wc -l < $M/lists/batches.txt); ls $M/results 2>/dev/null | head -20" ;;
-  fetch)
-    mkdir -p "$HERE/results"
-    scp ibex:$M/results/\*.tsv "$HERE/results/"
-    scp ibex:$M/profiles/species.tsv ibex:$M/tree/tips.tsv ibex:$M/tree/nodes.tsv ibex:$M/tree/unmapped_species.tsv ibex:$M/tree/tree_pruned.nwk "$HERE/results/"
-    scp ibex:$M/tree/parsimony_\*.tsv "$HERE/results/" ;;
+  fetch)   # SUF=_t30 bash run.sh fetch  -> results_t30/ (sensitivity run at posterior 0.30)
+    suf="${SUF:-}"; dest="$HERE/results$suf"; mkdir -p "$dest"
+    scp ibex:$M/results$suf/\*.tsv "$dest/"
+    scp ibex:$M/profiles$suf/species.tsv ibex:$M/tree$suf/tips.tsv ibex:$M/tree$suf/nodes.tsv ibex:$M/tree$suf/unmapped_species.tsv ibex:$M/tree$suf/tree_pruned.nwk "$dest/"
+    scp ibex:$M/tree$suf/parsimony_\*.tsv "$dest/" ;;
   *) sed -n 2,9p "$0" ;;
 esac
