@@ -176,3 +176,21 @@ and the curated annotation is unchanged:
 Module refinement adds 106 correct and 21 wrong annotations (precision 0.83), more correct than wrong in every
 genome; the v2.1.0 prior adds more wrong than correct annotations and lowers F-max in all nine genomes. The F-max
 change of module mode is small because about a hundred annotations are added to some 10^5 per genome set.
+
+**Scored on the functions refinement addresses (`enzyme_scope_eval.py`).** F-max over all GO terms dilutes a
+targeted change. Restricted to the 1,263 GO terms that KEGG module steps map to (with descendants), predictions and
+curated truth pooled over the nine genomes, at the decision threshold 0.50:
+
+| evidence | refinement | precision | recall | F-max |
+|---|---|---|---|---|
+| no close homologs (`results_masked/enzyme_scope_masked.tsv`) | off | 0.940 | 0.602 | 0.809 |
+| | v2.1.0 prior | 0.908 | 0.655 | 0.808 |
+| | module mode | 0.940 | 0.621 | 0.809 |
+| full (`results_v5/enzyme_scope_unmasked.tsv`) | off | 0.943 | 0.773 | 0.870 |
+| | v2.1.0 prior | 0.917 | 0.794 | 0.867 |
+| | module mode | 0.943 | 0.780 | 0.871 |
+
+Without close homologs, module refinement raises the recall of pathway-enzyme functions by 1.97 points (106 more
+curated functions found, higher in all nine genomes) at unchanged precision; the v2.1.0 prior raises recall more but
+costs 3.2 points of precision. With full evidence the recall gain is 0.7 points at 0.06 points of precision, and
+module mode has the highest F-max of the three.
