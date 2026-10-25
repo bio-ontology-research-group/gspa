@@ -99,3 +99,27 @@ functions per nine genomes, and the main improvement is the removal of the v2.1.
 Module completeness judged against KEGG's complete-module lists (assessable, expected modules only):
 precision 0.81 and recall 0.78 at Stage 0, 0.78 and 0.90 after all priors in module mode
 (`results_v4/runs.tsv`, `complete_*` columns). Per genome and per module rows are in `results_v4/`.
+
+## Held-out module steps: recovery of correct functions (`held_out_steps.py`, `results_held_out/`)
+
+Round 4 compares whole annotations, where pathway refinement touches few claims. To test recovery
+directly, in each of the nine genomes one correct step per near-complete module was hidden: a step whose
+annotated protein carries the step's function in the curated annotation (`truth_all`) at Stage 0 >= 0.50,
+in an activated, expected module at least two-thirds complete. All claims of that protein on the step's GO
+terms (with descendants and the EC numbers mapping to them) were set to a calibrated probability drawn from
+U[0.25, 0.45], and the perturbed claims were integrated with refinement off (`nocoh`), with the v2.1.0
+coherence prior and in module mode (leave-one-out organism context as before). 774 steps were hidden.
+
+| | hidden steps recovered (>= 0.50) | other annotations added, correct | other annotations added, wrong |
+|---|---|---|---|
+| refinement off | 233 (30.1 %) | | |
+| v2.1.0 coherence prior | 488 (63.0 %) | 215 | 688 |
+| module mode | 384 (49.6 %) | 31 | 22 |
+
+Module mode recovers 151 more hidden correct functions than no refinement (+65 %), more in every genome
+(`results_held_out/held_out_runs.tsv`), while adding 22 wrong annotations elsewhere. The v2.1.0 prior
+recovers more hidden steps, 104 more than module mode, but adds 688 wrong annotations to get them: about
+6.6 wrong additions per extra correct recovery, against 0.15 for module mode. The 30 % recovered without
+refinement comes from the other priors and from claims whose remaining support stays above threshold.
+The targets were chosen from module-mode assessments of the unperturbed run, so they are steps the module
+assessment can see; the comparison between variants uses the same targets.
