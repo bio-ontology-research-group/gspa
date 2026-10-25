@@ -25,8 +25,20 @@ class QualityReport {
     /** Process coherence: fraction of has_part dependencies satisfied (0.0 - 1.0) */
     double processCoherence = 0.0
 
-    /** Pathway coherence: average pathway completeness (0.0 - 1.0) */
+    /** Pathway-map coverage: mean enzyme coverage of the KEGG maps and modules that have any enzyme (0.0 - 1.0).
+     *  A breadth measure, not a completeness test. */
     double pathwayCoherence = 0.0
+
+    /** Module completeness: mean fraction of assessable required steps present over the KEGG modules whose
+     *  evidence activates them (0.0 - 1.0); -1.0 when module definitions were not loaded or no module was activated. */
+    double moduleCoherence = -1.0d
+    int modulesAssessed = 0
+    int modulesActivated = 0
+    int modulesComplete = 0
+
+    /** Per-module detail (all assessed modules): id, name, class, activated, activation_score, completeness,
+     *  step counts and per-step status. */
+    List<Map<String, Object>> moduleDetail = []
 
     /** Complex coherence: fraction of coherent complexes (0.0 - 1.0) */
     double complexCoherence = 0.0
@@ -82,7 +94,9 @@ class QualityReport {
         double consistencyScore = consistent ? 1.0 : Math.max(0.0, 1.0 - violations.size() * 0.01)
         vals << consistencyScore; wts << 0.3d
 
-        List<Double> coh = [processCoherence, pathwayCoherence, complexCoherence].findAll { it >= 0.0d }
+        // Module completeness replaces map coverage in the composite when it was assessed.
+        double pathwayPart = moduleCoherence >= 0.0d ? moduleCoherence : pathwayCoherence
+        List<Double> coh = [processCoherence, pathwayPart, complexCoherence].findAll { it >= 0.0d }
         if (!coh.isEmpty()) {
             vals << (coh.sum() / coh.size()); wts << 0.4d
         }

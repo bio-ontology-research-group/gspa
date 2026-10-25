@@ -36,6 +36,9 @@ class EvaluateCommand implements Runnable {
     @Option(names = ['--pathways'], description = 'Pathway definitions TSV')
     File pathways
 
+    @Option(names = ['--module-defs'], description = 'KEGG module definitions JSON with step logic (benchmark/pathway_coherence/fetch_kegg_module_definitions.py); enables evidence-gated module completeness.')
+    File moduleDefs
+
     @Option(names = ['--modules'],
             description = 'Additional pathway TSV(s) to stack on top of --pathways ' +
                           '(KEGG Modules, MetaCyc, BioCyc, …). Comma-separated list.',
@@ -110,8 +113,10 @@ class EvaluateCommand implements Runnable {
                 }
             }
             pipeline.pathwayDatabase(pwDb)
+            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, ec2goMap)
         } else if (ec2go?.exists()) {
             pipeline.ec2goFile(ec2go)
+            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, gspa.ontology.PathwayLoader.loadEc2Go(ec2go))
         }
         if (taxonomy?.exists()) {
             pipeline.taxonomyFile(taxonomy)

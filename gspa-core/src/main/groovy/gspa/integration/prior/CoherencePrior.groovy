@@ -1,5 +1,9 @@
 package gspa.integration.prior
 
+import gspa.integration.ClaimKey
+import gspa.ontology.ModuleAssessor
+import gspa.ontology.ModuleDefinitions
+
 import gspa.integration.IntegrationState
 import gspa.integration.Prior
 import gspa.metrics.Coherence
@@ -41,6 +45,28 @@ class CoherencePrior implements Prior {
 
     /** Minimum sub-threshold probability for a protein to qualify as a candidate partner subunit. */
     double complexCandidateMinProb = 0.08d
+
+    // ---- module-based pathway refinement (used when the state carries KEGG module definitions) ----
+    /** 'module' (evidence-gated KEGG modules, pinned rescues) or 'legacy' (v2.1.0 triggered-pathway boosts). 'auto' = module when definitions are loaded. */
+    String pathwayMode = 'auto'
+    /** Posterior a rescued step enzyme is pinned to. */
+    double rescueTarget = 0.60d
+    /** A module is refined only when activated and at least this complete. */
+    double refineMinCompleteness = 0.5d
+    /** Steps rescued per module at most (highest-scoring first). */
+    int maxRescuePerModule = 2
+    /** Lowest candidate Stage 0 likelihood considered. */
+    double minCandidate = 0.16d
+    /** Candidates below this score (log-odds scale) are left alone. */
+    double minScore = -2.0d
+    double wSupport = 0.5d
+    double wFree = 0.5d
+    double wCompeting = 1.0d
+    double wOperon = 1.0d
+    double wModule = 1.0d
+    /** Rescues already logged (one record per claim per run). */
+    private final Set<String> logged = new HashSet<>()
+    private static final Set<String> ASPECT_ROOTS = ['GO:0008150', 'GO:0003674', 'GO:0005575'] as Set
 
     /**
      * Cached per iteration: unsatisfied F terms that would complete a
@@ -108,8 +134,17 @@ class CoherencePrior implements Prior {
             log.warn("CoherencePrior: process-coherence check failed: ${ex.message}")
         }
 
-        // --- Pathway coherence: for each pathway, find missing required terms ---
-        if (state.pathwayDatabase != null) {
+        boolean moduleMode = state.moduleDefinitions != null && pathwayMode != 'legacy'
+        Map<String, Double> moduleBoosts = [:]
+        if (moduleMode) {
+            try {
+                moduleBoosts = moduleRescues(state)
+            } catch (Exception ex) {
+                log.warn("CoherencePrior: module refinement failed: ${ex.message}")
+            }
+        }
+        // --- Pathway coherence (legacy): for each pathway, find missing required terms ---
+        if (state.pathwayDatabase != null && !moduleMode) {
             try {
                 for (PathwayGraph pathway : state.pathwayDatabase.pathways.values()) {
                     Set<String> required = pathway.getRequiredGoTerms()
@@ -221,10 +256,114 @@ class CoherencePrior implements Prior {
             for (Map.Entry<String, Double> ce : complexKeyWeights.entrySet()) {
                 boosts[ce.key] = boosts.getOrDefault(ce.key, 0.0d) + alphaCoh * ce.value
             }
+            for (Map.Entry<String, Double> mb : moduleBoosts.entrySet()) {
+                boosts[mb.key] = Math.max(boosts.getOrDefault(mb.key, 0.0d), mb.value)
+            }
             targetedKeyBoosts = boosts
         }
 
         log.debug("CoherencePrior: ${processMissingTerms.size()} process-missing, ${pathwayMissingTerms.size()} pathway-missing, ${complexKeyWeights.size()} complex-adjusted keys")
+    }
+
+    /**
+     * Module-based refinement. Modules are assessed on the Stage 0 likelihoods (so the targets do not
+     * move between iterations); a module activated by its evidence and at least {@link #refineMinCompleteness}
+     * complete may have up to {@link #maxRescuePerModule} steps rescued, one candidate per step: the
+     * sub-threshold claim on a step enzyme with the best score, where the score is the Stage 0 log-odds,
+     * corroboration, a bonus for an otherwise unannotated protein, a penalty for a protein already confidently
+     * annotated to another function of the same aspect, a bonus when an operon partner carries a present
+     * step of the same module, and the module's completeness. The chosen claim is pinned to
+     * {@link #rescueTarget}; every rescue is logged with its evidence. Steps without any candidate stay
+     * open: the module is never forced to completion.
+     */
+    private Map<String, Double> moduleRescues(IntegrationState state) {
+        Map<String, Double> boosts = [:]
+        ModuleDefinitions defs = state.moduleDefinitions
+        Set<String> baseline = (state.goOntology != null) ? state.baselineAnnotatedGoTermsPropagated() : state.baselineAnnotatedGoTerms()
+        // evidence: best sub-threshold likelihood per GO term; candidates per GO term; proteins per present term
+        Map<String, Double> evidence = [:]
+        Map<String, List<String>> candsByGo = [:].withDefault { [] }
+        Map<String, Set<String>> presentProtsByGo = [:].withDefault { [] as Set }
+        Map<String, Set<String>> strongByProt = [:].withDefault { [] as Set }
+        Map<String, Double> src = (state.likelihoodLogOdds != null && !state.likelihoodLogOdds.isEmpty()) ? state.likelihoodLogOdds : state.posteriorLogOdds
+        for (Map.Entry<String, Double> e : src.entrySet()) {
+            String[] parts = IntegrationState.splitFunctionKey(e.key)
+            if (parts == null || parts[1] != 'GO') continue
+            double p = 1.0d / (1.0d + Math.exp(-e.value))
+            if (p >= IntegrationState.MAP_THRESHOLD) {
+                presentProtsByGo[parts[2]] << parts[0]
+                strongByProt[parts[0]] << parts[2]
+            } else if (p >= minCandidate) {
+                candsByGo[parts[2]] << e.key
+                if (p > evidence.getOrDefault(parts[2], 0.0d)) evidence[parts[2]] = p
+            }
+        }
+        Set<String> forbidden = [] as Set
+        try {
+            if (state.satConsistencyChecker?.organismTaxon) forbidden = state.satConsistencyChecker.getForbiddenConstrainedTerms() ?: ([] as Set)
+        } catch (Exception ignored) {}
+        def assessment = new ModuleAssessor(defs).assess(baseline, evidence, forbidden)
+        Map<String, List<String>> mates = [:]
+        for (List<String> op : (state.operons ?: [])) {
+            for (String pid : op) mates[pid] = op.findAll { it != pid }
+        }
+        double target = Math.log(rescueTarget / (1.0d - rescueTarget))
+        int nRescued = 0
+        for (ModuleAssessor.ModuleResult m : assessment.modules.values()) {
+            if (!m.activated || m.signature || Double.isNaN(m.completeness) || m.completeness < refineMinCompleteness || m.complete) continue
+            // proteins carrying a present step of this module (operon context)
+            Set<String> moduleProts = [] as Set
+            for (ModuleAssessor.StepResult st : m.steps) for (String g : st.presentGo) moduleProts.addAll(presentProtsByGo[g])
+            List<Map> options = []
+            for (ModuleAssessor.StepResult st : m.steps) {
+                if (!st.required || st.status == 'present' || st.status == 'unmappable' || st.status == 'forbidden') continue
+                Set<String> terms = new LinkedHashSet<>(st.goTerms)
+                if (state.goOntology != null) for (String g : st.goTerms) terms.addAll(state.goOntology.getDescendants(g) ?: [])
+                String bestKey = null; double bestScore = Double.NEGATIVE_INFINITY; Map bestEv = null
+                for (String g : terms) {
+                    for (String fk : candsByGo[g]) {
+                        String[] parts = IntegrationState.splitFunctionKey(fk)
+                        String pid = parts[0]
+                        double l0 = state.getLikelihoodLogOdds(fk)
+                        double sc = l0 + wSupport * Math.log(Math.max(1, state.getClaimCount(fk)))
+                        boolean free = state.getMaxLikelihoodProbForProtein(pid) < IntegrationState.MAP_THRESHOLD
+                        if (free) sc += wFree
+                        boolean competing = false
+                        if (!free && state.goOntology != null) {
+                            String asp = state.goOntology.getAspect(g)
+                            Set<String> anc = state.goOntology.getAncestors(g) ?: ([] as Set)
+                            competing = strongByProt[pid].any { String o -> !terms.contains(o) && !anc.contains(o) && !ASPECT_ROOTS.contains(o) && state.goOntology.getAspect(o) == asp }
+                            if (competing) sc -= wCompeting
+                        }
+                        String partner = (mates[pid] ?: []).find { moduleProts.contains(it) }
+                        if (partner != null) sc += wOperon
+                        sc += wModule * m.completeness
+                        if (sc > bestScore) {
+                            bestScore = sc; bestKey = fk
+                            bestEv = [module: m.id, module_name: m.name, step: st.index, step_label: st.label, module_completeness: m.completeness,
+                                      activation_score: m.activationScore, n_sup: state.getClaimCount(fk), free: free, competing: competing, operon_partner: partner]
+                        }
+                    }
+                }
+                if (bestKey != null && bestScore >= minScore) options << [key: bestKey, score: bestScore, ev: bestEv, like: state.getLikelihoodProbability(bestKey)]
+            }
+            options.sort { a, b -> (b.score as double) <=> (a.score as double) }
+            for (Map o : options.take(maxRescuePerModule)) {
+                String fk = o.key as String
+                double l0 = state.getLikelihoodLogOdds(fk)
+                boosts[fk] = Math.max(boosts.getOrDefault(fk, 0.0d), Math.max(1.80d * alphaCoh, target - l0))
+                Double prev = state.getPinnedFloor(ClaimKey.parse(fk))
+                if (prev == null || prev < target) state.setPinnedFloor(ClaimKey.parse(fk), target)
+                String id = "${m.id}|${fk}".toString()
+                if (logged.add(id)) {
+                    state.rescueLog << [prior: name(), mode: 'module', category: "${m.id}:step${o.ev.step}".toString(), functionKey: fk,
+                                        likelihood: o.like, score: o.score, target: rescueTarget, evidence: o.ev]
+                }
+                nRescued++
+            }
+        }
+        if (nRescued) log.debug("CoherencePrior: ${nRescued} module step rescues")
+        boosts
     }
 
     @Override

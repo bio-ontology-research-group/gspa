@@ -28,6 +28,8 @@ class QualityPipeline {
     private AnatomicalConstraints anatomicalConstraints
     private SatConsistencyChecker satChecker
     private PathwayDatabase pathwayDatabase
+    private File moduleDefinitionsFile
+    private Map<String, String> ec2goForModules
     private EssentialFunctions essentialFunctions
     private File complexTermsFile
 
@@ -118,6 +120,21 @@ class QualityPipeline {
         this
     }
 
+    /** KEGG module definitions JSON (fetch_kegg_module_definitions.py); needs an EC-to-GO map from the pathway database or ec2go file. */
+    QualityPipeline moduleDefinitionsFile(File file, Map<String, String> ec2go = null) {
+        this.moduleDefinitionsFile = file
+        this.ec2goForModules = ec2go
+        this
+    }
+
+    private void wireModules() {
+        if (moduleDefinitionsFile?.exists()) {
+            Map<String, String> ec2go = ec2goForModules ?: pathwayDatabase?.ec2go ?: [:]
+            coherenceEvaluator.moduleDefinitions = gspa.ontology.ModuleDefinitions.load(moduleDefinitionsFile, ec2go)
+            coherenceEvaluator.satChecker = satChecker
+        }
+    }
+
     QualityPipeline pathwayDatabase(PathwayDatabase db) {
         this.pathwayDatabase = db
         this
@@ -189,6 +206,7 @@ class QualityPipeline {
         if (pathwayDatabase != null) {
             coherenceEvaluator.pathwayDatabase = pathwayDatabase
         }
+        wireModules()
         if (complexTermsFile?.exists()) {
             coherenceEvaluator.loadComplexTerms(complexTermsFile)
         } else {
@@ -234,6 +252,7 @@ class QualityPipeline {
         if (pathwayDatabase != null) {
             coherenceEvaluator.pathwayDatabase = pathwayDatabase
         }
+        wireModules()
         if (complexTermsFile?.exists()) {
             coherenceEvaluator.loadComplexTerms(complexTermsFile)
         } else {

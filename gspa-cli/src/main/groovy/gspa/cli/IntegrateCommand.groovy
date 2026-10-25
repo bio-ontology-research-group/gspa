@@ -127,6 +127,9 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--pathways'], description = 'Pathway definitions TSV.')
     File pathwaysFile
 
+    @Option(names = ['--module-defs'], description = 'KEGG module definitions JSON with step logic; enables the module-based pathway prior and writes <out>.modules.json.')
+    File moduleDefsFile
+
     @Option(names = ['--modules'],
             description = 'Additional pathway TSV to stack on top of --pathways ' +
                           '(same schema). Designed for KEGG Modules — narrower units ' +
@@ -556,6 +559,7 @@ class IntegrateCommand implements Runnable {
         writeIntegratedOutputTsv(integrated, outFile)
         println "  Wrote: ${outFile}"
         writeRescueLog(state, outFile)
+        writeModuleReport(state, integrated, outFile)
 
         // --- Optional provenance JSON ---
         if (provenanceFile != null) {
@@ -579,19 +583,33 @@ class IntegrateCommand implements Runnable {
         }
     }
 
+    /** Evidence-gated KEGG module assessment before and after refinement, as {@code <out>.modules.json}. */
+    private static void writeModuleReport(IntegrationState state, IntegratedAnnotationSet integrated, File targetOutFile) {
+        if (state?.moduleDefinitions == null) return
+        try {
+            Map report = gspa.integration.ModuleReport.build(state, integrated)
+            File f = new File(targetOutFile.parentFile ?: new File('.'), "${targetOutFile.name}.modules.json")
+            f.text = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(report)
+            println "  Wrote: ${f} (${report.summary.modules_activated_after} activated modules, ${report.summary.modules_complete_after} complete)"
+        } catch (Exception e) {
+            System.err.println "  [warn] module report failed: ${e.message}"
+        }
+    }
+
     /** Rescues made by the targeted priors, as {@code <out>.rescues.tsv} (only when any were made). */
     private static void writeRescueLog(IntegrationState state, File targetOutFile) {
         if (state == null || state.rescueLog == null || state.rescueLog.isEmpty()) return
         File f = new File(targetOutFile.parentFile ?: new File('.'), "${targetOutFile.name}.rescues.tsv")
         f.withWriter('UTF-8') { w ->
-            w.writeLine("prior\tmode\tcategory\tprotein_id\tfunction_id\tlikelihood_prob\tscore\ttarget")
+            w.writeLine("prior\tmode\tcategory\tprotein_id\tfunction_id\tlikelihood_prob\tscore\ttarget\tevidence")
             for (Map r : state.rescueLog) {
                 String[] parts = IntegrationState.splitFunctionKey(r.functionKey as String)
                 String pid = parts != null ? parts[0] : ''
                 String fid = parts != null ? parts[2] : (r.functionKey as String)
                 String sc = (r.score instanceof Number && !Double.isNaN((r.score as Number).doubleValue())) ? String.format(Locale.ROOT, '%.4f', (r.score as Number).doubleValue()) : ''
                 String tg = (r.target instanceof Number && !Double.isNaN((r.target as Number).doubleValue())) ? String.format(Locale.ROOT, '%.2f', (r.target as Number).doubleValue()) : ''
-                w.writeLine("${r.prior}\t${r.mode}\t${r.category}\t${pid}\t${fid}\t${String.format(Locale.ROOT, '%.4f', (r.likelihood as Number).doubleValue())}\t${sc}\t${tg}")
+                String ev = r.evidence instanceof Map ? (r.evidence as Map).collect { k, v -> "${k}=${v}" }.join(';') : ''
+                w.writeLine("${r.prior}\t${r.mode}\t${r.category}\t${pid}\t${fid}\t${String.format(Locale.ROOT, '%.4f', (r.likelihood as Number).doubleValue())}\t${sc}\t${tg}\t${ev}")
             }
         }
         println "  Wrote: ${f} (${state.rescueLog.size()} rescues)"
@@ -743,6 +761,7 @@ class IntegrateCommand implements Runnable {
                 state.anatomicalConstraints = sharedState.anatomicalConstraints
                 state.complexClassification = sharedState.complexClassification
                 state.pathwayDatabase = sharedState.pathwayDatabase
+                state.moduleDefinitions = sharedState.moduleDefinitions
                 state.reactionGraph = sharedState.reactionGraph
                 if (rowEssProf != null && essentialPresets.containsKey(rowEssProf.toLowerCase())) {
                     state.essentialFunctions = essentialPresets[rowEssProf.toLowerCase()]
@@ -798,6 +817,7 @@ class IntegrateCommand implements Runnable {
                 }
                 writeIntegratedOutputTsv(integrated, rowOutFile)
                 writeRescueLog(state, rowOutFile)
+                writeModuleReport(state, integrated, rowOutFile)
 
                 double elapsedSec = (System.nanoTime() - tStart) / 1e9d
                 Runtime rt = Runtime.getRuntime()
@@ -946,6 +966,15 @@ class IntegrateCommand implements Runnable {
                 }
             } catch (Exception e) {
                 System.err.println "  [warn] Failed to load pathway database: ${e.message}"
+            }
+        }
+        if (moduleDefsFile != null && moduleDefsFile.exists()) {
+            try {
+                Map<String, String> ec2goMap = state.pathwayDatabase?.ec2go ?: (ec2goFile != null ? gspa.ontology.PathwayLoader.loadEc2Go(ec2goFile) : [:])
+                state.moduleDefinitions = gspa.ontology.ModuleDefinitions.load(moduleDefsFile, ec2goMap)
+                println "  Modules: ${state.moduleDefinitions.modules.size()} KEGG module definitions from ${moduleDefsFile.name}"
+            } catch (Exception e) {
+                System.err.println "  [warn] Failed to load module definitions: ${e.message}"
             }
         }
 
@@ -1523,6 +1552,17 @@ class IntegrateCommand implements Runnable {
             if (theta.alpha_coh != null) p.alphaCoh = (theta.alpha_coh as Number).doubleValue()
             if (theta.alpha_complex_boost != null) p.complexPartnerWeight = (theta.alpha_complex_boost as Number).doubleValue()
             if (theta.alpha_complex_penalty != null) p.complexSingletonPenaltyWeight = (theta.alpha_complex_penalty as Number).doubleValue()
+            if (theta.coh_pathway_mode != null) p.pathwayMode = theta.coh_pathway_mode as String
+            if (theta.coh_rescue_target != null) p.rescueTarget = (theta.coh_rescue_target as Number).doubleValue()
+            if (theta.coh_refine_min_completeness != null) p.refineMinCompleteness = (theta.coh_refine_min_completeness as Number).doubleValue()
+            if (theta.coh_max_rescue_per_module != null) p.maxRescuePerModule = (theta.coh_max_rescue_per_module as Number).intValue()
+            if (theta.coh_min_candidate != null) p.minCandidate = (theta.coh_min_candidate as Number).doubleValue()
+            if (theta.coh_min_score != null) p.minScore = (theta.coh_min_score as Number).doubleValue()
+            if (theta.coh_w_support != null) p.wSupport = (theta.coh_w_support as Number).doubleValue()
+            if (theta.coh_w_free != null) p.wFree = (theta.coh_w_free as Number).doubleValue()
+            if (theta.coh_w_competing != null) p.wCompeting = (theta.coh_w_competing as Number).doubleValue()
+            if (theta.coh_w_operon != null) p.wOperon = (theta.coh_w_operon as Number).doubleValue()
+            if (theta.coh_w_module != null) p.wModule = (theta.coh_w_module as Number).doubleValue()
             engine.register(p, (priorWeights.coherence ?: 1.0) as double)
         }
         if ('consistency' in enabled) {

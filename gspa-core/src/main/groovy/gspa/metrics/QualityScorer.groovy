@@ -85,6 +85,12 @@ class QualityScorer {
             missingEssentialFunctions: completenessResult.missingFunctions,
             processCoherence: coherenceResult.processCoherence,
             pathwayCoherence: coherenceResult.pathwayCoherence,
+            moduleCoherence: (coherenceResult.moduleAssessment != null && !Double.isNaN(coherenceResult.moduleAssessment.moduleCoherence))
+                ? coherenceResult.moduleAssessment.moduleCoherence : -1.0d,
+            modulesAssessed: coherenceResult.moduleAssessment?.modules?.size() ?: 0,
+            modulesActivated: coherenceResult.moduleAssessment?.nActivated ?: 0,
+            modulesComplete: coherenceResult.moduleAssessment?.nComplete ?: 0,
+            moduleDetail: gspa.integration.ModuleReport.detail(coherenceResult.moduleAssessment),
             complexCoherence: coherenceResult.complexCoherence,
             incoherentProcessPairs: coherenceResult.processUnsatisfiedPairs ?: [],
             incoherentPathways: (coherenceResult.pathwayPerPathway ?: []).collect { p ->

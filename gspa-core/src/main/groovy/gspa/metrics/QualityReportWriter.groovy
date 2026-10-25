@@ -162,7 +162,24 @@ class QualityReportWriter {
             ],
             coherence              : [
                 process_coherence            : report.processCoherence,
+                // Breadth: mean enzyme coverage of KEGG maps/modules with any enzyme (kept under its historical key).
                 pathway_coherence            : report.pathwayCoherence,
+                pathway_map_coverage         : report.pathwayCoherence,
+                // Functional completeness of evidence-activated KEGG modules; null when not assessed.
+                module_coherence             : report.moduleCoherence >= 0.0d ? report.moduleCoherence : null,
+                modules_assessed             : report.modulesAssessed,
+                modules_activated            : report.modulesActivated,
+                modules_complete             : report.modulesComplete,
+                module_detail                : report.moduleDetail.collect { m ->
+                    Map mm = new LinkedHashMap(m)
+                    mm.steps = (m.steps as List).collect { st ->
+                        Map ss = new LinkedHashMap(st as Map)
+                        ss.go_terms = (st.go_terms as List).collect(named)
+                        ss.present_terms = (st.present_terms as List).collect(named)
+                        ss
+                    }
+                    mm
+                },
                 complex_coherence            : report.complexCoherence,
                 // Per-pair detail: required vs missing GO term, with names.
                 process_unsatisfied_pairs    : report.incoherentProcessPairs.collect { p ->

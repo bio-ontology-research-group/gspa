@@ -46,6 +46,8 @@ class IntegrationState {
     AnatomicalConstraints anatomicalConstraints
     EssentialFunctions essentialFunctions
     PathwayDatabase pathwayDatabase
+    /** KEGG module definitions with step logic (optional; drives the module-based coherence prior and the module report). */
+    gspa.ontology.ModuleDefinitions moduleDefinitions
 
     /** Complex classification map: GO_ID -> 'h' (homomeric) | 'n' (heteromeric) | 'a' (ambiguous). */
     Map<String, String> complexClassification = new LinkedHashMap<>()

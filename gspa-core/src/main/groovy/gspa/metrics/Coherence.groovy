@@ -20,6 +20,10 @@ class Coherence {
     GoOntology goOntology
     GoReasoner goReasoner
     PathwayDatabase pathwayDatabase
+    /** KEGG module definitions with step logic; when set, module completeness is assessed. */
+    gspa.ontology.ModuleDefinitions moduleDefinitions
+    /** Supplies the GO terms forbidden for the organism's taxon (organism context for module activation). */
+    gspa.ontology.SatConsistencyChecker satChecker
 
     /** Complex terms classification (from complex_terms.tsv) */
     Map<String, String> complexClassification = [:] // GO term -> h/n/a
@@ -57,8 +61,19 @@ class Coherence {
         def processResult = evaluateProcessCoherence(propagatedTerms)
         def pathwayDetail = evaluatePathwayCoherenceDetailed(propagatedTerms)
         def complexResult = evaluateComplexCoherence(genome)
+        gspa.ontology.ModuleAssessor.Assessment modules = null
+        if (moduleDefinitions != null) {
+            Set<String> forbidden = [] as Set
+            try {
+                if (satChecker?.organismTaxon) forbidden = satChecker.getForbiddenConstrainedTerms() ?: ([] as Set)
+            } catch (Exception ex) {
+                log.warn("Coherence: forbidden-term lookup failed: ${ex.message}")
+            }
+            modules = new gspa.ontology.ModuleAssessor(moduleDefinitions).assess(propagatedTerms, [:], forbidden)
+        }
 
         new CoherenceResult(
+            moduleAssessment: modules,
             processCoherence: processResult.score,
             processTriggered: processResult.triggered,
             processSatisfied: processResult.satisfied,
@@ -187,6 +202,8 @@ class Coherence {
 }
 
 class CoherenceResult {
+    /** Evidence-gated KEGG module assessment (null when no module definitions were loaded). */
+    gspa.ontology.ModuleAssessor.Assessment moduleAssessment
     double processCoherence
     int processTriggered
     int processSatisfied

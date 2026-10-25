@@ -141,6 +141,7 @@ def main() -> None:
     ap.add_argument("--keep-tmp", action="store_true", help="keep regenerated claims.jsonl (byte-compat test)")
     ap.add_argument("--adopt-existing", action="store_true",
                     help="reuse (gzip-copy) the outputs Stage C already produced with the same JVM call")
+    ap.add_argument("--theta", type=Path, default=None, help="theta JSON passed to `integrate --theta` (integrator variants)")
     args = ap.parse_args()
 
     t0 = time.time()
@@ -256,6 +257,8 @@ def main() -> None:
                "--go-owl", str(args.ref_dir / "go.owl"), "--pathways", str(args.ref_dir / "kegg_pathways.tsv"),
                "--modules", str(args.ref_dir / "kegg_modules.tsv"), "--ec2go", str(args.ref_dir / "ec2go.txt"),
                "--enable-priors", PRIORS, "--enforce-stage2", "--enforce-consistency-mode", "relax", "--lite"]
+        if args.theta is not None:
+            cmd += ["--theta", str(args.theta)]
         tj = time.time()
         # The jar logs DEBUG/INFO to stdout regardless of -Droot.level; keep only progress and problems.
         with subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True, bufsize=1) as proc:
