@@ -63,3 +63,39 @@ Three causes, two of them fixable:
 
 Round 2 (`bench9_v2`) adds the `nocoh` baseline (all priors except coherence) so the annotations each
 pathway refinement adds, and their precision against the curated truth, are measured directly.
+
+## Rounds 2 to 4: safeguards and final validation
+
+**Round 2** (`results_v2/`, after the assessability rules) showed which rescues are wrong
+(`analyse_rescues.py`, `results_v2/rescue_features.tsv`): of 271 judged module rescues, those whose
+candidate had an evidence-adjusted log-odds below zero were 17 % correct, those in modules that KEGG never
+finds complete in another organism of the genome's domain 19 % (for example keratan and chondroitin sulfate
+degradation, animal pathways that two shared glycosidases had activated in E. coli), and those on proteins
+with a confident competing annotation 28 %. Two rules follow from what a rescue asserts, a posterior of 0.60,
+rather than from fitting: the candidate's adjusted odds must be at least even, and the module must be
+complete in at least five other organisms of the domain in KEGG (organism context; the test organism and,
+for E. coli, both E. coli strains are left out of the count). On round 2 they keep 88 of the 124 correct
+rescues and raise rescue precision from 46 % to 74 %. The organism context alone removes 56 of E. coli's 105
+modules called complete without KEGG listing them, and none of its 103 correctly complete modules.
+
+**Round 3** (`results_v3/`) added the `nocoh` baseline (all priors except coherence). The module rescues
+were 69 % correct among the annotations they newly put above 0.50, but the coherence prior's has_part
+process rescues and complex-partner boosts, unchanged so far, added 9 correct and 49 wrong annotations
+(`results_v3/added_breakdown.tsv`). In module mode these lifts now need the same candidate evidence.
+
+**Round 4** (`results_v4/`, final; nine genomes, curated truth from `truth_dual`):
+
+| | F-max micro, all | F-max CAFA, all | F-max micro, exp | added correct | added wrong |
+|---|---|---|---|---|---|
+| no coherence prior (`nocoh`) | 0.7746 | 0.8066 | 0.2865 | | |
+| v2.1.0 coherence prior (`legacy`) | 0.7734 | 0.8057 | 0.2864 | 191 | 674 |
+| module mode (`module`) | 0.7748 | 0.8067 | 0.2866 | 42 | 29 |
+
+Against the v2.1.0 prior, module mode removes 96 % of the wrong additions and has the higher micro F-max in
+all nine genomes. Against no pathway refinement, it adds 42 correct functions for 29 wrong ones (precision
+0.59, the posterior it assigns is 0.60); micro F-max on all annotations is equal or higher in eight genomes
+and 0.0002 lower in M. tuberculosis. The gain over no refinement is small: refinement recovers a few dozen
+functions per nine genomes, and the main improvement is the removal of the v2.1.0 prior's false additions.
+Module completeness judged against KEGG's complete-module lists (assessable, expected modules only):
+precision 0.81 and recall 0.78 at Stage 0, 0.78 and 0.90 after all priors in module mode
+(`results_v4/runs.tsv`, `complete_*` columns). Per genome and per module rows are in `results_v4/`.
