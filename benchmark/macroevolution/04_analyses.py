@@ -272,9 +272,8 @@ def main():
         r = [lab, v, n, int(ntip[v])]
         for c in CFGS:
             st = np.unpackbits(anc[c]["state"][v])[:int(anc[c]["n_terms"])].astype(bool)
-            terms = anc[c]["terms"]
-            ess_present = sum(1 for t in essential if (t in set(terms[st])) or (t not in set(terms) and t in vidx))  # fixed terms: assume present if present in all tips
-            r += [int(st.sum()), ess_present]
+            present = set(anc[c]["terms"][st]) | set(anc[c]["constant_present"])   # variable terms reconstructed at v, plus terms in every tip
+            r += [len(present), sum(1 for t in essential if t in present)]
         rows.append(r)
     write(os.path.join(a.out, "t8_ancestral.tsv"), ["clade", "node", "n_tips_in_phylum", "n_tips_in_clade"] + [f"{c}_{k}" for c in CFGS for k in ("n_terms_present", "essential_present")], rows)
     print("done", flush=True)

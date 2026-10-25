@@ -35,12 +35,31 @@ def main():
     ap.add_argument("--insight3", required=True, help="insight3_per_genome_java_stageD.tsv[.gz]")
     ap.add_argument("--out", required=True)
     ap.add_argument("--threshold", type=float, default=0.5, help="posterior at which a term counts as present")
+    ap.add_argument("--gtdb-metadata", required=True, help="bac120_metadata_r220.tsv.gz: species names and biosample -> species")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     tkey = f"t{int(round(a.threshold * 100)):02d}"
     mpaths = [p for g in a.manifests for p in glob.glob(g)]
     meta = read_manifests(mpaths)
     print(f"{len(meta)} genomes in {len(mpaths)} manifests", flush=True)
+    gtdb_names, bios2sp = set(), {}
+    with gzip.open(a.gtdb_metadata, "rt") as fh:
+        for r in csv.DictReader(fh, delimiter="\t"):
+            sp = r["gtdb_taxonomy"].split(";")[-1][3:]
+            gtdb_names.add(sp)
+            if r.get("ncbi_biosample"):
+                bios2sp[r["ncbi_biosample"]] = sp
+    print(f"GTDB r220: {len(gtdb_names)} species, {len(bios2sp)} biosamples", flush=True)
+    src_count = Counter()
+
+    def resolve(gid, sp):
+        """Species name under GTDB r220: the manifest name when r220 has it, else the species of the GTDB genome
+        with the same biosample, else the manifest name (left for 03 to report as unmapped)."""
+        if sp in gtdb_names:
+            src_count["name"] += 1; return sp, "name"
+        if gid in bios2sp:
+            src_count["biosample"] += 1; return bios2sp[gid], "biosample"
+        src_count["unmapped"] += 1; return sp, "unmapped"
     ins = {}
     op = gzip.open if a.insight3.endswith(".gz") else open
     with op(a.insight3, "rt") as fh:
@@ -72,8 +91,8 @@ def main():
                 sp_counts[c].append(np.zeros((BLOCK, n_vocab), dtype=np.uint32))
 
     gout = gzip.open(os.path.join(a.out, "genomes.tsv.gz"), "wt")
-    cols = ["genome_id", "batch", "species", "domain", "phylum", "ncbi_taxid", "n_orfs", "n_dark_lt30", "n_twilight_30_50",
-            "n_zero_alignment", "taxid_in_jar_hierarchy"]
+    cols = ["genome_id", "batch", "species", "species_atb", "species_source", "domain", "phylum", "ncbi_taxid", "n_orfs", "n_dark_lt30",
+            "n_twilight_30_50", "n_zero_alignment", "taxid_in_jar_hierarchy"]
     for c in CFGS:
         cols += [f"{c}_n_prot", f"{c}_frac_annot", f"{c}_n_terms", f"{c}_ess_bac", f"{c}_ess_arc"]
     cols += ["terms_only_gspa_full", "terms_only_noisy_or", "prot_gain_gspa_full"]
@@ -94,10 +113,11 @@ def main():
         only_full = (bits["gspa_full"] & ~bits["noisy_or"]).sum(1)
         only_noisy = (bits["noisy_or"] & ~bits["gspa_full"]).sum(1)
         for i, gid in enumerate(gids):
-            sp, dom, phy, taxid = meta.get(gid, ("unknown", "", "", ""))
+            sp_atb, dom, phy, taxid = meta.get(gid, ("unknown", "", "", ""))
+            sp, src = resolve(gid, sp_atb)
             r = ins.get(gid, {})
             n_orfs = int(r.get("n_orfs", 0) or 0)
-            row = [gid, batch, sp, dom, phy, taxid, n_orfs, r.get("n_dark_lt30", ""), r.get("n_twilight_30_50", ""),
+            row = [gid, batch, sp, sp_atb, src, dom, phy, taxid, n_orfs, r.get("n_dark_lt30", ""), r.get("n_twilight_30_50", ""),
                    r.get("n_zero_alignment", ""), r.get("taxid_in_jar_hierarchy", "")]
             for c in CFGS:
                 npr = int(d[f"{c}_n_prot_{tkey}"][i])
@@ -137,7 +157,7 @@ def main():
                 row = counts[c][s]
                 vals += [int((row > 0).sum()), int((row >= 0.9 * n).sum())]
             fh.write(f"{sp}\t{dom}\t{phy}\t{n}\t{med:.0f}\t" + "\t".join(map(str, vals)) + "\n")
-    print(f"done: {n_genomes} genomes, {n_sp} species", flush=True)
+    print(f"done: {n_genomes} genomes, {n_sp} species; species resolved by {dict(src_count)}", flush=True)
 
 
 if __name__ == "__main__":

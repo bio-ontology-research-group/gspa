@@ -18,10 +18,10 @@ for step in $STEPS; do
   echo "[$(date '+%F %T')] step $step"
   case $step in
     02) $PY $M/code/02_species_profiles.py --presence $M/presence --manifests "$S/wave1/batches/batch_*.tsv" "$S/wave2/manifests/w2_*.tsv" \
-          --insight3 $R/results_stageD/insight3_per_genome_java_stageD.tsv --out $M/profiles$SUF --threshold $THR ;;
+          --insight3 $R/results_stageD/insight3_per_genome_java_stageD.tsv --out $M/profiles$SUF --threshold $THR --gtdb-metadata $M/ref/bac120_metadata_r220.tsv.gz ;;
     03) $PY $M/code/03_tree.py --profiles $M/profiles$SUF --gtdb-metadata $M/ref/bac120_metadata_r220.tsv.gz \
           --tree $GTDB/pplacer/gtdb_r220_bac120.refpkg/gtdb_r220_bac120_decorated_unrooted.tree \
-          --train-taxonomy $S/ref/train_taxonomy.tsv --go-vocab $M/presence/go_vocab.txt --obo $S/ref/go.obo --out $M/tree$SUF ;;
+          --train-taxonomy $S/ref/train_taxonomy.tsv --taxdump-nodes $M/ref/taxdump/nodes.dmp --min-ref-proteins 1 --go-vocab $M/presence/go_vocab.txt --obo $S/ref/go.obo --out $M/tree$SUF ;;
     04) $PY $M/code/04_analyses.py --profiles $M/profiles$SUF --tree $M/tree$SUF --presence $M/presence \
           --never-in-taxon $S/ref/never_in_taxon-propagated.tsv --essential $M/ref/essential-functions/bacteria.tsv \
           --obo $S/ref/go.obo --out $M/results$SUF ;;

@@ -266,10 +266,11 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--majority", type=float, default=0.5)
     ap.add_argument("--min-ref-proteins", type=int, default=20)
+    ap.add_argument("--taxdump-nodes", required=True, help="NCBI taxdump nodes.dmp: strain taxid -> species taxid for the Swiss-Prot taxa")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     # ---- GTDB metadata
-    sp2rep, taxid2sp, rep_meta = {}, defaultdict(set), {}
+    sp2rep, taxid2sp, sp_taxid2sp, rep_meta = {}, defaultdict(set), defaultdict(set), {}
     with gzip.open(a.gtdb_metadata, "rt") as fh:
         rd = csv.DictReader(fh, delimiter="\t")
         for r in rd:
@@ -277,9 +278,10 @@ def main():
             if r["gtdb_representative"] == "t":
                 sp2rep[sp] = r["accession"]
                 rep_meta[r["accession"]] = (tax, r.get("genome_size", ""), r.get("protein_count", ""))
-            for k in ("ncbi_taxid", "ncbi_species_taxid"):
-                if r.get(k):
-                    taxid2sp[r[k]].add(sp)
+            if r.get("ncbi_taxid"):
+                taxid2sp[r["ncbi_taxid"]].add(sp)
+            if r.get("ncbi_species_taxid"):
+                sp_taxid2sp[r["ncbi_species_taxid"]].add(sp)
     print(f"GTDB r220: {len(sp2rep)} species representatives", flush=True)
     # ---- our species
     d = np.load(os.path.join(a.profiles, "species_counts.npz"))
@@ -316,10 +318,32 @@ def main():
         for line in fh:
             p, t = line.rstrip("\n").split("\t")[:2]
             prot_per_taxid[t] += 1
-    ref_prot = Counter()
+    tax_par, tax_rank = {}, {}
+    for line in open(a.taxdump_nodes):
+        f = [x.strip() for x in line.split("|")]
+        tax_par[f[0]] = f[1]; tax_rank[f[0]] = f[2]
+
+    def species_taxid(t):
+        for _ in range(64):
+            if t not in tax_par or t == "1":
+                return None
+            if tax_rank[t] == "species":
+                return t
+            t = tax_par[t]
+        return None
+    ref_prot, ref_unmapped = Counter(), Counter()
     for t, c in prot_per_taxid.items():
-        for sp in taxid2sp.get(t, ()):
-            ref_prot[sp] += c
+        sps = taxid2sp.get(t)                       # exact taxid of a GTDB genome (strain level)
+        if not sps:
+            st = species_taxid(t)
+            sps = sp_taxid2sp.get(st) if st else None   # species taxid of a GTDB genome
+        if sps:
+            for sp in sps:
+                ref_prot[sp] += c
+        else:
+            ref_unmapped[t] += c
+    print(f"Swiss-Prot taxa: {len(prot_per_taxid)}; {sum(1 for t, c in ref_unmapped.items() if c >= a.min_ref_proteins)} taxa with >= "
+          f"{a.min_ref_proteins} proteins have no GTDB genome (eukaryotes, viruses, or absent strains)", flush=True)
     is_ref = np.zeros(n, bool)
     for v, sp in zip(tips, tip_sp):
         is_ref[v] = ref_prot.get(sp, 0) >= a.min_ref_proteins
@@ -371,8 +395,12 @@ def main():
             for v in range(n):
                 fh.write(f"{v}\t{par[v]}\t{ln[v]:.9g}\t{ntips[v]}\t{br_gain[v]}\t{br_loss[v]}\t{int(state[v].sum())}\n")
         # ancestral states of the root and of every internal node with a taxon label
+        const_present = np.where(n_present == len(tips))[0]
         np.savez_compressed(os.path.join(a.out, f"ancestral_{cfg}.npz"), terms=np.array([vocab[t] for t in terms_idx]),
-                            state=np.packbits(state, axis=1), n_terms=np.int64(len(terms_idx)))
+                            state=np.packbits(state, axis=1), n_terms=np.int64(len(terms_idx)),
+                            constant_present=np.array([vocab[t] for t in const_present]),
+                            n_constant_absent=np.int64(int((n_present == 0).sum())))
+        print(f"[{cfg}] {len(const_present)} terms present in every tip, {int((n_present == 0).sum())} in none", flush=True)
         print(f"[{cfg}] total min changes {int(changes.sum())}, gains {int(gains.sum())}, losses {int(losses.sum())}", flush=True)
     print("done", flush=True)
 
