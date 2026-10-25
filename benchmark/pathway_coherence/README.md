@@ -146,3 +146,10 @@ integration), module refinement and no refinement give identical annotations: E.
 annotated from Swiss-Prot, which contains E. coli, and the 76 open steps of activated modules have no supporting
 candidate. Passing the DIAMOND transfers between 30 % and 50 % identity through as claims produced one rescue and
 lowered precision from 0.782 to 0.778 through the other priors, so the service keeps its 0.5 floor.
+
+**Live examples on gspa.bio2vec.net.** `examples/ecoli` (E. coli K-12 MG1655): 148 activated modules, 105 complete,
+no refinement change (see above). `examples/pdistasonis` (Parabacteroides distasonis, public AllTheBacteria assembly
+SAMD00389893, 2.8 substitutions per site from the nearest experimentally annotated species): 13 rescues (12 module
+steps, 1 essential function), 53 of 121 activated modules complete after refinement against 43 before, mean module
+completeness 0.73 to 0.78; each change is listed with its evidence on the Pathways tab. This strain has no curated
+annotation, so these changes are not validated individually; the precision of such rescues is the one measured above.
