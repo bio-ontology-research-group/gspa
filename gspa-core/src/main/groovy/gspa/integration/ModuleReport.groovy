@@ -24,7 +24,7 @@ class ModuleReport {
     static Map<String, Object> moduleMap(ModuleResult m) {
         [
             id: m.id, name: m.name, class: m.clazz, signature: m.signature, activated: m.activated,
-            assessable: m.assessable, not_expected_reason: m.notExpectedReason,
+            assessable: m.assessable, not_expected_reason: m.notExpectedReason, domain_complete: m.domainComplete,
             activation_score: round(m.activationScore), completeness: Double.isNaN(m.completeness) ? null : round(m.completeness),
             complete: m.complete, n_required: m.nRequired, n_present: m.nPresent, n_partial: m.nPartial, n_evidence: m.nEvidence,
             n_missing: m.nMissing, n_unmappable: m.nUnmappable, n_forbidden: m.nForbidden,

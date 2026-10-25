@@ -56,7 +56,10 @@ def command(jar, g, variant, theta, defs, out_file):
     if os.path.exists(ops) and os.path.getsize(ops) > 0: cmd += ["--operons", ops]
     if os.path.exists(gaps) and os.path.getsize(gaps) > 0: cmd += ["--gaps", gaps]
     if theta: cmd += ["--theta", theta]
-    if variant in ("assess", "module"): cmd += ["--module-defs", defs]
+    if variant in ("assess", "module"):
+        # leave-one-out: the test organism (and the other E. coli) must not count towards its own organism context
+        excl = {"eco": "eco,ece", "ece": "eco,ece"}.get(g["org"], g["org"])
+        cmd += ["--module-defs", defs, "--module-exclude-organisms", excl]
     return cmd
 
 
@@ -103,7 +106,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--jar", required=True); ap.add_argument("--defs", required=True, help="kegg_module_defs.json")
     ap.add_argument("--out-dir", required=True); ap.add_argument("--jobs", type=int, default=3); ap.add_argument("--n-bootstrap", type=int, default=20)
-    ap.add_argument("--variants", default="legacy,assess,module"); ap.add_argument("--skip-existing", action="store_true")
+    ap.add_argument("--variants", default="nocoh,legacy,assess,module"); ap.add_argument("--skip-existing", action="store_true")
     a = ap.parse_args()
     os.makedirs(a.out_dir, exist_ok=True)
     variants = a.variants.split(",")

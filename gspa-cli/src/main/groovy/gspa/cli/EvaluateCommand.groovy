@@ -39,6 +39,9 @@ class EvaluateCommand implements Runnable {
     @Option(names = ['--module-defs'], description = 'KEGG module definitions JSON with step logic (benchmark/pathway_coherence/fetch_kegg_module_definitions.py); enables evidence-gated module completeness.')
     File moduleDefs
 
+    @Option(names = ['--module-exclude-organisms'], split = ',', description = 'KEGG organism codes left out of the module completion counts (leave-one-out validation).')
+    List<String> moduleExcludeOrganisms = []
+
     @Option(names = ['--modules'],
             description = 'Additional pathway TSV(s) to stack on top of --pathways ' +
                           '(KEGG Modules, MetaCyc, BioCyc, …). Comma-separated list.',
@@ -113,10 +116,10 @@ class EvaluateCommand implements Runnable {
                 }
             }
             pipeline.pathwayDatabase(pwDb)
-            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, ec2goMap)
+            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, ec2goMap, moduleExcludeOrganisms as Set)
         } else if (ec2go?.exists()) {
             pipeline.ec2goFile(ec2go)
-            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, gspa.ontology.PathwayLoader.loadEc2Go(ec2go))
+            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, gspa.ontology.PathwayLoader.loadEc2Go(ec2go), moduleExcludeOrganisms as Set)
         }
         if (taxonomy?.exists()) {
             pipeline.taxonomyFile(taxonomy)

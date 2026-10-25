@@ -57,8 +57,8 @@ class CoherencePrior implements Prior {
     int maxRescuePerModule = 2
     /** Lowest candidate Stage 0 likelihood considered. */
     double minCandidate = 0.16d
-    /** Candidates below this score (log-odds scale) are left alone. */
-    double minScore = -2.0d
+    /** Candidates whose evidence-adjusted log-odds is below this are left alone (0 = adjusted odds at least even). */
+    double minScore = 0.0d
     double wSupport = 0.5d
     double wFree = 0.5d
     double wCompeting = 1.0d

@@ -28,9 +28,23 @@ class ModuleDefinitions {
     String source = ''
     String fetchedUtc = ''
 
+    /** KEGG organism code -> 'bacteria' / 'archaea' / 'eukaryote' (BRITE br08601). */
+    Map<String, String> organismDomains = [:]
+
+    /** Organism codes left out of the completion counts (leave-one-out validation of the organism itself). */
+    Set<String> excludeOrganisms = [] as Set
+
+    /** Number of organisms of {@code domain} (other than the excluded ones) in which KEGG finds the module complete;
+     *  -1 when no organism-domain map was loaded. */
+    int domainCompleteCount(ModuleDef md, String domain) {
+        if (organismDomains.isEmpty() || domain == null) return -1
+        md.completeOrganisms.count { String o -> organismDomains[o] == domain && !excludeOrganisms.contains(o) } as int
+    }
+
     static ModuleDefinitions load(File json, Map<String, String> ec2go) {
         def root = new JsonSlurper().parse(json)
         def defs = new ModuleDefinitions(source: root.source ?: '', fetchedUtc: root.fetched_utc ?: '')
+        ((root.organism_domains ?: [:]) as Map).each { k, v -> defs.organismDomains[k as String] = v as String }
         Map mods = (root.modules ?: [:]) as Map
         for (Map.Entry e : mods.entrySet()) {
             Map m = e.value as Map

@@ -130,6 +130,9 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--module-defs'], description = 'KEGG module definitions JSON with step logic; enables the module-based pathway prior and writes <out>.modules.json.')
     File moduleDefsFile
 
+    @Option(names = ['--module-exclude-organisms'], split = ',', description = 'KEGG organism codes left out of the module completion counts (organism context), for leave-one-out validation of a reference organism.')
+    List<String> moduleExcludeOrganisms = []
+
     @Option(names = ['--modules'],
             description = 'Additional pathway TSV to stack on top of --pathways ' +
                           '(same schema). Designed for KEGG Modules — narrower units ' +
@@ -972,6 +975,7 @@ class IntegrateCommand implements Runnable {
             try {
                 Map<String, String> ec2goMap = state.pathwayDatabase?.ec2go ?: (ec2goFile != null ? gspa.ontology.PathwayLoader.loadEc2Go(ec2goFile) : [:])
                 state.moduleDefinitions = gspa.ontology.ModuleDefinitions.load(moduleDefsFile, ec2goMap)
+                state.moduleDefinitions.excludeOrganisms.addAll(moduleExcludeOrganisms ?: [])
                 println "  Modules: ${state.moduleDefinitions.modules.size()} KEGG module definitions from ${moduleDefsFile.name}"
             } catch (Exception e) {
                 System.err.println "  [warn] Failed to load module definitions: ${e.message}"

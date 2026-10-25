@@ -7,7 +7,9 @@ boolean tree, and per KO the EC numbers and reactions from the ORTHOLOGY block. 
 ``--organisms`` also writes ``kegg_organism_modules.json``: for each organism code the genes
 per module (``link/module/<org>``), which KEGG derives from the same definitions and which serves
 as organism-level ground truth for module presence. The COMPLETE block of each module entry (organisms in
-which KEGG finds the module complete) is kept as ``complete_organisms``.
+which KEGG finds the module complete) is kept as ``complete_organisms``, and the KEGG organism hierarchy
+(BRITE br08601) gives every organism code its domain (``organism_domains``), so a module's completion record
+can be counted per domain: the organism context the assessment uses.
 
 Grammar of DEFINITION (KEGG): expr := term (' ' term)* ; term := factor (',' factor)* ;
 factor := unit ('+' unit | '-' unit)* ; unit := KO | '(' expr ')'. '-' marks an optional
@@ -164,7 +166,17 @@ def main():
                 print(f"  {n}/{len(ids)}", flush=True)
     errs = [m for m, r in out.items() if r["parse_error"]]
     print(f"parsed {len(out) - len(errs)} definitions, {len(errs)} parse errors: {errs[:10]}", flush=True)
-    json.dump({"source": "https://rest.kegg.jp", "fetched_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "modules": out},
+    domains, A, B = {}, "", ""
+    for line in fetch("get/br:br08601").splitlines():
+        if line.startswith("A"): A = line[1:].strip()
+        elif line.startswith("B"): B = line[1:].strip()
+        else:
+            m = re.match(r"^[C-F]\s+([a-z]{3,5})\s", line)
+            if m:
+                domains[m.group(1)] = "eukaryote" if A.startswith("Eukaryotes") else ("archaea" if "Archaea" in B else "bacteria")
+    print(f"{len(domains)} organism codes with a domain", flush=True)
+    json.dump({"source": "https://rest.kegg.jp", "fetched_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "modules": out,
+               "organism_domains": domains, "organism_domains_source": "https://rest.kegg.jp/get/br:br08601"},
               open(a.out, "w"), indent=1)
     if a.organisms:
         orgs = {}

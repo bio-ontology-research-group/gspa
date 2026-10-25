@@ -37,8 +37,11 @@ class ModuleAssessor {
     int minAssessableSteps = 2
     /** ... covering at least this fraction of its required steps; otherwise the reference cannot express it. */
     double minAssessableFraction = 0.5d
-    /** Organism domain ('bacteria', 'archaea', 'eukaryote') for the module name hints; null = no check. */
+    /** Organism domain ('bacteria', 'archaea', 'eukaryote') for the organism context; null = no check. */
     String domain = null
+    /** A module is expected in the genome's domain only if KEGG finds it complete in at least this many other
+     *  organisms of that domain (organism context; needs the organism-domain map in the definitions). */
+    int minDomainComplete = 5
 
     ModuleAssessor(ModuleDefinitions defs) { this.defs = defs }
 
@@ -67,8 +70,11 @@ class ModuleAssessor {
         boolean hasSpecificPresent
         /** Enough GO-mappable steps to judge the module (see minAssessableSteps / minAssessableFraction). */
         boolean assessable = true
-        /** The module is a variant KEGG names for another domain (null when expected or unknown). */
+        /** Why the module is not expected in this organism (domain name hint, or too few organisms of the domain
+         *  with the module complete in KEGG); null when expected or unknown. */
         String notExpectedReason
+        /** Other organisms of the genome's domain in which KEGG finds the module complete (-1 = unknown). */
+        int domainComplete = -1
 
         boolean isComplete() { nRequired > 0 && nPresent == nRequired }
         List<StepResult> gaps() { steps.findAll { it.required && it.status != 'present' } }
@@ -133,7 +139,11 @@ class ModuleAssessor {
         int requiredTotal = r.steps.count { it.required } as int
         r.assessable = r.nRequired >= minAssessableSteps && requiredTotal > 0 && r.nRequired >= minAssessableFraction * requiredTotal
         String hint = md.domainHint()
+        int nDom = defs.domainCompleteCount(md, domain)
+        r.domainComplete = nDom
         if (domain != null && hint != null && hint != domain) r.notExpectedReason = "KEGG names this module for ${hint}; genome is ${domain}".toString()
+        else if (domain != null && nDom >= 0 && nDom < minDomainComplete)
+            r.notExpectedReason = "KEGG finds this module complete in ${nDom} other ${domain == 'eukaryote' ? 'eukaryotes' : domain}".toString()
         if (r.nRequired > 0) {
             r.completeness = r.nPresent / (double) r.nRequired
             r.activationScore = wRequired > 0 ? wPresent / wRequired : 0.0d
