@@ -74,7 +74,7 @@ def main():
     for g in genomes:
         by_phy[g["phylum"] or "unknown"].append(g)
     rows = []
-    keys = [f"{c}_{k}" for k in ("frac_annot", "ess_bac", "n_terms") for c in CFGS] + ["terms_only_gspa_full", "terms_only_noisy_or", "prot_gain_gspa_full"]
+    keys = [f"{c}_{k}" for k in ("frac_annot", "ess_bac", "n_terms", "n_forbidden") for c in CFGS] + ["terms_only_gspa_full", "terms_only_noisy_or", "prot_gain_gspa_full"]
     for phy, gs in sorted(by_phy.items(), key=lambda kv: -len(kv[1])):
         vals = [np.nanmean([f(g[k]) for g in gs]) for k in keys]
         rows.append([phy, len(gs), len({g["species"] for g in gs})] + vals)
@@ -151,7 +151,21 @@ def main():
     ess_rows = [term_row(t) for t in essential]
     write(os.path.join(a.out, "t4e_essential_terms.tsv"), hdr, ess_rows)
 
-    print(f"[{time.strftime('%T')}] t1-t4 written", flush=True)
+    # t9: what the integrator could see. The batch pipeline's bundled taxonomy covers the taxon of about half
+    # of the genomes (taxid_in_jar_hierarchy); only there can the taxon prior act on forbidden terms directly.
+    rows = []
+    for known in ("1", "0"):
+        gs = [g for g in genomes if g["taxid_in_jar_hierarchy"] == known]
+        if not gs:
+            continue
+        r = [f"taxon known to the integrator = {known}", len(gs), len({g["species"] for g in gs})]
+        for k in ("n_forbidden", "ess_bac", "n_terms", "frac_annot"):
+            vn = np.array([f(g[f"noisy_or_{k}"]) for g in gs]); vf = np.array([f(g[f"gspa_full_{k}"]) for g in gs])
+            r += [float(np.nanmean(vn)), float(np.nanmean(vf)), float(np.nanmean(vf - vn)), float(np.mean(vf < vn)) if k == "n_forbidden" else float(np.mean(vf > vn))]
+        rows.append(r)
+    write(os.path.join(a.out, "t9_by_taxon_knowledge.tsv"), ["group", "n_genomes", "n_species"] +
+          [f"{k}_{c}" for k in ("n_forbidden", "ess_bac", "n_terms", "frac_annot") for c in ("noisy_or", "gspa_full", "diff", "frac_genomes_improved")], rows)
+    print(f"[{time.strftime('%T')}] t1-t4, t9 written", flush=True)
     # ---------------------------------------------------------------- t5 scaling laws (one genome per species)
     gs = np.load(os.path.join(a.profiles, "genome_slim.npz"))
     slim_terms = list(gs["slim_terms"]); n_orfs = gs["n_orfs"]; spi = gs["species_idx"]; slim = gs["slim"]

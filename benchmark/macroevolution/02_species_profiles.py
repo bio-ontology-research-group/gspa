@@ -36,6 +36,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--threshold", type=float, default=0.5, help="posterior at which a term counts as present")
     ap.add_argument("--gtdb-metadata", required=True, help="bac120_metadata_r220.tsv.gz: species names and biosample -> species")
+    ap.add_argument("--never-in-taxon", required=True, help="never_in_taxon-propagated.tsv: terms forbidden in Bacteria (NCBITaxon:2)")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     tkey = f"t{int(round(a.threshold * 100)):02d}"
@@ -74,7 +75,15 @@ def main():
     ess = {}
     for key, name in (("ess_bac", "essential_bac.txt"), ("ess_arc", "essential_arc.txt")):
         ess[key] = np.array([vidx[l.strip()] for l in open(os.path.join(a.presence, name)) if l.strip() in vidx], dtype=np.int32)
-    print(f"threshold {a.threshold} ({tkey}); essential bac {ess['ess_bac'].size} arc {ess['ess_arc'].size}", flush=True)
+    forb = []
+    with open(a.never_in_taxon) as fh:
+        for r in csv.DictReader(fh, delimiter="\t"):
+            taxa = [t.strip() for t in r["taxa"].replace("|", ",").split(",")]
+            if "NCBITaxon:2" in taxa and r["go_id"] in vidx:
+                forb.append(vidx[r["go_id"]])
+    forb = np.array(sorted(set(forb)), dtype=np.int32)
+    print(f"threshold {a.threshold} ({tkey}); essential bac {ess['ess_bac'].size} arc {ess['ess_arc'].size}; "
+          f"{forb.size} terms never in Bacteria", flush=True)
     files = sorted(glob.glob(os.path.join(a.presence, "*.npz")))
     print(f"{len(files)} batch files", flush=True)
 
@@ -94,7 +103,7 @@ def main():
     cols = ["genome_id", "batch", "species", "species_atb", "species_source", "domain", "phylum", "ncbi_taxid", "n_orfs", "n_dark_lt30",
             "n_twilight_30_50", "n_zero_alignment", "taxid_in_jar_hierarchy"]
     for c in CFGS:
-        cols += [f"{c}_n_prot", f"{c}_frac_annot", f"{c}_n_terms", f"{c}_ess_bac", f"{c}_ess_arc"]
+        cols += [f"{c}_n_prot", f"{c}_frac_annot", f"{c}_n_terms", f"{c}_ess_bac", f"{c}_ess_arc", f"{c}_n_forbidden"]
     cols += ["terms_only_gspa_full", "terms_only_noisy_or", "prot_gain_gspa_full"]
     gout.write("\t".join(cols) + "\n")
     slim_all, orfs_all, gid_all, sp_all = [], [], [], []
@@ -110,6 +119,7 @@ def main():
         bits = {c: d[f"{c}_maxp"] >= cut for c in CFGS}
         n_terms = {c: bits[c].sum(1) for c in CFGS}
         essc = {(c, k): bits[c][:, ess[k]].mean(1) if ess[k].size else np.full(gids.size, np.nan) for c in CFGS for k in ess}
+        nforb = {c: bits[c][:, forb].sum(1) for c in CFGS}
         only_full = (bits["gspa_full"] & ~bits["noisy_or"]).sum(1)
         only_noisy = (bits["noisy_or"] & ~bits["gspa_full"]).sum(1)
         for i, gid in enumerate(gids):
@@ -122,7 +132,7 @@ def main():
             for c in CFGS:
                 npr = int(d[f"{c}_n_prot_{tkey}"][i])
                 row += [npr, f"{npr / n_orfs:.4f}" if n_orfs else "", int(n_terms[c][i]),
-                        f"{essc[(c, 'ess_bac')][i]:.4f}", f"{essc[(c, 'ess_arc')][i]:.4f}"]
+                        f"{essc[(c, 'ess_bac')][i]:.4f}", f"{essc[(c, 'ess_arc')][i]:.4f}", int(nforb[c][i])]
             row += [int(only_full[i]), int(only_noisy[i]), int(d[f"gspa_full_n_prot_{tkey}"][i]) - int(d[f"noisy_or_n_prot_{tkey}"][i])]
             gout.write("\t".join(map(str, row)) + "\n")
             sidx = species_index.get(sp)

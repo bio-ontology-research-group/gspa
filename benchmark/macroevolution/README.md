@@ -47,7 +47,11 @@ Host: KAUST ibex, work area `/encrypted/e3008/gspa/macroevo` (`code/`, `ref/`, `
    power-law exponents of slim categories against genome size (one genome per species), t6 core and
    accessory functions within species with at least 10 genomes, t7 gain and loss rates per unit branch
    length by depth and the busiest branches, t8 functions reconstructed at the root and at phylum crown
-   nodes.
+   nodes, t9 forbidden terms, essential completeness and term counts split by whether the integrator's
+   bundled taxonomy covered the genome's taxon.
+5. **Threshold placement** (`05_rescue_floor.py`, `results/t10_rescue_floor.tsv`): for every genome-term
+   pair, where full GSPA leaves the posterior relative to the 0.50 decision threshold, by the Stage 0
+   value (below the rescue window, inside it, already above), for all terms and for the essential terms.
 
 ## Status
 
