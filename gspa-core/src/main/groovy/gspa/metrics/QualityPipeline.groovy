@@ -313,6 +313,16 @@ class QualityPipeline {
             report.processCoherence = cohr.processCoherence
             report.pathwayCoherence = cohr.pathwayCoherence
             report.complexCoherence = cohr.complexCoherence
+            if (cohr.moduleAssessment != null) {
+                def ma = cohr.moduleAssessment
+                report.moduleCoherence = Double.isNaN(ma.moduleCoherence) ? -1.0d : ma.moduleCoherence
+                report.modulesAssessed = ma.modules.size()
+                report.modulesActivated = ma.nActivated
+                report.modulesComplete = ma.nComplete
+                report.moduleDetail = gspa.integration.ModuleReport.detail(ma)
+                log.info("  Module completeness: ${report.moduleCoherence >= 0 ? String.format('%.1f%%', report.moduleCoherence * 100) : 'n/a'} " +
+                    "(${ma.nComplete} complete of ${ma.nActivated} activated, ${ma.modules.size()} assessed)")
+            }
             // Per-pair / per-pathway detail for the GAEF report.
             report.incoherentProcessPairs = cohr.processUnsatisfiedPairs ?: []
             report.incoherentPathways = (cohr.pathwayPerPathway ?: []).collect { p ->
