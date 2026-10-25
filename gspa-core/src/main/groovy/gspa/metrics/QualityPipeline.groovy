@@ -121,9 +121,12 @@ class QualityPipeline {
     }
 
     /** KEGG module definitions JSON (fetch_kegg_module_definitions.py); needs an EC-to-GO map from the pathway database or ec2go file. */
-    QualityPipeline moduleDefinitionsFile(File file, Map<String, String> ec2go = null) {
+    private Set<String> moduleExcludeOrganisms = [] as Set
+
+    QualityPipeline moduleDefinitionsFile(File file, Map<String, String> ec2go = null, Set<String> excludeOrganisms = [] as Set) {
         this.moduleDefinitionsFile = file
         this.ec2goForModules = ec2go
+        this.moduleExcludeOrganisms = excludeOrganisms ?: ([] as Set)
         this
     }
 
@@ -131,6 +134,7 @@ class QualityPipeline {
         if (moduleDefinitionsFile?.exists()) {
             Map<String, String> ec2go = ec2goForModules ?: pathwayDatabase?.ec2go ?: [:]
             coherenceEvaluator.moduleDefinitions = gspa.ontology.ModuleDefinitions.load(moduleDefinitionsFile, ec2go)
+            coherenceEvaluator.moduleDefinitions.excludeOrganisms.addAll(moduleExcludeOrganisms)
             coherenceEvaluator.satChecker = satChecker
             String prof = essentialFunctions?.profileName?.toLowerCase()
             coherenceEvaluator.organismDomain = prof == null ? null : (prof.startsWith('bact') ? 'bacteria' : prof.startsWith('arch') ? 'archaea' : prof.startsWith('euk') ? 'eukaryote' : null)

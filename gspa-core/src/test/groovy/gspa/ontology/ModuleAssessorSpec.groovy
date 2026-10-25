@@ -145,4 +145,35 @@ class ModuleAssessorSpec extends Specification {
         a.modules.M00011.complete && a.modules.M00011.activated
         a.nActivated == 1
     }
+
+    def "organism context: a module KEGG never finds complete in the genome's domain is not expected; excluded organisms do not count"() {
+        given:
+        def f = File.createTempFile('module_defs3', '.json'); f.deleteOnExit()
+        f.text = '''{"organism_domains": {"eco": "bacteria", "bsu": "bacteria", "hsa": "eukaryote"}, "modules": {
+          "M00020": {"id": "M00020", "name": "Glycan degradation", "class": "Pathway modules; X", "definition": "K00012 K00014",
+            "complete_organisms": ["hsa"], "orthology": {"K00012": {"ec": ["5.5.5.5"], "rn": [], "desc": "a"}, "K00014": {"ec": ["6.6.6.6"], "rn": [], "desc": "b"}},
+            "tree": {"op": "AND", "args": [{"ko": "K00012"}, {"ko": "K00014"}]}},
+          "M00021": {"id": "M00021", "name": "Central thing", "class": "Pathway modules; X", "definition": "K00012 K00014",
+            "complete_organisms": ["eco", "bsu"], "orthology": {"K00012": {"ec": ["5.5.5.5"], "rn": [], "desc": "a"}, "K00014": {"ec": ["6.6.6.6"], "rn": [], "desc": "b"}},
+            "tree": {"op": "AND", "args": [{"ko": "K00012"}, {"ko": "K00014"}]}}
+        }}'''
+        def defs = ModuleDefinitions.load(f, ['EC:5.5.5.5': 'GO:0000005', 'EC:6.6.6.6': 'GO:0000006'])
+        def assessor = new ModuleAssessor(defs)
+        assessor.domain = 'bacteria'
+        assessor.minDomainComplete = 2
+
+        when:
+        def a = assessor.assess(['GO:0000005', 'GO:0000006'] as Set)
+
+        then:
+        a.modules.M00020.domainComplete == 0 && a.modules.M00020.notExpectedReason != null && !a.modules.M00020.activated
+        a.modules.M00021.domainComplete == 2 && a.modules.M00021.notExpectedReason == null && a.modules.M00021.activated
+
+        when: "the genome itself is E. coli and is left out of the record"
+        defs.excludeOrganisms << 'eco'
+        def b = assessor.assess(['GO:0000005', 'GO:0000006'] as Set)
+
+        then:
+        b.modules.M00021.domainComplete == 1 && b.modules.M00021.notExpectedReason != null
+    }
 }

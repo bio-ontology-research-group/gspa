@@ -26,6 +26,7 @@ import json
 import math
 import pickle
 import re
+import sys
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -216,8 +217,9 @@ class StoichiometricLocusRefiner:
     + Substrate-Specific Diagnostic Flux Probe Phi_c(y).
     """
 
-    def __init__(self, fba_data_dir: Path, univ_meta_path: Path | None = None):
+    def __init__(self, fba_data_dir: Path, univ_meta_path: Path | None = None, flux_skeleton_path: Path | None = None):
         self.fba_data_dir = Path(fba_data_dir)
+        self.flux_skeleton_path = flux_skeleton_path
         cand_univ = univ_meta_path or (self.fba_data_dir / "universal_metadata.json")
         if not cand_univ.exists():
             repo_univ = Path(__file__).resolve().parents[1] / "benchmark" / "manifests" / "reference_data" / "universal_metadata.json"
@@ -333,7 +335,9 @@ class StoichiometricLocusRefiner:
         lb[other_bio] = 0.0
         ub[other_bio] = 0.0
 
-        raw_media = self.media.get(medium_name, self.media.get("minimal", []))
+        if gram not in ("neg", "pos") or medium_name not in self.media:
+            raise ValueError(f"Unsupported biomass template or medium: {gram}, {medium_name}")
+        raw_media = self.media[medium_name]
         formatted_media = {
             c if c.startswith("EX_") else f"EX_{c}_e" for c in raw_media
         }
@@ -421,13 +425,15 @@ class StoichiometricLocusRefiner:
         )
         if not hasattr(self, "_univ_support_cache"):
             self._univ_support_cache = {}
-            skel_pkl = Path(__file__).resolve().parent.parent / "benchmark" / "manifests" / "reference_data" / "meteor108_solutions_compact.pkl.gz"
+            # Optional benchmark scaffolds must be explicit; unrelated files in
+            # a checkout must not silently change a biological reconstruction.
+            skel_pkl = self.flux_skeleton_path
             self._base_flux_skeleton = set()
             self._base_nonenz_skeleton = set(self.ex_indices)
             for _bname in ("biomass_GmNeg", "biomass_GmPos", "EX_biomass"):
                 if _bname in self.rxn_to_idx:
                     self._base_nonenz_skeleton.add(self.rxn_to_idx[_bname])
-            if skel_pkl.exists():
+            if skel_pkl is not None and skel_pkl.exists():
                 try:
                     import gzip as _gzip
                     _comp = pickle.load(_gzip.open(skel_pkl, "rb"))
@@ -442,6 +448,7 @@ class StoichiometricLocusRefiner:
         else:
             c_bio = np.zeros(n_rxns)
             c_bio[bio_idx] = -1.0
+            print("FBA: optimizing universal biomass", file=sys.stderr, flush=True)
             res_univ = linprog(
                 c_bio,
                 A_eq=self.S,
@@ -461,6 +468,7 @@ class StoichiometricLocusRefiner:
             self._univ_bio_cache[cache_key] = max_univ_bio
             self._univ_support_cache[cache_key] = univ_sup
 
+        print(f"FBA: universal biomass optimum {max_univ_bio:g}", file=sys.stderr, flush=True)
         target_bio = max(alpha_bio * max_univ_bio, 0.1) if max_univ_bio > 0.1 else 0.0
 
         repaired_rxns: set[str] = set()
@@ -533,6 +541,7 @@ class StoichiometricLocusRefiner:
                     balanced_bounds_split[m_dom + d_i] = (0.0, 0.0)
                     has_imbal_cands = True
 
+            print(f"FBA: minimum-cost repair over {m_dom} reactions", file=sys.stderr, flush=True)
             res_r1 = linprog(
                 repair_cost_vec,
                 A_eq=S_dom_split,
@@ -571,6 +580,7 @@ class StoichiometricLocusRefiner:
                 A_ub_pfba = csc_matrix(repair_cost_vec.reshape(1, -1))
                 b_ub_pfba = np.array([c_star * (1.0 + delta_opt) + 1e-9], dtype=float)
 
+                print("FBA: parsimonious flux solution", file=sys.stderr, flush=True)
                 res_r2 = linprog(
                     pfba_obj,
                     A_ub=A_ub_pfba,
@@ -604,7 +614,9 @@ class StoichiometricLocusRefiner:
                     ensemble_support[rid] = 1.0
 
                 for i in range(n_rxns):
-                    if abs(v_sol[i]) > eps_flux:
+                    # The activity threshold classifies repairs; it must not
+                    # truncate a flux vector used to verify/export S*v = 0.
+                    if v_sol[i] != 0.0:
                         pfba_flux_by_rxn[self.allrxns[i]] = float(v_sol[i])
 
                 # Step B3: Three distinct certificates on the feasible domain S_dom_split:
@@ -616,7 +628,9 @@ class StoichiometricLocusRefiner:
                     A_ub_fva = csc_matrix(repair_cost_vec.reshape(1, -1))
                     b_ub_fva = np.array([1.01 * c_star + 1e-7], dtype=float)
 
-                    for idx in active_cand_indices:
+                    print(f"FBA: certifying {len(active_cand_indices)} repairs", file=sys.stderr, flush=True)
+                    for cert_number, idx in enumerate(active_cand_indices):
+                        if cert_number % 10 == 0: print(f"FBA: certificate {cert_number+1}/{len(active_cand_indices)}", file=sys.stderr, flush=True)
                         d_i = dom_map[idx]
                         rid = self.allrxns[idx]
                         orig_pos = bounds_dom_split[d_i]
@@ -660,6 +674,7 @@ class StoichiometricLocusRefiner:
                             fva_essential_rxns.add(rid)
 
                     # Certificate 3: 5% Objective Perturbation Ensemble (N = n_ensemble solves)
+                    print("FBA: objective-perturbation ensemble", file=sys.stderr, flush=True)
                     rng_ens = np.random.default_rng(104729)
                     hit_counts: dict[str, int] = {self.allrxns[idx]: 0 for idx in active_cand_indices}
                     n_valid_solves = 0
@@ -983,6 +998,104 @@ class StoichiometricLocusRefiner:
         last_repair["iteration_history"] = history
         return last_repair
 
+    def export_model(self, result, output, gene_ec_scores, gram='neg', medium='minimal', extra_uptake_exchanges=None, removed_uptake_exchanges=None):
+        """Export exactly the reconstructed subnetwork and the bounds used by FBA."""
+        import csv
+        import hashlib
+        import libsbml
+        lb, ub, bio_idx = self.get_media_bounds(gram, medium, extra_uptake_exchanges, removed_uptake_exchanges)
+        lb[bio_idx] = max(float(lb[bio_idx]), float(result.get('target_bio', 0)))
+        indices = sorted({self.rxn_to_idx[r] for r in result['active_rxns']} |
+                         {self.rxn_to_idx[r] for r in result['pfba_flux_by_rxn']} | {bio_idx})
+        met_indices = sorted(set(self.S[:, indices].nonzero()[0]))
+        if self.S.shape != (len(self.univ['allmet']), len(self.allrxns)):
+            raise ValueError('Metabolic matrix and identifier metadata do not align.')
+        ns = libsbml.SBMLNamespaces(3, 1)
+        ns.addPkgNamespace('fbc', 2)
+        document = libsbml.SBMLDocument(ns)
+        document.setPackageRequired('fbc', False)
+        model = document.createModel()
+        model.setId('GSPA_reconstruction')
+        model.setName('GSPA evidence-supported ModelSEED reconstruction')
+        fbc = model.getPlugin('fbc')
+        fbc.setStrict(True)
+        compartments = set()
+        for i in met_indices:
+            mid = self.univ['allmet'][i]
+            meta = self.univ['met_meta'].get(mid, {})
+            comp = mid.rsplit('_', 1)[-1]
+            if comp not in compartments:
+                c = model.createCompartment(); c.setId(comp); c.setConstant(True); c.setSize(1)
+                compartments.add(comp)
+            s = model.createSpecies(); s.setId(mid); s.setName(meta.get('name', mid))
+            s.setCompartment(comp); s.setBoundaryCondition(False); s.setConstant(False)
+            s.setHasOnlySubstanceUnits(False); s.setInitialAmount(0)
+            if meta.get('formula'): s.getPlugin('fbc').setChemicalFormula(meta['formula'])
+            if meta.get('charge') is not None: s.getPlugin('fbc').setCharge(int(meta['charge']))
+        by_ec = defaultdict(list)
+        gene_ids = {}
+        for gene, scores in gene_ec_scores.items():
+            gid = 'gene_' + hashlib.sha256(gene.encode()).hexdigest()[:16]
+            gp = fbc.createGeneProduct(); gp.setId(gid); gp.setLabel(gene); gp.setName(gene)
+            gene_ids[gene] = gid
+            for ec, score in scores.items():
+                if score >= .25: by_ec[ec.replace('EC:', '')].append((float(score), gene))
+        for ec in by_ec: by_ec[ec] = sorted(by_ec[ec], reverse=True)[:3]
+        rows = []
+        for i in indices:
+            rid = self.allrxns[i]
+            meta = self.rxn_meta.get(rid, {})
+            r = model.createReaction(); r.setId(rid); r.setName(meta.get('name', rid))
+            r.setReversible(float(lb[i]) < 0); r.setFast(False)
+            for label, value in [('lb', lb[i]), ('ub', ub[i])]:
+                param = model.createParameter(); param.setId(label+'_'+rid)
+                param.setValue(float(value)); param.setConstant(True)
+            r.getPlugin('fbc').setLowerFluxBound('lb_'+rid)
+            r.getPlugin('fbc').setUpperFluxBound('ub_'+rid)
+            col = self.S[:, i].tocoo()
+            for mi, value in zip(col.row, col.data):
+                sr = r.createReactant() if value < 0 else r.createProduct()
+                sr.setSpecies(self.univ['allmet'][mi]); sr.setStoichiometry(abs(float(value))); sr.setConstant(True)
+            ecs = self.r2ec.get(rid, [])
+            clauses = parse_gpr_to_dnf(meta.get('gpr', '')) if meta.get('gpr') else [[ec] for ec in ecs]
+            clauses = [cl for cl in clauses if cl and all(by_ec.get(ec.replace('EC:', '')) for ec in cl)]
+            genes = set()
+            if clauses:
+                association = r.getPlugin('fbc').createGeneProductAssociation()
+                outer = association.createOr() if len(clauses) > 1 else association
+                for clause in clauses:
+                    node = outer.createAnd() if len(clause) > 1 else outer
+                    for ec in clause:
+                        candidates = by_ec[ec.replace('EC:', '')]
+                        role = node.createOr() if len(candidates) > 1 else node
+                        for score, gene in candidates:
+                            role.createGeneProductRef().setGeneProduct(gene_ids[gene]); genes.add(gene)
+            rows.append([rid, meta.get('name', rid), ';'.join(ecs),
+                         result['pfba_flux_by_rxn'].get(rid, 0),
+                         'flux-certified repair' if rid in result['repaired_rxns'] else 'core/support',
+                         ';'.join(sorted(genes)), float(lb[i]), float(ub[i]), meta.get('mass_balanced', '')])
+        objective = fbc.createObjective(); objective.setId('biomass'); objective.setType('maximize')
+        flux = objective.createFluxObjective(); flux.setReaction(self.allrxns[bio_idx]); flux.setCoefficient(1)
+        fbc.setActiveObjectiveId('biomass')
+        libsbml.writeSBMLToFile(document, str(output))
+        with output.with_name('reactions.tsv').open('w') as fh:
+            writer = csv.writer(fh, delimiter='\t')
+            writer.writerow(['reaction_id','name','EC','pFBA_flux','basis','candidate_genes','lower_bound','upper_bound','chemically_mass_balanced'])
+            writer.writerows(rows)
+        result['model'] = {'file': output.name, 'reactions': len(indices), 'metabolites': len(met_indices),
+                           'biomass_template': gram, 'medium': medium,
+                           'medium_note': 'Named medium plus the ModelSEED basal salt/cofactor/amino-acid supplement set; see exchange bounds.',
+                           'gene_associations': 'Candidate GPRs inferred from EC evidence; unassigned reactions retain no GPR.',
+                           'flux_solution': 'Minimum repair cost followed by parsimonious FBA at the recorded biomass target; SBML exposes the reconstructed network with a biomass objective and target lower bound.',
+                           'objective': self.allrxns[bio_idx], 'objective_flux': result['pfba_flux_by_rxn'].get(self.allrxns[bio_idx], 0)}
+        # Verify the exported flux vector against the exact exported stoichiometry.
+        values = np.array([result['pfba_flux_by_rxn'].get(self.allrxns[i], 0) for i in indices])
+        result['model']['max_mass_balance_residual'] = float(np.max(np.abs(self.S[:, indices] @ values)))
+        if result['model']['max_mass_balance_residual'] > 1e-6:
+            raise RuntimeError('Exported fluxes violate steady-state stoichiometry.')
+        if result['model']['objective_flux'] < result.get('target_bio', 0) - 1e-6:
+            raise RuntimeError('FBA did not produce a flux solution meeting its biomass target.')
+
     def probe_substrate_utilization(
         self,
         rxn_probs: dict[str, float],
@@ -1029,16 +1142,18 @@ class StoichiometricLocusRefiner:
 def main():
     parser = argparse.ArgumentParser(description="StoichiometricLocusRefiner CLI & Sidecar")
     parser.add_argument("--fba-data-dir", type=Path, required=True, help="Path to fba_data directory")
+    parser.add_argument("--flux-skeleton", type=Path, default=None, help="Explicit optional precomputed flux scaffold; no benchmark cache is loaded implicitly")
     parser.add_argument("--smoke-test", action="store_true", help="Run smoke test on minimal glucose")
     parser.add_argument("--input-json", type=Path, default=None, help="JSON input with rxn_probs or gene_ec_scores")
     parser.add_argument("--output-json", type=Path, default=None, help="JSON output path for repair & attribution result")
+    parser.add_argument("--export-model", type=Path, default=None, help="Export the actual reconstructed network as SBML FBC2 and a reaction/flux table")
     parser.add_argument("--gram", type=str, default="neg", choices=["neg", "pos"])
     parser.add_argument("--medium", type=str, default="minimal")
     parser.add_argument("--tau-core", type=float, default=0.50)
     parser.add_argument("--alpha-bio", type=float, default=0.10)
     args = parser.parse_args()
 
-    refiner = StoichiometricLocusRefiner(args.fba_data_dir)
+    refiner = StoichiometricLocusRefiner(args.fba_data_dir, flux_skeleton_path=args.flux_skeleton)
     if args.smoke_test:
         rng = np.random.default_rng(42)
         rxn_probs = {}
@@ -1077,6 +1192,8 @@ def main():
             )
             repair_res["updated_gene_ec_scores"] = updated_gene_ec
 
+        if args.export_model:
+            refiner.export_model(repair_res, args.export_model, gene_ec_scores, payload.get("gram", args.gram), payload.get("medium", args.medium), payload.get("extra_uptake_exchanges"), set(payload.get("removed_uptake_exchanges", [])))
         if args.output_json:
             args.output_json.parent.mkdir(parents=True, exist_ok=True)
             args.output_json.write_text(json.dumps(repair_res, indent=2), encoding="utf-8")

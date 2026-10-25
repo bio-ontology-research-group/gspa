@@ -12,7 +12,7 @@ SCRIPT = Path(__file__).resolve().parents[2] / 'gspa-cli/src/main/resources/visu
 
 
 class OptionalQualityTest(unittest.TestCase):
-    def render(self, quality=None, fasta=None):
+    def render(self, quality=None, fasta=None, sidecar=False, analyses=None):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root/'prokka_out').mkdir()
@@ -23,10 +23,15 @@ class OptionalQualityTest(unittest.TestCase):
             (root/'gspa_out/provenance.json').write_text('[{"supporting_sources":["diamond"]}]')
             (root/'go.obo').write_text('format-version: 1.2\n')
             (root/'ec2go').write_text('! no mappings\n')
+            if analyses is not None:
+                (root/'gspa_out/analyses.json').write_text(json.dumps(analyses))
             if quality is not None:
                 (root/'gspa_out/quality_gspa.json').write_text(json.dumps(quality))
             if fasta is not None:
                 (root/'genome.fna').write_text(fasta)
+            if sidecar:
+                (root/'clean_out').mkdir()
+                (root/'clean_out/sample.clean.tsv').write_text('protein_id\tterm\tscore\tannotation_type\np1\tEC:1.2.3.4\t0.99\tEC\n')
             output = root/'browser.html'
             subprocess.run([sys.executable,str(SCRIPT)], check=True,capture_output=True,text=True,env={
                 **os.environ,'GSPA_WORKDIR':str(root),'GSPA_GENOME_ID':'sample','GSPA_OUT':str(output),
@@ -61,6 +66,24 @@ class OptionalQualityTest(unittest.TestCase):
         self.assertEqual(data['quality']['composite'],.8)
         self.assertFalse(data['quality']['consistent'])
         self.assertEqual(data['quality']['missing_essentials'],['GO:0000001'])
+
+    def test_quality_opt_out_does_not_hide_independently_requested_pathways(self):
+        quality = {'summary':{'annotated_proteins':1,'annotation_coverage':1,'composite_score':.8},
+                   'completeness':{'score':.5,'present_count':1,'missing_count':1,'missing_functions':[]},
+                   'coherence':{'process_coherence':1,'pathway_coherence':.4,'complex_coherence':.5,'pathway_detail':[]},
+                   'consistency':{'consistent':True,'violation_count':0}}
+        data=self.render(quality,analyses={'quality':{'status':'skipped'},'pathways':{'status':'complete'}})
+        self.assertFalse(data['quality']['available'])
+        self.assertIsNone(data['quality']['composite'])
+        self.assertEqual(data['quality']['pathway_coherence'],.4)
+
+    def test_raw_sidecar_scores_do_not_inflate_integrated_summaries(self):
+        data = self.render(sidecar=True)
+        self.assertEqual(len(data['annotations']), 2)
+        self.assertEqual(data['stats']['n_high'], 1)
+        self.assertEqual(sum(data['stats']['posterior_hist']), 1)
+        self.assertEqual([term['term'] for term in data['stats']['top_terms']], ['GO:0003824'])
+        self.assertEqual(data['proteins'][0]['nt'], 1)
 
 
 if __name__ == '__main__': unittest.main()

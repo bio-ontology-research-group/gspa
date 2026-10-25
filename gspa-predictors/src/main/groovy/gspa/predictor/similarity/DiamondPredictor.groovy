@@ -14,6 +14,8 @@ class DiamondPredictor extends AbstractToolPredictor {
     /** Path to DIAMOND database (.dmnd) */
     String database
 
+    boolean assignProductNames = true
+
     /** E-value threshold */
     double evalue = 1e-5
 
@@ -150,11 +152,11 @@ class DiamondPredictor extends AbstractToolPredictor {
                 )
             }
 
-            // If no GO terms found, create a CUSTOM annotation with the product name
-            // from the best hit (useful for product naming even without GO)
-            if (goTerms.isEmpty() && ecNumbers.isEmpty()) {
+            // Product assignment is independent of GO/EC availability and opt-out.
+            // Require a near-full-length homolog; preserve identity and coverage as provenance.
+            if (assignProductNames && pident >= 40.0 && (fields[3] as double) / (fields[4] as double) >= 0.8 && (fields[3] as double) / (fields[5] as double) >= 0.8) {
                 String product = extractProduct(title)
-                if (product) {
+                if (product && !product.toLowerCase().startsWith('uncharacterized') && !product.toLowerCase().startsWith('hypothetical')) {
                     results[queryId] << new Annotation(
                         type: AnnotationType.CUSTOM,
                         value: product,
@@ -166,6 +168,9 @@ class DiamondPredictor extends AbstractToolPredictor {
                             hitAccession: accession,
                             pident: pident,
                             evalue: eval,
+                            bitscore: bitscore,
+                            queryCoverage: 100.0 * (fields[3] as double) / (fields[4] as double),
+                            subjectCoverage: 100.0 * (fields[3] as double) / (fields[5] as double),
                             annotationType: 'product',
                         ]
                     )

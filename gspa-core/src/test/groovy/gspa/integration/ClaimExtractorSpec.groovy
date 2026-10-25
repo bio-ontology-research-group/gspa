@@ -44,6 +44,8 @@ class ClaimExtractorSpec extends Specification {
         'antismash'     | EvidenceType.DOMAIN_SPECIFIC_BGC
         'vfdb'          | EvidenceType.DOMAIN_SPECIFIC_VF
         'deepgo-plus'   | EvidenceType.SEQUENCE_DEEPLEARNING
+        'deepgo-plusplus' | EvidenceType.SEQUENCE_DEEPLEARNING
+        'deepgo-plusplus-light' | EvidenceType.SEQUENCE_DEEPLEARNING
         // Sources emitted by the sidecar predictors. Without these, a 51 MB
         // claims_sidecar.jsonl is silently dropped by readClaimsJsonl.
         'mdf'           | EvidenceType.SEQUENCE_DEEPLEARNING
@@ -72,6 +74,31 @@ class ClaimExtractorSpec extends Specification {
         claims.find { it.source == 'proteinfer' }?.evidenceType == EvidenceType.SEQUENCE_DEEPLEARNING
         claims.find { it.source == 'clean' }?.evidenceType      == EvidenceType.SEQUENCE_DEEPLEARNING
         claims.find { it.source == 'diamond' }?.evidenceType    == EvidenceType.SEQUENCE_SIMILARITY
+    }
+
+    @Unroll
+    def "JSONL preserves #source predictions and their calibrated score"() {
+        given:
+        def tmp = File.createTempFile('claims-dgpp', '.jsonl')
+        tmp.text = groovy.json.JsonOutput.toJson([
+            protein_id: 'P1', function_type: 'GO', function_id: 'GO:0006412',
+            source: source, raw_score: 0.87, calibrated_prob: 0.87, go_aspect: 'BP'
+        ]) + '\n'
+
+        when:
+        def claims = extractor.readClaimsJsonl(tmp)
+
+        then:
+        claims.size() == 1
+        claims[0].source == source
+        claims[0].calibratedProb == 0.87d
+        claims[0].evidenceType == EvidenceType.SEQUENCE_DEEPLEARNING
+
+        cleanup:
+        tmp.delete()
+
+        where:
+        source << ['deepgo-plusplus', 'deepgo-plusplus-light']
     }
 
     def "explicit evidenceType on the annotation wins over the source lookup"() {

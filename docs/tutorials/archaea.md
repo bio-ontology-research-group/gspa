@@ -1,104 +1,61 @@
-# Archaeal genome: Pyrococcus furiosus
+# Should a protein match put a nucleus in an archaeon?
 
-*2026-10-24T14:25:11Z by Showboat 0.6.1*
-<!-- showboat-id: bbd8e441-8523-4fbe-9370-0937d82b729f -->
+A homologous protein can occur in different cellular settings. If a match to a
+reference protein brings along a “nucleus” annotation, should we transfer that
+location to *Pyrococcus furiosus*?
 
-The complete Pyrococcus furiosus DSM 3638 genome, ENA [AE009950.1](https://www.ebi.ac.uk/ena/browser/view/AE009950.1). The archaeal preset selects archaeal essentials and constraints; it does not treat this organism as a bacterium.
+**You will learn why evidence for sequence similarity is not automatically
+evidence for cellular location.** Use [setup](install.md) first; the
+[bacterial lesson](bacteria.md) introduces the results browser.
 
-First complete [installation](install.md) and [data and resource setup](resources.md). Run every command from the checkout root; each command starts a new CPU container. Outputs persist in `.tutorial-work/archaea/`.
+## 1. Predict what should change
 
-The compact teaching reference contains reviewed proteins from these same organisms, including self/close matches. These runs prove the workflow executes; they do not estimate accuracy. We use one DIAMOND hit per query and disable optional domain/neural predictors. No ontology was downloaded, so ontology-based quality metrics and ancestor relaxation are not demonstrated here; integration uses bundled constraint tables.
+We are analysing the complete *P. furiosus* DSM 3638 genome, an archaeon.
+A nuclear-location annotation is incompatible with that cellular context. Predict
+whether applying archaeal assumptions should retain or remove such a suggestion.
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-gspa integrate --preset archaea --print-config > /work/archaea-settings.json
-python3 - <<'PYCONFIG'
-import json
-settings = json.load(open('/work/archaea-settings.json'))
-for key in ['--taxon', '--essential-profile', '--enable-priors', '--enforce-stage2', '--lite']:
-    print(key + ': ' + str(settings[key]))
-PYCONFIG
-GSPA
-```
-
-```output
---taxon: archaea
---essential-profile: archaea
---enable-priors: essentiality,coherence,consistency,anatomical,gap_filling,genomic_context
---enforce-stage2: True
---lite: True
-```
-
-Call genes where needed and search the annotation-bearing DIAMOND database. Logs retain the tool commands and diagnostics. Conversion keeps unique direct DIAMOND GO/EC claims; operon-propagated suggestions in the annotation TSV are excluded, because operon coordinates are supplied separately to integration. This avoids counting the same context twice. Its teaching score is percent identity / 100 clipped to [0.01, 0.99], not a calibrated likelihood. For production, use held-out calibration and a broader reference, and add independent predictors.
+## 2. Analyse and inspect
 
 ```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-mkdir -p /work/archaea/gspa_out
-gspa annotate --preset archaea --genome /work/data/archaea.fna \
-  -c /work/data/cpu.json --db /work/data/reference.dmnd \
-  -o /work/archaea/annot -t 2 > /work/archaea/annotate.log 2>&1 || { tail -60 /work/archaea/annotate.log; exit 1; }
-python3 /tutorial/results.py claims archaea
-GSPA
+./tutorial run archaea
+./tutorial browser archaea
 ```
 
-```output
-3,830 unique DIAMOND GO/EC claims from 675 proteins
-Teaching score: DIAMOND identity fraction, clipped to [0.01, 0.99]; not a fitted probability.
-```
+The recorded run finds GO/EC sequence evidence for **675 of 2,102 called proteins**.
+Its targeted observation is more informative than that total:
 
-Integrate the claims and retain provenance. Without a GO ontology, cellular consistency enforcement can remove incompatible terms but cannot relax them to an ancestor. Mixed-community and phage runs deliberately use evidence alone. The results below are counts of hypotheses, not validated functions.
+| Annotation | Direct sequence candidates | Retained | Recorded removals |
+|---|---:|---:|---:|
+| [Nucleus, GO:0005634](https://amigo.geneontology.org/amigo/term/GO:0005634) | 17 | 0 | 17 |
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-gspa integrate --preset archaea --operons /work/archaea/annot/operons_for_integrate.tsv \
-  --claims /work/archaea/claims.jsonl --out /work/archaea/gspa_out/integrated.tsv \
-  --provenance /work/archaea/gspa_out/provenance.json \
-  --enforcement-actions-out /work/archaea/gspa_out/actions.tsv \
-  > /work/archaea/integrate.log 2>&1 || { tail -60 /work/archaea/integrate.log; exit 1; }
-python3 /tutorial/results.py summary archaea
-GSPA
-```
+Search the browser for `GO:0005634`: it should have no retained candidates.
+Then open `.tutorial-work/archaea/gspa_out/actions.tsv` in a text editor or
+spreadsheet and find the same identifier. For example, the removal for
+`archaea_00041` records a taxon inconsistency. The original match remains
+inspectable in `annot/*_annotations.tsv`.
 
-```output
-Proteins: 2,102; with GO/EC search evidence: 675
-Integrated hypotheses: GO=3,227; EC=509
-Hypotheses at posterior >= 0.5: 2,253
-These counts describe this teaching reference; they are not accuracy or completeness estimates.
-```
+**Biological insight:** the search produced transferable sequence similarities
+but also incompatible location suggestions. Archaeal context removed the nuclear
+annotations. This tells us which particular claims failed a biological constraint;
+it does not tell us that every function of those proteins is wrong.
 
-```bash {image}
-![Actual annotation counts for archaea](.tutorial-work/archaea/summary.svg)
-```
+## 3. Check your interpretation
 
-![Actual annotation counts for archaea](777ec406-2026-10-24.svg)
+**Do the 1,427 proteins without GO/EC search evidence mean this complete reference
+genome is biologically incomplete?**
 
-Build the interactive GSPA browser. The adapter supplies its expected metadata layout from the actual GSPA CDS coordinates (or protein IDs for yeast); it does not run Prokka or invent gene positions. GO/EC IDs remain visible because this compact example has no term-label ontology. The annotations table works locally; the genome tab may need internet access for igv.js.
+??? success "Worked answer"
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-python3 /tutorial/results.py browser archaea
-gspa visualize -w /work/archaea -g archaea \
-  --go-obo /work/data/no-labels.obo --ec2go /work/data/no-ec-labels.txt \
-  --fasta /work/data/archaea.fna \
-  > /work/archaea/visualize.log 2>&1 || { tail -60 /work/archaea/visualize.log; exit 1; }
-test -s /work/archaea/gspa_out/archaea_browser.html
-printf 'Interactive browser generated successfully.\n'
-GSPA
-```
+    No. Search coverage depends on the reference and its annotations. This small
+    reference leaves many called proteins without GO/EC evidence. Missing functional
+    labels are not missing genome sequence, and a protein count is not a genome
+    completeness measurement. Likewise, removing a nuclear location does not
+    identify the protein's correct location or function.
 
-```output
-Browser metadata prepared from real CDS coordinates / supplied protein identifiers.
-Interactive browser generated successfully.
-```
+The preset uses archaeal essentials and constraints; it does not apply bacterial
+identity to this organism. With no GO ontology loaded, this lesson demonstrates
+removal, not replacement by a broader ancestor term. See [evidence notes](resources.md).
 
-Open `.tutorial-work/archaea/gspa_out/archaea_browser.html` in your browser. Inspect `integrated.tsv` for final hypotheses, `provenance.json` for supporting evidence, and `actions.tsv` when enforcement acts. Keep the logs and `data/downloads.json` alongside results. For an actual project, replace the input and reference database; retain the biological assumptions appropriate to your unit of analysis.
-
-Re-run this document with `uvx showboat verify docs/tutorials/archaea.md` after installation and resource setup.
+Next, [analyse yeast proteins](eukaryote.md), where nuclear and mitochondrial
+annotations have a different biological interpretation. For your own data, use
+[the archaeal workflow](../scenarios/archaea.md).

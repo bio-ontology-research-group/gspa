@@ -14,6 +14,9 @@ class EvaluateCommand implements Runnable {
     @Option(names = ['-i', '--input'], description = 'Input GFF3 file')
     File input
 
+    @Option(names = ['--proteins'], description = 'Protein FASTA for annotation quality without genomic coordinates')
+    File proteins
+
     @Option(names = ['-a', '--annotations'], description = 'GO annotations in GAF format')
     File annotations
 
@@ -38,6 +41,9 @@ class EvaluateCommand implements Runnable {
 
     @Option(names = ['--module-defs'], description = 'KEGG module definitions JSON with step logic (benchmark/pathway_coherence/fetch_kegg_module_definitions.py); enables evidence-gated module completeness.')
     File moduleDefs
+
+    @Option(names = ['--module-exclude-organisms'], split = ',', description = 'KEGG organism codes left out of the module completion counts (leave-one-out validation).')
+    List<String> moduleExcludeOrganisms = []
 
     @Option(names = ['--modules'],
             description = 'Additional pathway TSV(s) to stack on top of --pathways ' +
@@ -65,7 +71,12 @@ class EvaluateCommand implements Runnable {
     File output
 
     private gspa.model.Genome loadGenomeWithGaf(File gffFile, File gafFile, String taxStr, String kingStr) {
-        def genome = GffReader.readGff3(gffFile)
+        def genome = proteins ? new gspa.model.Genome(id: proteins.name) : GffReader.readGff3(gffFile)
+        if (proteins) {
+            def contig = new gspa.model.Contig(id: 'proteins')
+            genome.addContig(contig)
+            gspa.io.FastaReader.readProteins(proteins).each { contig.addProtein(it) }
+        }
         genome.mag = mag
         String normTax = taxStr ? gspa.ontology.TaxonConstraints.normalizeTaxon(taxStr) : (kingStr ? gspa.ontology.TaxonConstraints.normalizeTaxon(kingStr) : null)
         if (normTax) {
@@ -73,14 +84,20 @@ class EvaluateCommand implements Runnable {
         }
         if (gafFile?.exists()) {
             def goAnnotations = GafReader.readGaf(gafFile)
+            if (proteins) {
+                genome.proteins.each { protein ->
+                    if (goAnnotations[protein.id]) protein.annotations.addAll(goAnnotations[protein.id])
+                }
+            }
             genome.contigs.each { contig ->
-                contig.featuresOfType(gspa.model.FeatureType.CDS).each { feature ->
+                contig.featuresOfType(gspa.model.FeatureType.CDS).findAll { gspa.io.CdsTranslator.isTranslatedCds(it) }.unique { gspa.io.CdsTranslator.proteinKey(it) }.each { feature ->
+                    String proteinId = gspa.io.CdsTranslator.proteinKey(feature)
                     def protein = new gspa.model.Protein(
-                        id: feature.id,
+                        id: proteinId,
                         sequence: '',
                         sourceFeature: feature
                     )
-                    def proteinAnns = goAnnotations[feature.id]
+                    def proteinAnns = goAnnotations[proteinId]
                     if (proteinAnns) {
                         protein.annotations.addAll(proteinAnns)
                     }
@@ -113,10 +130,10 @@ class EvaluateCommand implements Runnable {
                 }
             }
             pipeline.pathwayDatabase(pwDb)
-            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, ec2goMap)
+            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, ec2goMap, moduleExcludeOrganisms as Set)
         } else if (ec2go?.exists()) {
             pipeline.ec2goFile(ec2go)
-            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, gspa.ontology.PathwayLoader.loadEc2Go(ec2go))
+            if (moduleDefs?.exists()) pipeline.moduleDefinitionsFile(moduleDefs, gspa.ontology.PathwayLoader.loadEc2Go(ec2go), moduleExcludeOrganisms as Set)
         }
         if (taxonomy?.exists()) {
             pipeline.taxonomyFile(taxonomy)
@@ -154,8 +171,8 @@ class EvaluateCommand implements Runnable {
             return
         }
 
-        if (input == null) {
-            throw new IllegalArgumentException("Either -i/--input or --batch-manifest must be specified")
+        if (input == null && proteins == null) {
+            throw new IllegalArgumentException("Supply -i/--input, --proteins, or --batch-manifest")
         }
 
         def genome = loadGenomeWithGaf(input, annotations, organismTaxon, kingdom)

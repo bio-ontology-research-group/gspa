@@ -57,8 +57,8 @@ class CoherencePrior implements Prior {
     int maxRescuePerModule = 2
     /** Lowest candidate Stage 0 likelihood considered. */
     double minCandidate = 0.16d
-    /** Candidates below this score (log-odds scale) are left alone. */
-    double minScore = -2.0d
+    /** Candidates whose evidence-adjusted log-odds is below this are left alone (0 = adjusted odds at least even). */
+    double minScore = 0.0d
     double wSupport = 0.5d
     double wFree = 0.5d
     double wCompeting = 1.0d
@@ -135,6 +135,7 @@ class CoherencePrior implements Prior {
         }
 
         boolean moduleMode = state.moduleDefinitions != null && pathwayMode != 'legacy'
+        safeguardStrong = null
         Map<String, Double> moduleBoosts = [:]
         if (moduleMode) {
             try {
@@ -246,7 +247,7 @@ class CoherencePrior implements Prior {
                         state.sortCandidatesForRescue(cands)
                         String fk = cands[0].key
                         double pVal = cands[0].value as double
-                        if (state.candidateRescueTier(fk, pVal) >= 1) {
+                        if (state.candidateRescueTier(fk, pVal) >= 1 && (!moduleMode || passesSafeguard(state, fk))) {
                             double bVal = Math.max(1.80d * alphaCoh * w, 0.14d - state.getLikelihoodLogOdds(fk))
                             boosts[fk] = Math.max(boosts.getOrDefault(fk, 0.0d), bVal)
                         }
@@ -254,6 +255,8 @@ class CoherencePrior implements Prior {
                 }
             }
             for (Map.Entry<String, Double> ce : complexKeyWeights.entrySet()) {
+                // in module mode a positive complex-partner boost needs the same candidate evidence as a module rescue
+                if (moduleMode && ce.value > 0 && state.getLikelihoodProbability(ce.key) < IntegrationState.MAP_THRESHOLD && !passesSafeguard(state, ce.key)) continue
                 boosts[ce.key] = boosts.getOrDefault(ce.key, 0.0d) + alphaCoh * ce.value
             }
             for (Map.Entry<String, Double> mb : moduleBoosts.entrySet()) {
@@ -263,6 +266,41 @@ class CoherencePrior implements Prior {
         }
 
         log.debug("CoherencePrior: ${processMissingTerms.size()} process-missing, ${pathwayMissingTerms.size()} pathway-missing, ${complexKeyWeights.size()} complex-adjusted keys")
+    }
+
+    /** Proteins' confident (Stage 0 >= 0.50) GO terms, built lazily per iteration for the safeguard. */
+    private Map<String, Set<String>> safeguardStrong = null
+
+    /**
+     * Candidate safeguard shared by every coherence lift in module mode: the candidate's evidence-adjusted
+     * log-odds (Stage 0 log-odds + wSupport ln n_sup + wFree for an otherwise unannotated protein - wCompeting
+     * when the protein already carries a confident annotation of the same aspect outside the candidate's
+     * lineage) must reach {@link #minScore}.
+     */
+    private boolean passesSafeguard(IntegrationState state, String fk) {
+        String[] parts = IntegrationState.splitFunctionKey(fk)
+        if (parts == null || parts[1] != 'GO') return false
+        if (safeguardStrong == null) {
+            safeguardStrong = [:].withDefault { [] as Set }
+            Map<String, Double> src = (state.likelihoodLogOdds != null && !state.likelihoodLogOdds.isEmpty()) ? state.likelihoodLogOdds : state.posteriorLogOdds
+            for (Map.Entry<String, Double> e : src.entrySet()) {
+                if (e.value < 0.0d) continue
+                String[] p = IntegrationState.splitFunctionKey(e.key)
+                if (p != null && p[1] == 'GO') safeguardStrong[p[0]] << p[2]
+            }
+        }
+        String pid = parts[0], g = parts[2]
+        double sc = state.getLikelihoodLogOdds(fk) + wSupport * Math.log(Math.max(1, state.getClaimCount(fk)))
+        boolean free = state.getMaxLikelihoodProbForProtein(pid) < IntegrationState.MAP_THRESHOLD
+        if (free) sc += wFree
+        else if (state.goOntology != null) {
+            String asp = state.goOntology.getAspect(g)
+            Set<String> anc = state.goOntology.getAncestors(g) ?: ([] as Set)
+            Set<String> desc = state.goOntology.getDescendants(g) ?: ([] as Set)
+            boolean competing = safeguardStrong[pid].any { String o -> o != g && !anc.contains(o) && !desc.contains(o) && !ASPECT_ROOTS.contains(o) && state.goOntology.getAspect(o) == asp }
+            if (competing) sc -= wCompeting
+        }
+        sc >= minScore
     }
 
     /**

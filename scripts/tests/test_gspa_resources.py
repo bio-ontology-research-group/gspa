@@ -198,7 +198,7 @@ SQ   SEQUENCE   6 AA;
 //
 ''')
         r.prepare_swissprot(self.root)
-        self.assertEqual((self.root/'uniprot_sprot.fasta').read_text(), '>P12345 EC:1.2.3.4 GO:0003824\nMAAACC\n')
+        self.assertEqual((self.root/'uniprot_sprot.fasta').read_text(), '>sp|P12345|EXAMPLE Enzyme OS=unspecified EC:1.2.3.4 GO:0003824\nMAAACC\n')
 
     def test_catalog_groups_models_and_bundled_bytes_are_complete(self):
         data, entries = r.catalog()

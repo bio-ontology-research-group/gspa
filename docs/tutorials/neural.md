@@ -1,122 +1,79 @@
-# Neural prediction on CPU and NVIDIA GPU
+# What can sequence embeddings suggest about protein function?
 
-*2026-10-24T14:31:45Z by Showboat 0.6.1*
-<!-- showboat-id: 272412d5-abc9-49c3-a019-31980b100d1c -->
+A protein language model represents sequences as numerical vectors, or
+*embeddings*. Could similarity between those vectors help us nominate functions
+for proteins?
 
-Complete [installation](install.md) and [resource setup](resources.md). This tutorial runs GSPA’s existing ESM-2 centroid predictor twice on the same 16 proteins: once in a CPU-only PyTorch environment, then with CUDA. It downloads the real 35M-parameter ESM-2 checkpoint, builds a deliberately tiny function-centroid database from 64 reviewed reference proteins, and checks the outputs. This custom teaching model is not a released GSPA prediction head and its cosine scores are not calibrated probabilities. Protein IDs differ between reference and query, but this is not a homology-controlled evaluation.
+**You will learn what an embedding-based candidate means, and distinguish model
+output from biological validation.** This optional lesson follows
+[setup](install.md). It downloads an ESM-2 model and builds a separate CPU neural
+image; first execution can take substantially longer than a biological lesson.
 
-The JVM integrator, Prodigal and the DIAMOND examples in this tutorial remain CPU workloads. Exposing a GPU does not accelerate those stages. Replace the centroid/reference path and batch size for production neural runs; a larger backbone can require substantially more GPU memory.
+## 1. Predict the limitation
 
-Build the CPU neural image first. The Dockerfile pins PyTorch 2.7.1, fair-esm 2.0.0 and NumPy 1.26.4. The CPU wheel index installs no CUDA libraries. Build logs are saved and failures propagate. These versions are a tested recipe, not a claim that they are the newest releases.
+We use 64 short reference proteins—16 each from bacteria, archaea, yeast and
+phage—to build function centroids, the average embeddings for labelled groups.
+We then query 16 different proteins, four from each group. What happens if a
+query's true function is absent from such a small reference?
 
-```bash
-set -eu
-docker build -t gspa-tutorial:neural-cpu -f tutorials/workflows/Dockerfile.neural tutorials/workflows > .tutorial-work/build-neural-cpu.log 2>&1 || { tail -60 .tutorial-work/build-neural-cpu.log; exit 1; }
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:neural-cpu bash -eu <<'GSPA'
-python3 /tutorial/neural.py device cpu
-GSPA
-```
-
-```output
-CPU-only PyTorch: no CUDA runtime and no GPU required.
-PyTorch: 2.7.1+cpu
-```
-
-Download the backbone with the resource manager, then link its two checkpoint files into fair-esm’s expected Torch cache. Re-running the manager verifies the installed files. This downloads a language-model backbone; the following step supplies the function-centroid database needed to turn embeddings into GO/EC candidates.
+## 2. Run the CPU experiment
 
 ```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-gspa download esm2-35m --dir /work/resources > /work/download-esm2.log 2>&1 || { cat /work/download-esm2.log; exit 1; }
-mkdir -p /work/torch/hub/checkpoints
-for checkpoint in /work/resources/esm2-35m/*.pt; do
-  ln -sfn "$checkpoint" /work/torch/hub/checkpoints/
-done
-python3 /tutorial/neural.py prepare
-GSPA
+./tutorial neural cpu
 ```
 
-```output
-64 reference proteins; 16 distinct query proteins; length 80–256 aa
-Teaching centroids only: a tiny custom reference, not a released or calibrated GSPA model.
-```
+The launcher downloads the real 35M-parameter ESM-2 backbone, prepares the
+reference, builds the centroids and runs GSPA's centroid predictor. No GPU is
+needed. The recorded run builds **28 centroids** and produces **48 candidate
+annotations for 16 query proteins**: three per protein.
 
-Create custom centroids with GSPA’s existing builder. This small training/reference set contains 16 short proteins each from bacteria, archaea, yeast and phage; queries contain four different proteins from each. The builder runs on CPU here. Keep the resulting NPZ fixed for the device comparison.
+Open `.tutorial-work/neural/cpu/*_annotations.tsv` in a text editor or spreadsheet
+(the `*` denotes the generated filename). Select a protein and compare its three
+labels and scores. The source column identifies `esm2-centroid`.
+
+**Biological insight:** embedding similarity provides a shortlist of functional
+hypotheses relative to the functions represented in the reference. The fixed
+three-candidate output does not mean every protein has exactly three functions.
+An unrepresented function cannot be recovered simply by ranking these centroids.
+
+## 3. Check your interpretation
+
+**Does the highest cosine-similarity score establish the correct function?**
+
+??? success "Worked answer"
+
+    No. Cosine similarity measures proximity in the model's representation, not
+    the probability that a function is correct. This tiny custom reference is
+    neither a released functional prediction head nor a calibrated model. Reference
+    and query IDs differ, but we have not controlled their homology. Assessing
+    functional accuracy needs suitable held-out labels and evaluation design.
+
+## Optional: does changing the device change these candidates?
+
+After the CPU run, a host with a compatible NVIDIA GPU, driver and
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+can run:
 
 ```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:neural-cpu bash -eu <<'GSPA'
-python3 /src/benchmark/neural/build_esm2_centroids.py \
-  --swissprot-fasta /work/neural/reference.faa --swissprot-tsv /work/neural/labels.tsv \
-  --model esm2_t12_35M_UR50D --batch-size 4 --min-class-size 2 \
-  --out /work/neural/centroids.npz > /work/neural/build-centroids.log 2>&1 || { tail -60 /work/neural/build-centroids.log; exit 1; }
-python3 -c 'import numpy as np; d=np.load("/work/neural/centroids.npz", allow_pickle=True); print("Centroid matrix:", d["centroids"].shape)'
-GSPA
+./tutorial neural cuda
 ```
 
-```output
-Centroid matrix: (28, 480)
-```
+This builds the CUDA image and uses the **same query proteins and centroids**.
+The check requires identical top-three labels and score differences no larger
+than 0.001. The recorded run met those conditions. Your result is written to
+`.tutorial-work/neural/comparison.json`; a missing GPU or failed comparison
+reports an error rather than silently using the CPU.
 
-Run actual GSPA neural annotation on CPU. Because the query mixes organisms, use the metagenome preset with supplied proteins: no pooled organism taxon, completeness prior or operon inference. This is a small proteome subset, not a metagenomic gene-calling example.
+Matching device outputs supports computational reproducibility. It does not
+validate the biological annotations. The GPU accelerates the neural stage;
+GSPA's integration and the earlier DIAMOND examples remain CPU workloads.
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:neural-cpu bash -eu <<'GSPA'
-gspa annotate --preset metagenome --proteins /work/neural/query.faa \
-  -c /work/neural/config.json -o /work/neural/cpu -t 2 \
-  > /work/neural/cpu.log 2>&1 || { tail -60 /work/neural/cpu.log; exit 1; }
-python3 -c 'import csv,pathlib; p=next(pathlib.Path("/work/neural/cpu").glob("*_annotations.tsv")); r=list(csv.DictReader(p.open(),delimiter="	")); assert len(r)==48; assert {x["source"] for x in r}=={"esm2-centroid"}; print("CPU: 48 real ESM-2 centroid annotations.")'
-GSPA
-```
+??? details "Environment and production use"
 
-```output
-CPU: 48 real ESM-2 centroid annotations.
-```
-
-For GPU execution, the host needs an NVIDIA driver and [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Containers do not install the host driver. Use `nvidia-smi` on the host to inspect your device; Docker must accept `--gpus all`. Build the CUDA 12.8 PyTorch variant below. This combination supports the Blackwell GPU used for the recorded run; consult [PyTorch’s installation instructions](https://pytorch.org/get-started/locally/) for your hardware. The test performs a CUDA matrix operation and fails if GPU execution is unavailable. CPU users can stop after the previous step.
-
-```bash
-set -eu
-docker build -t gspa-tutorial:neural-cuda \
-  --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu128 \
-  -f tutorials/workflows/Dockerfile.neural tutorials/workflows > .tutorial-work/build-neural-cuda.log 2>&1 || { tail -60 .tutorial-work/build-neural-cuda.log; exit 1; }
-docker run --rm -i --gpus all --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:neural-cuda bash -eu <<'GSPA'
-python3 /tutorial/neural.py device cuda
-GSPA
-```
-
-```output
-CUDA tensor operation passed; GPU: NVIDIA RTX PRO 2000 Blackwell Generation Laptop GPU
-PyTorch: 2.7.1+cu128
-```
-
-Run the same GSPA command with the GPU exposed. The ESM-2 sidecar selects CUDA when PyTorch reports it available. Batch size four and short sequences keep this example within the recorded 8 GB GPU. The final comparison requires the same top-three labels and score differences no greater than 0.001; small floating-point differences across devices are expected.
-
-```bash
-docker run --rm -i --gpus all --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:neural-cuda bash -eu <<'GSPA'
-gspa annotate --preset metagenome --proteins /work/neural/query.faa \
-  -c /work/neural/config.json -o /work/neural/cuda -t 2 \
-  > /work/neural/cuda.log 2>&1 || { tail -60 /work/neural/cuda.log; exit 1; }
-python3 /tutorial/neural.py compare
-GSPA
-```
-
-```output
-16 query proteins; 48 neural annotations on CPU and 48 on GPU.
-Top-3 labels match; all reported score differences are within 0.001.
-Scores are cosine similarities, not calibrated GO probabilities.
-```
-
-Outputs and logs are under `.tutorial-work/neural/`; `comparison.json` records the actual maximum score difference. CPU-only and CUDA installs are separate Docker images. All biological CPU tutorials remain usable without either neural image. To use another model, inspect `gspa resources MODEL_ID` and its dependencies; do not substitute ESM backbone weights for a model’s trained functional head.
-
-On a GPU-equipped host, verify with `uvx showboat verify docs/tutorials/neural.md`. This document deliberately fails its GPU checks on a CPU-only host; it does not silently claim a GPU run.
+    The recipe uses PyTorch 2.7.1, fair-esm 2.0.0 and NumPy 1.26.4. CPU and CUDA
+    environments are separate images; the latter uses CUDA 12.8 wheels. Consult
+    [PyTorch's installation guide](https://pytorch.org/get-started/locally/) for
+    hardware compatibility. Short sequences and batch size four keep the example
+    small. Production use needs an appropriate function reference or trained head,
+    calibration and independent evaluation; backbone weights alone do not assign
+    functions. See [resources and models](../reference/resources.md).

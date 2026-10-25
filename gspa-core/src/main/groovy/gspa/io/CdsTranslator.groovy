@@ -137,7 +137,36 @@ class CdsTranslator {
             coding.append(piece)
         }
         int phase = ordered.first().phase
-        translate(coding.toString(), phase, translateStartAsMet, true)
+        StringBuilder translated = new StringBuilder(translate(coding.toString(), phase, translateStartAsMet, false))
+        // GFF3 transl_except uses genomic, 1-based coordinates on either strand.
+        ordered.each { feature ->
+            String exceptions = (feature.attributes['transl_except'] ?: []).join(',')
+            def matcher = exceptions =~ /\(pos:(?:complement\()?([0-9]+)\.\.([0-9]+)\)?,aa:(Sec|Pyl|TERM)\)/
+            matcher.each { match ->
+                int start = match[1] as int
+                int end = match[2] as int
+                int offset = 0
+                boolean applied = false
+                for (Feature segment : ordered) {
+                    if (start >= segment.start && end <= segment.end && end - start == 2) {
+                        int codingOffset = offset + (strand == Strand.MINUS ? segment.end - end : start - segment.start) - Math.max(0, phase)
+                        int index = codingOffset.intdiv(3)
+                        if (codingOffset >= 0 && codingOffset % 3 == 0 && index < translated.length()) {
+                            translated.setCharAt(index, (match[3] == 'Sec' ? 'U' : match[3] == 'Pyl' ? 'O' : '*').charAt(0))
+                            applied = true
+                        }
+                        break
+                    }
+                    offset += segment.end - segment.start + 1
+                }
+                if (!applied) throw new IllegalArgumentException("Cannot map transl_except ${match[0]} to CDS ${feature.id}")
+            }
+            if (exceptions && !matcher.reset().find()) {
+                throw new IllegalArgumentException("Unsupported transl_except in CDS ${feature.id}: ${exceptions}")
+            }
+        }
+        if (translated.length() && translated.charAt(translated.length()-1) == '*') translated.setLength(translated.length()-1)
+        translated.toString()
     }
 
     /**
@@ -145,8 +174,9 @@ class CdsTranslator {
      * features already loaded on each contig. Requires each contig to carry
      * its nucleotide {@code sequence} (from the genome FASTA or an embedded
      * {@code ##FASTA} block). CDS segments are grouped per protein by the
-     * GFF3 {@code ID} attribute (NCBI multi-exon rows share an ID; prodigal
-     * gives each CDS a unique ID), falling back to locus_tag.
+     * GFF3 {@code protein_id}, falling back to {@code ID} and then locus_tag.
+     * Annotated pseudogenes are excluded; Sec/Pyl/TERM translation exceptions
+     * are applied using their genomic coordinates.
      *
      * @return number of proteins created
      */
@@ -163,7 +193,7 @@ class CdsTranslator {
             }
             // Group CDS segments per protein, preserving first-seen order.
             Map<String, List<Feature>> byProtein = new LinkedHashMap<>()
-            contig.cdsFeatures().each { Feature f ->
+            contig.cdsFeatures().findAll { isTranslatedCds(it) }.each { Feature f ->
                 String key = proteinKey(f)
                 byProtein.computeIfAbsent(key) { [] } << f
             }
@@ -178,6 +208,10 @@ class CdsTranslator {
             }
         }
         created
+    }
+
+    static boolean isTranslatedCds(Feature feature) {
+        feature.attributes['pseudo']?.first()?.toLowerCase() != 'true' && !feature.attributes['pseudogene']
     }
 
     /** Grouping/identity key for a CDS feature: protein_id, ID, locus_tag, or synthesized. */

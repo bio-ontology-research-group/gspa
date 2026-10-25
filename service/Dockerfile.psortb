@@ -1,0 +1,6 @@
+FROM brinkmanlab/psortb_commandline:1.0.2
+COPY service/patch-psortb-terse.pl /app/patch-psortb-terse.pl
+RUN perl /app/patch-psortb-terse.pl
+COPY service/psortb-server.pl /app/psortb-server.pl
+USER 10001:10001
+ENTRYPOINT ["perl", "/app/psortb-server.pl"]

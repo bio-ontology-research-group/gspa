@@ -33,6 +33,7 @@ class ClaimExtractor {
         'gapseq'         : EvidenceType.METABOLIC_CONTEXT,
         'crossfeeding'   : EvidenceType.METABOLIC_CONTEXT,
         'signalp'        : EvidenceType.LOCALIZATION,
+        'psortb'         : EvidenceType.LOCALIZATION,
         'deeptmhmm'      : EvidenceType.LOCALIZATION,
         'amrfinder'      : EvidenceType.DOMAIN_SPECIFIC_AMR,
         'dbcan'          : EvidenceType.DOMAIN_SPECIFIC_CAZY,
@@ -40,6 +41,8 @@ class ClaimExtractor {
         'vfdb'           : EvidenceType.DOMAIN_SPECIFIC_VF,
         // Phase 9 predictors
         'deepgo-plus'    : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'deepgo-plusplus': EvidenceType.SEQUENCE_DEEPLEARNING,
+        'deepgo-plusplus-light': EvidenceType.SEQUENCE_DEEPLEARNING,
         'deepgo'         : EvidenceType.SEQUENCE_DEEPLEARNING,
         'esm2-go'        : EvidenceType.SEQUENCE_DEEPLEARNING,
         'proteinfer'     : EvidenceType.SEQUENCE_DEEPLEARNING,

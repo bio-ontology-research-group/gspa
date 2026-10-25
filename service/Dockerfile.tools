@@ -1,0 +1,7 @@
+# Shared CPU analysis environment; built independently from application code.
+FROM mambaorg/micromamba:2.3.3
+USER root
+RUN micromamba create -y -p /opt/bio -c conda-forge -c bioconda \
+    python=3.11 antismash-lite=8.0.1 ncbi-amrfinderplus=4.2.7 \
+    numpy=2.2.5 scipy python-libsbml biopython \
+    && micromamba clean --all --yes

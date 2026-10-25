@@ -1,5 +1,14 @@
 # GSPA genome-scale annotation service
 
+The public upload-and-results portal is available at **https://gspa.bio2vec.net**.
+Every new portal analysis uses the full opt-out profile, including EC/homology names,
+operons, pathways, AMR/BGC/localization, annotation quality and bacterial FBA.
+GFF3 with matching genome sequence is the recommended input.
+
+See [deployment and operations](deploy/README.md) for its persistent queue,
+prediction workflow, resource limits, and rollback. The API below is the original
+synchronous integration endpoint, selected separately from the portal.
+
 A small, stateless REST wrapper around `gspa-cli annotate`. It exposes the JVM
 genome-scale pipeline — **GFF3 CDS translation → DeepGO-PlusPlus(-Light)
 prediction → per-contig genome-scale metrics → optional SAT taxon-consistency /

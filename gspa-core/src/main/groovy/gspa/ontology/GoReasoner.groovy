@@ -180,12 +180,15 @@ class GoReasoner {
     private void saveHasPartCache(List<Map.Entry<String, String>> pairs) {
         cacheDir.mkdirs()
         def cacheFile = new File(cacheDir, 'has_part_pairs.tsv')
-        cacheFile.withWriter { writer ->
+        def temporary = File.createTempFile('has_part_pairs_', '.tmp', cacheDir)
+        temporary.withWriter { writer ->
+            writer.writeLine("# ontology_sha256=${goOntology.sourceSha256 ?: 'unavailable'}")
             writer.writeLine("# has_part pairs cache (${pairs.size()} pairs)")
             pairs.each { pair ->
                 writer.writeLine("${pair.key}\t${pair.value}")
             }
         }
+        java.nio.file.Files.move(temporary.toPath(), cacheFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
         log.info("Cached ${pairs.size()} has_part pairs to: ${cacheFile}")
     }
 
@@ -195,7 +198,12 @@ class GoReasoner {
     boolean loadHasPartCache() {
         if (cacheDir == null) return false
         def cacheFile = new File(cacheDir, 'has_part_pairs.tsv')
-        if (!cacheFile.exists()) return false
+        if (!cacheFile.exists() || !goOntology.sourceSha256) return false
+        String header = cacheFile.withReader { it.readLine() }
+        if (header != "# ontology_sha256=${goOntology.sourceSha256}") {
+            log.info('Ignoring has_part cache from a different or unrecorded ontology version')
+            return false
+        }
 
         log.info("Loading has_part pairs from cache: ${cacheFile}")
         List<Map.Entry<String, String>> pairs = []

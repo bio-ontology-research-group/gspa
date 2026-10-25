@@ -1,0 +1,61 @@
+version: "2.4"
+services:
+  gspa:
+    image: gspa-service:full-2026-10-25
+    container_name: gspa
+    restart: unless-stopped
+    user: "10001:10001"
+    init: true
+    ports:
+      - "10.254.146.211:18080:8000"
+    cpus: 4
+    mem_limit: 12g
+    pids_limit: 256
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=2g,mode=1777
+    volumes:
+      - /opt/gspa/resources:/opt/gspa-resources:ro
+      - /opt/gspa/assets:/opt/dgpp_assets:ro
+      - /opt/gspa/jobs:/var/lib/gspa/jobs
+    environment:
+      GSPA_APP: service.portal:app
+      GSPA_THREADS: "4"
+      DGPP_LIGHT_THREADS: "4"
+      # Keep prediction subprocesses in the job process group for timeout cleanup.
+      DGPP_LIGHT_SERVER: ""
+      JAVA_TOOL_OPTIONS: "-Xmx6g -XX:ActiveProcessorCount=4"
+      GSPA_TIMEOUT: "3600"
+      GSPA_MAX_UPLOAD_BYTES: "20971520"
+      HOME: /tmp
+    healthcheck:
+      test: [CMD, curl, -fsS, http://127.0.0.1:8000/health]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+  psortb:
+    image: gspa-psortb:2026-10-25
+    restart: unless-stopped
+    user: "10001:10001"
+    init: true
+    cpus: 4
+    mem_limit: 3g
+    pids_limit: 128
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
