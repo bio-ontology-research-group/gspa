@@ -12,20 +12,31 @@ Host: KAUST ibex, work area `/encrypted/e3008/gspa/macroevo` (`code/`, `ref/`, `
 ## Steps
 
 1. **Presence extraction** (`extract_presence.py`, `01_extract_loop.sbatch`; one process per Stage D
-   batch). A genome has a GO term when at least one protein carries it at posterior >= 0.5; the set is
-   propagated to all `is_a`/`part_of` ancestors (`go-dag.tsv`) and stored as a bit vector over the GO
-   vocabulary. Per genome and configuration: number of annotated proteins, number of distinct terms,
-   per-protein counts for the union of the `goslim_prokaryote` and `goslim_metagenomics` slims, and the
-   fraction of the bacterial and archaeal essential-function profiles (gspa-core) present. EC numbers
-   at >= 0.5 go to a JSON-lines file.
-2. **Genome table and species profiles** (`02_species_profiles.py`). `genomes.tsv.gz` joins the batch
-   manifests (GTDB species, phylum) and the Stage D per-genome table (ORFs, dark and twilight counts).
+   batch). For every genome, configuration and GO term the maximum posterior with which any protein
+   carries the term, after propagation to all `is_a`/`part_of` ancestors (`go-dag.tsv`), stored as a
+   uint16 matrix (posterior x 1000) so that the later steps can apply any presence threshold. Per genome,
+   configuration and threshold (0.50 and 0.30): the number of proteins with a term at or above it and
+   per-protein counts for the union of the `goslim_prokaryote` and `goslim_metagenomics` slims. EC
+   numbers at >= 0.50 go to a JSON-lines file. The Stage D posteriors never exceed 0.60, because the
+   batch pipeline merges the Stage 0 channels into one evidence source per claim; at the paper's decision
+   threshold of 0.50 a genome keeps about 480 terms and the essential functions sit at 0.35 to 0.48 under
+   Stage 0 alone, so 0.50 is where the priors act and 0.30 is the sensitivity run (about 1,200 terms per
+   genome).
+2. **Genome table and species profiles** (`02_species_profiles.py`, `--threshold`). `genomes.tsv.gz`
+   joins the batch manifests (species, phylum) and the Stage D per-genome table (ORFs, dark and twilight
+   counts) and derives, at the threshold, the number of distinct terms and the fraction of the bacterial
+   and archaeal essential-function profiles (gspa-core) present. Species are resolved to GTDB r220 names:
+   the manifest name when r220 has it, otherwise the species of the GTDB genome with the same biosample
+   (`species_source` column); AllTheBacteria genomes without a GTDB assignment keep the name `unknown`.
    `species_counts.npz` holds, per species and configuration, the number of genomes with each term.
 3. **Tree** (`03_tree.py`). Species names map to their GTDB r220 representative (bac120 metadata) and to
    the tips of the GTDB-Tk r220 bac120 reference tree; the tree is pruned to the mapped species and
-   rooted at the midpoint of its longest path. Reference species are those with at least 20 Swiss-Prot
-   proteins with experimental GO annotations (the Stage 0 DIAMOND database, `train_taxonomy.tsv`,
-   matched through NCBI taxids), and every species gets its patristic distance to the nearest reference.
+   rooted at the midpoint of its longest path. Reference species are those with at least one Swiss-Prot
+   protein with experimental GO annotations (the Stage 0 DIAMOND database, `train_taxonomy.tsv`; strain
+   taxids resolved to species with the NCBI taxdump in `ref/taxdump/`, then matched to GTDB genomes by
+   `ncbi_taxid` or `ncbi_species_taxid`); the training set holds 19 bacterial taxa with 6,300 proteins,
+   so the reference set is small, and `tips.tsv` keeps the protein count per tip. Every species gets its
+   patristic distance to the nearest reference.
    Tip states: a term is present in a species when at least half of its genomes have it. Fitch parsimony
    over all variable terms gives the minimum number of changes per term; one most-parsimonious
    assignment (parent state kept when ambiguous; root takes the majority tip state) gives gains and
@@ -40,6 +51,7 @@ Host: KAUST ibex, work area `/encrypted/e3008/gspa/macroevo` (`code/`, `ref/`, `
 
 ## Status
 
-2026-10-24: extraction running on the 242 batches with a Stage D partial (454,691 genomes; three looping
-jobs 54494944-6 because the 2,000-job QOS cap left no room for an array). The remaining 454 wave-2
+2026-10-25: extraction of the 242 batches with a Stage D partial (454,691 genomes) done in three looping
+jobs (54509582-4; the 2,000-job QOS cap left no room for an array). Steps 2-4 queued as 54519736
+(threshold 0.50, `profiles/ tree/ results/`) and 54519737 (0.30, `*_t30/`). The remaining 454 wave-2
 batches are being integrated (P11 Stage D chain 54492370 and successors) and will be added when done.
