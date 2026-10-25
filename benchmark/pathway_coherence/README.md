@@ -40,3 +40,26 @@ Nine reference genomes, three variants (`legacy`, `assess` = definitions loaded 
 refinement, `module`), judged by F-max against curated annotations, coherence-rescue precision against the
 curated annotation of the rescued protein, and module-level agreement with the organisms KEGG lists as
 complete. Results in `results/`.
+
+## Round 1 findings (`results/` from job 9692, before the assessability rules)
+
+Refinement was neutral on F-max (micro all 0.7734 to 0.7744, CAFA all 0.8057 to 0.8064, experimental
+truth within 0.001) and made 331 coherence rescues across the nine genomes, 131 of the 324 with a curated
+protein correct at term level (40 %). Module completeness judged against KEGG's complete-organism lists
+reached recall 0.95 in E. coli but precision 0.50: 105 modules called complete that KEGG does not list.
+Three causes, two of them fixable:
+
+* 29 of the 105 had a single GO-mappable step and 26 had fewer than half their steps mappable, so one
+  enzyme made them "complete". Fix: a module is *assessable* only with at least two mappable required
+  steps covering at least half of its steps; the rest are reported as not assessable.
+* Partial EC numbers (1.1.1.-) map through ec2go to enzyme-class terms (hydro-lyase, acid-thiol ligase,
+  methyltransferase activity) that every genome carries, so coarse steps counted as present. Fix:
+  partial ECs are treated as no mapping (337 of 4,107 orthologs).
+* KEGG names organism-specific variants of one chemistry (isoprenoid biosynthesis for archaea, plants and
+  non-plant eukaryotes; C1-unit interconversion, eukaryotes) whose orthologs differ below EC resolution,
+  so a GO-based annotation satisfies all variants. Fix: the module name's domain hint against the genome's
+  domain marks such modules as not expected; variants without a name hint remain indistinguishable and
+  are a floor on the precision measured against KEGG.
+
+Round 2 (`bench9_v2`) adds the `nocoh` baseline (all priors except coherence) so the annotations each
+pathway refinement adds, and their precision against the curated truth, are measured directly.

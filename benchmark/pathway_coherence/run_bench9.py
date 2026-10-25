@@ -42,20 +42,21 @@ GENOMES = [
     {"tag": "paeruginosa", "taxon": "NCBITaxon_287", "k": "bacteria", "org": "pae"},
 ]
 PRIORS = "essentiality,coherence,consistency,anatomical,gap_filling,genomic_context"
-VARIANTS = {"legacy": None, "assess": {"coh_pathway_mode": "legacy"}, "module": {"coh_pathway_mode": "module"}}
+VARIANTS = {"nocoh": None, "legacy": None, "assess": {"coh_pathway_mode": "legacy"}, "module": {"coh_pathway_mode": "module"}}
+PRIORS_NOCOH = "essentiality,consistency,anatomical,gap_filling,genomic_context"
 
 
 def command(jar, g, variant, theta, defs, out_file):
     tag = g["tag"]
     gaps = f"{BENCH9}/{tag}_gaps.jsonl"; ops = f"{OPERONS}/{tag}_operons.tsv"
     cmd = [JAVA, "-Xmx8g", "-XX:ActiveProcessorCount=2", "-jar", jar, "integrate", "--claims", f"{BENCH9}/with_iprscan/{tag}_claims_merged.jsonl",
-           "--go-owl", f"{REF}/go.owl", "--out", out_file, "--lite", "--enable-priors", PRIORS, "--essential-profile", g["k"], "--taxon", g["taxon"],
+           "--go-owl", f"{REF}/go.owl", "--out", out_file, "--lite", "--enable-priors", PRIORS_NOCOH if variant == "nocoh" else PRIORS, "--essential-profile", g["k"], "--taxon", g["taxon"],
            "--pathways", f"{REF}/kegg_pathways.tsv", "--modules", f"{REF}/kegg_modules.tsv", "--ec2go", f"{REF}/ec2go.txt",
            "--enforce-stage2", "--enforce-consistency-mode", "relax"]
     if os.path.exists(ops) and os.path.getsize(ops) > 0: cmd += ["--operons", ops]
     if os.path.exists(gaps) and os.path.getsize(gaps) > 0: cmd += ["--gaps", gaps]
     if theta: cmd += ["--theta", theta]
-    if variant != "legacy": cmd += ["--module-defs", defs]
+    if variant in ("assess", "module"): cmd += ["--module-defs", defs]
     return cmd
 
 
@@ -134,6 +135,25 @@ def main():
             if not os.path.exists(out_file): continue
             r = dict(genome=g["tag"], org=g["org"], variant=v, kegg_complete_modules=len(kegg_complete))
             r.update(fmax(g["tag"], out_file, a.n_bootstrap))
+            # annotations the coherence prior added: (protein, GO) at or above 0.50 here but not without the prior
+            base = os.path.join(a.out_dir, f"{g['tag']}_nocoh_integrated.tsv")
+            if v != "nocoh" and os.path.exists(base):
+                def above(path):
+                    s = set()
+                    with open(path) as fh:
+                        rd = csv.DictReader(fh, delimiter="\t")
+                        for x in rd:
+                            if x["type"] == "GO" and float(x["posterior_prob"]) >= 0.5: s.add((x["protein_id"], x["function_id"]))
+                    return s
+                added = above(out_file) - above(base); removed = above(base) - above(out_file)
+                ok = bad = unk = 0
+                for pid, go in added:
+                    tt = truth.get(pid)
+                    if not tt: unk += 1; continue
+                    prop = set().union(*(anc(t) for t in tt))
+                    if go in prop: ok += 1
+                    else: bad += 1
+                r.update(added_vs_nocoh=len(added), added_correct=ok, added_wrong=bad, added_unknown_truth=unk, removed_vs_nocoh=len(removed))
             # coherence rescues
             rp = out_file + ".rescues.tsv"; n = ct = cs = unk = 0
             if os.path.exists(rp):
@@ -156,7 +176,7 @@ def main():
                 for phase in ("before", "after"):
                     tp = fp = fn = act_tp = act_fp = 0
                     for m in mj["modules"]:
-                        if m["signature"]: continue
+                        if m["signature"] or not m.get("assessable", True) or m.get("not_expected_reason"): continue
                         if phase == "after": complete = m["complete"]; activated = m["activated"]
                         else:
                             complete = m["completeness_before"] is not None and m["completeness_before"] >= 0.999; activated = m["activated_before"]
@@ -177,9 +197,10 @@ def main():
             fh.write("\t".join(cols) + "\n")
             for x in data: fh.write("\t".join(str(x.get(k, "")) for k in cols) + "\n")
     with open(os.path.join(a.out_dir, "summary.tsv"), "w") as fh:
-        keys = ["fmax_micro_exp", "fmax_cafa_exp", "fmax_micro_all", "fmax_cafa_all", "coh_rescues", "coh_rescues_correct_term", "coh_rescues_correct_step", "coh_rescues_unknown_truth",
+        keys = ["fmax_micro_exp", "fmax_cafa_exp", "fmax_micro_all", "fmax_cafa_all", "added_vs_nocoh", "added_correct", "added_wrong", "added_unknown_truth", "removed_vs_nocoh",
+                "coh_rescues", "coh_rescues_correct_term", "coh_rescues_correct_step", "coh_rescues_unknown_truth",
                 "modules_complete_before", "modules_complete_after", "complete_tp_after", "complete_fp_after", "complete_fn_after", "complete_tp_before", "complete_fp_before", "complete_fn_before"]
-        fh.write("variant\tn_genomes\t" + "\t".join(keys) + "\tcomplete_precision_before\tcomplete_recall_before\tcomplete_precision_after\tcomplete_recall_after\trescue_precision_term\trescue_precision_step\n")
+        fh.write("variant\tn_genomes\t" + "\t".join(keys) + "\tcomplete_precision_before\tcomplete_recall_before\tcomplete_precision_after\tcomplete_recall_after\trescue_precision_term\trescue_precision_step\tadded_precision\n")
         for v in variants:
             sel = [x for x in rows if x["variant"] == v]
             if not sel: continue
@@ -192,7 +213,9 @@ def main():
                 return (f"{tp / (tp + fp):.3f}" if tp + fp else "", f"{tp / (tp + fn):.3f}" if tp + fn else "")
             judged = sum(x["coh_rescues"] - x["coh_rescues_unknown_truth"] for x in sel)
             rt = f"{sum(x['coh_rescues_correct_term'] for x in sel) / judged:.3f}" if judged else ""; rs = f"{sum(x['coh_rescues_correct_step'] for x in sel) / judged:.3f}" if judged else ""
-            fh.write(f"{v}\t{len(sel)}\t" + "\t".join(vals) + "\t" + "\t".join(pr("before") + pr("after")) + f"\t{rt}\t{rs}\n")
+            aj = sum(x.get("added_correct", 0) + x.get("added_wrong", 0) for x in sel)
+            ap_ = f"{sum(x.get('added_correct', 0) for x in sel) / aj:.3f}" if aj else ""
+            fh.write(f"{v}\t{len(sel)}\t" + "\t".join(vals) + "\t" + "\t".join(pr("before") + pr("after")) + f"\t{rt}\t{rs}\t{ap_}\n")
     print(open(os.path.join(a.out_dir, "summary.tsv")).read(), flush=True)
 
 

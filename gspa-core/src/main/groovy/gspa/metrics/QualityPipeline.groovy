@@ -132,6 +132,8 @@ class QualityPipeline {
             Map<String, String> ec2go = ec2goForModules ?: pathwayDatabase?.ec2go ?: [:]
             coherenceEvaluator.moduleDefinitions = gspa.ontology.ModuleDefinitions.load(moduleDefinitionsFile, ec2go)
             coherenceEvaluator.satChecker = satChecker
+            String prof = essentialFunctions?.profileName?.toLowerCase()
+            coherenceEvaluator.organismDomain = prof == null ? null : (prof.startsWith('bact') ? 'bacteria' : prof.startsWith('arch') ? 'archaea' : prof.startsWith('euk') ? 'eukaryote' : null)
         }
     }
 

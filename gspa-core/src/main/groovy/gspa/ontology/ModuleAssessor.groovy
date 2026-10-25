@@ -33,6 +33,12 @@ class ModuleAssessor {
     double minFractionSpecific = 0.25d
     /** A module referenced as a step counts as present when its own completeness reaches this. */
     double refModuleComplete = 0.999d
+    /** A module is assessable only with at least this many GO-mappable required steps ... */
+    int minAssessableSteps = 2
+    /** ... covering at least this fraction of its required steps; otherwise the reference cannot express it. */
+    double minAssessableFraction = 0.5d
+    /** Organism domain ('bacteria', 'archaea', 'eukaryote') for the module name hints; null = no check. */
+    String domain = null
 
     ModuleAssessor(ModuleDefinitions defs) { this.defs = defs }
 
@@ -59,6 +65,10 @@ class ModuleAssessor {
         double activationScore = 0.0d
         boolean activated
         boolean hasSpecificPresent
+        /** Enough GO-mappable steps to judge the module (see minAssessableSteps / minAssessableFraction). */
+        boolean assessable = true
+        /** The module is a variant KEGG names for another domain (null when expected or unknown). */
+        String notExpectedReason
 
         boolean isComplete() { nRequired > 0 && nPresent == nRequired }
         List<StepResult> gaps() { steps.findAll { it.required && it.status != 'present' } }
@@ -70,7 +80,7 @@ class ModuleAssessor {
         double moduleCoherence = Double.NaN
         int nActivated, nComplete
 
-        List<ModuleResult> activated() { modules.values().findAll { it.activated && !it.signature } }
+        List<ModuleResult> activated() { modules.values().findAll { it.activated && !it.signature && it.assessable && it.notExpectedReason == null } }
     }
 
     /**
@@ -120,11 +130,16 @@ class ModuleAssessor {
                 if (s.specificity >= specificStep) r.hasSpecificPresent = true
             }
         }
+        int requiredTotal = r.steps.count { it.required } as int
+        r.assessable = r.nRequired >= minAssessableSteps && requiredTotal > 0 && r.nRequired >= minAssessableFraction * requiredTotal
+        String hint = md.domainHint()
+        if (domain != null && hint != null && hint != domain) r.notExpectedReason = "KEGG names this module for ${hint}; genome is ${domain}".toString()
         if (r.nRequired > 0) {
             r.completeness = r.nPresent / (double) r.nRequired
             r.activationScore = wRequired > 0 ? wPresent / wRequired : 0.0d
-            r.activated = (r.nPresent >= minPresentSteps && r.completeness >= minFraction) ||
-                          (r.nPresent >= 1 && r.hasSpecificPresent && r.completeness >= minFractionSpecific)
+            r.activated = r.assessable && r.notExpectedReason == null &&
+                          ((r.nPresent >= minPresentSteps && r.completeness >= minFraction) ||
+                           (r.nPresent >= 1 && r.hasSpecificPresent && r.completeness >= minFractionSpecific))
         }
         r
     }

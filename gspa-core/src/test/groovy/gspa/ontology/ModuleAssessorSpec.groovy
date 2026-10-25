@@ -114,4 +114,35 @@ class ModuleAssessorSpec extends Specification {
         b.modules.M00002.nRequired == 2 && b.modules.M00002.nForbidden == 1
         b.modules.M00002.complete
     }
+
+    def "partial EC numbers do not map, a module with too few mappable steps is not assessable, domain hints exclude variants"() {
+        given:
+        def f = File.createTempFile('module_defs2', '.json'); f.deleteOnExit()
+        f.text = '''{"modules": {
+          "M00010": {"id": "M00010", "name": "Thing biosynthesis, plants", "class": "Pathway modules; X", "definition": "K00011 K00012 K00013",
+            "orthology": {"K00011": {"ec": ["1.1.1.-"], "rn": [], "desc": "coarse"}, "K00012": {"ec": ["5.5.5.5"], "rn": [], "desc": "specific"}, "K00013": {"ec": ["7.7.7.7"], "rn": [], "desc": "no go"}},
+            "tree": {"op": "AND", "args": [{"ko": "K00011"}, {"ko": "K00012"}, {"ko": "K00013"}]}},
+          "M00011": {"id": "M00011", "name": "Thing biosynthesis, bacteria", "class": "Pathway modules; X", "definition": "K00012 K00014",
+            "orthology": {"K00012": {"ec": ["5.5.5.5"], "rn": [], "desc": "specific"}, "K00014": {"ec": ["6.6.6.6"], "rn": [], "desc": "other"}},
+            "tree": {"op": "AND", "args": [{"ko": "K00012"}, {"ko": "K00014"}]}}
+        }}'''
+        def defs = ModuleDefinitions.load(f, ['EC:1.1.1.-': 'GO:0000099', 'EC:5.5.5.5': 'GO:0000005', 'EC:6.6.6.6': 'GO:0000006'])
+        def assessor = new ModuleAssessor(defs)
+        assessor.domain = 'bacteria'
+
+        when:
+        def a = assessor.assess(['GO:0000005', 'GO:0000006', 'GO:0000099'] as Set)
+
+        then: "the coarse step is unmappable, so M00010 has one of three steps assessable and is not judged"
+        defs.modules.M00010.orthology.K00011.go.isEmpty()
+        a.modules.M00010.steps*.status == ['unmappable', 'present', 'unmappable']
+        !a.modules.M00010.assessable
+        !a.modules.M00010.activated
+        a.modules.M00010.notExpectedReason != null          // named for plants
+
+        and: "the bacterial variant is assessable, expected and complete"
+        a.modules.M00011.assessable && a.modules.M00011.notExpectedReason == null
+        a.modules.M00011.complete && a.modules.M00011.activated
+        a.nActivated == 1
+    }
 }

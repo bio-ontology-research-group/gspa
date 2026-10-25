@@ -302,7 +302,9 @@ class CoherencePrior implements Prior {
         try {
             if (state.satConsistencyChecker?.organismTaxon) forbidden = state.satConsistencyChecker.getForbiddenConstrainedTerms() ?: ([] as Set)
         } catch (Exception ignored) {}
-        def assessment = new ModuleAssessor(defs).assess(baseline, evidence, forbidden)
+        def assessor = new ModuleAssessor(defs)
+        assessor.domain = gspa.integration.ModuleReport.domainOf(state)
+        def assessment = assessor.assess(baseline, evidence, forbidden)
         Map<String, List<String>> mates = [:]
         for (List<String> op : (state.operons ?: [])) {
             for (String pid : op) mates[pid] = op.findAll { it != pid }

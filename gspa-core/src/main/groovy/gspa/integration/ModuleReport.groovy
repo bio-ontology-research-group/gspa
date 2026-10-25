@@ -24,6 +24,7 @@ class ModuleReport {
     static Map<String, Object> moduleMap(ModuleResult m) {
         [
             id: m.id, name: m.name, class: m.clazz, signature: m.signature, activated: m.activated,
+            assessable: m.assessable, not_expected_reason: m.notExpectedReason,
             activation_score: round(m.activationScore), completeness: Double.isNaN(m.completeness) ? null : round(m.completeness),
             complete: m.complete, n_required: m.nRequired, n_present: m.nPresent, n_partial: m.nPartial, n_evidence: m.nEvidence,
             n_missing: m.nMissing, n_unmappable: m.nUnmappable, n_forbidden: m.nForbidden,
@@ -47,6 +48,7 @@ class ModuleReport {
 
     static Map build(IntegrationState state, IntegratedAnnotationSet integrated) {
         def assessor = new ModuleAssessor(state.moduleDefinitions)
+        assessor.domain = domainOf(state)
         Set<String> forbidden = [] as Set
         try {
             if (state.satConsistencyChecker?.organismTaxon) forbidden = state.satConsistencyChecker.getForbiddenConstrainedTerms() ?: ([] as Set)
@@ -134,6 +136,16 @@ class ModuleReport {
             rescues: rescues,
             modules: modules,
         ]
+    }
+
+    /** 'bacteria' / 'archaea' / 'eukaryote' from the essential-function profile wired into the state, else null. */
+    static String domainOf(IntegrationState state) {
+        String n = state?.essentialFunctions?.profileName?.toLowerCase()
+        if (n == null) return null
+        if (n.startsWith('bact')) return 'bacteria'
+        if (n.startsWith('arch')) return 'archaea'
+        if (n.startsWith('euk')) return 'eukaryote'
+        null
     }
 
     private static void add(Map<String, TermEvidence> m, String go, String pid, double p) {

@@ -44,6 +44,9 @@ class ModuleDefinitions {
                 List<String> ecs = ((o.ec ?: []) as List).collect { "EC:${it}".toString() }
                 Set<String> gos = new LinkedHashSet<>()
                 for (String ec : ecs) {
+                    // A partial EC (1.1.1.-) maps through ec2go to an enzyme-class term that most genomes carry
+                    // somewhere; that is a coarse reference mapping, not evidence for the step, so it is ignored.
+                    if (ec.contains('-')) continue
                     String g = ec2go?.get(ec)
                     if (g) gos << g
                 }
@@ -85,6 +88,17 @@ class ModuleDefinitions {
         List<Node> steps = []
 
         boolean isSignature() { clazz?.startsWith('Signature') }
+
+        /** Domain the module name restricts it to ('bacteria', 'archaea', 'eukaryote'), or null. KEGG names
+         *  organism-specific variants of one chemistry ("..., eukaryotes", "..., plants", "..., archaea"). */
+        String domainHint() {
+            String n = (name ?: '').toLowerCase()
+            String tail = n.contains(',') ? n.substring(n.lastIndexOf(',') + 1).trim() : ''
+            if (tail =~ /^(eukaryotes?|plants?|animals?|fungi|yeast|mammals|vertebrates|insects)\b/) return 'eukaryote'
+            if (tail =~ /^archaea\b/) return 'archaea'
+            if (tail =~ /^(bacteria|prokaryotes)\b/) return 'bacteria'
+            null
+        }
     }
 
     static class KoInfo {

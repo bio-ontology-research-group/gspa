@@ -24,6 +24,8 @@ class Coherence {
     gspa.ontology.ModuleDefinitions moduleDefinitions
     /** Supplies the GO terms forbidden for the organism's taxon (organism context for module activation). */
     gspa.ontology.SatConsistencyChecker satChecker
+    /** 'bacteria' / 'archaea' / 'eukaryote' (module name hints); null = no domain check. */
+    String organismDomain
 
     /** Complex terms classification (from complex_terms.tsv) */
     Map<String, String> complexClassification = [:] // GO term -> h/n/a
@@ -69,7 +71,9 @@ class Coherence {
             } catch (Exception ex) {
                 log.warn("Coherence: forbidden-term lookup failed: ${ex.message}")
             }
-            modules = new gspa.ontology.ModuleAssessor(moduleDefinitions).assess(propagatedTerms, [:], forbidden)
+            def assessor = new gspa.ontology.ModuleAssessor(moduleDefinitions)
+            assessor.domain = organismDomain
+            modules = assessor.assess(propagatedTerms, [:], forbidden)
         }
 
         new CoherenceResult(
