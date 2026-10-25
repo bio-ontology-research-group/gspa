@@ -2485,11 +2485,11 @@ function renderModules() {
   const pct = v => (v == null ? "n/a" : (v * 100).toFixed(0) + "%");
   document.getElementById("mod-summary").innerHTML =
     '<b>' + S.modules_activated_after + '</b> of ' + S.modules_assessed + ' KEGG modules are activated by the evidence ' +
-    '(a module counts once its present steps are specific to it or cover a third of it); <b>' + S.modules_complete_after + '</b> complete' +
+    '(a module counts once its present steps are specific to it or cover a third of it, enough of its steps map to GO, and KEGG finds it complete in other organisms of the same domain); <b>' + S.modules_complete_after + '</b> complete' +
     (S.modules_complete_before !== S.modules_complete_after ? ' (' + S.modules_complete_before + ' before refinement)' : '') +
     '. Mean completeness over activated modules: <b>' + pct(S.module_coherence_after) + '</b>' +
     (S.module_coherence_before != null && S.module_coherence_before !== S.module_coherence_after ? ' (before: ' + pct(S.module_coherence_before) + ')' : '') +
-    '. Refinement changed <b>' + S.n_rescues + '</b> annotations across all priors; steps a module cannot express through GO are shown but never counted.';
+    '. <b>' + S.n_rescues + '</b> claims were rescued by the essentiality and pathway priors; steps a module cannot express through GO are shown but never counted.';
   const search = document.getElementById("mod-search");
   const filter = document.getElementById("mod-filter");
   function passes(m) {
@@ -2522,6 +2522,8 @@ function renderModules() {
       : '<span style="color:' + colour + '">' + pct(m.completeness) + '</span>';
     const badge = m.signature ? '<span class="chip" style="font-size:10px;background:#eef0f4;color:#475467;">signature module (not scored)</span>'
       : m.activated ? '<span class="chip high" style="font-size:10px;">activated</span>'
+      : m.assessable === false ? '<span class="chip" style="font-size:10px;background:#eef0f4;color:#667085;" title="fewer than two required steps, or under half of them, map to GO through KEGG orthologs and ec2go">not assessable: reference mapping too sparse</span>'
+      : m.not_expected_reason ? '<span class="chip" style="font-size:10px;background:#eef0f4;color:#667085;" title="' + escapeHtml(m.not_expected_reason) + '">not expected in this organism</span>'
       : '<span class="chip" style="font-size:10px;background:#eef0f4;color:#667085;" title="present steps are shared enzymes or cover too little of the module">insufficient evidence</span>';
     const changes = (m.changes || []).map(c =>
       '<div class="mod-change"><b>Step ' + (c.step + 1) + '</b> ' + escapeHtml(c.label) + ': ' + c.status_before + ' → ' + c.status_after + '. ' +
@@ -2542,6 +2544,7 @@ function renderModules() {
         '<div style="width:130px; text-align:right; font-weight:600;">' + complText + '</div>' +
         '<div class="small" style="width:150px; text-align:right;">' + m.n_present + ' / ' + m.n_required + ' required steps</div>' +
       '</div>' +
+      (m.not_expected_reason ? '<div class="small" style="margin-top:4px;color:#667085;">' + escapeHtml(m.not_expected_reason) + '</div>' : '') +
       '<div class="mod-steps">' + m.steps.map(st => stepHtml(m, st)).join("") + '</div>' +
       '<div class="small" style="margin-top:4px;">' + counts + (m.activation_score != null ? ' · activation ' + m.activation_score.toFixed(2) : '') + '</div>' +
       changes + (m.activated ? gaps : '') +
