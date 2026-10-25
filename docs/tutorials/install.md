@@ -1,51 +1,66 @@
-# Install GSPA from a clean container
+# Prepare your first biological analysis
 
-*2026-10-24T13:49:24Z by Showboat 0.6.1*
-<!-- showboat-id: a7494ad9-c0ee-4dd7-a66a-e3f016d83ba9 -->
+The first lesson asks which *E. coli* proteins might participate in threonine
+biosynthesis. This page prepares the software and example sequences; you only
+need to do it once for all seven biological lessons.
 
-This recorded walkthrough builds the current source tree inside an unconfigured Ubuntu 24.04 image. It uses no host Java installation, compiled JAR, reference database or Python environment. Run commands from the GSPA checkout root. Docker and Python 3 are host prerequisites; install uv only if you want to regenerate or verify the Showboat documents. The source snapshot includes the usability changes in this checkout, which may not yet be in a published release. See tutorials/workflows/Dockerfile for every package and build step.
+## Before you start
 
-```bash
-set -eu
-# Change this path to a disk with at least 25 GiB free, if necessary.
-mkdir -p .tutorial-work
-python3 tutorials/workflows/prepare_context.py .tutorial-work
-```
+Use a GSPA checkout on Linux or macOS with **Python 3 and a running Docker
+installation**. Docker must be usable by your normal account. Allow at least
+25 GiB free on the workspace and Docker storage disks, and make at least 6 GiB
+RAM available to Docker. No GPU is needed.
 
-```output
-Build inputs copied; no host JAR, databases or Gradle caches included.
-Storage check: at least 25 GiB available.
-```
-
-The CPU image installs Java 21, Python, Prodigal and DIAMOND, then builds GSPA with a fresh Gradle cache. The full build log is saved outside the document because download speeds and progress messages vary. A failed build still fails this command.
+If you do not already have the code:
 
 ```bash
-set -eu
-docker build -t gspa-tutorial:cpu -f .tutorial-work/source/tutorials/workflows/Dockerfile .tutorial-work/source > .tutorial-work/build-cpu.log 2>&1 || { tail -60 .tutorial-work/build-cpu.log; exit 1; }
-docker run --rm gspa-tutorial:cpu gspa --version
-docker run --rm gspa-tutorial:cpu diamond version
+git clone https://github.com/bio-ontology-research-group/gspa.git
+cd gspa
 ```
 
-```output
-gspa 2.2.2
-diamond version 2.1.9
-```
+Run tutorial commands from this directory. The launcher and helpers must be
+present in your checkout; older releases may not include them.
 
-The image is now usable without a GPU. Its launcher limits Java to a 4 GiB heap and two visible CPUs for these small examples. Containers below are also limited to 6 GiB RAM and two CPUs, and run with your user ID so generated files remain editable. This tutorial image includes build tools for transparency; it is not the larger optional production predictor image in docker/Dockerfile.
+## Set up once
 
 ```bash
-set -eu
-docker run --rm gspa-tutorial:cpu bash -euc 'python3 --version; prodigal -v 2>&1; command -v gspa'
+./tutorial setup
 ```
 
-```output
-Python 3.12.3
+The launcher builds GSPA and its sequence tools in a CPU container, downloads
+about 40 MB of teaching sequences and annotations, checks their hashes, and builds
+a small search database. The first setup needs internet and can take several
+minutes or longer, depending on downloads and Docker build speed. Progress and
+log locations appear in the terminal.
 
-Prodigal V2.6.3: February, 2016
+When it finishes, you should see:
 
-/opt/gspa/gspa
+```text
+Ready. Start the first lesson: ./tutorial run bacteria
 ```
 
-Continue with [resources and teaching data](resources.md), then choose a biological workflow. For neural execution, follow [CPU and NVIDIA GPU setup](neural.md). Keep `.tutorial-work/source-manifest.json` with your results: it records the base commit and hashes of the exact working-tree source snapshot. Keep the image for fast replay; it avoids relying on unchanged package repositories. The recorded OS packages are Ubuntu 24.04 amd64 packages; other architectures or future package versions may change the transcript.
+Now go to [the bacterial lesson](bacteria.md). You do not need to download any
+additional models or run the resource catalogue first.
 
-Verify with `uvx showboat verify docs/tutorials/install.md`. Verification rebuilds from source if necessary and checks captured outputs; Docker may reuse unchanged layers. To test installation completely from scratch, use a fresh Docker builder/cache and an empty tutorial work directory.
+## If something goes wrong
+
+| Message or symptom | Next step |
+|---|---|
+| Docker is not available | Start Docker; check that `docker info` works for your account |
+| Need at least 25 GiB free | Free space on the workspace disk; also check Docker's storage disk |
+| Build or download failed | Read the log path printed by the launcher, fix the reported issue, then repeat `./tutorial setup` |
+| Source changed / checksum mismatch | Keep the error and existing files; use the maintainer's [data-refresh procedure](https://github.com/bio-ontology-research-group/gspa/blob/main/tutorials/workflows/README.md#refresh-input-data-deliberately). Do not disable the check |
+| Browser does not open on a server | Copy the generated HTML file to your computer and open it locally |
+
+Repeating setup reuses Docker build layers and checks existing downloads. All
+inputs, logs and results live under `.tutorial-work/`. Repeating a lesson replaces
+that lesson's results, so copy them elsewhere first if you want to compare runs.
+
+??? details "What is installed?"
+
+    The CPU image builds GSPA from the current checkout on Ubuntu 24.04 and
+    installs Java 21, Python, Prodigal and DIAMOND. The launcher limits each analysis
+    container to two CPUs and 6 GiB RAM, with a 4 GiB Java heap, and writes files as
+    your user. It records the source snapshot in `.tutorial-work/source-manifest.json`.
+    See `tutorials/workflows/Dockerfile` for the build recipe. For an installation
+    outside the lessons, follow the [installation guide](../installation.md).

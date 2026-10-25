@@ -1,110 +1,92 @@
-# Download resources and prepare the teaching datasets
+# Understand the evidence you are using
 
-*2026-10-24T14:04:54Z by Showboat 0.6.1*
-<!-- showboat-id: 0e787744-50b3-4a6c-9890-19e36fa03a5a -->
+**How much can we infer from a sequence match?** The answer depends on the
+reference, the organism, and the evidence behind the transferred annotation.
+Read this page when interpreting a lesson; setup has already prepared its data.
 
-Complete [installation](install.md) first. Run commands from the checkout root. This compact CPU tutorial uses about 40 MB of biological input, a small DIAMOND index, and bundled reference tables. It does not download the entire optional resource catalog: GTDB alone exceeds 100 GB compressed. The [download reference](../reference/resources.md) explains production databases, model assets and tools required by individual downloads.
+## What is in the teaching dataset?
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-gspa resources --json > /work/catalog.json
-python3 -c 'import json; d=json.load(open("/work/catalog.json")); print("Catalog entries:", len(d["resources"])); print("Groups:", ", ".join(d["groups"]))'
-GSPA
-```
+| Input | Source | Purpose |
+|---|---|---|
+| *E. coli* K-12 MG1655 chromosome | ENA [U00096.3](https://www.ebi.ac.uk/ena/browser/view/U00096.3) | Find functional candidates and inspect neighbouring genes |
+| *Pyrococcus furiosus* DSM 3638 genome | ENA [AE009950.1](https://www.ebi.ac.uk/ena/browser/view/AE009950.1) | Apply archaeal assumptions |
+| *Saccharomyces cerevisiae* S288c proteins | Reviewed records from [UniProt](https://www.uniprot.org/proteomes/UP000002311) | Analyse supplied proteins without predicting genes |
+| Lambda phage genome | ENA [J02459.1](https://www.ebi.ac.uk/ena/browser/view/J02459.1) | Explore viral functions |
+| Incomplete archaeal bin | Three of every five 20 kb pieces of the archaeal genome | Study the consequences of missing sequence |
+| Mixed community | Separate 20 kb contigs from the bacterial, archaeal and phage genomes | Preserve the distinction between community and organism |
 
-```output
-Catalog entries: 80
-Groups: core, annotation, models, databases, bundled, deepgo-plusplus
-```
+The recorded reference contains 11,864 reviewed proteins and their GO and enzyme
+classification (EC) identifiers. It includes self and close matches. High coverage
+here is therefore not evidence that the same method will perform equally well on
+an unfamiliar organism. The constructed bin retains about 60% of the reference
+sequence; this is **not a measured MAG completeness score**.
 
-Download one model individually, or all bundled models and tables together. The DeepGO-PlusPlus JSONs are integrator coefficients; they are not complete neural checkpoints. The catalog explicitly identifies resources that need licensed or user-supplied assets.
+## From sequence to hypothesis
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-gspa download deepgo-plusplus-light --dir /work/resources > /work/download-one.log 2>&1 || { cat /work/download-one.log; exit 1; }
-gspa download --group bundled --dir /work/resources > /work/download-bundled.log 2>&1 || { cat /work/download-bundled.log; exit 1; }
-python3 -c 'import pathlib; p=pathlib.Path("/work/resources"); import json; ids=json.load(open("/work/catalog.json"))["groups"]["bundled"]; assert all((p/i/".gspa-resource.json").is_file() for i in ids); print("Verified bundled resources:", len(ids)); print("Reusable config:", (p/"gspa-paths.yaml").is_file())'
-GSPA
-```
+1. **Find proteins.** Prodigal calls coding sequences in the nucleotide examples.
+   The yeast lesson starts with supplied proteins.
+2. **Find evidence.** DIAMOND searches the teaching reference, retaining one hit
+   per query. The helper takes unique GO/EC claims from direct matches.
+3. **Apply assumptions.** The chosen preset controls which biological priors and
+   constraints GSPA applies. Operon coordinates are supplied separately where
+   appropriate; operon-propagated suggestions are not counted as independent hits.
+4. **Inspect the result.** The browser shows retained candidates; the action log
+   records removals. A removal reflects a configured constraint and deserves review.
 
-```output
-Verified bundled resources: 24
-Reusable config: True
-```
+The teaching score is sequence identity divided by 100, clipped to 0.01–0.99.
+It is **not a calibrated probability of function**. Integration transforms that
+score; a value above 0.5 does not establish a function or phenotype.
 
-Preview the full optional set before committing storage. The command below really runs the planner, saves its complete output and checks that dry-run created no target directory. For a production machine with enough storage and the required tool executables, remove `--dry-run` from `gspa download --all --dir /work/all-resources`. Manual/licensed entries are reported as unresolved, and failures return a nonzero status.
+These compact lessons use bundled constraint tables without downloading a GO
+ontology. Enforcement can remove incompatible terms, but cannot demonstrate
+relaxation to GO ancestors. The browser includes a small, sourced display
+dictionary for the four lesson terms, so you can search for names such as
+“threonine” and “nucleus”. Other terms remain searchable by ID. This dictionary
+is used only for display, never for reasoning or quality evaluation. CheckM, BUSCO, ontology-based quality evaluation, flux
+analysis and the full predictor ensemble are not run here.
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-gspa download --all --dry-run --dir /work/all-resources > /work/download-plan.txt
-test ! -e /work/all-resources
-printf 'Full resource plan saved; dry-run created no download directory.\n'
-GSPA
-```
+## Find the evidence behind an answer
 
-```output
-Full resource plan saved; dry-run created no download directory.
-```
+For example, the bacterial lesson writes:
 
-Fetch versioned nucleotide records from [ENA](https://www.ebi.ac.uk/ena/browser/home) and a small reviewed-protein table from [UniProt](https://rest.uniprot.org/documentation). `data.py` records every URL and SHA256; `data-lock.json` rejects upstream changes instead of silently changing the example. UniProt is a live query: retain `.tutorial-work/data/` for exact replay. A fresh fetch after UniProt changes requires a deliberate lock refresh and regenerated outputs. Reference FASTA headers retain the actual GO/EC identifiers returned by UniProt.
+| File under `.tutorial-work/bacteria/` | What to look for |
+|---|---|
+| `gspa_out/bacteria_browser.html` | Filterable results for exploration |
+| `annot/*_annotations.tsv` | Original evidence, including its source |
+| `annot/*.gff3` | Called CDS coordinates |
+| `gspa_out/integrated.tsv` | Retained protein–function hypotheses |
+| `gspa_out/actions.tsv` (when produced) | Terms removed or changed by enforcement and the reason |
+| `gspa_out/provenance.json` | Integration provenance |
+| `summary.json` | Protein and annotation counts |
+| `annotate.log`, `integrate.log`, `visualize.log` | Commands and diagnostic output |
 
-```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-python3 /tutorial/data.py
-GSPA
-```
-
-```output
-bacteria: 1 sequences; 4,641,652 bp
-archaea: 1 sequences; 1,908,256 bp
-eukaryote: 6,733 sequences; 3,025,957 amino acids
-mag: 58 sequences; 1,148,256 bp
-metagenome: 332 sequences; 6,598,410 bp
-virus: 1 sequences; 48,502 bp
-DIAMOND teaching reference: 11,864 reviewed proteins with GO/EC headers
-MAG and community inputs are constructed teaching datasets, not environmental samples.
-Self/close matches are present: these runs demonstrate operation, not prediction accuracy.
-```
-
-Build a DIAMOND database from those annotation-bearing headers. This reference deliberately includes close/self matches to keep the example small and interpretable. It is not a held-out evaluation. The helper also writes minimal JSON configuration files (valid YAML) that select DIAMOND and turn off optional tools; these files do not override the cellular preset assumptions.
+To revisit a lesson's main observations without rerunning it:
 
 ```bash
-docker run --rm -i --user "$(id -u):$(id -g)" --cpus 2 --memory 6g \
-  -v "$PWD/.tutorial-work:/work" -v "$PWD/tutorials/workflows:/tutorial:ro" \
-  gspa-tutorial:cpu bash -eu <<'GSPA'
-diamond makedb --in /work/data/reference.faa --db /work/data/reference --threads 2 > /work/makedb.log 2>&1 || { cat /work/makedb.log; exit 1; }
-test -s /work/data/reference.dmnd
-python3 -m json.tool /work/data/cpu.json
-GSPA
+./tutorial inspect bacteria
 ```
 
-```output
-{
-    "predictors": {
-        "domains": {
-            "enabled": false
-        },
-        "neural": {
-            "basePredictor": "none"
-        },
-        "similarity": {
-            "maxTargetSeqs": 1
-        }
-    },
-    "integration": {
-        "enabled": false
-    }
-}
+To see the actual GSPA commands and adapt them later:
+
+```bash
+./tutorial commands bacteria
 ```
 
-You can now follow [bacteria](bacteria.md), [archaea](archaea.md), [eukaryotes](eukaryote.md), [one incomplete bin](mag.md), [mixed metagenomes](metagenome.md), [phage](virus.md), or [a prokaryote of unspecified domain](prokaryote.md). The optional [CPU/GPU neural tutorial](neural.md) downloads a real ESM-2 model and compares inference on both devices.
+`/work` in that preview maps to `.tutorial-work/` on your computer. The launcher
+also prepares claims and browser metadata. That metadata uses real called CDS
+coordinates, or supplied protein IDs for yeast; it does not run Prokka or invent
+positions. The annotations table works locally; the genome view may need internet
+for its viewer library.
 
-Verify this document with `uvx showboat verify docs/tutorials/resources.md`.
+## Move to your own data
+
+Choose the [scenario](../scenarios/index.md) matching your biological input. Use
+an appropriate reference, additional independent evidence where available, and
+held-out calibration before interpreting scores as probabilities. Keep input
+and source provenance with the analysis.
+
+The [resource reference](../reference/resources.md) explains production databases
+and models. The small lessons do not require the full resource catalogue. Preserve
+`.tutorial-work/data/downloads.json`, the downloaded inputs, and
+`.tutorial-work/source-manifest.json` for replay; checksum locks deliberately reject
+changed upstream responses.

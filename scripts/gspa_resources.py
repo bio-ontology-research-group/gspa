@@ -194,25 +194,40 @@ def expand(value, root, target):
 
 
 def prepare_swissprot(directory):
-    """Preserve the GO/EC evidence that GSPA reads from reference hit titles."""
-    accession, terms, sequence, in_sequence = None, set(), [], False
+    """Keep reviewed products, genes, and GO/EC evidence in DIAMOND hit titles."""
+    accession, entry, product, gene = None, '', '', ''
+    terms, sequence, organism = set(), [], []
+    in_sequence = False
     count = 0
     with (directory / 'uniprot_sprot.dat').open() as inp, (directory / 'uniprot_sprot.fasta').open('w') as out:
         for line in inp:
-            if line.startswith('AC   ') and accession is None:
+            if line.startswith('ID   '):
+                entry = line[5:].split()[0]
+            elif line.startswith('AC   ') and accession is None:
                 accession = line[5:].split(';')[0].strip()
             elif line.startswith('DR   GO;'):
                 terms.update(re.findall(r'GO:\d{7}', line))
             elif line.startswith('DE   '):
                 terms.update('EC:' + ec for ec in re.findall(r'EC=([\d-]+\.[\d-]+\.[\d-]+\.[\d-]+)', line))
+                if not product:
+                    match = re.search(r'RecName: Full=([^;{]+)', line)
+                    if match: product = match.group(1).strip()
+            elif line.startswith('GN   ') and not gene:
+                match = re.search(r'Name=([^;{ ]+)', line)
+                if match: gene = match.group(1)
+            elif line.startswith('OS   '):
+                organism.append(line[5:].strip())
             elif line.startswith('SQ   '):
                 in_sequence = True
             elif line.startswith('//'):
                 if not accession or not sequence:
                     raise ValueError('Malformed Swiss-Prot record: missing accession or sequence')
-                out.write('>' + accession + ' ' + ' '.join(sorted(terms)) + '\n' + ''.join(sequence) + '\n')
+                title = f'sp|{accession}|{entry or accession} {product or "Uncharacterized protein"} OS={" ".join(organism).rstrip(".") or "unspecified"}'
+                if gene: title += ' GN=' + gene
+                out.write('>' + title + ' ' + ' '.join(sorted(terms)) + '\n' + ''.join(sequence) + '\n')
                 count += 1
-                accession, terms, sequence, in_sequence = None, set(), [], False
+                accession, entry, product, gene = None, '', '', ''
+                terms, sequence, organism, in_sequence = set(), [], [], False
             elif in_sequence:
                 sequence.append(''.join(line.split()))
     if not count or accession is not None:

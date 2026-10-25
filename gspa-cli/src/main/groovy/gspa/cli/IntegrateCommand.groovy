@@ -534,7 +534,7 @@ class IntegrateCommand implements Runnable {
                 gram: fbaGram,
                 medium: fbaMedium
             )
-            def fbaSum = fbaRefiner.refine(state, integrated)
+            def fbaSum = fbaRefiner.refine(state, integrated, new File(outFile.absoluteFile.parentFile, 'metabolism'))
             println "  Stage 2B StoichiometricLocusRefiner (gram=${fbaGram}, medium=${fbaMedium}): coreRxns=${fbaSum.nCoreRxns}, repairedRxns=${fbaSum.nRepairedRxns}, uncertified=${fbaSum.nUncertifiedAdditions}, updatedLoci=${fbaSum.nUpdatedLoci} (${String.format(Locale.ROOT, '%.2f', fbaSum.solveTimeSec)}s)"
         }
 

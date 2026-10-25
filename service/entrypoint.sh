@@ -12,4 +12,4 @@ if [ -n "${DGPP_LIGHT_SERVER:-}" ]; then
   python3 /app/deepgo-plusplus/service/dgpp_server.py &
 fi
 
-exec uvicorn service.app:app --host 0.0.0.0 --port "${PORT:-8000}"
+exec uvicorn "${GSPA_APP:-service.app:app}" --host 0.0.0.0 --port "${PORT:-8000}"

@@ -73,6 +73,7 @@ class GspaConfig {
         String database
         double evalue = 1e-5
         int maxTargetSeqs = 10
+        boolean assignProductNames = true
     }
 
     static class StructureConfig {

@@ -1,50 +1,72 @@
-# GSPA: from a clean installation to usable annotations
+# What can a genome tell us about protein function?
 
-*2026-10-24T14:27:08Z by Showboat 0.6.1*
-<!-- showboat-id: 0190eb78-b328-4100-bbad-367ce314119e -->
+For a complete analysis without installation, open [GSPA](https://gspa.bio2vec.net).
+Upload an annotated genome as GFF3 with its matching sequence. The full analysis
+is selected by default: enzyme annotations, optional homology names, candidate
+operons, pathways, AMR, biosynthetic clusters, localization, annotation quality,
+and bacterial metabolic reconstruction. Untick an analysis to omit it. Each
+result records what ran and explains any input or organism requirements.
 
-These tutorials were executed and recorded with Showboat. Build GSPA in a clean Ubuntu container, prepare small public datasets, then choose the workflow that matches your biological input. The chart below comes from the actual runs.
+Ask **which pathways could this organism carry out, and does its reconstructed
+metabolism support biomass production under the stated conditions?** Start with
+the Pathways view, inspect the proteins supporting a function, then open
+Metabolism to examine the model and download its fluxes. Missing predicted
+functions suggest candidates to investigate; they do not by themselves establish
+biological absence.
+
+
+A genome gives us sequences. We want to know what their proteins might do, which
+predictions make biological sense, and what remains unknown. These lessons use
+small public datasets to practise that reasoning with GSPA.
+
+**Start with [the bacterial lesson](bacteria.md).** You will find candidates for
+threonine biosynthesis, inspect their positions on the chromosome, and decide
+what evidence would be needed to establish a growth phenotype. No GSPA experience
+or installation is required for the web example.
+
+## Optional local teaching exercises
+
+[Set up the teaching environment once](install.md), then run:
 
 ```bash
-python3 tutorials/workflows/overview.py
+./tutorial run bacteria
+./tutorial browser bacteria
 ```
 
-```output
-Seven biological workflows have nonempty, inspectable results.
-Overview chart generated from their recorded protein counts.
-```
+These small exercises use a teaching reference and de novo gene calls, so their
+counts differ from the full web example. The first command finds sequence evidence, applies biological constraints, and
+prepares the results. The second opens them in your browser. Use these exercises to compare contexts and evidence: producing a table is the
+start of the investigation.
 
-```bash {image}
-![Seven completed GSPA workflows](.tutorial-work/overview.svg)
-```
+## Choose your next biological question
 
-![Seven completed GSPA workflows](031dc570-2026-10-24.svg)
+Each lesson introduces one new decision. Read the question, make a prediction,
+run the analysis, then compare your interpretation with the worked answer.
 
-| Start here | What you will do |
-|---|---|
-| [Install](install.md) | Build GSPA from source inside an unconfigured Ubuntu image |
-| [Resources and data](resources.md) | Download individual models and bundled resources; prepare public sequences |
-| [Bacteria](bacteria.md) | Call genes in E. coli, annotate, integrate and browse |
-| [Archaea](archaea.md) | Use archaeal assumptions for Pyrococcus furiosus |
-| [Eukaryotes](eukaryote.md) | Annotate a yeast proteome with supplied gene products |
-| [One incomplete bin](mag.md) | Use conservative priors for a constructed archaeal bin |
-| [Mixed community](metagenome.md) | Keep different organisms separate from single-genome constraints |
-| [Virus / phage](virus.md) | Annotate lambda with explicit phage settings |
-| [Unspecified prokaryote](prokaryote.md) | Avoid assuming a bacterial domain when it is unknown |
-| [Neural CPU and GPU](neural.md) | Install both PyTorch variants and compare real ESM-2 inference |
+| Lesson | Question | What you learn |
+|---|---|---|
+| [1. Bacterial genome](bacteria.md) | Which proteins might help *E. coli* make threonine? | Connect functional candidates with genomic neighbourhoods |
+| [2. Archaeal genome](archaea.md) | Should a protein match put a nucleus in an archaeon? | Distinguish sequence similarity from transferable cellular context |
+| [3. Yeast proteins](eukaryote.md) | Where might a yeast protein act within the cell? | Interpret organelle annotations and supplied protein sequences |
+| [4. Incomplete bin](mag.md) | Does a missing annotation mean a missing function? | Separate missing sequence from missing biological capacity |
+| [5. Mixed community](metagenome.md) | Whose function did we find? | Keep community evidence separate from organism-level claims |
+| [6. Phage genome](virus.md) | Which proteins might package a viral genome? | Ask viral questions without cellular completeness assumptions |
+| [7. Unknown prokaryotic domain](prokaryote.md) | What changes when we withhold taxonomy? | Separate input evidence from prior assumptions |
+| [Optional: neural prediction](neural.md) | What can sequence embeddings suggest about function? | Treat model similarity as a source of candidates |
 
-All commands run from the checkout root and write under `.tutorial-work/`. Allow at least 25 GiB free on both the workspace and Docker storage disks. The scripts check workspace space; check the Docker data-root separately if it is on another filesystem. A CPU run needs no GPU or CUDA libraries. The optional CUDA section requires a compatible NVIDIA GPU, host driver and Container Toolkit.
+## Three terms you will use
 
-The small reference includes close/self matches. The bin and mixed assembly are deterministic teaching datasets derived from real genomes. These tutorials demonstrate execution and interpretation, not predictive accuracy, biological validation, or full production database coverage. The main examples use DIAMOND; the neural example uses a tiny custom centroid reference. Optional ontology-based quality evaluation, FBA, the LLM agent and the full predictor ensemble are outside this compact collection.
+- **Evidence:** a sequence match or other observation supporting a candidate function.
+- **GO annotation:** a Gene Ontology identifier for a molecular function, biological
+  process, or cellular component. One protein can have several annotations.
+- **Integration:** combining evidence with assumptions about the organism. A
+  retained annotation is still a hypothesis, not an experimentally established fact.
 
-Each biological case produces annotated GFF3/TSV, integration provenance, a summary chart and a local interactive HTML browser. Large downloads, models and HTML outputs remain in the workspace rather than being committed. The helpers in `tutorials/workflows/` contain the adapters and regeneration commands. The source used here includes the current working-tree usability changes; keep `source-manifest.json`, `environment.json` and `data/downloads.json` with your run.
+The teaching reference includes proteins from the organisms being analysed,
+including self and close matches. This makes the examples easy to inspect, but
+means the results **cannot measure prediction accuracy**. The bin and community
+are constructed from reference genomes, not environmental samples.
 
-The local HTML browser lets you filter proteins and inspect their supporting annotations. This screenshot is from the actual E. coli tutorial. Missing QC stays unmeasured; a browser page does not imply CheckM, BUSCO or ontology-based evaluation ran.
-
-```bash {image}
-![GSPA browser generated from the bacterial tutorial](.tutorial-work/bacteria/browser.png)
-```
-
-![GSPA browser generated from the bacterial tutorial](5dfd7e52-2026-10-24.png)
-
-Reproduce the collection by following installation, resource setup and your chosen biological page in that order. Each page ends with its `uvx showboat verify` command; verification reruns its computational blocks. `uvx showboat extract PAGE.md` reconstructs the recording commands. The GPU page requires a suitable NVIDIA host; its CPU section works independently. Reference checksums intentionally reject changed upstream data. See `tutorials/workflows/README.md` for refreshing inputs and regenerating the whole collection.
+[Data and interpretation notes](resources.md) explain the reference, scoring,
+and output files. Use the [usage scenarios](../scenarios/index.md) when you are
+ready to adapt the analysis to your own data.

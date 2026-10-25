@@ -146,11 +146,19 @@ Full tables, immutable manifests (`MANIFEST_CHECKSUMS.sha256`), and reports are 
 GSPA is licensed under the **GNU General Public License v3.0 or later (`GPL-3.0-or-later`)**. See [`LICENSE`](LICENSE) for full details.
 
 
-### Executed tutorials
+### Biological tutorials
 
-Start with the [Showboat tutorial collection](docs/tutorials/index.md): build GSPA
-from a clean Ubuntu container, prepare small public datasets, and run bacterial,
-archaeal, eukaryotic, MAG, mixed-community and phage workflows. Each page captures
-real commands and outputs, with result charts and an interactive browser. The
-[neural tutorial](docs/tutorials/neural.md) includes separate CPU-only and CUDA
-installations and compares real ESM-2 inference on both devices.
+Start with the [biological tutorial collection](docs/tutorials/index.md): identify
+candidate threonine-biosynthesis genes, investigate transferred cellular locations,
+and learn how missing sequence or mixed organisms change the interpretation.
+
+```bash
+./tutorial setup
+./tutorial run bacteria
+./tutorial browser bacteria
+```
+
+Short lessons cover bacteria, archaea, yeast, incomplete bins, mixed communities,
+phage, and unknown prokaryotic domains. Each connects observed results with a
+biological question and a worked interpretation. An optional
+[neural lesson](docs/tutorials/neural.md) explores ESM-2 candidates on CPU and GPU.
