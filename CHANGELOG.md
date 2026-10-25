@@ -10,6 +10,29 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-10-25
+
+### Changed
+- **Pathway coherence and refinement (`--module-defs`)**, final version of the module-based method shipped as
+  experimental in 2.2.0. Module definitions keep KEGG's step logic; a step is present, a partial complex,
+  sub-threshold evidence, missing, unmappable (no GO mapping, including partial EC numbers) or excluded for the
+  taxon. A module is scored only when its evidence activates it (enzyme specificity weighted, so shared enzymes
+  activate nothing alone), when at least two steps covering half of it map to GO, and when KEGG finds it complete
+  in at least five other organisms of the genome's domain (organism context from BRITE br08601; name hints for
+  domain variants). Module-mode refinement lifts one candidate per open step of an activated module that is at
+  least half complete, at most two steps per module, only when the candidate's evidence-adjusted odds are at
+  least even; the coherence prior's has_part process rescues and complex-partner boosts use the same gate. With
+  `--module-defs` the coherence prior runs in module mode by default (`coh_pathway_mode`).
+- Validation (`benchmark/pathway_coherence/`): on nine reference genomes, against the 2.1.0 coherence prior,
+  module mode removes 96 % of its wrong additions (674 to 29) and has the higher F-max in all nine; with 774
+  correct module steps hidden in the borderline zone, module mode recovers 384 (refinement off: 233; 2.1.0 prior:
+  488 with 688 wrong additions elsewhere) and adds 22 wrong annotations.
+
+### Added
+- `--module-exclude-organisms` (integrate, evaluate) for leave-one-out validation of reference organisms.
+- Results page: modules not scored say why (sparse reference mapping, not expected in the organism, insufficient
+  evidence).
+
 ## [2.2.0] - 2026-10-25
 
 ### Changed

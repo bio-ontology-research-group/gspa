@@ -23,13 +23,13 @@ Memory: the launcher starts the JVM with `-Xmx8g` by default. Set `GSPA_JVM_OPTS
 git clone https://github.com/bio-ontology-research-group/gspa.git
 cd gspa
 ./gradlew clean test :gspa-cli:shadowJar
-java -jar gspa-cli/build/libs/gspa-2.2.0.jar --version
+java -jar gspa-cli/build/libs/gspa-2.2.1.jar --version
 ```
 
 The self-contained jar is written to `gspa-cli/build/libs/gspa-<version>.jar`. The `./gspa` launcher in the repository root wraps it, sets the JVM memory, and dispatches `gspa agent` to the Python agent. If the launcher cannot find the jar, point it there explicitly:
 
 ```bash
-export GSPA_JAR=$PWD/gspa-cli/build/libs/gspa-2.2.0.jar
+export GSPA_JAR=$PWD/gspa-cli/build/libs/gspa-2.2.1.jar
 ./gspa --version
 ```
 
@@ -45,7 +45,7 @@ cd gspa-2.0.0
 ```
 
 !!! note
-    The latest published release is v2.2.0 (targeted essentiality rescue). Version 2.1.0 added the flux-certified locus refiner (Stage 2B).
+    The latest published release is v2.2.1 (evidence-gated KEGG module completeness and module-based pathway refinement). v2.2.0 added the targeted essentiality rescue. Version 2.1.0 added the flux-certified locus refiner (Stage 2B).
 
 ## Option C: containers
 

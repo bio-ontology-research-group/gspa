@@ -1,6 +1,6 @@
 # Command-line reference
 
-GSPA is distributed as a single executable jar (`gspa-2.2.0.jar`) plus a small
+GSPA is distributed as a single executable jar (`gspa-2.2.1.jar`) plus a small
 Bash launcher, `gspa`, at the root of the repository. The launcher locates the
 jar, sets JVM options and forwards all arguments to it. One subcommand,
 `gspa agent`, is handled by the launcher itself and runs a Python program
@@ -22,7 +22,7 @@ Every jar subcommand accepts `-h`/`--help` and `-V`/`--version`. Running `gspa`
 without a subcommand prints the top-level usage.
 
 ```bash
-./gspa --version          # prints: gspa 2.2.0
+./gspa --version          # prints: gspa 2.2.1
 ./gspa integrate --help
 ```
 
@@ -43,8 +43,8 @@ The launcher is a Bash script (`gspa`) that performs these steps in order.
 2. **Jar lookup.** For every other subcommand the launcher picks the first jar
    that exists from this list:
     1. the file named by the environment variable `GSPA_JAR`;
-    2. `gspa-2.2.0.jar` next to the launcher;
-    3. `gspa-cli/build/libs/gspa-2.2.0.jar` (the Gradle build output);
+    2. `gspa-2.2.1.jar` next to the launcher;
+    3. `gspa-cli/build/libs/gspa-2.2.1.jar` (the Gradle build output);
     4. if `./gradlew` exists and is executable, the launcher builds the jar with
        `./gradlew :gspa-cli:shadowJar --quiet` and uses the result.
 
@@ -57,7 +57,7 @@ The launcher is a Bash script (`gspa`) that performs these steps in order.
 
 ```bash
 # Use a downloaded release jar and give the JVM 32 GB of heap
-export GSPA_JAR=/opt/gspa/gspa-2.2.0.jar
+export GSPA_JAR=/opt/gspa/gspa-2.2.1.jar
 export GSPA_JVM_OPTS="-Xmx32g"
 ./gspa annotate -i genome.fna -k bacteria -o out/
 ```
@@ -71,7 +71,7 @@ export GSPA_JVM_OPTS="-Xmx32g"
 You can always bypass the launcher and call the jar directly:
 
 ```bash
-java -Xmx16g -jar gspa-cli/build/libs/gspa-2.2.0.jar integrate --help
+java -Xmx16g -jar gspa-cli/build/libs/gspa-2.2.1.jar integrate --help
 ```
 
 All environment variables are listed in [Environment variables](environment.md).
