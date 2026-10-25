@@ -161,3 +161,18 @@ Of 482 such candidates, 27.8 % are in the curated annotation; of the 119 that mo
 (one-sided binomial p = 2e-25), and rescue precision exceeds pool precision in all nine genomes
 (lowest: M. tuberculosis, 2 of 7 against 6 of 50). Promoting the pool would add mostly wrong annotations; the evidence
 the refinement weighs selects the correct ones.
+
+**Without close homologs (`masked_bench.py`, `results_masked/`).** The reference genomes' DIAMOND claims include
+hits to their own Swiss-Prot entries. With every DIAMOND claim above 50 % identity removed (InterPro and Pfam
+kept; nothing attenuated), the genomes carry the evidence an organism without close characterized relatives has,
+and the curated annotation is unchanged:
+
+| | F-max micro, all | F-max CAFA, all | added correct | added wrong |
+|---|---|---|---|---|
+| refinement off | 0.6182 | 0.7543 | | |
+| v2.1.0 coherence prior | 0.6176 | 0.7541 | 488 | 721 |
+| module mode | 0.6183 | 0.7543 | 106 | 21 |
+
+Module refinement adds 106 correct and 21 wrong annotations (precision 0.83), more correct than wrong in every
+genome; the v2.1.0 prior adds more wrong than correct annotations and lowers F-max in all nine genomes. The F-max
+change of module mode is small because about a hundred annotations are added to some 10^5 per genome set.
