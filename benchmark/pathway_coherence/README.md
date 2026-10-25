@@ -194,3 +194,9 @@ Without close homologs, module refinement raises the recall of pathway-enzyme fu
 curated functions found, higher in all nine genomes) at unchanged precision; the v2.1.0 prior raises recall more but
 costs 3.2 points of precision. With full evidence the recall gain is 0.7 points at 0.06 points of precision, and
 module mode has the highest F-max of the three.
+
+**Looser limits (`relaxed` variant, fixed in advance: modules one third complete, up to five rescues per module, same
+evidence safeguards).** Without close homologs it adds 117 correct and 27 wrong annotations (module mode: 106 and
+21; pathway-enzyme recall 0.623 against 0.621); with full evidence 40 and 26 (module mode: 37 and 17). The limits
+are not what bounds the gain: the borderline evidence that passes the safeguards is. The deployed defaults stay
+(`results_masked/`, `results_relaxed/`).

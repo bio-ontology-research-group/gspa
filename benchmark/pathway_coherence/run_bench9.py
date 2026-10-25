@@ -42,7 +42,8 @@ GENOMES = [
     {"tag": "paeruginosa", "taxon": "NCBITaxon_287", "k": "bacteria", "org": "pae"},
 ]
 PRIORS = "essentiality,coherence,consistency,anatomical,gap_filling,genomic_context"
-VARIANTS = {"nocoh": None, "legacy": None, "assess": {"coh_pathway_mode": "legacy"}, "module": {"coh_pathway_mode": "module"}}
+VARIANTS = {"nocoh": None, "legacy": None, "assess": {"coh_pathway_mode": "legacy"}, "module": {"coh_pathway_mode": "module"},
+            "relaxed": {"coh_pathway_mode": "module", "coh_refine_min_completeness": 0.34, "coh_max_rescue_per_module": 5}}
 PRIORS_NOCOH = "essentiality,consistency,anatomical,gap_filling,genomic_context"
 
 
@@ -56,7 +57,7 @@ def command(jar, g, variant, theta, defs, out_file):
     if os.path.exists(ops) and os.path.getsize(ops) > 0: cmd += ["--operons", ops]
     if os.path.exists(gaps) and os.path.getsize(gaps) > 0: cmd += ["--gaps", gaps]
     if theta: cmd += ["--theta", theta]
-    if variant in ("assess", "module"):
+    if variant in ("assess", "module", "relaxed"):
         # leave-one-out: the test organism (and the other E. coli) must not count towards its own organism context
         excl = {"eco": "eco,ece", "ece": "eco,ece"}.get(g["org"], g["org"])
         cmd += ["--module-defs", defs, "--module-exclude-organisms", excl]

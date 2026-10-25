@@ -15,8 +15,9 @@ from run_bench9 import GENOMES, BENCH9, TRUTH, command, load_obo, load_truth, fm
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--jar", required=True); ap.add_argument("--defs", required=True); ap.add_argument("--out-dir", required=True)
-ap.add_argument("--max-identity", type=float, default=50.0); ap.add_argument("--jobs", type=int, default=4)
-a = ap.parse_args(); os.makedirs(a.out_dir, exist_ok=True)
+ap.add_argument("--max-identity", type=float, default=50.0); ap.add_argument("--variants", default="nocoh,legacy,module")
+ap.add_argument("--claims-from", default="masked", help="masked | original"); ap.add_argument("--jobs", type=int, default=4)
+a = ap.parse_args(); os.makedirs(a.out_dir, exist_ok=True); V = a.variants.split(",")
 for g in GENOMES:
     out = os.path.join(a.out_dir, f"{g['tag']}_claims_masked.jsonl")
     if os.path.exists(out): continue
@@ -29,18 +30,18 @@ for g in GENOMES:
             kept += 1; fo.write(line)
     print(f"{g['tag']}: kept {kept}, dropped {dropped} DIAMOND claims above {a.max_identity} % identity", flush=True)
 thetas = {}
-for v in ("nocoh", "legacy", "module"):
+for v in V:
     if VARIANTS[v] is not None:
         tp = os.path.join(a.out_dir, f"theta_{v}.json"); json.dump(VARIANTS[v], open(tp, "w")); thetas[v] = tp
     else: thetas[v] = None
 def run(job):
     g, v = job; out = os.path.join(a.out_dir, f"{g['tag']}_{v}_integrated.tsv")
     if os.path.exists(out) and os.path.getsize(out) > 1000: return g["tag"], v, "skipped"
-    cmd = command(a.jar, g, v, thetas[v], a.defs, out); cmd[cmd.index("--claims") + 1] = os.path.join(a.out_dir, f"{g['tag']}_claims_masked.jsonl")
+    cmd = command(a.jar, g, v, thetas[v], a.defs, out); cmd[cmd.index("--claims") + 1] = os.path.join(a.out_dir, f"{g['tag']}_claims_masked.jsonl") if a.claims_from == "masked" else f"{BENCH9}/with_iprscan/{g['tag']}_claims_merged.jsonl"
     with open(out + ".log", "w") as log: rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT).returncode
     return g["tag"], v, rc
 with ThreadPoolExecutor(a.jobs) as ex:
-    for r in ex.map(run, [(g, v) for g in GENOMES for v in ("nocoh", "legacy", "module")]): print("  ", r, flush=True)
+    for r in ex.map(run, [(g, v) for g in GENOMES for v in V]): print("  ", r, flush=True)
 anc = load_obo(f"/data/hohndor/gspa/reference/go.obo")
 def above(path):
     s = set()
@@ -51,7 +52,7 @@ rows = []
 for g in GENOMES:
     tag = g["tag"]; truth = load_truth(f"{TRUTH}/{tag}_truth_all.tsv"); T = {p: set().union(*(anc(t) for t in ts)) for p, ts in truth.items()}
     base = above(os.path.join(a.out_dir, f"{tag}_nocoh_integrated.tsv"))
-    for v in ("nocoh", "legacy", "module"):
+    for v in V:
         f = os.path.join(a.out_dir, f"{tag}_{v}_integrated.tsv"); r = dict(genome=tag, variant=v); r.update(fmax(tag, f, 20))
         add = above(f) - base
         r["added_correct"] = sum(1 for p, t in add if p in T and t in T[p]); r["added_wrong"] = sum(1 for p, t in add if p in T and t not in T[p])
@@ -62,7 +63,7 @@ with open(os.path.join(a.out_dir, "masked_runs.tsv"), "w") as fh:
     for r in rows: fh.write("\t".join(str(r.get(c, "")) for c in cols) + "\n")
 with open(os.path.join(a.out_dir, "masked_summary.tsv"), "w") as fh:
     fh.write("variant\t" + "\t".join(keys) + "\tadded_correct\tadded_wrong\tgenomes_micro_all_above_nocoh\n")
-    for v in ("nocoh", "legacy", "module"):
+    for v in V:
         sel = [r for r in rows if r["variant"] == v]
         better = sum(1 for r in sel if r["fmax_micro_all"] > next(x for x in rows if x["genome"] == r["genome"] and x["variant"] == "nocoh")["fmax_micro_all"])
         fh.write(v + "\t" + "\t".join(f"{sum(r[k] for r in sel) / len(sel):.4f}" for k in keys) +
