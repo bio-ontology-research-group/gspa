@@ -126,6 +126,49 @@ applies to arrays submitted afterwards; the blocks of the production array that 
 each) were rerun by hand (`ROW=r bash 05_gapsmith.sbatch` in a debug job) and their integration tasks
 released from the gapsmith dependency (`scontrol update JobId=<integrate>_<block> Dependency=afterok:<scatter>`).
 
+## Production run (2026-10-22 to 2026-10-24)
+
+Every one of the 17,055 genomes completed every step: proteins (array 54079370, 32 min), gapsmith
+models (54079371, 1,576 CPU-h; six blocks rerun by hand as described above), clustering (54079516, 7 h on
+32 CPUs: 57,880,333 proteins to 25,727,839 representatives), channels on 515 chunks of 50,000
+representatives (54245187 and 54408209, 18,600 CPU-h, median 4.6 h per chunk; one chunk resubmitted
+after its node drained), scatter (54245188, 1.5 h), integration (54255552, 3,637 CPU-h, 7.6 h wall) and
+aggregation (54487722). The tables are in `results/`: `eq_mags_per_bin.tsv` (one row per genome: taxon,
+counts of proteins, claims and Stage 0/1/2 annotations, gap and fill counts, pathway and essential-function
+completeness before and after Stage 2, wall times), `eq_mags_summary.tsv` (the aggregate's counts and
+medians by CheckM2 class and dataset), and from `07_report.py` on the per-genome table
+`eq_mags_by_dataset.tsv` (totals and medians per dataset: soil bins by class and together, the three
+culture datasets and together, everything) and `eq_mags_phyla.tsv` (GTDB phylum of the assigned taxon by
+dataset).
+
+Soil bins (16,333; 4,030 HQ, 12,303 MQ). The bins span 45 phyla, 792 of them archaeal; GSPA places most
+bins at class or phylum rank, a genus or species for 561. Stage 0 annotates about three in five proteins
+(median 1,841 of 3,117 per bin); Stages 1 and 2 keep that set of proteins and add about 3 % more
+annotations above q = 0.5 (73.2 million against 70.9 million over all soil bins) through several thousand
+Stage 2 actions per bin. gapsmith builds a gap-filled model for every bin (five through the medium-CSV repair, one kept
+as draft); the model gaps, about 190 per bin of which three in four are fillable, are the input to the
+gap prior and RLGC. Stage 2B fills a median of 6 gaps per bin with new protein assignments at q = 0.5
+(112,886 in total, 147,186 with promoted existing annotations) and raises the median completeness of
+the predicted pathways from 0.32 to 0.42 and of the 32 essential functions from 26 to 30 of 32 terms
+(improved in 98 % of bins for both). The gapsmith model itself reports a pathway completeness of 0.95,
+which is the completeness after gap filling by the model and so the upper bound for what the
+protein-level annotation can recover.
+
+Culture genomes (722: 520 enrichment bins, 131 isolates, 71 thermophilic). Six phyla, all bacterial, half
+Bacillota; GSPA assigns a genus or species to 280 of them, in line with the isolates being cultivable
+and better represented in the reference. They are larger (median 4,282 proteins) and better annotated
+than the soil bins: Stage 0 covers two in three proteins, the models have half as many gaps (median 103,
+74 fillable) and Stage 2B fills a median of 2 to 3 gaps per genome (2,204 new fills, 3,317 with promoted
+annotations), raising pathway completeness from 0.47 to 0.54 and essential-function completeness from
+29 to 31 of 32 terms. Pathway completeness improved for every culture genome and essential-function
+completeness for 685 of 722; the other 37 (35 enrichment bins, 2 isolates) keep their value, 29 to 31
+of 32 terms, which Stage 2 left unchanged.
+
+The 21 bins without a pathway-completeness value (`NA`, all soil bins) have no scorable predicted pathway:
+they are bins with few annotated proteins (137 to 655 at Stages 1 and 2) and small models; their
+essential-function completeness is reported. Timing per genome on 4 CPUs: gapsmith 1.4 min and Stages
+1 to 2B 2.9 min at the median.
+
 ## Reused code and data
 
 `bgc_benchmark.py build-claims` (claims), `mag_pathway_gaps.py prep` and `score` (gap reactions and

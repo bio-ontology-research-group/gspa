@@ -12,6 +12,7 @@
 #   bash run.sh stageD-wave2 FROM TO   # (ibex) same for lines FROM..TO of the completed wave-2 list
 #   bash run.sh stageD-resume [CONC]   # (ibex) resubmit every wave-2 batch without a partial (resume after the 2026-10-20 quota stop)
 #   bash run.sh stageD-autoresume ARRAY [CONC]  # (ibex) chain job: when ARRAY ends, resubmit the batches without a partial (24 h time-outs), repeating until none is left
+#   bash run.sh stageD-extend [CONC]   # (ibex) Stage D on every wave-2 batch with Stage C done and no partial yet: writes a dated batch list and starts the autoresume chain on it
 #   bash run.sh summarize-existing     # (ibex) run (a): summarise Java outputs Stage C already wrote
 #   bash run.sh combine PARTIALS TAG   # (ibex job) merge partials -> tables; TAG = file suffix after _java ("" for run (a), _legacy, _stageD)
 #   bash run.sh fetch TAG              # copy tables back into results/allthebacteria/
@@ -69,6 +70,16 @@ case "$mode" in
       n=\$(wc -l < \$list); echo \"\$n batches -> \$list\"; \
       sbatch --array=1-\$n%$conc --cpus-per-task=16 --mem=64G --time=1-00:00:00 \
         --export=ALL,BATCH_LIST=\$list $R/scripts/stageD_java_integrate_all.sbatch"
+    ;;
+  stageD-extend)
+    # Every wave-2 batch whose Stage C has finished and that has no Stage D partial, as a dated list;
+    # the autoresume chain submits as many as the 2,000-job QOS allows and feeds the rest after each array.
+    conc=${2:-50}
+    ssh ibex "list=$R/batch_lists/wave2_done_\$(date +%F).txt; \
+      ls -d $S/wave2/work/*/stageC/batch_stats.tsv | awk -F/ '{print \$(NF-2)}' | sort | \
+        while read b; do test -f $R/partials_stageD/\$b.genomes.tsv || printf 'wave2\t%s\n' \$b; done > \$list; \
+      echo \"\$(wc -l < \$list) batches -> \$list\"; \
+      sbatch --export=ALL,CONC=$conc,SOURCE_LIST=\$list $R/scripts/stageD_autoresume.sbatch"
     ;;
   stageD-autoresume)
     # The 4,000-genome batches run 20-29 h on 16 CPUs and hit the 24 h wall; their finished genomes are kept
