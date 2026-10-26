@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "experiment_id": "v3-panel13-go-exp-truth",
+  "description": "13-genome reference panel (P03), GO, experimental-evidence truth only. Stage 0 vs Stage 1 priors vs Stage 1+2A, produced by `gspa integrate`. Real data on unimatrix01; claims are the frozen 3-channel (DIAMOND leave-panel-out, Pfam, InterProScan) predictor outputs. No AllTheBacteria data.",
+  "dataset_status": "real",
+  "gspa": {
+    "command": ["java", "-jar", "${GSPA_JAR}"],
+    "binary": "${GSPA_JAR}",
+    "shared_args": [
+      "--go-owl", "${GSPA_REF}/go.owl",
+      "--ec2go", "${GSPA_REF}/ec2go.txt",
+      "--pathways", "${GSPA_REF}/kegg_pathways.tsv",
+      "--modules", "${GSPA_REF}/kegg_modules.tsv",
+      "--batch-threads", "8"
+    ]
+  },
+  "reference": {
+    "go_obo": "${GSPA_REF}/go.obo",
+    "go_owl": "${GSPA_REF}/go.owl"
+  },
+  "settings": {"threshold": 0.5, "bootstrap": 2000, "seed": 13},
+  "arms": [
+    {"name": "stage0", "args": ["--enable-priors", "none"]},
+    {"name": "stage1", "args": []},
+    {"name": "stage1_stage2a_relax", "args": ["--enforce-stage2", "--enforce-consistency-mode", "relax"]}
+  ],
+  "baseline_arm": "stage0",
+  "genomes": [
+    {"genome_id": "vcholerae",     "split": "test", "species": "Vibrio cholerae",             "taxon": "NCBITaxon_666",    "essential_profile": "bacteria", "operons": "${GSPA_DATA}/bench10/ops/vcholerae_operons_up.tsv",     "claims": "${GSPA_DATA}/bench10/claims/vcholerae_dpi_merged.jsonl",     "labels": {"go": "${GSPA_DATA}/bench10/truth/vcholerae_truth_exp.tsv"}},
+    {"genome_id": "saureus",       "split": "test", "species": "Staphylococcus aureus",       "taxon": "NCBITaxon_1280",   "essential_profile": "bacteria", "operons": "${GSPA_DATA}/bench10/ops/saureus_operons_up.tsv",       "claims": "${GSPA_DATA}/bench10/claims/saureus_dpi_merged.jsonl",       "labels": {"go": "${GSPA_DATA}/bench10/truth/saureus_truth_exp.tsv"}},
+    {"genome_id": "spneumoniae",   "split": "test", "species": "Streptococcus pneumoniae",    "taxon": "NCBITaxon_1313",   "essential_profile": "bacteria", "operons": "${GSPA_DATA}/bench10/ops/spneumoniae_operons_up.tsv",   "claims": "${GSPA_DATA}/bench10/claims/spneumoniae_dpi_merged.jsonl",   "labels": {"go": "${GSPA_DATA}/bench10/truth/spneumoniae_truth_exp.tsv"}},
+    {"genome_id": "ccrescentus",   "split": "test", "species": "Caulobacter crescentus",      "taxon": "NCBITaxon_28211",  "essential_profile": "bacteria", "operons": "${GSPA_DATA}/bench10/ops/ccrescentus_operons_up.tsv",   "gaps": "${GSPA_DATA}/bench10/gaps/ccrescentus_real.jsonl",   "claims": "${GSPA_DATA}/bench10/claims/ccrescentus_dpi_merged.jsonl",   "labels": {"go": "${GSPA_DATA}/bench10/truth/ccrescentus_truth_exp.tsv"}},
+    {"genome_id": "rprowazekii",   "split": "test", "species": "Rickettsia prowazekii",       "taxon": "NCBITaxon_28211",  "essential_profile": "bacteria", "operons": "${GSPA_DATA}/bench10/ops/rprowazekii_operons_up.tsv",   "gaps": "${GSPA_DATA}/bench10/gaps/rprowazekii_real.jsonl",   "claims": "${GSPA_DATA}/bench10/claims/rprowazekii_dpi_merged.jsonl",   "labels": {"go": "${GSPA_DATA}/bench10/truth/rprowazekii_truth_exp.tsv"}},
+    {"genome_id": "tpallidum",     "split": "test", "species": "Treponema pallidum",          "taxon": "NCBITaxon_203692", "essential_profile": "bacteria", "operons": "${GSPA_DATA}/bench10/ops/tpallidum_operons_up.tsv",     "claims": "${GSPA_DATA}/bench10/claims/tpallidum_dpi_merged.jsonl",     "labels": {"go": "${GSPA_DATA}/bench10/truth/tpallidum_truth_exp.tsv"}},
+    {"genome_id": "tthermophilus", "split": "test", "species": "Thermus thermophilus",        "taxon": "NCBITaxon_188787", "essential_profile": "bacteria", "operons": "${GSPA_DATA}/bench10/ops/tthermophilus_operons_up.tsv", "gaps": "${GSPA_DATA}/bench10/gaps/tthermophilus_real.jsonl", "claims": "${GSPA_DATA}/bench10/claims/tthermophilus_dpi_merged.jsonl", "labels": {"go": "${GSPA_DATA}/bench10/truth/tthermophilus_truth_exp.tsv"}},
+    {"genome_id": "dradiodurans",  "split": "test", "species": "Deinococcus radiodurans",     "taxon": "NCBITaxon_1299",   "essential_profile": "bacteria", "operons": "${GSPA_DATA}/bench10/ops/dradiodurans_operons_up.tsv",  "gaps": "${GSPA_DATA}/bench10/gaps/dradiodurans_real.jsonl",  "claims": "${GSPA_DATA}/bench10/claims/dradiodurans_dpi_merged.jsonl",  "labels": {"go": "${GSPA_DATA}/bench10/truth/dradiodurans_truth_exp.tsv"}},
+    {"genome_id": "scoelicolor",   "split": "test", "species": "Streptomyces coelicolor",     "taxon": "NCBITaxon_1902",   "essential_profile": "bacteria", "operons": "${GSPA_DATA}/bench10/ops/scoelicolor_operons_up.tsv",   "claims": "${GSPA_DATA}/bench10/claims/scoelicolor_dpi_merged.jsonl",   "labels": {"go": "${GSPA_DATA}/bench10/truth/scoelicolor_truth_exp.tsv"}},
+    {"genome_id": "pfuriosus",     "split": "test", "species": "Pyrococcus furiosus",         "taxon": "NCBITaxon_2259",   "essential_profile": "archaea",  "operons": "${GSPA_DATA}/bench10/ops/pfuriosus_operons_up.tsv",     "claims": "${GSPA_DATA}/bench10/claims/pfuriosus_dpi_merged.jsonl",     "labels": {"go": "${GSPA_DATA}/bench10/truth/pfuriosus_truth_exp.tsv"}},
+    {"genome_id": "hpylori",       "split": "test", "species": "Helicobacter pylori",         "taxon": "NCBITaxon_210",    "essential_profile": "bacteria", "operons": "${GSPA_DATA}/operons/hpylori_operons.tsv",       "gaps": "${GSPA_DATA}/bench9/gapseq/hpylori_gaps.jsonl",       "claims": "${GSPA_DATA}/bench9/with_iprscan/hpylori_claims_merged.jsonl",       "labels": {"go": "${GSPA_DATA}/truth_dual/hpylori_truth_exp.tsv"}},
+    {"genome_id": "mgenitalium",   "split": "test", "species": "Mycoplasma genitalium",       "taxon": "NCBITaxon_2097",   "essential_profile": "bacteria", "operons": "${GSPA_DATA}/operons/mgenitalium_operons.tsv",   "gaps": "${GSPA_DATA}/bench9/gapseq/mgenitalium_gaps.jsonl",   "claims": "${GSPA_DATA}/bench9/with_iprscan/mgenitalium_claims_merged.jsonl",   "labels": {"go": "${GSPA_DATA}/truth_dual/mgenitalium_truth_exp.tsv"}},
+    {"genome_id": "mjannaschii",   "split": "test", "species": "Methanocaldococcus jannaschii", "taxon": "NCBITaxon_2190", "essential_profile": "archaea",  "operons": "${GSPA_DATA}/operons/mjannaschii_operons.tsv",   "gaps": "${GSPA_DATA}/bench9/gapseq/mjannaschii_gaps.jsonl",   "claims": "${GSPA_DATA}/bench9/with_iprscan/mjannaschii_claims_merged.jsonl",   "labels": {"go": "${GSPA_DATA}/truth_dual/mjannaschii_truth_exp.tsv"}}
+  ]
+}
