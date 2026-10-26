@@ -173,6 +173,35 @@ Python: `load_sbml_model(path)` then `run_experiments(manifest, model,
 overrides=None, chat=None)`; pass `chat=callable(messages) -> str` to inject a
 Qwen client.
 
+## Production route
+
+`gspa integrate --experiment-manifest manifest.json [--experiment-mode evidence_guided ...]` (or the
+`experiment*` keys of the typed workflow config) runs this script as the `metabolic_experiments` stage under a hard
+solver-call budget and wall-clock limit, with a fresh output, exit-status, schema, model-hash and "no probability, no
+promotion" checks; a result that fails any of them fails the stage and is removed. Files go to
+`<out>.experiments/` (`manifest.json`, `result.json`, `sidecar.log`).
+
+* **`manifest` mode runs a user-supplied manifest as written.** The ledger says so
+  (`context_source: user_manifest`) and makes no claim of evidence guidance. A hypothesis that names its
+  `function_key` can become a candidate feature; others only appear in the raw record.
+* **`evidence_guided` mode** treats the file as a template (the medium, biomass objective and explicit maintenance are
+  its assumptions) and adds hypotheses and evidence from the run's candidates: an EC candidate is added only if its
+  protein is a gene of the model and, for the refiner's export (`<out>.metabolism/metabolic_model.xml` with
+  `reactions.tsv`), a model reaction lists both that EC and that gene. Evidence is added where the run measured it (a raw
+  claim, a context-positive window of the candidate's genome, a supporting cohort peer) or where
+  `--experiment-evidence` supplies it (transport substrates, BGC products, by `function_key`); neither is derived
+  automatically from annotations. With nothing admissible the ledger records `no_admissible_experiment` and no solver
+  runs.
+* **Mapping to `ExternalContext.FbaConditional`**: conditions assessed, share with required flux, share with optional
+  flux, mean relative growth change on knockout. A product-formation experiment, and a reaction the refiner added to
+  make growth feasible, cannot confirm the candidate: those conditions are flagged, excluded from the evidence, and a
+  candidate with only such conditions gets `objectiveRequiresCandidate = true`. The refiner builds its gene rules from the
+  same EC evidence, so a gene in a rule is the candidate assignment, not an independent observation.
+* `qwen` as strategy is forwarded as `--strategy qwen --qwen-model qwen3.8-27b --api-base http://unimatrix01.kaust.edu.sa:8000/v1`
+  only; the sidecar uses its own key loader and the agent chooses only validated menu ids. The tests never call it.
+
+Details and remaining gaps: [Learned, cohort and metabolic context](../concepts/context-workflow.md).
+
 ## Tests
 
 ```bash

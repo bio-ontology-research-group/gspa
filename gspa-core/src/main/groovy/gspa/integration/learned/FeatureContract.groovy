@@ -187,7 +187,7 @@ class FeatureContract {
         add('fba.suppressed_objective_forced', FeatureGroup.FBA_CONDITIONAL,
             '1 if the tested objective itself required the candidate, so its FBA values were NOT used as evidence')
         add('fba.n_conditions', FeatureGroup.FBA_CONDITIONAL, 'log(1 + number of media/objective conditions tested)')
-        add('fba.required_fraction', FeatureGroup.FBA_CONDITIONAL, 'fraction of tested conditions in which the candidate\'s reaction carried flux (conditional on those conditions)')
+        add('fba.required_fraction', FeatureGroup.FBA_CONDITIONAL, 'fraction of tested conditions in which the candidate\'s model reaction carried REQUIRED flux, or its knockout removed or reduced growth (conditional on those conditions and on the model; conditions whose objective requires the candidate are excluded)')
         add('fba.optional_fraction_available', FeatureGroup.FBA_CONDITIONAL, '1 if the share of tested conditions with optional (non-required) flux was reported')
         add('fba.optional_fraction', FeatureGroup.FBA_CONDITIONAL, 'fraction of tested conditions in which the reaction could carry flux but was not required (conditional on those conditions; 0 if unavailable)')
         add('fba.knockout_growth_effect', FeatureGroup.FBA_CONDITIONAL, 'supplied relative growth change on knockout (conditional; sign preserved)')

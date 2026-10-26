@@ -398,6 +398,65 @@ class IntegrateCommand implements Runnable {
                           'Keys also supplied by cohort inference are an error.')
     File externalContextFile
 
+    // --- Metabolic experiments and community cross-feeding (conditional model results) ---
+
+    @Option(names = ['--experiment-manifest'],
+            description = 'Frozen metabolic-experiment manifest (SBML-FBC model, baseline medium, explicit maintenance). Runs scripts/metabolic_experiments.py ' +
+                          'under a hard solver-call budget; results are conditional model predictions, never a probability or a promotion. ' +
+                          'In --experiment-mode manifest the file is run as written (a user-supplied analysis); in evidence_guided it is the template.')
+    File experimentManifestFile
+
+    @Option(names = ['--experiment-mode'],
+            description = 'manifest (run the supplied manifest as written, default) or evidence_guided (add hypotheses and evidence from this run\'s ' +
+                          'candidates; needs a model in the template or --enable-fba-refiner in this run; with nothing admissible no solver runs).')
+    String experimentMode = 'manifest'
+
+    @Option(names = ['--experiment-evidence'],
+            description = 'JSON array of explicit evidence records (transport substrates, BGC products ...) referencing candidates by function_key; evidence_guided only.')
+    File experimentEvidenceFile
+
+    @Option(names = ['--experiment-strategy'], description = 'fixed | random | evidence (default) | qwen. qwen only chooses a validated menu id; ' +
+                          'the endpoint comes from --agent-api-base / the sidecar\'s own configuration.')
+    String experimentStrategy = 'evidence'
+
+    @Option(names = ['--experiment-seed'], description = 'Seed of the random strategy (default 0).')
+    int experimentSeed = 0
+
+    @Option(names = ['--experiment-max-experiments'], description = 'Experiments after the baseline (default 8).')
+    int experimentMaxExperiments = 8
+
+    @Option(names = ['--experiment-max-solver-calls'], description = 'Hard cap on LP solves, baseline included (default 60).')
+    int experimentMaxSolverCalls = 60
+
+    @Option(names = ['--experiment-max-hypotheses'], description = 'Most candidate hypotheses added in evidence_guided mode (default 20); the rest are listed as truncated.')
+    int experimentMaxHypotheses = 20
+
+    @Option(names = ['--experiment-timeout'], description = 'Wall-clock limit in seconds (default 600); the sidecar is stopped and no result used when exceeded.')
+    int experimentTimeoutSeconds = 600
+
+    @Option(names = ['--experiment-python-bin'], description = 'Python with libsbml, scipy and numpy for the experiment sidecar.')
+    String experimentPythonBin = 'python3'
+
+    @Option(names = ['--experiment-sidecar'], description = 'Path to scripts/metabolic_experiments.py.')
+    File experimentSidecar = new File('scripts/metabolic_experiments.py')
+
+    @Option(names = ['--community-manifest'],
+            description = 'Community manifest (separate organism SBML models, ports to a shared pool, environment). Runs scripts/community_metabolism.py ' +
+                          'once per batch. Organism-specific; assigns no enzyme or gene and feeds no candidate feature.')
+    File communityManifestFile
+
+    @Option(names = ['--community-max-solver-calls'], description = 'Hard cap on community LP solves (default 40).')
+    int communityMaxSolverCalls = 40
+
+    @Option(names = ['--community-timeout'], description = 'Wall-clock limit in seconds (default 600).')
+    int communityTimeoutSeconds = 600
+
+    @Option(names = ['--community-python-bin'], description = 'Python with libsbml, scipy and numpy for the community sidecar.')
+    String communityPythonBin = 'python3'
+
+    @Option(names = ['--community-sidecar'], description = 'Path to scripts/community_metabolism.py.')
+    File communitySidecar = new File('scripts/community_metabolism.py')
+
     // --- Joint cohort inference ---
 
     @Option(names = ['--cohort'],
@@ -536,7 +595,8 @@ class IntegrateCommand implements Runnable {
 
     /** Runs the shared workflow for one genome and exports its artifacts. */
     private Map runGenome(IntegrationWorkflowConfig config, IntegrationState sharedReferences,
-                          gspa.integration.contextbridge.CohortContextBuilder.Result cohort = null) {
+                          gspa.integration.contextbridge.CohortContextBuilder.Result cohort = null,
+                          gspa.integration.contextbridge.CommunityStage.Outcome community = null) {
         println "GSPA integrate"
         println "  Claims: ${config.claimsFile}"
         println "  Theta:  ${config.thetaFile ?: '(defaults)'}"
@@ -549,6 +609,7 @@ class IntegrateCommand implements Runnable {
         def workflow = new IntegrationWorkflow(config)
         workflow.sharedReferences = sharedReferences
         workflow.batchCohort = cohort
+        workflow.batchCommunity = community
         workflow.info = { String m -> println m } as Closure<Void>
         IntegrationWorkflow.Result result = workflow.run(claims)
         workflow.writeArtifacts(result)
@@ -671,11 +732,26 @@ class IntegrateCommand implements Runnable {
                     "${rows.size()} genome ledgers record the failure", e)
             }
         }
+        // A defined community is a batch-level analysis: run it once, bounded, and let every genome ledger point at it.
+        gspa.integration.contextbridge.CommunityStage.Outcome community = null
+        if (base.communityRequested()) {
+            try {
+                def stage = new gspa.integration.contextbridge.CommunityStage()
+                stage.info = { String m -> println m } as Closure<Void>
+                community = stage.run(base, new File(batchManifestFile.absoluteFile.parentFile, batchManifestFile.name + '.community'))
+            } catch (Exception e) {
+                rows.each { String[] row ->
+                    IntegrationWorkflow.recordPreparationFailure(workerConfig(base, row), e, 'community_metabolism')
+                }
+                throw new IllegalStateException("Batch not run: the community analysis failed (${e.message}); " +
+                    "${rows.size()} genome ledgers record the failure", e)
+            }
+        }
         def pool = java.util.concurrent.Executors.newFixedThreadPool(Math.max(1, batchThreads))
         List<Map> stats = []
         try {
             List<java.util.concurrent.Future<Map>> futures = rows.collect { String[] row ->
-                pool.submit({ -> runGenome(workerConfig(base, row), sharedState, cohort) } as java.util.concurrent.Callable<Map>)
+                pool.submit({ -> runGenome(workerConfig(base, row), sharedState, cohort, community) } as java.util.concurrent.Callable<Map>)
             }
             futures.each { stats << it.get() }
         } finally {

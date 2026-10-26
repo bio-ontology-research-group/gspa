@@ -134,6 +134,37 @@ class IntegrationWorkflowConfig {
     File cohortReactionDirectionsFile
     gspa.integration.cohort.CohortConfig cohortConfig = new gspa.integration.cohort.CohortConfig()
 
+    // --- Metabolic experiments and community cross-feeding (conditional model results, never independent proof) ---
+    static final Set<String> EXPERIMENT_MODES = ['manifest', 'evidence_guided'].asImmutable()
+    static final Set<String> EXPERIMENT_STRATEGIES = ['fixed', 'random', 'evidence', 'qwen'].asImmutable()
+    /**
+     * Frozen experiment manifest (SBML-FBC model, baseline medium, explicit maintenance, optional context). Naming
+     * it requests the stage. In mode {@code manifest} it runs exactly as supplied (a user-supplied analysis: the
+     * ledger says so and claims no automated evidence guidance); in mode {@code evidence_guided} it is the TEMPLATE
+     * (baseline, objectives, config) to which hypotheses and evidence records are added from this run's candidates.
+     */
+    File experimentManifestFile
+    String experimentMode = 'manifest'
+    /** Explicit transport/BGC/... evidence records referencing candidates by function key (evidence_guided only). */
+    File experimentEvidenceFile
+    String experimentStrategy = 'evidence'
+    int experimentSeed = 0
+    /** Experiments run after the baseline. */
+    int experimentMaxExperiments = 8
+    /** Hard cap on LP solves, baseline included. */
+    int experimentMaxSolverCalls = 60
+    /** Most candidate hypotheses added in evidence_guided mode; the rest are listed as truncated in the ledger. */
+    int experimentMaxHypotheses = 20
+    int experimentTimeoutSeconds = 600
+    String experimentPythonBin = 'python3'
+    File experimentSidecar = new File('scripts/metabolic_experiments.py')
+    /** Defined community of separate organism models (batch-level: run once per batch). Never assigns an enzyme to a gene. */
+    File communityManifestFile
+    int communityMaxSolverCalls = 40
+    int communityTimeoutSeconds = 600
+    String communityPythonBin = 'python3'
+    File communitySidecar = new File('scripts/community_metabolism.py')
+
     // --- Per-genome artifacts ---
     File outFile
     File provenanceFile
@@ -208,7 +239,9 @@ class IntegrationWorkflowConfig {
             thetaFile: thetaFile, learnedModelFile: learnedModelFile, externalContextFile: externalContextFile,
             cohortManifestFile: cohortManifestFile, cohortMetadataFile: cohortMetadataFile,
             cohortOrthogroupsFile: cohortOrthogroupsFile, cohortRoleEvidenceFile: cohortRoleEvidenceFile,
-            cohortInteractionEdgesFile: cohortInteractionEdgesFile, cohortReactionDirectionsFile: cohortReactionDirectionsFile]
+            cohortInteractionEdgesFile: cohortInteractionEdgesFile, cohortReactionDirectionsFile: cohortReactionDirectionsFile,
+            experimentManifestFile: experimentManifestFile, experimentEvidenceFile: experimentEvidenceFile,
+            communityManifestFile: communityManifestFile]
         named.each { String name, File f ->
             if (f != null && !f.isFile()) throw new IllegalArgumentException("${name} does not exist: ${f}")
         }
@@ -227,6 +260,22 @@ class IntegrationWorkflowConfig {
         }
         if (learnedModelFile == null && (learnedRetractBelow != null || learnedAddUnretainedClaims)) {
             throw new IllegalArgumentException("learnedRetractBelow / learnedAddUnretainedClaims only apply to the learned stage (--learned-model)")
+        }
+        if (!EXPERIMENT_MODES.contains(experimentMode)) {
+            throw new IllegalArgumentException("experimentMode must be one of ${EXPERIMENT_MODES.join(', ')} (got '${experimentMode}')")
+        }
+        if (!EXPERIMENT_STRATEGIES.contains(experimentStrategy)) {
+            throw new IllegalArgumentException("experimentStrategy must be one of ${EXPERIMENT_STRATEGIES.join(', ')} (got '${experimentStrategy}')")
+        }
+        if (experimentMaxExperiments < 1 || experimentMaxSolverCalls < 1 || experimentMaxHypotheses < 1 ||
+            experimentTimeoutSeconds < 1 || communityMaxSolverCalls < 1 || communityTimeoutSeconds < 1) {
+            throw new IllegalArgumentException("experiment and community budgets and timeouts must be positive")
+        }
+        if (experimentManifestFile == null && (experimentEvidenceFile != null || experimentMode != 'manifest')) {
+            throw new IllegalArgumentException("experimentMode / experimentEvidenceFile need experimentManifestFile (the manifest or template with baseline medium, objectives and maintenance)")
+        }
+        if (experimentEvidenceFile != null && experimentMode != 'evidence_guided') {
+            throw new IllegalArgumentException("experimentEvidenceFile only applies to experimentMode evidence_guided")
         }
         cohortConfig.validate()
         if (cohortConfig.holdout == gspa.integration.cohort.HoldoutLevel.NONE) {
@@ -248,6 +297,12 @@ class IntegrationWorkflowConfig {
         cohortInference || cohortManifestFile != null || cohortMetadataFile != null || cohortOrthogroupsFile != null ||
             cohortRoleEvidenceFile != null || cohortInteractionEdgesFile != null || cohortReactionDirectionsFile != null
     }
+
+    @JsonIgnore
+    boolean experimentsRequested() { experimentManifestFile != null }
+
+    @JsonIgnore
+    boolean communityRequested() { communityManifestFile != null }
 
     /** The learned stage is requested by naming a model or asking for it. */
     @JsonIgnore

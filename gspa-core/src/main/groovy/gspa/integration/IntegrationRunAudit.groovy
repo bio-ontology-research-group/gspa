@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 class IntegrationRunAudit {
     static final List<String> STAGES = ['reference_preparation', 'cohort_context', 'evidence_integration', 'dark_matter',
         'reaction_context', 'cross_genome', 'symbolic_enforcement', 'metabolic_refinement',
-        'agent_completion', 'metabolic_experiments', 'learned_integration', 'feature_export'].asImmutable()
+        'agent_completion', 'metabolic_experiments', 'community_metabolism', 'learned_integration', 'feature_export'].asImmutable()
 
     /** Meaning of the two baselines a ledger can mention; never to be confused. */
     static final Map<String, String> BASELINE_DEFINITIONS = [

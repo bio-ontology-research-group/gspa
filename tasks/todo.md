@@ -9,6 +9,15 @@ Audit baseline: commit `7714377`. Preserve independent evaluation of annotation
 accuracy; greater model feasibility or annotation completeness alone is not proof
 of a correct protein function.
 
+**Production wiring status (branch `agent/v3-context-workflow`).** Implementation of items 2, 4–9 and 12 now has real
+production routes in the shared workflow (see `docs/concepts/context-workflow.md`): learned stage (last, over raw
+claims, replaces heuristic scores, fails without a production artifact), feature export for real training rows, a
+two-pass cohort batch, typed weighted cohort features, bounded metabolic-experiment and community execution with
+conditional features. Nothing is checked off: there is no trained model, no empirical benchmark and no accuracy claim
+(all tests are synthetic). Open before any release: root trains the model from exported rows and runs the benchmarks;
+Nextflow cohort/experiment processes and web-service wiring are not done; transport/BGC evidence for the planner must be
+supplied; no community feature contract exists.
+
 - [ ] **1. Benchmark the actual application.** Make benchmarks invoke the shared
   production inference engine; generate public claims from versioned experiment
   records. Compare matched sequence evidence with each context stage and the full

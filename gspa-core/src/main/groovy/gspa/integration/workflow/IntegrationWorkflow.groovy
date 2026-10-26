@@ -14,6 +14,8 @@ import gspa.integration.OuterIterativeRefiner
 import gspa.integration.PriorEngine
 import gspa.integration.contextbridge.CohortContextBuilder
 import gspa.integration.contextbridge.CohortStage
+import gspa.integration.contextbridge.CommunityStage
+import gspa.integration.contextbridge.ExperimentStage
 import gspa.integration.contextbridge.ExternalContextSupport
 import gspa.integration.crossgenome.CrossGenomeReScorer
 import gspa.integration.crossgenome.ReactionLocusCatalog
@@ -98,6 +100,8 @@ class IntegrationWorkflow {
      * held-out features are taken from it instead of running a cohort of its own.
      */
     CohortContextBuilder.Result batchCohort
+    /** Result of a batch-level community run (one community per batch); when set, this genome's ledger refers to it. */
+    CommunityStage.Outcome batchCommunity
 
     private ExternalContext explicitContext
     private LearnedContextModel learnedModel
@@ -243,6 +247,8 @@ class IntegrationWorkflow {
         if (c.enforceStage2) stages << 'symbolic_enforcement'
         if (c.enableFbaRefiner) stages << 'metabolic_refinement'
         if (c.enableAgent) stages << 'agent_completion'
+        if (c.experimentsRequested()) stages << 'metabolic_experiments'
+        if (c.communityRequested()) stages << 'community_metabolism'
         if (c.learnedRequested()) stages << 'learned_integration'
         if (c.featureExportDir != null) stages << 'feature_export'
         stages
@@ -259,6 +265,13 @@ class IntegrationWorkflow {
         if (c.outFile != null) {
             files << c.outFile
             ['.stages.json', '.rescues.tsv', '.modules.json', '.learned.json', '.cohort.json'].each { files << new File(c.outFile.absolutePath + it) }
+            // Only the three files a stage writes are removed (and the directory if that leaves it empty): a directory
+            // that happens to carry the name but holds anything else is left alone.
+            ['.experiments', '.community'].each { String suffix ->
+                File d = new File(c.outFile.absolutePath + suffix)
+                ['manifest.json', 'result.json', 'sidecar.log'].each { new File(d, it).delete() }
+                d.delete()
+            }
         }
         if (c.featureExportDir != null) {
             [FeatureExporter.ROWS_FILE, FeatureExporter.CONTRACT_FILE, FeatureExporter.MANIFEST_FILE].each { files << new File(c.featureExportDir, it) }
@@ -441,6 +454,32 @@ class IntegrationWorkflow {
             def sum = runner.run(state, integrated, anomFile, resFile)
             println "  Stage 3 Agent (${c.agentModel}, guardrail=${!c.agentNoGuardrail}): anomalies=${sum.anomaliesExtracted}, proposed=${sum.resolutionsProposed}, promoted=${sum.promoted}, relaxed=${sum.relaxed}, demoted=${sum.demoted}, abstained=${sum.abstained}, rejected_by_guardrail=${sum.rejectedByGuardrail} (${String.format(Locale.ROOT, '%.2f', sum.elapsedSeconds)}s)"
             return integrated
+        }
+
+        // --- Metabolic experiments: conditional model results for this run's candidates (never a probability) ---
+        audit.runSupport('metabolic_experiments', c.experimentsRequested(),
+            c.outFile == null ? 'an output path is required for experiment artifacts' : null) {
+            File refinerModel = audit.stages['metabolic_refinement'].status == 'executed' ?
+                new File(c.outFile.absolutePath + '.metabolism/metabolic_model.xml') : null
+            def stage = new ExperimentStage()
+            stage.info = info
+            ExperimentStage.Outcome outcome = stage.run(c, new File(c.outFile.absolutePath + '.experiments'),
+                refinerModel != null && refinerModel.isFile() ? refinerModel : null, integrated, claims, outputs.context)
+            if (!outcome.fba.isEmpty()) {
+                outputs.context = ExternalContextSupport.merge(outputs.context, new ExternalContext(fba: outcome.fba), 'metabolic experiments')
+            }
+            outcome.facts
+        }
+
+        // --- Community cross-feeding: organism-specific, no gene assignment, no candidate feature ---
+        audit.runSupport('community_metabolism', c.communityRequested(),
+            c.outFile == null && batchCommunity == null ? 'an output path is required for community artifacts' : null) {
+            if (batchCommunity != null) {
+                return batchCommunity.facts + [route: 'batch', note: 'one community run per batch; its result is shared by every genome ledger']
+            }
+            def stage = new CommunityStage()
+            stage.info = info
+            stage.run(c, new File(c.outFile.absolutePath + '.community')).facts + [route: 'single_run']
         }
 
         // --- Learned stage: LAST, over the ORIGINAL raw claims. Its calibrated probabilities replace the

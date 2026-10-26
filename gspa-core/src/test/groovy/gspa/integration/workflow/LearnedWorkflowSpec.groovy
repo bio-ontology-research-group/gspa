@@ -114,6 +114,33 @@ class LearnedWorkflowSpec extends Specification {
         r.learned.modelSha256 == m.sha256
     }
 
+    def 'a GO term the taxon constraints forbid is not reintroduced by the learned stage, even when it replaces evidence combination'() {
+        given:
+        def files = fx.genome('g1')
+        File withGo = new File(dir, 'with-go.jsonl')
+        withGo.text = files.claims.text + mapper.writeValueAsString([protein_id: 'p1', function_type: 'GO', function_id: 'GO:0005634',
+            source: 'diamond', evidence_type: 'SEQUENCE_SIMILARITY', raw_score: 0.9d, calibrated_prob: 0.9d, go_aspect: 'CC']) + '\n'
+        def forbiddenKey = 'p1|GO|GO:0005634'            // nucleus: only_in_taxon Eukaryota
+        def config = { boolean learned ->
+            def c = fx.worker(fx.config(organismTaxon: 'bacteria', enforceStage2: true, enforceConsistencyMode: 'remove',
+                learnedModelFile: learned ? placeholderModelFile() : null, learnedAddUnretainedClaims: learned), 'g1', files,
+                new File(dir, learned ? 'learned.tsv' : 'legacy.tsv'))
+            c
+        }
+
+        when: 'enforcement removes the forbidden term'
+        def legacy = new IntegrationWorkflow(config(false)).run(claimsOf(withGo))
+        def r = mechanismWorkflow(config(true), model()).run(claimsOf(withGo))
+
+        then:
+        !legacy.integrated.provenance.containsKey(forbiddenKey)
+        and: 'the learned stage scored it from the raw claim and left the enforcement decision alone'
+        r.learned.candidates.any { it.functionKey == forbiddenKey }
+        r.learned.outcomes.find { it.functionKey == forbiddenKey }.action == 'scored_only'
+        !r.integrated.provenance.containsKey(forbiddenKey)
+        r.audit.report().stages.find { it.name == 'learned_integration' }.structurally_forbidden_go_terms > 0
+    }
+
     def 'with the cohort off the same model scores the same candidate differently: the context is a real input'() {
         given:
         def m = model()
@@ -188,6 +215,55 @@ class LearnedWorkflowSpec extends Specification {
 
     private static gspa.integration.cohort.CohortConfig changedConfig() {
         new gspa.integration.cohort.CohortConfig(halfWidthBp: 777)
+    }
+
+    def 'explicit typed context is strict, and a key supplied both there and by cohort inference is an error'() {
+        given:
+        def ids = ['g1', 'g2', 'g3']
+        def files = ids.collectEntries { [it, fx.genome(it)] }
+        File ctx = new File(dir, 'context.json')
+        ctx.text = text
+        def base = fx.config(cohortInference: true, externalContextFile: ctx,
+            cohortMetadataFile: fx.metadata(ids.collectEntries { [it, [clade: 'c_' + it, strainCluster: 's_' + it]] }))
+
+        when:
+        batch(ids, base)
+
+        then:
+        def e = thrown(IllegalArgumentException)
+        e.message.contains(fragment)
+
+        where:
+        text                                                                                                  | fragment
+        '{"neigbourhood": {}}'                                                                                | 'not valid'
+        '{"neighborhood": {"p3|EC|EC:2.2.2.2": {"supportMax": -1.0, "nSupporting": 1, "conflictMax": 0.0}}}' | 'non-finite or negative'
+        '{"cohort": {"p3|EC|EC:2.2.2.2": {"weighted": {"supportFraction": 1.5}}}}'                           | 'supportFraction must be finite and in [0,1]'
+        '{"cohort": {"p3|EC|EC:2.2.2.2": {"nGenomes": 0}}}'                                                  | 'supplied both by the explicit context file'
+    }
+
+    def 'explicit neighbourhood context reaches the features next to the cohort block'() {
+        given:
+        def ids = ['g1', 'g2', 'g3']
+        def files = ids.collectEntries { [it, fx.genome(it)] }
+        File ctx = new File(dir, 'context.json')
+        ctx.text = '{"neighborhood": {"p3|EC|EC:2.2.2.2": {"supportMax": 0.9, "nSupporting": 2, "conflictMax": 0.1, "reactionDistance": 1.0}},' +
+            ' "assemblyCompleteness": 97.5}'
+        File out = new File(dir, 'export')
+        def base = fx.config(cohortInference: true, externalContextFile: ctx, featureExportDir: out,
+            cohortMetadataFile: fx.metadata(ids.collectEntries { [it, [clade: 'c_' + it, strainCluster: 's_' + it]] }))
+
+        when:
+        batch(ids, base)
+        // this helper gives every genome the same export directory, so the rows are those of the last genome run
+        def row = new File(out, 'candidate_features.jsonl').readLines().collect { mapper.readValue(it, Map) }
+            .find { it.function_key == KEY }.features
+
+        then:
+        row['ctx.nbr.available'] == 1.0d
+        row['ctx.nbr.support_max'] == 0.9d
+        row['cohort.w.available'] == 1.0d
+        row['asm.completeness_available'] == 1.0d
+        row['asm.completeness'] == 0.975d
     }
 
     def 'feature export needs no model, writes rows from the same extractor and never a label'() {

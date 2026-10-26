@@ -1,10 +1,10 @@
 # Learned integration stage and feature export
 
-Status: **mechanism, API and audit trail only. There is still no trained production model in
-the repository, so the stage cannot run on real data and nothing here is evidence of improved
-annotation accuracy.** Wiring into the shared engine/CLI/workflow is separate work (see
-[Wiring](#wiring-for-the-workflow-owner)). Background, feature contract and training protocol:
-[learned-context.md](learned-context.md).
+Status: **mechanism, API and audit trail; wired into the shared workflow. There is still no trained production
+model in the repository, so the stage cannot run on real data and nothing here is evidence of improved
+annotation accuracy.** The production wiring (stage order, ledger, options, batch and pipeline routes, feature export,
+cohort and conditional-FBA context) is described in [context-workflow.md](context-workflow.md). Background, feature
+contract (now `gspa.context-features/2`) and training protocol: [learned-context.md](learned-context.md).
 
 | Piece | Location |
 | --- | --- |
@@ -164,6 +164,9 @@ new FeatureExporter(model).export(...)                                  // rows 
 | Model malformed values | **Real.** Trees with zero nodes or no leaf, missing/empty `trees`, fractional or < −1 feature indices, non-positive calibration slope, learning rate or locus scale, and artifacts without `model_id` produced NPEs/IndexOutOfBounds or silently odd models; they are now `ModelUnavailableException`. A margin that overflows to infinity fails at scoring time. |
 
 ## Wiring for the workflow owner
+
+*Implemented in `IntegrationWorkflow` (stage `learned_integration`, then `feature_export`); the code below is the
+underlying API. See [context-workflow.md](context-workflow.md) for the options, the ledger and what is still open.*
 
 ```groovy
 // final stage, after existing integration/enforcement; raw claims are the ORIGINAL ones

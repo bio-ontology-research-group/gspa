@@ -68,7 +68,9 @@ The package computes **no role probability, no null/unknown distribution and no 
 
 ## Wiring into the typed workflow and learned features
 
-Not done in this package. Required by the caller:
+*Done in `gspa.integration.contextbridge` and the `cohort_context` stage of `IntegrationWorkflow`; see
+[context-workflow.md](context-workflow.md) for the options, metadata schema and the two-pass batch. The list below is what
+that wiring had to supply and is kept as the contract.* Required by the caller:
 
 1. Build one `CohortInput` per cohort **from the pre-cohort snapshot** (Stage 0/evidence claims and EC calls before any context stage runs), and set `baselineSnapshotId` to that snapshot's identifier. Never pass confidences from a previous cohort/feedback pass.
 2. Metadata the workflow must supply: a layout per genome keyed by FAA seqid; orthogroup (and subfamily where available) membership with weights; clade ids or a tree, and strain-cluster ids (ANI-based clusters are suitable); per-genome `AssemblyInfo` with `status`, and per-contig `length` and `closed`. Also required: per-genome `familySearchComplete = true` only when the orthogroup/subfamily search covered every protein (not only the candidates); without it no absence is called true. Without clade/cluster metadata all such genomes share one unresolved block (conservative, never independent) and the adjusted CI/permutation p are withheld; record `cohort_phylogeny_known_fraction` and `cohort_adjusted_available` in the learned feature table.

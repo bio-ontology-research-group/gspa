@@ -105,6 +105,52 @@ class CohortWorkflowSpec extends Specification {
         co.weighted.effectiveN == 2.0d
     }
 
+    def 'independent curated edges and supplied role evidence are read strictly and reach the features'() {
+        given:
+        def ids = ['g1', 'g2', 'g3']
+        def files = genomes(ids)
+        File edges = new File(dir, 'edges.tsv')
+        edges.text = 'reaction_a\treaction_b\tsource\tdirected\nr2\tr4\tcurated-test-edge\tfalse\n'
+        File roles = new File(dir, 'roles.tsv')
+        roles.text = 'genome_id\tprotein_id\tsource\trole\tscore\ng1\tp3\tdomain-test\tTRANSPORTER\t0.8\n'
+        def base = fx.config(cohortInference: true, cohortMetadataFile: fx.metadata(cladesFor(ids)))
+
+        when:
+        def plain = weighted(cohortOf(ids, files, base), 'g1')
+        def rich = weighted(cohortOf(ids, files, fx.config(cohortInference: true, cohortMetadataFile: fx.metadata(cladesFor(ids)),
+            cohortInteractionEdgesFile: edges, cohortRoleEvidenceFile: roles)), 'g1')
+
+        then: 'the curated edge makes the unrelated reaction part of the signature and p6 an anchor'
+        plain.localAnchorCurated == 0.0d
+        rich.localAnchorCurated == 1.0d
+        and: 'supplied protein-intrinsic role evidence is raw, with its own availability; the direct EC call adds none'
+        plain.roleEvidenceMissing && plain.roleEvidence.isEmpty()
+        !rich.roleEvidenceMissing
+        rich.roleEvidence == [(gspa.integration.learned.CandidateRole.TRANSPORTER): 0.8d]
+    }
+
+    def 'malformed side inputs fail with the line, never skipped'() {
+        given:
+        def ids = ['g1', 'g2']
+        File bad = new File(dir, 'bad.tsv')
+        bad.text = text
+
+        when:
+        cohortOf(ids, genomes(ids), fx.config(cohortInference: true, "${option}": bad))
+
+        then:
+        def e = thrown(IllegalArgumentException)
+        e.message.contains(fragment)
+
+        where:
+        option                         | text                                                              | fragment
+        'cohortRoleEvidenceFile'       | 'genome_id\tprotein_id\tsource\trole\tscore\ng1\tp3\ts\tCATALYTIC\t1.5\n'   | 'score must be in [0,1]'
+        'cohortRoleEvidenceFile'       | 'genome_id\tprotein_id\tsource\trole\tscore\ng1\tp3\ts\tWIZARD\t0.5\n'      | 'unknown role'
+        'cohortInteractionEdgesFile'   | 'reaction_a\treaction_b\tsource\tdirected\nr1\tr2\ts\tmaybe\n'              | 'directed must be true or false'
+        'cohortReactionDirectionsFile' | 'reaction_id\tdirection\nr1\tSIDEWAYS\n'                                    | 'unknown direction'
+        'cohortOrthogroupsFile'        | 'genome_id\tprotein_id\torthogroup_id\ng1\tp3\tOG\tsub\tbig\n'              | 'is not a number'
+    }
+
     def 'genome order and reference order do not change any feature'() {
         given:
         def ids = ['g1', 'g2', 'g3', 'g4']

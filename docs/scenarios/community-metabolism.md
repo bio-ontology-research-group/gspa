@@ -120,6 +120,19 @@ python3 scripts/community_metabolism.py --manifest community.json --out result.j
 python3 -m unittest scripts/tests/test_community_metabolism.py   # needs libsbml, scipy, numpy
 ```
 
+## Production route
+
+`gspa integrate --community-manifest community.json` (single run or batch; a batch runs it once and every genome
+ledger points at the same result) executes this script as the `community_metabolism` stage with the same bounded,
+fresh-output, checked execution as the single-organism experiments: hard solver-call budget
+(`--community-max-solver-calls`), wall-clock limit, schema and per-organism model SHA-256 checks, and every conditional
+record must say `enzyme_assignment: none`, no probability and no promotion. Results are written to `<out>.community/`.
+
+Results stay **organism-specific**. Growth restored by a partner's metabolite assigns no enzyme or gene, does not show
+that a transporter exists, and is **not** used as evidence for any candidate: the community has no typed feature
+contract, so none is fabricated, nothing is read as negative evidence, and the raw conditional records are exported
+unchanged for downstream analysis. See [Learned, cohort and metabolic context](../concepts/context-workflow.md).
+
 ## Data dependencies for real co-culture benchmarks
 
 Not provided here and required before any empirical claim:

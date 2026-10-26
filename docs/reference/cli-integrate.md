@@ -209,6 +209,35 @@ Fixed internal settings (not exposed as options): core-reaction threshold
 0.25. If the sidecar exits non-zero, a warning is printed and the Stage 1/2A
 result is kept. See [Stage 2B FBA](../concepts/stage2b-fba.md).
 
+## Learned stage, feature export, cohort context and metabolic experiments
+
+Wired into the shared workflow; behaviour, ledger and remaining gaps are in
+[Learned, cohort and metabolic context](../concepts/context-workflow.md). No trained model ships with GSPA.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--genome-id` | string | `genome` | Identifier of the genome in a single run (cohort metadata and reports are keyed by it). |
+| `--learned-model` | file | none | Frozen production artifact of the learned context model. Requests the learned stage, run last over the raw claims; its probabilities replace the heuristic scores. Fails if missing, a mechanism-test artifact or for another feature contract. Without it the ledger says `scoring_mode: legacy_heuristic`. |
+| `--learned-stage` | flag | off | Request the stage explicitly; fails without `--learned-model`. |
+| `--learned-retract-below` | double | none | Retract candidates whose learned probability is below this (0..1). |
+| `--learned-add-unretained-claims` | flag | off | Also add claimed functions the earlier stages did not retain. |
+| `--feature-export-dir` | directory | none | Write `candidate_features.jsonl`, `feature_contract.json`, `export_manifest.json` (one sub-directory per genome in a batch). No model needed; no labels, splits or groups. |
+| `--external-context` | file | none | Strict JSON of typed `ExternalContext`. |
+| `--cohort` | flag | off | Cohort recurrence context; two-pass in a batch. Needs `--reaction-graph` and `--reaction-ec-aliases`. Implied by any other `--cohort-*` input. |
+| `--cohort-manifest` | file | none | Reference genomes that are peers only (`genome_id`, `claims_path`[, `layout_path`[, `orthogroups_path`]]). |
+| `--cohort-metadata` | file | none | Clade, strain cluster, assembly, `familySearchComplete`, contigs, tree. Absent facts are unknown, never independent. |
+| `--cohort-orthogroups` | file | none | `genome_id, protein_id, orthogroup_id[, subfamily_id, weight]`; otherwise each genome's `--orthogroups` file. |
+| `--cohort-role-evidence`, `--cohort-interaction-edges`, `--cohort-reaction-directions` | file | none | Optional independent TSV inputs. |
+| `--cohort-holdout`, `--cohort-half-width-bp`, `--cohort-permutations`, `--cohort-seed`, `--cohort-tree-cut-distance` | | `STRAIN_CLUSTER`, 5000, 200, 20261026, 0.05 | Cohort engine settings. `NONE` is rejected. |
+| `--experiment-manifest` | file | none | Metabolic-experiment manifest or template; requests the stage. |
+| `--experiment-mode` | string | `manifest` | `manifest` runs the file as written; `evidence_guided` adds hypotheses and evidence from this run's candidates. |
+| `--experiment-evidence` | file | none | Explicit transport/BGC evidence records (`evidence_guided`). |
+| `--experiment-strategy`, `--experiment-seed` | | `evidence`, 0 | `fixed`, `random`, `evidence` or `qwen` (model and endpoint forwarded as options only). |
+| `--experiment-max-experiments`, `--experiment-max-solver-calls`, `--experiment-max-hypotheses`, `--experiment-timeout` | int | 8, 60, 20, 600 s | Hard budgets and wall-clock limit. |
+| `--experiment-python-bin`, `--experiment-sidecar` | | `python3`, `scripts/metabolic_experiments.py` | Interpreter (libsbml, scipy, numpy) and script. |
+| `--community-manifest` | file | none | Defined community of separate organism models; run once per batch; assigns no gene and feeds no candidate feature. |
+| `--community-max-solver-calls`, `--community-timeout`, `--community-python-bin`, `--community-sidecar` | | 40, 600 s, `python3`, `scripts/community_metabolism.py` | Budget, limit, interpreter, script. |
+
 ## Dark-matter suggester
 
 The dark-matter suggester proposes functions for proteins in operons that

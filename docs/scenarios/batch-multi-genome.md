@@ -46,6 +46,14 @@ additions and removals for individual gene/function pairs. These are prediction
 changes, not measurements of biological accuracy. An explicitly enabled stage
 with missing required inputs fails rather than silently claiming to have run.
 
+With `--cohort` a batch is a **two-pass** run: the stage-0 raw baseline of every row (and of the genomes in
+`--cohort-manifest`) is built first, one joint cohort inference follows, and each genome's workflow then consumes only
+its own held-out features (`<out_path>.cohort.json` reports the snapshot, peers and gaps). Rows may share protein ids,
+because every candidate is namespaced by genome; claims, layout and orthogroups must use the FAA sequence ids. If the
+cohort pass fails, no genome runs and every ledger records `cohort_context: failed`. `--feature-export-dir` writes one
+sub-directory per genome; `--community-manifest` runs the community once and every ledger points at that result. See
+[Learned, cohort and metabolic context](../concepts/context-workflow.md).
+
 Optional artifact flags select separate files for each batch row:
 `<out_path>.provenance.json`, `.suggestions.tsv`, `.features.tsv`,
 `.enforcement.tsv`, `.anomalies.jsonl`, and `.agent_resolutions.jsonl`.

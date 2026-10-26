@@ -10,6 +10,28 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
+### Added (context workflow wiring; no trained model, no accuracy claim)
+- Shared workflow stages `cohort_context`, `metabolic_experiments`, `community_metabolism`, `learned_integration`
+  and `feature_export` (ledger schema 2: `scoring_mode`, stage-0 vs legacy-prior baseline definitions).
+- **Learned stage** (`--learned-model`, `--learned-stage`): runs last over the original raw claims, replaces the
+  heuristic scores, refuses missing, mechanism-test and contract-mismatched artifacts (the run fails with a ledger),
+  never reintroduces GO terms forbidden by the taxon constraints. `<out>.learned.json` carries model hash and per-
+  candidate scores.
+- **Feature export** (`--feature-export-dir`): production rows from the same extractor, with or without a model, no
+  labels; `gspa.context-features/2` adds the weighted `cohort.w.*` columns and `fba.optional_fraction`
+  (JVM/Python fixtures regenerated).
+- **Two-pass cohort** (`--cohort`, `--cohort-manifest`, `--cohort-metadata`, ...): stage-0 raw baseline of every genome,
+  one joint inference, held-out features per genome; direct EC to reaction candidates, reaction ambiguity reported not
+  summed, unknown metadata conservative, no-peer genomes routed to the cohort-free feature set.
+  `ExternalContext.Cohort` carries typed nullable weighted features.
+- **Metabolic experiments and community** (`--experiment-*`, `--community-*`): bounded, fresh-output, hash-checked
+  execution of the Python sidecars; conditional results mapped to `FbaConditional` with objectives that require the
+  candidate flagged and excluded; community results organism-specific and not turned into features. User manifests are
+  marked as such; evidence-guided construction only from valid EC-reaction-gene mappings, with `no_admissible_experiment`
+  when nothing qualifies.
+- Nextflow: staged `--learned_model`, `--external_context`, `--feature_export`. Cohort, experiments and community are not
+  run by the pipeline yet.
+
 ### Changed
 - **One inference workflow for every route.** `gspa.integration.workflow.IntegrationWorkflow` (core) now holds
   the stage order, reference loading, stage-2 enforcement, exports and stage ledger that were private to
