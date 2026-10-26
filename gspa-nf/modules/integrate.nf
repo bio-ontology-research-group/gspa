@@ -179,11 +179,15 @@ process INTEGRATE {
     path pathways
     path theta_file
     path overlay_file
+    path learned_model
+    path external_context
 
     output:
     tuple val(sample_id), path("${sample_id}_integrated.tsv"),  emit: integrated
     tuple val(sample_id), path("${sample_id}_provenance.json"), emit: provenance, optional: true
     tuple val(sample_id), path("${sample_id}_integrated.tsv.stages.json"), emit: ledger, optional: true
+    tuple val(sample_id), path("${sample_id}_integrated.tsv.learned.json"), emit: learned_report, optional: true
+    tuple val(sample_id), path("${sample_id}_features"), emit: features, optional: true
 
     script:
     // One canonical IntegrationWorkflowConfig (the same typed JSON the web portal writes and
@@ -204,6 +208,15 @@ process INTEGRATE {
     ]
     if (operons_tsv.size() > 0) settings.operonsFile = operons_tsv.name
     if (theta_file.name != 'NO_THETA') settings.thetaFile = theta_file.name
+    // Learned stage and feature export (typed keys of the shared workflow). A model is only ever a
+    // staged production artifact: a missing, mechanism-test or contract-mismatched file fails the task
+    // (the learned stage is never silently skipped once a model is named). Feature export needs no
+    // model and writes no labels; rows land in <sample>_features/.
+    if (learned_model.name != 'NO_LEARNED_MODEL') settings.learnedModelFile = learned_model.name
+    if (external_context.name != 'NO_EXTERNAL_CONTEXT') settings.externalContextFile = external_context.name
+    if (params.feature_export) settings.featureExportDir = "${sample_id}_features".toString()
+    // Cohort inference is a batch-level job (one joint inference over all genomes, with layouts,
+    // orthogroups and metadata) and is not run per sample here; see gspa-nf/README.md.
     // Behavior-only overlay (enforcement, dark matter, ...): a staged input, so a changed overlay
     // changes the task hash; the JVM rejects overlay keys that name files or bind a sample.
     def overlay = overlay_file.name != 'NO_INTEGRATION_CONFIG' ? "--workflow-overlay ${overlay_file}" : ''

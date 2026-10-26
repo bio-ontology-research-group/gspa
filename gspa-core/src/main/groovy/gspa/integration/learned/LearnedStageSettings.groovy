@@ -39,6 +39,15 @@ class LearnedStageSettings {
     /** Keep the full feature vector of every candidate in the report (large); the exact-bits digest is always kept. */
     boolean retainFeatureVectors = false
 
+    /**
+     * GO terms that the structural (taxon) constraints forbid for the organism, typically
+     * {@code state.satConsistencyChecker.forbiddenConstrainedTerms}. The stage never adds or
+     * rescores such a candidate: it is scored and reported (action {@code scored_only}) but its
+     * legacy annotation stays exactly as the preceding enforcement stage left it, so a learned
+     * score cannot reintroduce an assignment the constraints removed.
+     */
+    Set<String> forbiddenGoTerms = [] as Set
+
     /** Restrict rescoring to these function types; null = all types. Other keys are left untouched. */
     Set<AnnotationType> types = null
 

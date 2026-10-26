@@ -404,6 +404,7 @@ class ContextFeatureExtractor {
             }
             set('cohort.n_genomes_incomplete', co.nIncomplete)
         }
+        if (co?.weighted != null) CohortFeatureColumns.extract(co.weighted, { String n, Object x -> set(n, x as double) })
 
         // ---- assembly
         Protein prot = ix.proteinById[pid]
@@ -430,6 +431,10 @@ class ContextFeatureExtractor {
                 set('fba.available', 1)
                 set('fba.n_conditions', Math.log(1.0d + fb.nConditions))
                 set('fba.required_fraction', fb.requiredFraction)
+                if (fb.optionalFraction != null) {
+                    set('fba.optional_fraction_available', 1)
+                    set('fba.optional_fraction', fb.optionalFraction)
+                }
                 if (fb.knockoutGrowthEffect != null) set('fba.knockout_growth_effect', fb.knockoutGrowthEffect)
             } else {
                 prov << 'FBA entry reports zero tested conditions: treated as unavailable'.toString()

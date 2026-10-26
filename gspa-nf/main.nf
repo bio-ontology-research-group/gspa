@@ -443,7 +443,11 @@ workflow {
             // Staged into the task (host paths are not visible in the container, and a changed
             // file changes the task hash); the JVM rejects overlay keys that name files.
             params.theta_file ? file(params.theta_file) : empty_file('NO_THETA'),
-            params.integration_config ? file(params.integration_config) : empty_file('NO_INTEGRATION_CONFIG')
+            params.integration_config ? file(params.integration_config) : empty_file('NO_INTEGRATION_CONFIG'),
+            // Frozen production artifact of the learned context model and typed explicit context
+            // (both staged; naming a model makes the learned stage mandatory for the task).
+            params.learned_model ? file(params.learned_model) : empty_file('NO_LEARNED_MODEL'),
+            params.external_context ? file(params.external_context) : empty_file('NO_EXTERNAL_CONTEXT')
         )
 
         // Optional self-contained HTML browser (always emitted when

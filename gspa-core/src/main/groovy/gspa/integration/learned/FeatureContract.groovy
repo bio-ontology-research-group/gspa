@@ -30,7 +30,7 @@ import java.security.MessageDigest
  */
 class FeatureContract {
 
-    static final String CANDIDATE_ID = 'gspa.context-features/1'
+    static final String CANDIDATE_ID = 'gspa.context-features/2'
     static final String LOCUS_GROUP_ID = 'gspa.locus-group-features/1'
 
     /** Evidence (correlation) groups that carry functional sequence evidence. */
@@ -173,6 +173,8 @@ class FeatureContract {
         add('cohort.frac_with_context', FeatureGroup.CONTEXT_COHORT, 'fraction of those where the function is also supported by neighbourhood context')
         add('cohort.n_genomes_incomplete', FeatureGroup.CONTEXT_COHORT, 'supplied count of cohort genomes with incomplete assembly (absence uninformative)')
 
+        CohortFeatureColumns.declare(add, FeatureGroup.CONTEXT_COHORT)
+
         add('asm.available', FeatureGroup.ASSEMBLY, '1 if the genome, the protein\'s contig sequence and valid CDS coordinates are available; the four asm.* values below are 0 otherwise')
         add('asm.log_contig_length', FeatureGroup.ASSEMBLY, 'log(1 + length) of the protein\'s contig')
         add('asm.log_distance_to_contig_end', FeatureGroup.ASSEMBLY, 'log(1 + bp from the CDS to the nearest contig end); small = truncation risk')
@@ -186,6 +188,8 @@ class FeatureContract {
             '1 if the tested objective itself required the candidate, so its FBA values were NOT used as evidence')
         add('fba.n_conditions', FeatureGroup.FBA_CONDITIONAL, 'log(1 + number of media/objective conditions tested)')
         add('fba.required_fraction', FeatureGroup.FBA_CONDITIONAL, 'fraction of tested conditions in which the candidate\'s reaction carried flux (conditional on those conditions)')
+        add('fba.optional_fraction_available', FeatureGroup.FBA_CONDITIONAL, '1 if the share of tested conditions with optional (non-required) flux was reported')
+        add('fba.optional_fraction', FeatureGroup.FBA_CONDITIONAL, 'fraction of tested conditions in which the reaction could carry flux but was not required (conditional on those conditions; 0 if unavailable)')
         add('fba.knockout_growth_effect', FeatureGroup.FBA_CONDITIONAL, 'supplied relative growth change on knockout (conditional; sign preserved)')
 
         new FeatureContract(CANDIDATE_ID, f)

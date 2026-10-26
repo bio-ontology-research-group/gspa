@@ -1,6 +1,6 @@
 {
-    "id": "gspa.context-features/1",
-    "fingerprint": "08e9490a5ec6e60981e5c296ac7e815417d86eaa7dd020d65985b0da27f28316",
+    "id": "gspa.context-features/2",
+    "fingerprint": "7106d884d3225a04724ef589ca15a99c4ced7ea7864e3677f0c7c82be0f1a7e2",
     "features": [
         {
             "name": "fn.type_ec",
@@ -428,6 +428,351 @@
             "description": "supplied count of cohort genomes with incomplete assembly (absence uninformative)"
         },
         {
+            "name": "cohort.w.available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if a joint (phylogeny-weighted, background-matched) cohort analysis supplied features for this candidate"
+        },
+        {
+            "name": "cohort.w.states_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'states' feature group (fracSupported) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.support_raw_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'support_raw' feature group (supportFractionRaw) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.interval_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'interval' feature group (supportFractionLo90) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.unknown_sens_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'unknown_sens' feature group (supportUnknownAsNegative) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.bg_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'bg' feature group (bgRate) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.complementary_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'complementary' feature group (complementarity) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.perm_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'perm' feature group (permP) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.multicopy_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'multicopy' feature group (multicopyFraction) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.organism_rxn_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'organism_rxn' feature group (peerReactionInOrganismFraction) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.local_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'local' feature group (localAnchorCount) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.local_enrich_available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if the 'local_enrich' feature group (localEnrichmentLog) was computed for this candidate; its values are 0 otherwise"
+        },
+        {
+            "name": "cohort.w.insufficient_peers",
+            "group": "CONTEXT_COHORT",
+            "description": "peers exist but none was informative (effective N is 0)"
+        },
+        {
+            "name": "cohort.w.adjusted_available",
+            "group": "CONTEXT_COHORT",
+            "description": "clade/strain-adjusted outputs exist (metadata known); 0 = intervals and permutation p are withheld"
+        },
+        {
+            "name": "cohort.w.layout_available",
+            "group": "CONTEXT_COHORT",
+            "description": "gene layout of the candidate genome was available to the cohort engine"
+        },
+        {
+            "name": "cohort.w.ec_direct",
+            "group": "CONTEXT_COHORT",
+            "description": "the candidate arose from a direct EC -> reaction expansion (no EC -> GO step)"
+        },
+        {
+            "name": "cohort.w.family_known",
+            "group": "CONTEXT_COHORT",
+            "description": "the protein has a family assignment"
+        },
+        {
+            "name": "cohort.w.role_evidence_missing",
+            "group": "CONTEXT_COHORT",
+            "description": "no protein-intrinsic role evidence at all (missing, NOT non-catalytic)"
+        },
+        {
+            "name": "cohort.w.effective_n",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + effective N): summed weight of informative independent clade/strain units"
+        },
+        {
+            "name": "cohort.w.phylogeny_known_fraction",
+            "group": "CONTEXT_COHORT",
+            "description": "share of the peer set with real clade/strain metadata (1 = all known; unknown never counts as independent)"
+        },
+        {
+            "name": "cohort.w.n_peer_genomes",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + peer genomes after holding out the target and its non-independent relatives)"
+        },
+        {
+            "name": "cohort.w.coverage",
+            "group": "CONTEXT_COHORT",
+            "description": "share of peer clades that were informative"
+        },
+        {
+            "name": "cohort.w.support_fraction",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted Jeffreys-smoothed share of informative peers whose family member sits in a context-positive window"
+        },
+        {
+            "name": "cohort.w.peer_organism_set_known_fraction",
+            "group": "CONTEXT_COHORT",
+            "description": "share of peers with a known organism-specific reaction set"
+        },
+        {
+            "name": "cohort.w.membership_weight",
+            "group": "CONTEXT_COHORT",
+            "description": "soft family membership weight of the candidate protein"
+        },
+        {
+            "name": "cohort.w.n_family_alternatives",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + further family assignments of the protein); paralog/subfamily ambiguity"
+        },
+        {
+            "name": "cohort.w.n_reaction_alternatives",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + further reaction hypotheses of the protein); alternatives are reported, not summed"
+        },
+        {
+            "name": "cohort.w.ec_reaction_count",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + reactions the supporting EC call maps to); 0 when the candidate did not come from a direct EC call"
+        },
+        {
+            "name": "cohort.w.frac_supported",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted share of peers: family member in a context-positive window [group states]"
+        },
+        {
+            "name": "cohort.w.frac_negative",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted share of peers: family present, fully observed windows lack the signature [group states]"
+        },
+        {
+            "name": "cohort.w.frac_unknown_context",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted share of peers: family present but the window is cut or of unknown extent [group states]"
+        },
+        {
+            "name": "cohort.w.frac_true_absent",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted share of peers where absence is certified (complete assembly AND all-protein family search) [group states]"
+        },
+        {
+            "name": "cohort.w.frac_unobserved_absent",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted share of peers with no member but absence NOT certified (unknown, not absence) [group states]"
+        },
+        {
+            "name": "cohort.w.frac_pathway_without_family",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted share of certified-absent peers that carry the pathway elsewhere [group states]"
+        },
+        {
+            "name": "cohort.w.support_fraction_raw",
+            "group": "CONTEXT_COHORT",
+            "description": "unsmoothed weighted support fraction among informative peers [group support_raw]"
+        },
+        {
+            "name": "cohort.w.support_unknown_as_negative",
+            "group": "CONTEXT_COHORT",
+            "description": "support fraction if unknown-context windows were negative [group unknown_sens]"
+        },
+        {
+            "name": "cohort.w.support_unknown_as_support",
+            "group": "CONTEXT_COHORT",
+            "description": "support fraction if unknown-context windows were support [group unknown_sens]"
+        },
+        {
+            "name": "cohort.w.support_fraction_lo90",
+            "group": "CONTEXT_COHORT",
+            "description": "approximate 90% lower bound on the support fraction (only with clade metadata) [group interval]"
+        },
+        {
+            "name": "cohort.w.support_fraction_hi90",
+            "group": "CONTEXT_COHORT",
+            "description": "approximate 90% upper bound on the support fraction (only with clade metadata) [group interval]"
+        },
+        {
+            "name": "cohort.w.bg_rate",
+            "group": "CONTEXT_COHORT",
+            "description": "rate of the signature in matched same-genome background windows (never total genome presence) [group bg]"
+        },
+        {
+            "name": "cohort.w.bg_windows",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + matched background windows) [group bg]"
+        },
+        {
+            "name": "cohort.w.enrichment_log",
+            "group": "CONTEXT_COHORT",
+            "description": "log ratio of support to matched background [group bg]"
+        },
+        {
+            "name": "cohort.w.support_minus_bg",
+            "group": "CONTEXT_COHORT",
+            "description": "support fraction minus matched background rate [group bg]"
+        },
+        {
+            "name": "cohort.w.complementarity",
+            "group": "CONTEXT_COHORT",
+            "description": "joint minus mean single coverage of the reaction signature across independent lineages [group complementary]"
+        },
+        {
+            "name": "cohort.w.complementary_unannotated",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted share of signature reactions with no confident baseline candidate in a peer; UNANNOTATED label only, never evidence of loss [group complementary]"
+        },
+        {
+            "name": "cohort.w.joint_coverage",
+            "group": "CONTEXT_COHORT",
+            "description": "share of signature reactions jointly covered by independent units next to the family [group complementary]"
+        },
+        {
+            "name": "cohort.w.perm_p",
+            "group": "CONTEXT_COHORT",
+            "description": "add-one permutation p of the support statistic against matched windows (only with clade metadata) [group perm]"
+        },
+        {
+            "name": "cohort.w.perm_excess",
+            "group": "CONTEXT_COHORT",
+            "description": "observed minus permutation-null mean of the support statistic [group perm]"
+        },
+        {
+            "name": "cohort.w.multicopy_fraction",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted share of informative peers with several family members (only with certified family search) [group multicopy]"
+        },
+        {
+            "name": "cohort.w.peer_reaction_in_organism_fraction",
+            "group": "CONTEXT_COHORT",
+            "description": "weighted share of peers whose own plausible reaction set contains the reaction [group organism_rxn]"
+        },
+        {
+            "name": "cohort.w.local_anchor_weight",
+            "group": "CONTEXT_COHORT",
+            "description": "sum of hop-decayed baseline confidences of anchor reactions in the candidate window [group local]"
+        },
+        {
+            "name": "cohort.w.local_anchor_count",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + distinct anchor reactions in the candidate window) [group local]"
+        },
+        {
+            "name": "cohort.w.local_anchor_curated",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + anchors linked through curated interaction edges) [group local]"
+        },
+        {
+            "name": "cohort.w.local_anchor_upstream",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + upstream anchors, respecting reaction direction) [group local]"
+        },
+        {
+            "name": "cohort.w.local_anchor_downstream",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + downstream anchors, respecting reaction direction) [group local]"
+        },
+        {
+            "name": "cohort.w.local_context_positive",
+            "group": "CONTEXT_COHORT",
+            "description": "candidate window is context-positive (enough anchors) [group local]"
+        },
+        {
+            "name": "cohort.w.local_window_truncated",
+            "group": "CONTEXT_COHORT",
+            "description": "candidate window is cut by a known contig end [group local]"
+        },
+        {
+            "name": "cohort.w.local_window_unknown",
+            "group": "CONTEXT_COHORT",
+            "description": "candidate window extent is unknown [group local]"
+        },
+        {
+            "name": "cohort.w.local_enrichment_log",
+            "group": "CONTEXT_COHORT",
+            "description": "log ratio of the window signature to matched same-genome windows [group local_enrich]"
+        },
+        {
+            "name": "cohort.w.role_evidence.catalytic",
+            "group": "CONTEXT_COHORT",
+            "description": "raw protein-intrinsic CATALYTIC evidence in [0,1] (0 if not reported)"
+        },
+        {
+            "name": "cohort.w.role_evidence.catalytic_reported",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if raw CATALYTIC evidence was reported for this protein"
+        },
+        {
+            "name": "cohort.w.role_evidence.accessory",
+            "group": "CONTEXT_COHORT",
+            "description": "raw protein-intrinsic ACCESSORY evidence in [0,1] (0 if not reported)"
+        },
+        {
+            "name": "cohort.w.role_evidence.accessory_reported",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if raw ACCESSORY evidence was reported for this protein"
+        },
+        {
+            "name": "cohort.w.role_evidence.transporter",
+            "group": "CONTEXT_COHORT",
+            "description": "raw protein-intrinsic TRANSPORTER evidence in [0,1] (0 if not reported)"
+        },
+        {
+            "name": "cohort.w.role_evidence.transporter_reported",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if raw TRANSPORTER evidence was reported for this protein"
+        },
+        {
+            "name": "cohort.w.role_evidence.regulator",
+            "group": "CONTEXT_COHORT",
+            "description": "raw protein-intrinsic REGULATOR evidence in [0,1] (0 if not reported)"
+        },
+        {
+            "name": "cohort.w.role_evidence.regulator_reported",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if raw REGULATOR evidence was reported for this protein"
+        },
+        {
+            "name": "cohort.w.role_evidence.complex_subunit",
+            "group": "CONTEXT_COHORT",
+            "description": "raw protein-intrinsic COMPLEX_SUBUNIT evidence in [0,1] (0 if not reported)"
+        },
+        {
+            "name": "cohort.w.role_evidence.complex_subunit_reported",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if raw COMPLEX_SUBUNIT evidence was reported for this protein"
+        },
+        {
             "name": "asm.available",
             "group": "ASSEMBLY",
             "description": "1 if the genome, the protein's contig sequence and valid CDS coordinates are available; the four asm.* values below are 0 otherwise"
@@ -481,6 +826,16 @@
             "name": "fba.required_fraction",
             "group": "FBA_CONDITIONAL",
             "description": "fraction of tested conditions in which the candidate's reaction carried flux (conditional on those conditions)"
+        },
+        {
+            "name": "fba.optional_fraction_available",
+            "group": "FBA_CONDITIONAL",
+            "description": "1 if the share of tested conditions with optional (non-required) flux was reported"
+        },
+        {
+            "name": "fba.optional_fraction",
+            "group": "FBA_CONDITIONAL",
+            "description": "fraction of tested conditions in which the reaction could carry flux but was not required (conditional on those conditions; 0 if unavailable)"
         },
         {
             "name": "fba.knockout_growth_effect",

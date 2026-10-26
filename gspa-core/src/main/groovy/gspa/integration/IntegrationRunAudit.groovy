@@ -7,9 +7,19 @@ import com.fasterxml.jackson.databind.ObjectMapper
  * predictions, never biological correctness; accuracy needs independent labels.
  */
 class IntegrationRunAudit {
-    static final List<String> STAGES = ['reference_preparation', 'evidence_integration', 'dark_matter',
+    static final List<String> STAGES = ['reference_preparation', 'cohort_context', 'evidence_integration', 'dark_matter',
         'reaction_context', 'cross_genome', 'symbolic_enforcement', 'metabolic_refinement',
-        'agent_completion'].asImmutable()
+        'agent_completion', 'metabolic_experiments', 'learned_integration', 'feature_export'].asImmutable()
+
+    /** Meaning of the two baselines a ledger can mention; never to be confused. */
+    static final Map<String, String> BASELINE_DEFINITIONS = [
+        stage0_raw_max_score : 'Stage 0: strongest raw predictor score per function; no priors, no combination, no posterior.',
+        legacy_prior_baseline: 'Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The ' +
+                               'baseline_candidates and final_changes of this ledger are measured from it.',
+    ].asImmutable()
+
+    /** legacy_heuristic until the learned stage has replaced the scores; then learned. */
+    String scoringMode = 'legacy_heuristic'
 
     String genomeId
     final Map<String, Map> stages = new LinkedHashMap<>()
@@ -57,6 +67,36 @@ class IntegrationRunAudit {
     }
 
     /**
+     * Run a stage that produces context or artifacts but no annotation set (cohort inference,
+     * metabolic experiments, feature export): skipped when disabled, failed with the reason when it
+     * is unavailable or throws, executed otherwise. The closure may return a map of facts that is
+     * attached to the stage's record.
+     */
+    void runSupport(String name, boolean enabled, String unavailable, Closure operation) {
+        if (!stages.containsKey(name)) throw new IllegalArgumentException("Unknown integration stage: ${name}")
+        Map record = stages[name]
+        if (record.status != 'not_run') throw new IllegalStateException("Stage already recorded: ${name}")
+        if (!enabled) {
+            record.status = 'skipped'
+            record.reason = 'disabled'
+            return
+        }
+        long start = System.nanoTime()
+        try {
+            if (unavailable) throw new IllegalStateException("${name}: ${unavailable}")
+            Object facts = operation.call()
+            record.status = 'executed'
+            if (facts instanceof Map) record.putAll(facts as Map)
+        } catch (Exception ex) {
+            record.status = 'failed'
+            record.reason = "${ex.class.simpleName}: ${ex.message}".toString()
+            throw ex
+        } finally {
+            record.elapsed_seconds = (System.nanoTime() - start) / 1e9d
+        }
+    }
+
+    /**
      * Run a stage that produces no annotation set (configuration validation, reference loading):
      * recorded executed, or failed with the reason when it throws.
      */
@@ -90,8 +130,14 @@ class IntegrationRunAudit {
     }
 
     Map report() {
-        [schema_version: 1, genome_id: genomeId,
+        [schema_version: 2, genome_id: genomeId,
          interpretation: 'Prediction changes are not measurements of accuracy.',
+         scoring_mode: scoringMode,
+         scoring_mode_note: scoringMode == 'learned' ?
+             'Annotation scores were replaced by a frozen learned model (see learned_integration).' :
+             'Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores.',
+         baseline_definitions: BASELINE_DEFINITIONS,
+         changes_measured_from: 'legacy_prior_baseline',
          stages: new ArrayList<>(stages.values()),
          baseline_candidates: baseline.size(), final_candidates: current.size(),
          final_changes: changes(baseline, current)]

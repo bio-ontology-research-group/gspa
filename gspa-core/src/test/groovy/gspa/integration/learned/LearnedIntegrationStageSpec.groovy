@@ -75,6 +75,36 @@ class LearnedIntegrationStageSpec extends Specification {
         thrown(IllegalArgumentException)
     }
 
+    // ------------------------------------------------------------------ structural constraints
+
+    def "a GO term forbidden for the organism is never added or rescored: the enforcement result stands"() {
+        given:
+        def forbiddenKey = 'p1|GO|GO:0000001'
+        def allowedKey = 'p2|GO|GO:0000002'
+        def removedKey = 'p3|GO|GO:0000001'
+        def claims = [claim('p1', 'GO:0000001', 0.9, 'diamond', EvidenceType.SEQUENCE_SIMILARITY, AnnotationType.GO, [:], 'MF'),
+                      claim('p2', 'GO:0000002', 0.9, 'diamond', EvidenceType.SEQUENCE_SIMILARITY, AnnotationType.GO, [:], 'MF'),
+                      claim('p3', 'GO:0000001', 0.9, 'diamond', EvidenceType.SEQUENCE_SIMILARITY, AnnotationType.GO, [:], 'MF')]
+        retain(forbiddenKey, 0.2d, claims.take(1))      // kept by enforcement at a low score (e.g. downranked)
+        retain(allowedKey, 0.6d, claims.subList(1, 2))
+        // removedKey was removed by the enforcement stage: it is not retained, and the claim is still in the raw evidence
+        def before = result.provenance[forbiddenKey].finalProbability
+
+        when: 'the learned stage would otherwise rescore the forbidden key and add the removed one back'
+        def report = stage(standardModel(), [forbiddenGoTerms: ['GO:0000001'] as Set, addUnretainedClaims: true]).run(claims, state, result)
+
+        then: 'the forbidden term keeps its enforced score and the removed one is not reintroduced'
+        result.provenance[forbiddenKey].finalProbability == before
+        !result.provenance.containsKey(removedKey)
+        report.outcomes.find { it.functionKey == forbiddenKey }.action == 'scored_only'
+        report.outcomes.find { it.functionKey == removedKey }.action == 'scored_only'
+        report.outcomes.find { it.functionKey == forbiddenKey }.reason.contains('structural taxon constraints')
+        and: 'an allowed term is rescored as usual'
+        report.outcomes.find { it.functionKey == allowedKey }.action == 'rescored'
+        and: 'the forbidden candidates are still scored and reported for audit'
+        report.candidates.any { it.functionKey == forbiddenKey }
+    }
+
     // ------------------------------------------------------------------ replacement, not addition
 
     def "the learned probability replaces the old posterior; the old value is audit only"() {

@@ -174,7 +174,15 @@ class LearnedIntegrationStage {
             }
             LearnedStageReport.CandidateRecord proj = projected(type, parts[2], state, recs)
             boolean claimed = !prepared.claimsOf(key).isEmpty()
-            if (proj == null) {
+            if (type == AnnotationType.GO && settings.forbiddenGoTerms?.contains(parts[2])) {
+                if (proj != null) {
+                    proj.projected = true
+                    out.projectedRole = proj.role
+                    out.learnedProbability = proj.probability
+                }
+                out.action = 'scored_only'
+                out.reason = 'forbidden by the structural taxon constraints for this organism: left as the enforcement stage decided'
+            } else if (proj == null) {
                 out.action = prior != null ? 'removed_no_projection' : 'scored_only'
                 out.reason = "no role of this function is its legacy projection (roles: ${roleProbs.keySet().join(',')}); role scores retained in the report"
             } else {

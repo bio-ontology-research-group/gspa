@@ -144,7 +144,7 @@ class FeatureExporter {
         m.layout = f.get('ctx.layout.available') > 0
         m.gap = f.get('ctx.gap.available') > 0
         m.neighborhood = f.get('ctx.nbr.available') > 0
-        m.cohort = f.get('cohort.available') > 0
+        m.cohort = f.get('cohort.available') > 0 || f.get(CohortFeatureColumns.AVAILABLE) > 0
         m.assembly = f.get('asm.available') > 0
         m.assembly_completeness = f.get('asm.completeness_available') > 0
         m.fba = f.get('fba.available') > 0

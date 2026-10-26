@@ -459,7 +459,7 @@ class FixtureConsistency(unittest.TestCase):
     def test_contract_json_in_resources_is_consistent(self):
         c = json.loads(CONTRACT_PATH.read_text())
         self.assertEqual(c["fingerprint"], tcm.contract_fingerprint(c["id"], c["features"]))
-        self.assertEqual(c["id"], "gspa.context-features/1")
+        self.assertEqual(c["id"], "gspa.context-features/2")
 
 
 class ExportedRowsAgreeWithTrainer(unittest.TestCase):

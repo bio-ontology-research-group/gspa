@@ -357,6 +357,22 @@ Stage order, priors and scoring live in the JVM workflow only. `service/test_int
 checks the schema and these bindings by text; the pipeline has not been parsed or run by Nextflow in
 this environment.
 
+Learned stage and feature export in `INTEGRATE` (typed keys of the same workflow config, staged like
+`--theta_file`):
+
+| Parameter | Effect |
+| --- | --- |
+| `--learned_model <json>` | Frozen production artifact of the learned context model. The learned stage runs **last** over the raw claims and its calibrated probabilities replace the heuristic scores. The task **fails** if the file is missing, a mechanism-test artifact or built for another feature contract; naming a model never degrades to the heuristic scoring. Without it the ledger says `scoring_mode: legacy_heuristic`. No trained model is shipped. |
+| `--external_context <json>` | Typed `ExternalContext` (neighborhood, fba, roles, predictorStatus, assemblyCompleteness); strict, unknown keys fail the task. |
+| `--feature_export` | Write production feature rows (`candidate_features.jsonl`, `feature_contract.json`, `export_manifest.json`) to `<outdir>/<sample>/<sample>_features/`. Needs no model; writes no labels, splits or groups. |
+
+Behavior-only learned settings (`learnedStage`, `learnedRetractBelow`, `learnedAddUnretainedClaims`) go in
+the `--integration_config` overlay. **Cohort inference is not run by this pipeline**: it is one joint
+inference over all genomes (stage-0 baseline of every genome, genome layouts, orthogroups, clade and
+assembly metadata) and has no per-sample Nextflow process yet. Run `gspa integrate --batch-manifest ...
+--cohort ...` outside Nextflow, or extend the pipeline with a batch process; requesting `cohortInference`
+in the overlay without the staged reaction graph fails the task rather than being ignored.
+
 `--run_integrate` is opt-in. Without it, the pipeline behaves exactly
 as before — produces raw per-tool outputs + the merged TSV, leaving
 integration to a manual `gspa-cli integrate` invocation.

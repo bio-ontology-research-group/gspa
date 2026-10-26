@@ -12,8 +12,17 @@ import gspa.integration.IntegrationWriter
 import gspa.integration.IterativeRefiner
 import gspa.integration.OuterIterativeRefiner
 import gspa.integration.PriorEngine
+import gspa.integration.contextbridge.CohortContextBuilder
+import gspa.integration.contextbridge.CohortStage
+import gspa.integration.contextbridge.ExternalContextSupport
 import gspa.integration.crossgenome.CrossGenomeReScorer
 import gspa.integration.crossgenome.ReactionLocusCatalog
+import gspa.integration.learned.ExternalContext
+import gspa.integration.learned.FeatureExporter
+import gspa.integration.learned.LearnedContextModel
+import gspa.integration.learned.LearnedIntegrationStage
+import gspa.integration.learned.LearnedStageReport
+import gspa.integration.learned.LearnedStageSettings
 import gspa.integration.prior.AnatomicalPrior
 import gspa.integration.prior.CoherencePrior
 import gspa.integration.prior.ConsistencyPrior
@@ -59,6 +68,22 @@ class IntegrationWorkflow {
         List<EvidenceClaim> claims
         int maxIter
         long elapsedNanos
+        /** Typed context the learned stage and the feature export consumed (null: none was available). */
+        ExternalContext context
+        /** Cohort-context report of this genome (null: cohort inference was not requested). */
+        Map<String, Object> cohortReport
+        /** Learned-stage audit (null: the stage was not requested, scores are the legacy heuristic ones). */
+        LearnedStageReport learned
+        /** Summary of the feature export (null: not requested). */
+        FeatureExporter.Summary featureExport
+    }
+
+    /** Everything the stages produce besides the annotation set. */
+    private static class Outputs {
+        ExternalContext context
+        Map<String, Object> cohortReport
+        LearnedStageReport learned
+        FeatureExporter.Summary featureExport
     }
 
     final IntegrationWorkflowConfig c
@@ -68,6 +93,14 @@ class IntegrationWorkflow {
     Closure<Void> info = { String m -> }
     /** Ledger of the most recent {@link #run}, available even when the run threw. */
     IntegrationRunAudit lastAudit
+    /**
+     * Result of the batch cohort pass (one joint inference over every genome). When set, this genome's
+     * held-out features are taken from it instead of running a cohort of its own.
+     */
+    CohortContextBuilder.Result batchCohort
+
+    private ExternalContext explicitContext
+    private LearnedContextModel learnedModel
 
     IntegrationWorkflow(IntegrationWorkflowConfig config) {
         this.c = config
@@ -76,6 +109,14 @@ class IntegrationWorkflow {
     def propertyMissing(String name) { c.getProperty(name) }
 
     private void println(Object message) { info.call(String.valueOf(message)) }
+
+    /**
+     * Artifact loader and stage factory. The defaults are the production ones: they refuse missing,
+     * mechanism-test and contract-mismatched artifacts. Only test sources replace them (to run a
+     * hand-set mechanism model through the route); no main-source code does.
+     */
+    Closure<LearnedContextModel> learnedModelLoader = { File file -> LearnedContextModel.load(file) }
+    Closure<LearnedIntegrationStage> learnedStageFactory = { LearnedStageSettings s -> new LearnedIntegrationStage(s) }
 
     static IntegrationState loadSharedReferences(IntegrationWorkflowConfig config, Closure<Void> info = { String m -> }) {
         config.validate()
@@ -111,6 +152,9 @@ class IntegrationWorkflow {
                         "darkMatterMode '${c.darkMatterMode}' modifies a genome's proteins; run it through annotate (a claims-only run keeps suggestions on the separate channel)")
                 }
                 theta = c.resolveTheta()
+                // A requested model or context that cannot be loaded fails here, before any stage runs.
+                explicitContext = c.externalContextFile != null ? ExternalContextSupport.read(c.externalContextFile) : null
+                learnedModel = c.learnedRequested() ? learnedModelLoader.call(c.learnedModelFile) : null
 
                 // --- Build combiner with learned reliability ---
                 Map<EvidenceType, Double> reliability = EvidenceCombiner.defaultReliability()
@@ -147,8 +191,9 @@ class IntegrationWorkflow {
         }
 
         IntegratedAnnotationSet integrated
+        Outputs outputs = new Outputs()
         try {
-            integrated = runStages(audit, claims, state, refiner, theta)
+            integrated = runStages(audit, claims, state, refiner, theta, genomeId, outputs)
         } finally {
             writeLedger(c, audit)
         }
@@ -162,33 +207,44 @@ class IntegrationWorkflow {
             }
         }
         new Result(genomeId: genomeId, integrated: integrated, state: state, audit: audit, claims: claims,
-            maxIter: refiner.maxIter, elapsedNanos: System.nanoTime() - started)
+            maxIter: refiner.maxIter, elapsedNanos: System.nanoTime() - started, context: outputs.context,
+            cohortReport: outputs.cohortReport, learned: outputs.learned, featureExport: outputs.featureExport)
     }
 
     /**
      * Ledger for a run that failed before it could start (batch-wide reference loading): every
      * requested stage not run, preparation failed with the reason; same file name as a normal run.
      */
-    static IntegrationRunAudit recordPreparationFailure(IntegrationWorkflowConfig config, Throwable cause) {
+    static IntegrationRunAudit recordPreparationFailure(IntegrationWorkflowConfig config, Throwable cause,
+                                                        String stage = 'reference_preparation') {
         clearStaleArtifacts(config)
         def audit = new IntegrationRunAudit(config.genomeId)
         try {
-            audit.runPreparation('reference_preparation') { throw cause }
+            if (stage == 'reference_preparation') audit.runPreparation('reference_preparation') { throw cause }
+            else {
+                // A batch-wide stage (the cohort pass) failed after the references loaded.
+                audit.runPreparation('reference_preparation') { }
+                audit.runSupport(stage, true, null) { throw cause }
+            }
         } catch (Throwable expected) { /* recorded in the ledger */ }
-        audit.abandon(requestedStages(config), 'not run: reference_preparation failed')
+        audit.abandon(requestedStages(config), "not run: ${stage} failed".toString())
         writeLedger(config, audit)
         audit
     }
 
     /** Stage names this configuration asks for, in execution order. */
     static List<String> requestedStages(IntegrationWorkflowConfig c) {
-        List<String> stages = ['evidence_integration']
+        List<String> stages = []
+        if (c.cohortRequested()) stages << 'cohort_context'
+        stages << 'evidence_integration'
         if (c.darkMatter) stages << 'dark_matter'
         if (c.rlcSuggester) stages << 'reaction_context'
         if (c.rxnLocusCatalogFile != null) stages << 'cross_genome'
         if (c.enforceStage2) stages << 'symbolic_enforcement'
         if (c.enableFbaRefiner) stages << 'metabolic_refinement'
         if (c.enableAgent) stages << 'agent_completion'
+        if (c.learnedRequested()) stages << 'learned_integration'
+        if (c.featureExportDir != null) stages << 'feature_export'
         stages
     }
 
@@ -202,7 +258,10 @@ class IntegrationWorkflow {
                             c.anomaliesOut, c.agentResolutionsOut]
         if (c.outFile != null) {
             files << c.outFile
-            ['.stages.json', '.rescues.tsv', '.modules.json'].each { files << new File(c.outFile.absolutePath + it) }
+            ['.stages.json', '.rescues.tsv', '.modules.json', '.learned.json', '.cohort.json'].each { files << new File(c.outFile.absolutePath + it) }
+        }
+        if (c.featureExportDir != null) {
+            [FeatureExporter.ROWS_FILE, FeatureExporter.CONTRACT_FILE, FeatureExporter.MANIFEST_FILE].each { files << new File(c.featureExportDir, it) }
         }
         files.findAll { it != null }.each { it.delete() }
     }
@@ -221,11 +280,48 @@ class IntegrationWorkflow {
             IntegrationArtifacts.writeProvenanceJson(result.integrated, c.provenanceFile)
             println "  Provenance: ${c.provenanceFile}"
         }
+        if (result.cohortReport != null) {
+            File f = new File(c.outFile.absolutePath + '.cohort.json')
+            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(f, result.cohortReport)
+            println "  Cohort context report: ${f}"
+        }
+        if (result.learned != null) {
+            File f = IntegrationArtifacts.writeLearnedReport(result.learned, new File(c.outFile.absolutePath + '.learned.json'))
+            println "  Learned stage report: ${f} (${result.learned})"
+        }
     }
 
     private IntegratedAnnotationSet runStages(IntegrationRunAudit audit, List<EvidenceClaim> claims,
-                                              IntegrationState state, IterativeRefiner refiner, Map theta) {
+                                              IntegrationState state, IterativeRefiner refiner, Map theta,
+                                              String genomeId, Outputs outputs) {
         IntegratedAnnotationSet integrated
+
+        // --- Cohort context from the pre-cohort Stage 0 snapshot (raw claims only, independent of all later stages) ---
+        ExternalContext cohortContext = null
+        audit.runSupport('cohort_context', c.cohortRequested(),
+            state.reactionGraph == null ? 'reaction graph is required (--reaction-graph)' : null) {
+            CohortContextBuilder.Result cohort = batchCohort
+            String route = 'batch'
+            if (cohort == null) {
+                route = 'single_run'
+                def stage = new CohortStage()
+                stage.info = info
+                cohort = stage.run(c, [new CohortStage.Target(genomeId: genomeId, claims: { claims }, layout: state.genomeLayout,
+                    orthogroupsFile: c.orthogroupsFile)], state.reactionGraph)
+            }
+            cohortContext = cohort.contexts.get(genomeId)
+            outputs.cohortReport = cohort.reports.get(genomeId)
+            if (outputs.cohortReport == null) {
+                throw new IllegalStateException("the cohort result has no report for genome '${genomeId}' (is it a target of the batch?)")
+            }
+            Map report = outputs.cohortReport
+            [route: route, baseline: 'stage0_raw_max_score', baseline_snapshot_id: cohort.snapshotId,
+             cohort_genomes: (report.cohort_genomes as List).size(), n_peer_genomes: report.n_peer_genomes,
+             keys_with_cohort_features: (report.candidates as Map).keys_with_cohort_features,
+             no_peers: report.no_peers,
+             consumed_by: [c.learnedRequested() ? 'learned_integration' : null, c.featureExportDir != null ? 'feature_export' : null].findAll { it }]
+        }
+        outputs.context = ExternalContextSupport.merge(explicitContext, cohortContext)
 
         // --- Refine ---
         integrated = audit.runStage('evidence_integration', true, null, null, state) {
@@ -345,6 +441,46 @@ class IntegrationWorkflow {
             def sum = runner.run(state, integrated, anomFile, resFile)
             println "  Stage 3 Agent (${c.agentModel}, guardrail=${!c.agentNoGuardrail}): anomalies=${sum.anomaliesExtracted}, proposed=${sum.resolutionsProposed}, promoted=${sum.promoted}, relaxed=${sum.relaxed}, demoted=${sum.demoted}, abstained=${sum.abstained}, rejected_by_guardrail=${sum.rejectedByGuardrail} (${String.format(Locale.ROOT, '%.2f', sum.elapsedSeconds)}s)"
             return integrated
+        }
+
+        // --- Learned stage: LAST, over the ORIGINAL raw claims. Its calibrated probabilities replace the
+        //     heuristic scores of every key it decides (never added to them). ---
+        integrated = audit.runStage('learned_integration', c.learnedRequested(), null, integrated, state) {
+            Set<String> forbidden = state.satConsistencyChecker?.organismTaxon ?
+                (state.satConsistencyChecker.forbiddenConstrainedTerms ?: ([] as Set)) : ([] as Set)
+            def settings = new LearnedStageSettings(model: learnedModel, retractBelow: c.learnedRetractBelow,
+                addUnretainedClaims: c.learnedAddUnretainedClaims, forbiddenGoTerms: new LinkedHashSet<String>(forbidden))
+            LearnedStageReport report = learnedStageFactory.call(settings).run(claims, state, integrated, outputs.context)
+            outputs.learned = report
+            audit.scoringMode = 'learned'
+            audit.note('learned_integration', [
+                model_id: report.modelId, model_sha256: report.modelSha256, model_kind: report.modelKind,
+                contract_id: report.contractId, contract_fingerprint: report.contractFingerprint,
+                candidates_scored: report.candidates.size(), rescored: report.count('rescored'), added: report.count('added'),
+                retracted: report.count('retracted'), removed_no_projection: report.count('removed_no_projection'),
+                scored_only: report.count('scored_only'), pinned_floors_cleared: report.pinnedFloorsCleared.size(),
+                retract_below: c.learnedRetractBelow, add_unretained_claims: c.learnedAddUnretainedClaims,
+                structurally_forbidden_go_terms: forbidden.size(),
+                context_supplied: outputs.context != null,
+                replaced_baseline: 'legacy_prior_baseline',
+                note: 'Scores were replaced by the frozen model, not added to the heuristic posterior. A display threshold, if any, is advisory.'])
+            println "  Learned stage (${report.modelId}, sha256 ${report.modelSha256.take(12)}): ${report}"
+            return integrated
+        }
+        if (!c.learnedRequested()) {
+            audit.note('learned_integration', [reason: 'learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them'])
+        }
+
+        // --- Feature export: production rows from the same extractor, with or without a model; never any labels ---
+        audit.runSupport('feature_export', c.featureExportDir != null, null) {
+            def exporter = new FeatureExporter(learnedModel)
+            FeatureExporter.Summary s = exporter.exportToDirectory(claims, state, outputs.context, c.featureExportDir, integrated, true, genomeId)
+            outputs.featureExport = s
+            println "  Feature export: ${s.rows} rows over ${s.functions} functions -> ${c.featureExportDir}"
+            [rows: s.rows, functions: s.functions, rows_with_sequence_evidence: s.rowsWithSequenceEvidence,
+             rows_sha256: s.rowsSha256, contract_id: s.contractId, contract_fingerprint: s.contractFingerprint,
+             model_sha256: s.modelSha256, labels_included: false, directory: c.featureExportDir.path,
+             note: 'Rows carry no label, split or group; join independently curated truth and declared splits by candidate_key.']
         }
         integrated
     }

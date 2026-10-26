@@ -363,6 +363,90 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--fba-medium'],
             description = 'Medium name for StoichiometricLocusRefiner (default: minimal).')
     String fbaMedium = 'minimal'
+    @Option(names = ['--genome-id'],
+            description = 'Identifier of the genome in a single run (cohort metadata and reports are keyed by it). Default: genome.')
+    String genomeId = 'genome'
+
+    // --- Learned stage, feature export and typed context ---
+
+    @Option(names = ['--learned-model'],
+            description = 'Frozen production artifact of the learned context model. Runs the learned stage LAST over the original raw ' +
+                          'claims; its calibrated probabilities REPLACE the heuristic scores. Fails if the file is missing, not a ' +
+                          'production artifact, or built for another feature contract. Without it the scoring is the legacy heuristic ' +
+                          '(marked as such in the ledger); no trained model is bundled.')
+    File learnedModelFile
+
+    @Option(names = ['--learned-stage'],
+            description = 'Explicitly request the learned stage; fails without --learned-model instead of silently using the heuristic scoring.')
+    boolean learnedStage = false
+
+    @Option(names = ['--learned-retract-below'],
+            description = 'Remove a candidate whose learned probability is below this value (0..1). Default: never retract.')
+    Double learnedRetractBelow
+
+    @Option(names = ['--learned-add-unretained-claims'],
+            description = 'Also add claimed functions that the preceding stages did not retain (use when the learned stage replaces evidence combination).')
+    boolean learnedAddUnretainedClaims = false
+
+    @Option(names = ['--feature-export-dir'],
+            description = 'Write production feature rows (candidate_features.jsonl, feature_contract.json, export_manifest.json) here, one ' +
+                          'sub-directory per genome in a batch. Needs no model; writes no labels, splits or groups.')
+    File featureExportDir
+
+    @Option(names = ['--external-context'],
+            description = 'Strict JSON of typed ExternalContext (neighborhood, fba, roles, predictorStatus, assemblyCompleteness, candidates). ' +
+                          'Keys also supplied by cohort inference are an error.')
+    File externalContextFile
+
+    // --- Joint cohort inference ---
+
+    @Option(names = ['--cohort'],
+            description = 'Compute cohort recurrence context. In --batch-manifest mode this is a two-pass run: stage-0 raw baseline for ALL genomes, ' +
+                          'one joint inference, then each genome is scored with its held-out features. Needs --reaction-graph (EC -> reaction).')
+    boolean cohortInference = false
+
+    @Option(names = ['--cohort-manifest'],
+            description = 'TSV of reference genomes that are peers only: genome_id, claims_path[, layout_path[, orthogroups_path]]. Implies --cohort.')
+    File cohortManifestFile
+
+    @Option(names = ['--cohort-metadata'],
+            description = 'Cohort metadata JSON (clade, strainCluster, assemblyStatus, familySearchComplete, contigs, tree). Absent facts are ' +
+                          'treated as unknown, never as independent. Implies --cohort.')
+    File cohortMetadataFile
+
+    @Option(names = ['--cohort-orthogroups'],
+            description = 'Genome-aware orthogroup TSV: genome_id, protein_id, orthogroup_id[, subfamily_id, weight]. Without it each genome\'s ' +
+                          '--orthogroups file (protein_id, cluster_id; cohort-wide cluster ids) is used.')
+    File cohortOrthogroupsFile
+
+    @Option(names = ['--cohort-role-evidence'],
+            description = 'TSV of protein-intrinsic raw role scores: genome_id, protein_id, source, role, score.')
+    File cohortRoleEvidenceFile
+
+    @Option(names = ['--cohort-interaction-edges'],
+            description = 'TSV of independent curated reaction-reaction edges: reaction_a, reaction_b, source[, directed].')
+    File cohortInteractionEdgesFile
+
+    @Option(names = ['--cohort-reaction-directions'],
+            description = 'TSV of reaction directions: reaction_id, direction (FORWARD, REVERSE, REVERSIBLE, UNKNOWN).')
+    File cohortReactionDirectionsFile
+
+    @Option(names = ['--cohort-holdout'],
+            description = 'Which genomes are removed from the peers of a target: GENOME, STRAIN_CLUSTER (default) or CLADE.')
+    String cohortHoldout
+
+    @Option(names = ['--cohort-half-width-bp'], description = 'Half-width of the neighbourhood window (default 5000).')
+    Integer cohortHalfWidthBp
+
+    @Option(names = ['--cohort-permutations'], description = 'Permutations of the matched-window null (default 200; 0 disables).')
+    Integer cohortPermutations
+
+    @Option(names = ['--cohort-seed'], description = 'Seed of the permutation null (default 20261026).')
+    Long cohortSeed
+
+    @Option(names = ['--cohort-tree-cut-distance'], description = 'Clade cut height on a supplied tree (default 0.05).')
+    Double cohortTreeCutDistance
+
     @Option(names = ['--workflow-config'],
             description = 'JSON file with the full typed integration workflow configuration ' +
                           '(IntegrationWorkflowConfig). Precedence: --preset defaults < file < explicit command-line options. ' +
@@ -430,6 +514,20 @@ class IntegrateCommand implements Runnable {
             def value = field.get(this)
             config[field.name] = value instanceof List ? new ArrayList(value) : value
         }
+        // Cohort engine settings are nested in the workflow config; a value given on the command line wins.
+        if (cohortHoldout != null) {
+            try { config.cohortConfig.holdout = gspa.integration.cohort.HoldoutLevel.valueOf(cohortHoldout.toUpperCase(Locale.ROOT)) }
+            catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("--cohort-holdout must be one of GENOME, STRAIN_CLUSTER, CLADE (got '${cohortHoldout}')")
+            }
+            if (config.cohortConfig.holdout == gspa.integration.cohort.HoldoutLevel.NONE) {
+                throw new IllegalArgumentException("--cohort-holdout NONE would let a genome score itself; use GENOME, STRAIN_CLUSTER or CLADE")
+            }
+        }
+        if (cohortHalfWidthBp != null) config.cohortConfig.halfWidthBp = cohortHalfWidthBp
+        if (cohortPermutations != null) config.cohortConfig.permutations = cohortPermutations
+        if (cohortSeed != null) config.cohortConfig.seed = cohortSeed
+        if (cohortTreeCutDistance != null) config.cohortConfig.treeCutDistance = cohortTreeCutDistance
         if (workflowOverlayFile != null) {
             config.applyOverlay(new ObjectMapper().readValue(workflowOverlayFile, Map))
         }
@@ -437,7 +535,8 @@ class IntegrateCommand implements Runnable {
     }
 
     /** Runs the shared workflow for one genome and exports its artifacts. */
-    private Map runGenome(IntegrationWorkflowConfig config, IntegrationState sharedReferences) {
+    private Map runGenome(IntegrationWorkflowConfig config, IntegrationState sharedReferences,
+                          gspa.integration.contextbridge.CohortContextBuilder.Result cohort = null) {
         println "GSPA integrate"
         println "  Claims: ${config.claimsFile}"
         println "  Theta:  ${config.thetaFile ?: '(defaults)'}"
@@ -449,6 +548,7 @@ class IntegrateCommand implements Runnable {
 
         def workflow = new IntegrationWorkflow(config)
         workflow.sharedReferences = sharedReferences
+        workflow.batchCohort = cohort
         workflow.info = { String m -> println m } as Closure<Void>
         IntegrationWorkflow.Result result = workflow.run(claims)
         workflow.writeArtifacts(result)
@@ -507,6 +607,12 @@ class IntegrateCommand implements Runnable {
             }
         }
         if (row.length > 7 && row[7].trim() && row[7].trim() != '-') worker.maxIter = Integer.parseInt(row[7].trim())
+        if (worker.featureExportDir != null) {
+            if (worker.genomeId.contains('/') || worker.genomeId.contains('\\') || worker.genomeId in ['.', '..']) {
+                throw new IllegalArgumentException("genome id '${worker.genomeId}' cannot name a feature-export sub-directory")
+            }
+            worker.featureExportDir = new File(base.featureExportDir, worker.genomeId)
+        }
         // Every worker gets separate files, even when outputs share a directory.
         [provenanceFile: '.provenance.json', suggestionsOut: '.suggestions.tsv',
          featuresOut: '.features.tsv', enforcementActionsOut: '.enforcement.tsv',
@@ -548,11 +654,28 @@ class IntegrateCommand implements Runnable {
             throw new IllegalStateException("Batch not run: shared reference loading failed (${e.message}); " +
                 "${rows.size()} genome ledgers record the failure", e)
         }
+        // Pass 1 of a cohort run: the stage-0 raw baseline of EVERY genome, then ONE joint inference.
+        // Each genome's learned stage afterwards consumes only its own held-out records.
+        gspa.integration.contextbridge.CohortContextBuilder.Result cohort = null
+        if (base.cohortRequested()) {
+            try {
+                def stage = new gspa.integration.contextbridge.CohortStage()
+                stage.info = { String m -> println m } as Closure<Void>
+                cohort = stage.run(base, gspa.integration.contextbridge.CohortStage.targetsOf(rows.collect { workerConfig(base, it) }),
+                    sharedState.reactionGraph)
+            } catch (Exception e) {
+                rows.each { String[] row ->
+                    IntegrationWorkflow.recordPreparationFailure(workerConfig(base, row), e, 'cohort_context')
+                }
+                throw new IllegalStateException("Batch not run: the cohort pass failed (${e.message}); " +
+                    "${rows.size()} genome ledgers record the failure", e)
+            }
+        }
         def pool = java.util.concurrent.Executors.newFixedThreadPool(Math.max(1, batchThreads))
         List<Map> stats = []
         try {
             List<java.util.concurrent.Future<Map>> futures = rows.collect { String[] row ->
-                pool.submit({ -> runGenome(workerConfig(base, row), sharedState) } as java.util.concurrent.Callable<Map>)
+                pool.submit({ -> runGenome(workerConfig(base, row), sharedState, cohort) } as java.util.concurrent.Callable<Map>)
             }
             futures.each { stats << it.get() }
         } finally {

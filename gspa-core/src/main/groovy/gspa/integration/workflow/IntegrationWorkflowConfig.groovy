@@ -106,6 +106,34 @@ class IntegrationWorkflowConfig {
     String agentApiBase
     boolean agentNoGuardrail = false
 
+    // --- Learned stage, feature export and typed context ---
+    /** Frozen production artifact of the learned context model. Naming it requests the learned stage. */
+    File learnedModelFile
+    /** Explicitly request the learned stage; without learnedModelFile this fails (no model is bundled, nothing is defaulted). */
+    boolean learnedStage = false
+    /** Remove a candidate whose learned probability is below this value (0..1); null never retracts. */
+    Double learnedRetractBelow
+    /** Add claimed functions that the preceding stages did not retain (use when the learned stage replaces evidence combination). */
+    boolean learnedAddUnretainedClaims = false
+    /** Export production feature rows (candidate_features.jsonl + contract + manifest) here; per genome in a batch. No model needed, no labels written. */
+    File featureExportDir
+    /** Strict JSON of typed ExternalContext (neighborhood, fba, roles, predictorStatus, assemblyCompleteness, candidates). */
+    File externalContextFile
+
+    // --- Joint cohort inference (two-pass in a batch) ---
+    /** Request cohort context even without any of the cohort files below. */
+    boolean cohortInference = false
+    /** TSV of reference genomes that are peers only (genome_id, claims_path[, layout_path[, orthogroups_path]]). */
+    File cohortManifestFile
+    /** Cohort metadata JSON (clade, strain cluster, assembly, familySearchComplete, contigs, tree). Absent = unknown, treated conservatively. */
+    File cohortMetadataFile
+    /** Genome-aware orthogroup/subfamily TSV; without it each genome's --orthogroups file is used (cluster ids cohort-wide). */
+    File cohortOrthogroupsFile
+    File cohortRoleEvidenceFile
+    File cohortInteractionEdgesFile
+    File cohortReactionDirectionsFile
+    gspa.integration.cohort.CohortConfig cohortConfig = new gspa.integration.cohort.CohortConfig()
+
     // --- Per-genome artifacts ---
     File outFile
     File provenanceFile
@@ -177,7 +205,10 @@ class IntegrationWorkflowConfig {
             diffusionMetsFile: diffusionMetsFile, reactionEcAliasesFile: reactionEcAliasesFile,
             operonsFile: operonsFile, gapsFile: gapsFile, orthogroupsFile: orthogroupsFile,
             clusterConsensusFile: clusterConsensusFile, genomeLayoutFile: genomeLayoutFile,
-            thetaFile: thetaFile]
+            thetaFile: thetaFile, learnedModelFile: learnedModelFile, externalContextFile: externalContextFile,
+            cohortManifestFile: cohortManifestFile, cohortMetadataFile: cohortMetadataFile,
+            cohortOrthogroupsFile: cohortOrthogroupsFile, cohortRoleEvidenceFile: cohortRoleEvidenceFile,
+            cohortInteractionEdgesFile: cohortInteractionEdgesFile, cohortReactionDirectionsFile: cohortReactionDirectionsFile]
         named.each { String name, File f ->
             if (f != null && !f.isFile()) throw new IllegalArgumentException("${name} does not exist: ${f}")
         }
@@ -187,7 +218,40 @@ class IntegrationWorkflowConfig {
         if (pathwaysFile != null && ec2goFile == null) {
             throw new IllegalArgumentException("pathwaysFile requires ec2goFile (EC to GO mapping)")
         }
+        if (learnedStage && learnedModelFile == null) {
+            throw new IllegalArgumentException("the learned stage was requested without a model (--learned-model): no trained model " +
+                "is bundled and nothing is defaulted; omit the learned stage to run the legacy heuristic scoring")
+        }
+        if (learnedRetractBelow != null && !(learnedRetractBelow >= 0d && learnedRetractBelow <= 1d)) {
+            throw new IllegalArgumentException("learnedRetractBelow must be in [0,1]")
+        }
+        if (learnedModelFile == null && (learnedRetractBelow != null || learnedAddUnretainedClaims)) {
+            throw new IllegalArgumentException("learnedRetractBelow / learnedAddUnretainedClaims only apply to the learned stage (--learned-model)")
+        }
+        cohortConfig.validate()
+        if (cohortConfig.holdout == gspa.integration.cohort.HoldoutLevel.NONE) {
+            throw new IllegalArgumentException("cohortConfig.holdout NONE would let a genome contribute to its own cohort features; use GENOME, STRAIN_CLUSTER or CLADE")
+        }
+        if (cohortRequested()) {
+            if (reactionGraphFile == null || reactionEcAliasesFile == null) {
+                throw new IllegalArgumentException("cohort inference expands EC calls directly to reactions and needs both --reaction-graph " +
+                    "and --reaction-ec-aliases (the EC bindings; the graph alone binds no EC to a reaction)")
+            }
+        } else if (cohortConfig.toMap() != new gspa.integration.cohort.CohortConfig().toMap()) {
+            throw new IllegalArgumentException("cohortConfig was changed but cohort inference is not requested")
+        }
     }
+
+    /** Cohort context is requested explicitly, or implied by naming any cohort input. */
+    @JsonIgnore
+    boolean cohortRequested() {
+        cohortInference || cohortManifestFile != null || cohortMetadataFile != null || cohortOrthogroupsFile != null ||
+            cohortRoleEvidenceFile != null || cohortInteractionEdgesFile != null || cohortReactionDirectionsFile != null
+    }
+
+    /** The learned stage is requested by naming a model or asking for it. */
+    @JsonIgnore
+    boolean learnedRequested() { learnedStage || learnedModelFile != null }
 
     /**
      * The workflow configuration an annotation run implies: the explicit
