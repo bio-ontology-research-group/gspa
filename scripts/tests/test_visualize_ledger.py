@@ -114,7 +114,7 @@ def ledger_fixture(enzyme_loss=False):
 
 
 class LedgerTest(unittest.TestCase):
-    def render(self, ledger='default', obo=OBO, suggestions=None, tamper=None, products=PRODUCTS, **fixture):
+    def render(self, ledger='default', obo=OBO, suggestions=None, tamper=None, products=PRODUCTS, learned=None, **fixture):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             for sub in ('prokka_out', 'gspa_out'): (root / sub).mkdir()
@@ -129,6 +129,8 @@ class LedgerTest(unittest.TestCase):
                 {'function_key': f'{p}|{t}|{f}', 'supporting_sources': ['diamond'], 'prior_contributions': {'operon': .4}} for p, t, f, a, v in rows]))
             if ledger == 'default': ledger = ledger_fixture(**fixture)
             if ledger is not None: (root / 'gspa_out/integrated.tsv.stages.json').write_text(json.dumps(ledger))
+            if learned is not None:
+                (root / 'gspa_out/integrated.tsv.learned.json').write_text(learned if isinstance(learned, str) else json.dumps(learned))
             if suggestions: (root / 'gspa_out/suggestions.tsv').write_text(suggestions)
             (root / 'go.obo').write_text(obo)
             (root / 'ec2go').write_text('! none\n')

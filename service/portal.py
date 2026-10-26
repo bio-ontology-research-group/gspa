@@ -135,6 +135,7 @@ def artifact(job_id: str, artifact: str):
              'fluxes': folder / 'gspa_out/metabolism/reactions.tsv',
              'analyses': folder / 'gspa_out/analyses.json',
              'ledger': folder / 'gspa_out' / ledger_summary.LEDGER_NAME,
+             'learned': folder / 'gspa_out' / ledger_summary.LEARNED_NAME,
              'annotation': folder / 'sample.gff3', 'sequence': folder / 'sample.fna'}
     if artifact not in paths or not paths[artifact].is_file():
         raise HTTPException(404, 'This result is not available yet.')

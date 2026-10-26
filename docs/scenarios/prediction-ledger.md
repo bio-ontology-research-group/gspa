@@ -23,7 +23,48 @@ also downloads the filtered rows as TSV and the complete ledger as JSON.
 - **Missing ledger.** A legacy run without `integrated.tsv.stages.json` shows *unavailable*. It is
   not shown as zero changes or as success. An unreadable ledger is treated the same way.
 
+- **Baseline, schema 2.** A schema-2 ledger names its baseline in `changes_measured_from` (today
+  `legacy_prior_baseline`: the posterior after the heuristic evidence combiner and priors) and explains it in
+  `baseline_definitions`. The browser shows that definition. For a schema-1 ledger it falls back to
+  `baseline_kind`, then to evidence integration. Stage 0 (raw maximum score) is a different baseline and is
+  never mixed with it.
+
+## Scoring mode and the learned stage
+
+`scoring_mode` in the ledger says which scoring produced the scores: **Learned** (a frozen model replaced the
+heuristic posterior), **Legacy heuristic** (no trained model), or **Unknown** (an older ledger that does not
+say). The tab and the portal job status show the mode, and for learned runs the model id and hash. A
+calibrated model probability is not an accuracy statement; the tab says so next to the mode.
+
+The learned stage also writes `integrated.tsv.learned.json`. The tab reads it as follows.
+
+- **Marginals, locus and null stay separate.** Each (protein, function, role) candidate has its own
+  calibrated marginal. The *locus* probability is conditional within a function/role group, and
+  *no candidate correct* is a separate outcome. The browser never sums marginals or derives an assignment
+  from them. A `null` locus or no-candidate value is shown as unavailable with the report's reason
+  (for example the locus layer was disabled), not as zero.
+- **Roles.** Accessory, transporter, regulator, complex-subunit and unspecified roles are shown as roles,
+  marked "not an enzyme assignment". Rejected or below-threshold roles are listed as *scored only*; this is
+  not an improvement claim.
+- **Join.** Candidates join to proteins and to the final table by the canonical function key
+  `protein|TYPE|function` (the protein id may itself contain `|`). Proteins that are not in this genome are
+  listed as *not joined* and cannot be opened.
+- **Trace.** The protein detail panel lists the learned candidates per function with their outcome
+  (`rescored`, `added`, `retracted`, `removed_no_projection`, `scored_only`), every supporting source, and
+  whether the role was projected into the final role-free annotation. A learned candidate that never reached
+  the final EC table is still shown.
+- **Trust.** The report's model hash must equal the one in the stage ledger. A mismatch, or a report beside a
+  ledger that does not say the learned stage ran, is shown as **not trusted** and the scores are withheld. If
+  the ledger records no hash the report is shown as *unverified*. A missing or unreadable report is
+  **unavailable, not zero**.
+- The candidate table is filterable by role, projection and text, and paginated (100 per page).
+
 ## Stage status
+
+Stages appear in the order the ledger lists them (the run order), with readable labels such as *Cohort
+context (two-pass)*, *Learned integration (frozen model)*, *Feature export* and *Metabolic experiments*.
+Stages that prepare inputs or write side files (reference preparation, cohort context, metabolic
+experiments, feature export) are marked "does not edit predictions" rather than shown with zero counts.
 
 Each stage is `executed`, `skipped` (with a reason such as `disabled`), `failed` (with the error),
 or `not_run`. Only executed stages report change counts. A skipped, failed or not-run stage shows its
@@ -72,14 +113,18 @@ integrated scores of 0.5 or higher.
   **not-assigned** probability. Candidates join to proteins by the FASTA sequence ID. IDs that are not
   genome proteins are listed as not joined, not matched by approximate name. A suggestion that did not
   report a not-assigned probability shows "not reported", not zero.
-- **Role scores** are shown when the ledger or suggestion table carries role metadata. The browser does
-  not compute them.
+- **Role scores** are shown when the ledger, a suggestion table or the learned-stage report carries role
+  metadata. The browser does not compute them.
 - **Placeholder product names** such as "hypothetical protein" are not functional evidence and are
   noted as such in the trace.
 - **Metabolic assumptions.** When the FBA stage ran, its medium and biomass template appear beside it.
   Feasibility is conditional on those assumptions; it is not an observation.
 
 ## Tests
+
+`scripts/tests/test_visualize_learned.py` builds schema-2 ledger and learned-report fixtures in the shape of
+the JVM writers (a contract test reads the Groovy sources so the field names cannot drift), and
+`scripts/tests/test_visualize_browser.py` drives them in real Chromium (`GSPA_BROWSER_TESTS=1`, Playwright).
 
 `scripts/tests/test_visualize_ledger.py` and `service/test_ledger_summary.py` use small genomes with
 interpretable functions: unchanged enzymes beside non-enzyme changes, a catalytic GO term with no

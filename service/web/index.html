@@ -9,7 +9,7 @@
 <div class="eyebrow">Ask what your sequences could do</div>
 <h1>From sequence to<br>biological function.</h1>
 <p class="intro">Which proteins could explain a biological process? Start with an annotated genome or proteome. Find candidate enzymes, pathways and specialised functions, then test metabolic feasibility and inspect the evidence.</p>
-<section id="job" class="card" hidden aria-labelledby="job-title"><div class="status" id="status"></div><h2 id="job-title">Your analysis</h2><div aria-live="polite"><p id="stage"></p><p id="summary"></p><p id="job-error" class="error"></p><p id="ledger" class="hint"></p></div><p class="hint">Bookmark this page to return to this job. Anyone with its link can access the results. Results expire seven days after completion.</p><div class="actions"><a id="browser" class="button" hidden>Explore predictions →</a><a id="download" hidden>Download all results</a><a id="model" hidden>Download metabolic model (SBML)</a><a id="fluxes" hidden>Reaction fluxes</a><a id="ledger-file" hidden>Prediction ledger (JSON)</a><a id="log" hidden>Run log</a></div></section>
+<section id="job" class="card" hidden aria-labelledby="job-title"><div class="status" id="status"></div><h2 id="job-title">Your analysis</h2><div aria-live="polite"><p id="stage"></p><p id="summary"></p><p id="job-error" class="error"></p><p id="ledger" class="hint"></p></div><p class="hint">Bookmark this page to return to this job. Anyone with its link can access the results. Results expire seven days after completion.</p><div class="actions"><a id="browser" class="button" hidden>Explore predictions →</a><a id="download" hidden>Download all results</a><a id="model" hidden>Download metabolic model (SBML)</a><a id="fluxes" hidden>Reaction fluxes</a><a id="ledger-file" hidden>Prediction ledger (JSON)</a><a id="learned-file" hidden>Learned-stage report (JSON)</a><a id="log" hidden>Run log</a></div></section>
 <div class="grid"><section class="card" aria-labelledby="upload-title"><h2 id="upload-title">Start with your sequences</h2>
 <form id="upload">
 <div class="field"><label for="kind">What are you uploading?</label><select name="kind" id="kind"><option value="gff3">Annotated genome · GFF3 (recommended)</option><option value="genome">Genome or contigs · nucleotide FASTA</option><option value="proteins">Proteins · amino-acid FASTA</option></select></div>
@@ -30,8 +30,12 @@ function ledgerText(l){
  if(!l)return '';
  if(!l.available)return 'Prediction ledger unavailable: '+(l.reason||'no stage ledger was recorded')+'.';
  const c=l.status_counts,n=l.net;
+ const mode=l.scoring?l.scoring.mode:'unknown',lr=l.learned||{status:'unavailable'};
+ const scoring='Scoring: '+(mode==='learned'?'learned (frozen model':mode==='legacy_heuristic'?'legacy heuristic (no trained model':'unknown (the ledger does not record it')+
+  (mode==='learned'&&lr.status==='available'?' '+(lr.model_id||'unrecorded')+(lr.model_sha256?', sha256 '+lr.model_sha256:''):'')+'). '+
+  (mode==='learned'&&lr.status!=='available'?'Learned-stage report '+(lr.status==='not_trusted'?'not trusted':'unavailable')+': '+(lr.reason||'')+' ':'');
  const stages=['executed','skipped','failed','not_run'].filter(k=>c[k]).map(k=>c[k]+' '+k.replace('_',' ')).join(', ');
- return 'Stages: '+(stages||'none recorded')+'. Between the baseline ('+l.baseline.charAt(0).toLowerCase()+l.baseline.slice(1)+') and the final export, '+n.functions.toLocaleString()+' (protein, function) pairs changed across '+n.proteins.toLocaleString()+' proteins ('+n.by_change.added+' added, '+n.by_change.removed+' removed, '+n.by_change.increased+' increased, '+n.by_change.decreased+' decreased). These are changes to predictions, not measurements of accuracy. Open the Prediction ledger tab for stage details.';
+ return scoring+'Stages: '+(stages||'none recorded')+'. Between the baseline ('+l.baseline.charAt(0).toLowerCase()+l.baseline.slice(1)+') and the final export, '+n.functions.toLocaleString()+' (protein, function) pairs changed across '+n.proteins.toLocaleString()+' proteins ('+n.by_change.added+' added, '+n.by_change.removed+' removed, '+n.by_change.increased+' increased, '+n.by_change.decreased+' decreased). These are changes to predictions, not measurements of accuracy. Open the Prediction ledger tab for stage details.';
 }
 // LEDGER-TEXT-END
 async function watch(id){
@@ -42,6 +46,7 @@ async function watch(id){
  for(const kind of ['browser','download','log']){el(kind).href='api/jobs/'+id+'/'+kind;el(kind).hidden=kind==='log'?d.status==='queued':d.status!=='complete';}
  el('ledger').textContent=d.status==='complete'?ledgerText(d.ledger):'';
  el('ledger-file').href='api/jobs/'+id+'/ledger';el('ledger-file').hidden=d.status!=='complete'||!d.ledger?.available;
+ el('learned-file').href='api/jobs/'+id+'/learned';el('learned-file').hidden=d.status!=='complete'||d.ledger?.learned?.status!=='available';
  for(const kind of ['model','fluxes']){el(kind).href='api/jobs/'+id+'/'+kind;el(kind).hidden=d.status!=='complete'||d.analysis_results?.metabolism?.status!=='complete';}
  if(d.status==='queued'||d.status==='running')timer=setTimeout(()=>watch(id),3000);
  }catch(e){el('job-error').textContent=e.message;el('stage').textContent='Could not refresh status. Retrying…';timer=setTimeout(()=>watch(id),15000);}

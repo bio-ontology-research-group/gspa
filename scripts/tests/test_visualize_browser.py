@@ -63,3 +63,92 @@ class PredictionLedgerBrowserTests(unittest.TestCase):
         self.assertIn("not zero", text)
         self.assertEqual(self.page.locator("#lg-count").count(), 0)
         self.assertFalse(self.errors)
+
+
+@unittest.skipUnless(os.environ.get("GSPA_BROWSER_TESTS") == "1", "opt-in Chromium test")
+class LearnedReportBrowserTests(PredictionLedgerBrowserTests):
+    """Learned-stage report in a real browser, built from writer-shaped schema-2 artifacts."""
+
+    def open_learned(self, ledger=None, learned="default", protein=None):
+        from scripts.tests import test_visualize_learned as learned_fixtures
+        self.open_ledger(ledger=ledger or learned_fixtures.v2_ledger(),
+                         learned=learned_fixtures.learned_report() if learned == "default" else learned)
+
+    def test_scoring_mode_model_and_stage_order_are_visible(self):
+        self.open_learned()
+        banner = self.page.locator("#lg-scoring").inner_text()
+        self.assertIn("Scoring mode: Learned", banner)
+        self.assertIn("deepgo-test-1", banner)
+        self.assertIn("not a measurement of accuracy", banner)
+        stages = [row.locator("td").first.inner_text() for row in self.page.locator("#ledger-body table").first.locator("tbody tr").all()]
+        self.assertEqual(stages[:4], ["Reference preparation", "Cohort context (two-pass)", "Evidence integration", "Dark-matter suggestions"])
+        self.assertEqual(stages[-2:], ["Learned integration (frozen model)", "Feature export"])
+        self.assertIn("does not edit predictions", self.page.locator("#ledger-body").inner_text())
+        self.assertFalse(self.errors)
+
+    def test_legacy_and_unknown_modes_are_distinct_and_make_no_model_claim(self):
+        from scripts.tests import test_visualize_learned as learned_fixtures
+        self.open_learned(ledger=learned_fixtures.v2_ledger(mode="legacy_heuristic"), learned=None)
+        self.assertIn("Scoring mode: Legacy heuristic", self.page.locator("#lg-scoring").inner_text())
+        self.assertIn("Not applicable", self.page.locator("#ledger-body").inner_text())
+        self.open_ledger()
+        self.assertIn("Scoring mode: Unknown", self.page.locator("#lg-scoring").inner_text())
+        self.assertFalse(self.errors)
+
+    def test_roles_marginals_and_null_locus_are_shown_separately(self):
+        self.open_learned()
+        self.assertEqual(self.page.locator("#ln-rows tr").count(), 5)
+        self.page.locator("#ln-role").select_option("TRANSPORTER")
+        row = self.page.locator("#ln-rows tr")
+        self.assertEqual(row.count(), 1)
+        text = row.inner_text()
+        self.assertIn("0.800", text)
+        self.assertIn("unavailable: locus layer disabled for this run", text)
+        self.assertIn("not an enzyme assignment", text)
+        self.assertIn("not projected", text)
+        self.page.locator("#ln-role").select_option("")
+        self.page.locator("#ln-search").fill("p_hexokinase")
+        text = self.page.locator("#ln-rows").inner_text()
+        self.assertIn("0.900", text)
+        self.assertIn("0.300", text)
+        self.assertNotIn("1.200", text)          # marginals are not summed
+        self.assertFalse(self.errors)
+
+    def test_unjoined_proteins_and_unprojected_candidates_are_visible(self):
+        self.open_learned()
+        self.assertIn("Not joined", self.page.locator("#ledger-body").inner_text())
+        self.page.locator("#ln-search").fill("p_ghost")
+        self.assertIn("not joined", self.page.locator("#ln-rows").inner_text())
+        self.assertEqual(self.page.locator("#ln-rows [data-lg-protein]").count(), 0)
+        self.page.locator("#ln-search").fill("")
+        self.page.locator("#ln-proj").select_option("scored")
+        self.assertIn("EC:3.1.1.1", self.page.locator("#ln-rows").inner_text())
+        self.assertFalse(self.errors)
+
+    def test_protein_trace_shows_alternatives_and_all_sources(self):
+        self.open_learned()
+        self.page.locator("#ln-search").fill("p_hexokinase")
+        self.page.locator("#ln-rows [data-lg-protein]").first.click()
+        detail = self.page.locator("#d-ledger").inner_text()
+        self.assertIn("Learned stage", detail)
+        self.assertIn("Catalytic", detail)
+        self.assertIn("Accessory", detail)
+        self.assertIn("diamond, interproscan", detail)
+        self.assertIn("scored only: not projected", detail)
+        self.assertFalse(self.errors)
+
+    def test_hash_mismatch_withholds_scores_and_says_not_trusted(self):
+        from scripts.tests import test_visualize_learned as learned_fixtures
+        self.open_learned(learned=learned_fixtures.learned_report(sha=learned_fixtures.OTHER_SHA))
+        text = self.page.locator("#ledger-body").inner_text()
+        self.assertIn("Not trusted", text)
+        self.assertIn("mismatch", text)
+        self.assertEqual(self.page.locator("#ln-rows").count(), 0)
+        self.assertFalse(self.errors)
+
+    def test_missing_report_is_unavailable_not_zero(self):
+        self.open_learned(learned=None)
+        text = self.page.locator("#ledger-body").inner_text()
+        self.assertIn("Unavailable", text)
+        self.assertIn("not zero", text)
+        self.assertFalse(self.errors)

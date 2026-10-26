@@ -58,6 +58,54 @@ class LedgerSummaryTest(unittest.TestCase):
         self.assertEqual(self.summarize(explicit)['baseline'], 'Sequence-only evidence')
 
 
+SHA = 'a' * 64
+
+
+def learned_ledger(mode='learned', sha=SHA):
+    stages = [{'name': n, 'status': 'executed', 'changes': []} for n in ('reference_preparation', 'cohort_context')]
+    stages += [{'name': 'learned_integration', 'status': 'executed' if mode == 'learned' else 'not_run', 'changes': [],
+                **({'model_sha256': sha} if sha else {})}, {'name': 'feature_export', 'status': 'skipped', 'changes': []}]
+    return {'schema_version': 2, 'scoring_mode': mode, 'changes_measured_from': 'legacy_prior_baseline', 'stages': stages,
+            'baseline_candidates': 1, 'final_candidates': 1, 'final_changes': []}
+
+
+class LearnedSummaryTest(LedgerSummaryTest):
+    def summarize_with(self, ledger, report=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / ledger_summary.LEDGER_NAME).write_text(json.dumps(ledger))
+            if report is not None: (Path(tmp) / ledger_summary.LEARNED_NAME).write_text(report if isinstance(report, str) else json.dumps(report))
+            return ledger_summary.summarize(tmp)
+
+    def report(self, sha=SHA):
+        return {'model': {'id': 'm1', 'sha256': sha}, 'candidates': [], 'outcomes': [], 'counts': {'candidates': 0}}
+
+    def test_stage_order_labels_and_baseline_come_from_the_new_schema(self):
+        out = self.summarize_with(learned_ledger(), self.report())
+        self.assertEqual([s['name'] for s in out['stages']], ['reference_preparation', 'cohort_context', 'learned_integration', 'feature_export'])
+        self.assertEqual(out['stages'][1]['label'], 'Cohort context (two-pass)')
+        self.assertEqual(out['baseline_kind'], 'legacy_prior_baseline')
+        self.assertIn('not a sequence-only baseline', out['baseline'])
+
+    def test_scoring_modes_are_distinct(self):
+        self.assertEqual(self.summarize_with(learned_ledger(), self.report())['scoring']['mode'], 'learned')
+        legacy = self.summarize_with(learned_ledger('legacy_heuristic'))
+        self.assertEqual((legacy['scoring']['mode'], legacy['learned']['status']), ('legacy_heuristic', 'not_applicable'))
+        self.assertEqual(self.summarize(LEDGER)['scoring']['mode'], 'unknown')
+
+    def test_learned_report_availability_identity_and_trust(self):
+        ok = self.summarize_with(learned_ledger(), self.report())['learned']
+        self.assertEqual((ok['status'], ok['model_id'], ok['hash_verified']), ('available', 'm1', True))
+        self.assertEqual(ok['model_sha256'], SHA[:12])
+        missing = self.summarize_with(learned_ledger())['learned']
+        self.assertEqual(missing['status'], 'unavailable')
+        self.assertIn('not zero', missing['reason'])
+        self.assertEqual(self.summarize_with(learned_ledger(), self.report(sha='b' * 64))['learned']['status'], 'not_trusted')
+        self.assertEqual(self.summarize_with(learned_ledger(), 'not json')['learned']['status'], 'unavailable')
+        self.assertEqual(self.summarize_with(learned_ledger('legacy_heuristic'), self.report())['learned']['status'], 'not_trusted')
+        unverified = self.summarize_with(learned_ledger(sha=None), self.report())['learned']
+        self.assertEqual((unverified['status'], unverified['hash_verified']), ('available', False))
+
+
 @unittest.skipUnless(shutil.which('node'), 'Node is required')
 class PortalTextTest(unittest.TestCase):
     def text(self, summary):
@@ -78,6 +126,23 @@ class PortalTextTest(unittest.TestCase):
         self.assertIn('3 (protein, function) pairs changed across 2 proteins', text)
         self.assertIn('not measurements of accuracy', text)
         self.assertNotIn('improved', text.lower())
+
+    def test_text_states_scoring_mode_and_model_without_accuracy_claims(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / ledger_summary.LEDGER_NAME).write_text(json.dumps(learned_ledger()))
+            unavailable = self.text(ledger_summary.summarize(tmp))
+            self.assertIn('Scoring: learned (frozen model)', unavailable)
+            self.assertIn('Learned-stage report unavailable', unavailable)
+            (Path(tmp) / ledger_summary.LEARNED_NAME).write_text(json.dumps({'model': {'id': 'm1', 'sha256': SHA}, 'candidates': []}))
+            text = self.text(ledger_summary.summarize(tmp))
+        self.assertIn('Scoring: learned (frozen model m1, sha256 ' + SHA[:12] + ')', text)
+        self.assertNotIn('accura', text.replace('not measurements of accuracy', ''))
+        legacy = self.text({'available': True, 'baseline': 'X', 'status_counts': {}, 'net': {'functions': 0, 'proteins': 0, 'by_change': {'added': 0, 'removed': 0, 'increased': 0, 'decreased': 0}},
+                            'scoring': {'mode': 'legacy_heuristic'}, 'learned': {'status': 'not_applicable'}})
+        self.assertIn('Scoring: legacy heuristic (no trained model)', legacy)
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / ledger_summary.LEDGER_NAME).write_text(json.dumps(LEDGER))
+            self.assertIn('Scoring: unknown', self.text(ledger_summary.summarize(tmp)))
 
     def test_page_script_parses(self):
         script = re.search(r'<script>(.*)</script>', WEB.read_text(), re.S).group(1)
