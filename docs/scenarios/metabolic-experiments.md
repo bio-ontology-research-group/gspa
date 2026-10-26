@@ -95,7 +95,10 @@ open or close declared exchanges.
 ```
 
 `maintenance` must be explicit (`"none"` is allowed but must be written).
-Hypotheses sharing a `group` are competitors. Genes resolve to reactions through
+Hypotheses sharing a `group` are competitors (declare it only when the candidates really are mutually
+exclusive alternatives; the evidence-guided builder never does, because the same EC on several proteins can be
+co-required subunits or isozymes). A hypothesis with `"perturbation": "reaction"` perturbs exactly its listed
+`reactions`; a gene named beside them is an annotation and is never deleted, even when it is in the GPR. Genes resolve to reactions through
 the SBML GPR (gene-product id or label).
 
 The admissible menu is derived only from these records:
@@ -105,9 +108,14 @@ The admissible menu is derived only from these records:
 | `transport` + `substrate_exchange` + `role` (carbon/nitrogen) | `carbon_source:<ex>` / `nitrogen_source:<ex>` (baseline sources swapped for the candidate) |
 | `bgc` + `product_exchange` | `product:<ex>` |
 | any record with `condition_hint: "oxygen_removal"` | `oxygen_removal` |
+| `model_condition` + `condition_hint: "carbon_swap"`/`"nitrogen_swap"` + `exchange` | `carbon_source:<ex>` / `nitrogen_source:<ex>` (written by the evidence-guided builder from exact model identity; ignored when ordering by evidence) |
 | `condition_hint: "supplement_removal"` + `exchange` | `supplement_removal:<ex>` |
 | each hypothesis | `knockout:<id>` (optionally under its `condition`) |
 | hypothesis with `rescue_exchange` | `ko_rescue:<id>:unrescued` / `:rescued` |
+
+The **baseline** experiment also checks (FVA and a reaction knockout) the hypothesis reactions in the unchanged medium, up to
+`config.max_baseline_focus_reactions` (default 6) and never at the expense of the planned experiments' minimum calls;
+`measurements.focus_reactions_not_checked` lists the rest.
 
 Items that do not resolve to the model go to `menu_rejections`. A hypothesis
 may give candidate genes, model reactions, or both; reactions given directly
@@ -192,7 +200,10 @@ promotion" checks; a result that fails any of them fails the stage and is remove
   added where the run measured it (a raw claim, a context-positive window, a supporting cohort peer), where claim
   metadata names an exact model exchange id, or where `--experiment-evidence` supplies it; nothing is inferred from
   metabolite names. Features come from the per-reaction checks of a condition; a whole-gene knockout is never a flux class
-  or a feature. With nothing admissible the ledger records `no_admissible_experiment` and no solver
+  or a feature. Media are chosen from the template's `condition_menu` only where a hypothesis reaction handles the
+  exchange's metabolite by the same species id or a shared compound cross-reference; the unchanged baseline is a
+  matched control with its own checks. Proteins with the same EC share one hypothesis; a broad EC is reported as
+  ambiguous, not as one reaction's activity. With nothing admissible the ledger records `no_admissible_experiment` and no solver
   runs.
 * **Mapping to `ExternalContext.FbaConditional`**: conditions assessed, share with required flux, share with optional
   flux, mean relative growth change on knockout. A product-formation experiment, and a reaction the refiner added to

@@ -31,6 +31,14 @@ class SbmlModelInfo {
     final Map<String, Set<String>> reactionGenes = new LinkedHashMap<>()
     /** reaction -> refiner row; empty when the model has no refiner table. */
     final Map<String, ReactionRow> table = new LinkedHashMap<>()
+    /** species id -> exact compound cross-references ({@code namespace:id}) from its SBML annotation. */
+    final Map<String, Set<String>> speciesXrefs = new LinkedHashMap<>()
+    /** reaction -> species it consumes or produces. */
+    final Map<String, Set<String>> reactionSpecies = new LinkedHashMap<>()
+
+    /** Namespaces that identify a chemical compound independently of its compartment. */
+    static final Set<String> COMPOUND_NAMESPACES = ['chebi', 'kegg.compound', 'bigg.metabolite', 'metanetx.chemical',
+        'seed.compound', 'hmdb', 'pubchem.compound', 'inchikey'] as Set
 
     static SbmlModelInfo read(File model, File reactionsTsv = null) {
         if (model == null || !model.isFile()) throw new IllegalArgumentException("model file does not exist: ${model}")
@@ -59,6 +67,14 @@ class SbmlModelInfo {
                 if (label) info.geneByLabel.put(label, id)
             }
         }
+        elements(doc, 'species').each { org.w3c.dom.Element sp ->
+            String sid = sp.getAttribute('id')
+            if (!sid) return
+            elements(sp, 'rdf:li').each { org.w3c.dom.Element li ->
+                String x = compoundXref(li.getAttribute('rdf:resource'))
+                if (x != null) info.speciesXrefs.computeIfAbsent(sid) { new TreeSet<String>() } << x
+            }
+        }
         elements(doc, 'reaction').each { org.w3c.dom.Element rx ->
             String rid = rx.getAttribute('id')
             if (!rid) return
@@ -66,6 +82,9 @@ class SbmlModelInfo {
             Set<String> genes = new LinkedHashSet<>()
             elements(rx, 'fbc:geneProductRef').each { org.w3c.dom.Element ref -> genes << ref.getAttribute('fbc:geneProduct') }
             info.reactionGenes.put(rid, genes)
+            Set<String> species = new TreeSet<>()
+            elements(rx, 'speciesReference').each { org.w3c.dom.Element ref -> if (ref.getAttribute('species')) species << ref.getAttribute('species') }
+            info.reactionSpecies.put(rid, species)
             elements(rx, 'rdf:li').each { org.w3c.dom.Element li ->
                 def m = (li.getAttribute('rdf:resource') =~ /(?:ec-code[\/:]|enzyme[\/:]|ec[\/:])(\d+\.\d+\.\d+\.\d+)$/)
                 if (m.find()) info.annotationEcs.computeIfAbsent(rid) { new LinkedHashSet<String>() } << m.group(1)
@@ -115,6 +134,49 @@ class SbmlModelInfo {
         table.values().each { if (it.ecs.contains(ec)) add(it.reactionId, 'reactions_tsv') }
         annotationEcs.each { String rid, Set<String> ecs -> if (ecs.contains(ec)) add(rid, 'sbml_annotation') }
         (graphReactions ?: []).each { add(it, 'reaction_graph_id') }
+        out
+    }
+
+    /**
+     * {@code namespace:id} of a compound identifier URI ({@code identifiers.org/chebi/CHEBI:15422},
+     * {@code urn:miriam:chebi:CHEBI%3A15422}), or null for anything that is not a compound namespace.
+     */
+    static String compoundXref(String uri) {
+        if (!uri) return null
+        java.util.regex.Matcher m = null
+        for (String re : ['identifiers\\.org/([A-Za-z_.]+)[/:](.+)$', '^urn:miriam:([A-Za-z_.]+):(.+)$']) {
+            java.util.regex.Matcher candidate = java.util.regex.Pattern.compile(re).matcher(uri)
+            if (candidate.find()) { m = candidate; break }
+        }
+        if (m == null) return null
+        String ns = m.group(1).toLowerCase(Locale.ROOT)
+        if (!COMPOUND_NAMESPACES.contains(ns)) return null
+        String id = java.net.URLDecoder.decode(m.group(2), 'UTF-8').trim()
+        id ? ns + ':' + id : null
+    }
+
+    /**
+     * Declared exchanges whose metabolite IS one the reaction handles, by exact identity only: the same SBML
+     * species id, or a shared compound cross-reference (so a cytosolic and an extracellular species of one
+     * compound match when both carry the same ChEBI / KEGG / BiGG / SEED id). No name, formula or id-suffix
+     * comparison is made: an exchange of an unannotated metabolite simply does not match. Result: exchange id
+     * to the identity that matched ({@code same_species} or the shared xref).
+     */
+    Map<String, String> exchangesTouching(Collection<String> reactions, Collection<String> exchanges) {
+        Map<String, String> out = new TreeMap<>()
+        Set<String> species = new TreeSet<>()
+        reactions.each { species.addAll(reactionSpecies.getOrDefault(it, [] as Set)) }
+        Set<String> xrefs = new TreeSet<>()
+        species.each { xrefs.addAll(speciesXrefs.getOrDefault(it, [] as Set)) }
+        exchanges.each { String ex ->
+            if (!reactionIds.contains(ex) || reactions.contains(ex)) return
+            Set<String> exSpecies = reactionSpecies.getOrDefault(ex, [] as Set)
+            if (exSpecies.size() != 1) return                // an exchange has exactly one metabolite
+            String sp = exSpecies.first()
+            if (species.contains(sp)) { out.put(ex, 'same_species:' + sp); return }
+            String shared = (speciesXrefs.getOrDefault(sp, [] as Set)).find { xrefs.contains(it) }
+            if (shared != null) out.put(ex, 'xref:' + shared)
+        }
         out
     }
 

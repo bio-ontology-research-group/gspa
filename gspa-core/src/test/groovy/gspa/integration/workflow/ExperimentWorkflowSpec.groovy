@@ -79,13 +79,16 @@ class ExperimentWorkflowSpec extends Specification {
         s.status == 'executed'
         s.mode == 'evidence_guided'
         s.context_source == 'evidence_guided_from_run_candidates'
-        s.context.hypotheses_added == 6
+        s.context.hypotheses_added == 5            // pA and pB map to the same reactions and share one hypothesis
+        s.context.candidates_in_hypotheses == 6
         s.context.candidates_rejected*.function_key == ['pZ|EC|EC:9.9.9.9']
         s.context.candidates_rejected[0].reason.contains('no validated EC to model-reaction mapping')
         s.context.mapping_note.contains('never as a gene knockout')
         s.context.not_derived.contains('metabolite names')
-        and: 'the competing paralogs share a group, every hypothesis names its function key'
-        manifest.context.hypotheses.findAll { it.group == 'EC:1.1.1.1' }.size() == 2
+        and: 'same-EC proteins are NOT declared exclusive competitors: they share one hypothesis and no group'
+        manifest.context.hypotheses.every { !it.containsKey('group') }
+        manifest.context.hypotheses.findAll { it.function_keys }.size() == 1
+        manifest.context.hypotheses.find { it.function_keys }.function_keys == ['pA|EC|EC:1.1.1.1', 'pB|EC|EC:1.1.1.1']
         manifest.context.hypotheses.every { it.function_key && it.id.startsWith('auto:') }
         and: 'evidence this run measured, plus the explicit BGC record resolved to the candidate'
         manifest.context.evidence.findAll { it.type == 'sequence' }.size() == 6
@@ -127,13 +130,14 @@ class ExperimentWorkflowSpec extends Specification {
         def rows = new File(dir, 'export/candidate_features.jsonl').readLines().collect { mapper.readValue(it, Map) }
         def row = { String key -> rows.find { it.function_key == key }.features }
 
-        then: 'acetate catabolism is required in the acetate condition; the deletion effect is that condition\'s own matched knockout'
+        then: 'acetate catabolism is idle in the glucose baseline (matched control) and required in the acetate condition'
         def c = fba['pC|EC|EC:6.2.1.1']
-        c.nConditions == 1
+        c.nConditions == 2
         !c.objectiveRequiresCandidate
-        c.requiredFraction == 1.0d
+        c.requiredFraction == 0.5d
         c.optionalFraction == 0.0d
-        c.knockoutGrowthEffect == null      // growth is abolished: the sidecar reports the knockout as infeasible, so no ratio is invented
+        c.knockoutGrowthEffect == 0.0d      // the idle baseline reaction can be deleted for free; the acetate knockout is infeasible, so no ratio is invented for it
+        s.conditions_by_candidate['pC|EC|EC:6.2.1.1'].collect { it.kind }.toSet() == ['baseline', 'carbon_source'].toSet()
 
         and: 'a reaction that growth needs only because the refiner added it is flagged, not counted as confirmation'
         fba['pE|EC|EC:2.3.3.3'].objectiveRequiresCandidate
@@ -144,12 +148,14 @@ class ExperimentWorkflowSpec extends Specification {
         def conds = s.conditions_by_candidate['pF|EC|EC:4.4.4.4']
         conds.find { it.kind == 'product' }.requires_candidate
         conds.find { it.kind == 'product' }.reason.contains('product objective')
-        fba['pF|EC|EC:4.4.4.4'].objectiveRequiresCandidate
+        s.conditions_by_candidate['pF|EC|EC:4.4.4.4'].find { it.kind == 'baseline' }.requires_candidate == false
+        !fba['pF|EC|EC:4.4.4.4'].objectiveRequiresCandidate     // its usable evidence is the baseline control; the product condition is kept out
+        fba['pF|EC|EC:4.4.4.4'].nConditions == 1
 
         and: 'whole-gene knockouts are kept in the ledger but are never a feature or a flux class'
         s.own_knockouts_not_used_as_features['pC|EC|EC:6.2.1.1'].every { !it.used_in_features }
-        !fba.containsKey('pD|EC|EC:1.9.3.1')        // only its own knockout ran: unavailable, not "optional"
-        row('pD|EC|EC:1.9.3.1')['fba.available'] == 0.0d
+        fba['pD|EC|EC:1.9.3.1'].nConditions == 1      // the knockout is no flux class; its only conditional statement is the baseline control
+        s.conditions_by_candidate['pD|EC|EC:1.9.3.1'].every { it.kind == 'baseline' }
 
         and: 'the feature rows carry the conditional block, with the flag where it applies'
         row('pC|EC|EC:6.2.1.1')['fba.available'] == 1.0d
@@ -220,8 +226,9 @@ class ExperimentWorkflowSpec extends Specification {
         s.mode == 'manifest'
         s.context_source == 'user_manifest'
         s.context.note.contains('not an evidence-guided workflow')
-        and: 'a user manifest with only a whole-gene knockout gives no feature (a gene knockout is not a flux class)'
-        r.context == null || r.context.fba.isEmpty()
+        and: 'the whole-gene knockout is no flux class: the only feature is the unchanged baseline control of the gene\'s reactions'
+        r.context.fba.keySet() == ['pC|EC|EC:6.2.1.1'] as Set
+        s.conditions_by_candidate['pC|EC|EC:6.2.1.1'].every { it.kind == 'baseline' }
         s.own_knockouts_not_used_as_features['pC|EC|EC:6.2.1.1'].every { !it.used_in_features }
     }
 
@@ -307,6 +314,148 @@ json.dump({"schema": "gspa.metabolic_experiments/1", "hashes": {"model_sha256": 
         def e = thrown(IllegalStateException)
         e.message.contains('wrote no output')
         !old.exists()
+    }
+
+    /** pD (present in the model; its gene also controls ACS), pA and pB (same EC), pX (absent from the model, two EC candidates). */
+    private File xrefClaims() { claims([pD: '1.9.3.1', pA: '1.1.1.1', pB: '1.1.1.1']) }
+
+    private File xrefClaimsWithAbsentProtein() {
+        File f = new File(dir, 'claims_xref.jsonl')
+        f.text = [[pD: '1.9.3.1'], [pA: '1.1.1.1'], [pB: '1.1.1.1'], [pX: '6.2.1.1'], [pX: '4.4.4.4']].collect { Map m ->
+            def (p, ec) = [m.keySet().first(), m.values().first()]
+            mapper.writeValueAsString([protein_id: p, function_type: 'EC', function_id: 'EC:' + ec, source: 'diamond',
+                                       evidence_type: 'SEQUENCE_SIMILARITY', raw_score: 0.6d, calibrated_prob: 0.6d])
+        }.join('\n') + '\n'
+        f
+    }
+
+    private Map xrefRun(String template) {
+        def r = run(config(experimentManifestFile: new File(models, 'xref/' + template), experimentMaxExperiments: 12,
+            experimentMaxSolverCalls: 200), xrefClaimsWithAbsentProtein())
+        [r: r, s: stage(r, 'metabolic_experiments'), raw: mapper.readValue(new File(dir, 'g.tsv.experiments/result.json'), Map),
+         manifest: mapper.readValue(new File(dir, 'g.tsv.experiments/manifest.json'), Map)]
+    }
+
+    def 'exact xrefs choose the media; a protein absent from the model is tested as a reaction and its alternative ECs stay separate'() {
+        when:
+        def x = xrefRun('xref_template.json')
+        def s = x.s, raw = x.raw, manifest = x.manifest, fba = x.r.context.fba
+        def exp = { String id -> raw.experiments.find { it.experiment_id == id } }
+        def hyp = { String key -> manifest.context.hypotheses.find { it.function_key == key || (it.function_keys ?: []).contains(key) } }
+
+        then: 'mapping came from the SBML annotation only (no refiner table), the absent protein is reaction-level'
+        hyp('pX|EC|EC:6.2.1.1').perturbation == 'reaction'
+        hyp('pX|EC|EC:6.2.1.1').gene_in_model == false
+        hyp('pX|EC|EC:6.2.1.1').mapping_sources == [ACS: ['sbml_annotation']]
+        hyp('pX|EC|EC:6.2.1.1').id != hyp('pX|EC|EC:4.4.4.4').id         // different reactions, separate hypotheses
+        hyp('pX|EC|EC:4.4.4.4').reactions == ['SEC']
+        exp('knockout:' + hyp('pX|EC|EC:6.2.1.1').id).measurements.knocked_out_reactions == ['ACS']
+        exp('knockout:' + hyp('pX|EC|EC:6.2.1.1').id).unmapped_candidate_genes == []
+
+        and: 'a gene present in the model is an annotation of a reaction hypothesis: deleting RESP leaves ACS (same gene) alone'
+        hyp('pD|EC|EC:1.9.3.1').gene_in_model == true
+        exp('knockout:' + hyp('pD|EC|EC:1.9.3.1').id).measurements.knocked_out_reactions == ['RESP']
+        exp('knockout:' + hyp('pD|EC|EC:1.9.3.1').id).perturbation[hyp('pD|EC|EC:1.9.3.1').id] == 'reaction'
+
+        and: 'conditions come only from exact identity: acetate for ACS and oxygen for RESP, nothing for the unannotated vitamin'
+        def conds = manifest.context.evidence.findAll { it.type == 'model_condition' }
+        conds.collect { [it.hypothesis_id, it.condition_hint, it.exchange] }.toSet() == [
+            [hyp('pX|EC|EC:6.2.1.1').id, 'carbon_swap', 'EX_ac_e'],
+            [hyp('pD|EC|EC:1.9.3.1').id, 'oxygen_removal', 'EX_o2_e']].toSet()
+        conds.every { it.matched_identity.startsWith('xref:chebi:CHEBI:') && it.derived_from.contains('not a name match') }
+        !manifest.context.evidence.any { it.exchange == 'EX_vit_e' }
+        s.context.conditions_from_exact_model_identity == 2
+        s.context.evidence_derived_from_this_run.transport == 0
+
+        and: 'the baseline is a matched control with real checks; the acetate medium shows ACS required, glucose medium shows it idle'
+        s.baseline_focus.status == 'completed'
+        'ACS' in s.baseline_focus.reactions_checked
+        exp('baseline').measurements.focus_checks.find { it.reaction == 'ACS' }.flux_class == 'carries_no_flux_at_growth_floor'
+        exp('carbon_source:EX_ac_e').measurements.focus_checks.find { it.reaction == 'ACS' }.flux_class == 'required_flux'
+        def acs = s.conditions_by_candidate['pX|EC|EC:6.2.1.1']
+        acs*.kind.toSet() == ['baseline', 'carbon_source'].toSet()
+        fba['pX|EC|EC:6.2.1.1'].nConditions == 2
+        fba['pX|EC|EC:6.2.1.1'].requiredFraction == 0.5d
+        !fba['pX|EC|EC:6.2.1.1'].objectiveRequiresCandidate
+        and: 'the oxygen-dependent respiration is required in the baseline and idle once oxygen is removed'
+        s.conditions_by_candidate['pD|EC|EC:1.9.3.1'].find { it.kind == 'baseline' }.flux_class == 'required'
+        s.conditions_by_candidate['pD|EC|EC:1.9.3.1'].find { it.kind == 'oxygen_removal' }.flux_class == 'none'
+        and: 'every statement is model feasibility, never protein-specific confirmation'
+        s.conditions_by_candidate.values().flatten().every { it.attribution.contains('not a measured phenotype') && it.attribution.contains('not confirmation of this protein') }
+        s.interpretation.contains('not observed phenotypes')
+        raw.promotion == 'none'
+    }
+
+    def 'a broad EC and shared EC are ambiguous, never individual activity or exclusive competition'() {
+        when:
+        def x = xrefRun('xref_template.json')
+        def s = x.s, manifest = x.manifest
+        def shared = manifest.context.hypotheses.find { it.function_keys }
+        def a = s.conditions_by_candidate['pA|EC|EC:1.1.1.1']
+        def b = s.conditions_by_candidate['pB|EC|EC:1.1.1.1']
+
+        then: 'one hypothesis, one experiment, both reactions, no group and no competitor list'
+        shared.reactions == ['GLYC1', 'GLYC2']
+        !shared.containsKey('group')
+        shared.same_reaction_candidates.contains('co-required subunits and isozymes')
+        x.raw.experiments.findAll { it.experiment_id == 'knockout:' + shared.id }.size() == 1
+        x.raw.experiments.every { (it.competing_hypotheses ?: []).isEmpty() }
+
+        and: 'the class is the strongest of ALTERNATIVES, flagged ambiguous, with each reaction listed'
+        a.every { it.ambiguous_reaction_mapping && it.ambiguity_note.contains('several reactions') }
+        a.every { it.reactions_mapped == ['GLYC1', 'GLYC2'] }
+        a.find { it.kind == 'baseline' }.reaction_classes.keySet() == ['GLYC1', 'GLYC2'].toSet()
+        a.every { it.growth_ratio == null }              // no deletion effect can be attributed to one reaction
+        and: 'both proteins carry the same records and say who shares them'
+        a.find { it.kind == 'baseline' }.shared_with == ['pB|EC|EC:1.1.1.1']
+        b.find { it.kind == 'baseline' }.shared_with == ['pA|EC|EC:1.1.1.1']
+        def fa = x.r.context.fba['pA|EC|EC:1.1.1.1'], fb = x.r.context.fba['pB|EC|EC:1.1.1.1']
+        [fa.nConditions, fa.requiredFraction, fa.optionalFraction] == [fb.nConditions, fb.requiredFraction, fb.optionalFraction]
+    }
+
+    def 'the same model in an acetate medium asks different questions and gives different answers'() {
+        when:
+        def x = xrefRun('xref_template_acetate.json')
+        def s = x.s
+        def conds = x.manifest.context.evidence.findAll { it.type == 'model_condition' }
+        def glyc = s.conditions_by_candidate['pA|EC|EC:1.1.1.1']
+        def acs = s.conditions_by_candidate['pX|EC|EC:6.2.1.1']
+
+        then: 'glucose is now the alternative; oxygen and acetate are not offered for reactions that do not handle them'
+        conds.collect { [it.condition_hint, it.exchange] }.toSet() == [['carbon_swap', 'EX_glc_e'], ['oxygen_removal', 'EX_o2_e']].toSet()
+        and: 'ACS is required in the acetate baseline (it was idle in the glucose baseline)'
+        acs.find { it.kind == 'baseline' }.flux_class == 'required'
+        and: 'glycolysis is idle in the acetate baseline; on glucose its two alternative reactions are each optional, not required'
+        glyc.find { it.kind == 'baseline' }.flux_class == 'none'
+        glyc.find { it.kind == 'carbon_source' }.flux_class == 'optional'
+        glyc.find { it.kind == 'carbon_source' }.reaction_classes == [GLYC1: 'optional', GLYC2: 'optional']
+    }
+
+    def 'baseline context is honest when no condition changes anything and unavailable when it could not be run'() {
+        given:
+        File tmpl = new File(models, 'xref/xref_nomenu.json')
+        def t = mapper.readValue(new File(models, 'xref/xref_template.json'), Map)
+        t.remove('condition_menu')
+        t.baseline.oxygen_exchange = null
+        tmpl.text = mapper.writeValueAsString(t)
+
+        when:
+        def x = xrefRun('xref_nomenu.json')
+
+        then: 'no condition experiment exists, yet the baseline gives every mapped candidate an honest, matched context'
+        x.manifest.context.evidence.every { it.type != 'model_condition' }
+        x.s.baseline_focus.status == 'completed'
+        x.r.context.fba['pX|EC|EC:6.2.1.1'].nConditions == 1
+        x.s.conditions_by_candidate['pX|EC|EC:6.2.1.1'].every { it.kind == 'baseline' && it.control.contains('matched control') }
+
+        when: 'the budget leaves no room for the checks, there is no baseline condition at all'
+        def r = run(config(experimentManifestFile: tmpl, experimentMaxSolverCalls: 3), xrefClaimsWithAbsentProtein())
+        def s = stage(r, 'metabolic_experiments')
+
+        then:
+        s.baseline_focus.reactions_checked.size() < 3
+        s.baseline_focus.reactions_not_checked.size() > 0
+        s.solver_calls_used <= 3
     }
 
     def 'community: organism-specific, bounded, no gene assigned and no candidate feature fabricated'() {

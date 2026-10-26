@@ -69,6 +69,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "growth_fraction": 0.95,       # growth floor for FVA / product checks
     "product_requirement": "growth_fraction",  # growth_fraction | maintenance_only
     "max_focus_reactions": 2,      # reactions given FVA + knockout checks
+    "max_baseline_focus_reactions": 6,  # hypothesis reactions checked in the unchanged baseline medium
     "panel": None,                 # explicit experiment ids for strategy=fixed
     "qwen": {"model": "qwen3.8-27b", "api_base": None, "max_invalid": 2, "max_tokens": 300},
 }
@@ -401,6 +402,20 @@ def _as_list(v: Any) -> list[str]:
     return [v] if isinstance(v, str) else list(v)
 
 
+def hypothesis_targets(model: Model, h: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """(reactions to perturb, model genes used) of one hypothesis.
+
+    ``perturbation: "reaction"`` means the hypothesis names exactly the reactions it lists: a gene that is
+    also named (even one present in the GPR) is an annotation and is NOT deleted, because deleting it would
+    remove every other reaction that gene controls.  Any other value keeps the gene-or-reaction behaviour.
+    """
+    reaction_level = h.get("perturbation") == "reaction"
+    genes = [] if reaction_level else [model.gene_alias[g] for g in _as_list(h.get("gene")) + _as_list(h.get("genes"))
+                                       if g in model.gene_alias]
+    rxns = [r for r in _as_list(h.get("reactions")) if r in model.rxn_index]
+    return sorted(set(rxns) | model.blocked_by_genes(set(genes))), genes
+
+
 def build_menu(model: Model, manifest: dict[str, Any], max_focus: int = DEFAULT_CONFIG["max_focus_reactions"],
                external: set[str] | None = None) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     """Derive the admissible experiment menu from context records. Returns (menu, rejections).
@@ -425,12 +440,11 @@ def build_menu(model: Model, manifest: dict[str, Any], max_focus: int = DEFAULT_
             ev_by_hyp[hid].append(ev)
 
     def hyp_reactions(h: dict[str, Any]) -> tuple[list[str], list[str]]:
-        genes = [model.gene_alias[g] for g in _as_list(h.get("gene")) + _as_list(h.get("genes"))
-                 if g in model.gene_alias]
-        rxns = [r for r in _as_list(h.get("reactions")) if r in model.rxn_index]
-        return sorted(set(rxns) | model.blocked_by_genes(set(genes))), genes
+        return hypothesis_targets(model, h)
 
     def unmapped_genes(h: dict[str, Any]) -> list[str]:
+        if h.get("perturbation") == "reaction":
+            return []          # genes are annotations of a reaction-level hypothesis, never looked up in the GPR
         return sorted(g for g in _as_list(h.get("gene")) + _as_list(h.get("genes")) if g not in model.gene_alias)
 
     def peers(hid: str) -> list[str]:
@@ -485,7 +499,12 @@ def build_menu(model: Model, manifest: dict[str, Any], max_focus: int = DEFAULT_
                 add(f"product:{ex}", "product", [], f"conditional feasibility vs. forced production of {ex}",
                     [eid], hids, focus, product=ex)
         hint = ev.get("condition_hint")
-        if hint == "oxygen_removal" and base.get("oxygen_exchange") and exch_ok(base["oxygen_exchange"], eid):
+        if hint in ("carbon_swap", "nitrogen_swap") and ev.get("exchange"):
+            role, ex = hint.split("_")[0], ev["exchange"]
+            if exch_ok(ex, eid):
+                add(f"{role}_source:{ex}", f"{role}_source", [{"op": hint, "exchange": ex}],
+                    f"replace baseline {role} sources by {ex}", [eid], hids, focus)
+        elif hint == "oxygen_removal" and base.get("oxygen_exchange") and exch_ok(base["oxygen_exchange"], eid):
             add("oxygen_removal", "oxygen_removal", [{"op": "oxygen_removal"}], "remove oxygen uptake",
                 [eid], hids, focus)
         elif hint == "supplement_removal" and ev.get("exchange") and exch_ok(ev["exchange"], eid):
@@ -520,6 +539,7 @@ def build_menu(model: Model, manifest: dict[str, Any], max_focus: int = DEFAULT_
         item["candidate_genes"] = sorted({g for h in hs for g in _as_list(h.get("gene")) + _as_list(h.get("genes"))})
         item["unmapped_candidate_genes"] = sorted({g for h in hs for g in unmapped_genes(h)})
         item["candidate_reactions"] = sorted({r for h in hs for r in hyp_reactions(h)[0]})
+        item["perturbation"] = {h["id"]: ("reaction" if h.get("perturbation") == "reaction" else "gene_or_reaction") for h in hs}
         item["min_calls"], item["max_calls"] = call_bounds(item, max_focus)
     return sorted(menu.values(), key=lambda m: (KIND_ORDER.index(m["kind"]), m["id"])), rejected
 
@@ -640,7 +660,7 @@ class Runner:
         r = self.solver.optimize(self._unit(self.bio, -1.0), lb, ub, label)
         return r, (max(0.0, -r.objective) if r.status == "optimal" else 0.0)
 
-    def run(self, item: dict[str, Any]) -> dict[str, Any]:
+    def run(self, item: dict[str, Any], reserve_for_menu: int = 0) -> dict[str, Any]:
         cfg, model = self.cfg, self.model
         rec: dict[str, Any] = {
             "experiment_id": item["id"], "kind": item["kind"], "description": item["description"],
@@ -650,11 +670,12 @@ class Runner:
             "candidate_genes": item.get("candidate_genes", []),
             "unmapped_candidate_genes": item.get("unmapped_candidate_genes", []),
             "candidate_reactions": item.get("candidate_reactions", []),
+            "perturbation": item.get("perturbation", {}),
             "status": "completed", "outcome": None, "measurements": {}, "solver_calls": [],
         }
         product = item.get("product_exchange")
         needed = item["min_calls"] if "min_calls" in item else call_bounds(item, cfg["max_focus_reactions"])[0]
-        reserve = needed - 1  # product LPs are held back so focus checks cannot starve them
+        reserve = needed - 1 + reserve_for_menu  # product LPs (and, for the baseline, the planned experiments) are held back
         if self.solver.remaining < needed:
             rec.update(status="skipped_budget", outcome="not_run",
                        reason=f"{self.solver.remaining} solver calls left, {needed} needed")
@@ -724,13 +745,17 @@ class Runner:
     def _focus_checks(self, rec, item, lb, ub, growth, reserve) -> None:
         cfg, model = self.cfg, self.model
         killed = set(rec["measurements"].get("knocked_out_reactions", []))
-        focus = [r for r in item["focus_reactions"] if r not in killed][: cfg["max_focus_reactions"]]
+        cap = cfg["max_baseline_focus_reactions"] if item["kind"] == "baseline" else cfg["max_focus_reactions"]
+        eligible = [r for r in item["focus_reactions"] if r not in killed]
+        focus = eligible[:cap]
         if not focus:
             return
         afford = max(0, (self.solver.remaining - reserve) // 3)
         checks, floor_lb = [], self._fixed_growth_lb(lb, growth)
         if afford < len(focus):
             rec["measurements"]["focus_checks_truncated_by_budget"] = len(focus) - afford
+        # a reaction that was not checked is unavailable, never "no flux": list it
+        rec["measurements"]["focus_reactions_not_checked"] = sorted(set(eligible) - set(focus[:afford]))
         for rid in focus[:afford]:
             col = model.rxn_index[rid]
             lo = self.solver.optimize(self._unit(col, 1.0), floor_lb, ub, f"{item['id']}:fva_min:{rid}")
@@ -773,11 +798,7 @@ class Runner:
         hyps = {h["id"]: h for h in self.manifest.get("context", {}).get("hypotheses", [])}
         out: set[str] = set()
         for pid in item.get("competing_hypotheses", []):
-            h = hyps[pid]
-            out |= {r for r in _as_list(h.get("reactions")) if r in self.model.rxn_index}
-            out |= self.model.blocked_by_genes({self.model.gene_alias[g] for g in
-                                                _as_list(h.get("gene")) + _as_list(h.get("genes"))
-                                                if g in self.model.gene_alias})
+            out |= set(hypothesis_targets(self.model, hyps[pid])[0])
         return sorted(out)
 
     def _product_checks(self, rec, ex: str, lb, ub, growth) -> None:
@@ -809,10 +830,24 @@ class Runner:
         rec["measurements"]["product"] = info
 
 
-def baseline_item() -> dict[str, Any]:
+def baseline_item(focus_reactions: list[str] | None = None) -> dict[str, Any]:
     return {"id": "baseline", "kind": "baseline", "mods": [], "description": "baseline medium with maintenance",
-            "evidence_ids": [], "hypothesis_ids": [], "focus_reactions": [], "product_exchange": None,
-            "competing_hypotheses": []}
+            "evidence_ids": [], "hypothesis_ids": [], "focus_reactions": list(focus_reactions or []),
+            "product_exchange": None, "competing_hypotheses": []}
+
+
+def baseline_focus(menu: list[dict[str, Any]], manifest: dict[str, Any], model: Model) -> list[str]:
+    """Reactions of the hypotheses, in manifest order, for FVA + knockout checks in the UNCHANGED baseline medium.
+
+    These are matched controls for the condition experiments (same medium, objective and maintenance as the
+    baseline) and the only honest context when no condition changes anything.
+    """
+    seen: list[str] = []
+    for h in manifest.get("context", {}).get("hypotheses", []):
+        for r in hypothesis_targets(model, h)[0]:
+            if r not in seen:
+                seen.append(r)
+    return seen
 
 
 def conditional_record(rec: dict[str, Any]) -> dict[str, Any]:
@@ -849,7 +884,8 @@ def conditional_record(rec: dict[str, Any]) -> dict[str, Any]:
 
 
 def evidence_key(item: dict[str, Any], evidence: list[dict[str, Any]]) -> tuple:
-    types = {e.get("type") for e in evidence if e.get("id") in item["evidence_ids"]}
+    # a model_condition record says why a condition was chosen (exact model identifiers), not that the function is likely
+    types = {e.get("type") for e in evidence if e.get("id") in item["evidence_ids"] and e.get("type") != "model_condition"}
     return (-len(types), -len(item["evidence_ids"]), -len(item["competing_hypotheses"]), item["id"])
 
 
@@ -1022,7 +1058,9 @@ def run_experiments(manifest: dict[str, Any], model: Model, overrides: dict[str,
                    reason="context records yield no admissible experiment; nothing was solved")
         return _finalise(out, runner, manifest)
 
-    base = runner.run(baseline_item())
+    # Baseline checks must not starve the experiments: keep the cheapest calls of the planned experiments in reserve.
+    planned = sorted(m["min_calls"] for m in menu)[: int(cfg["max_experiments"])]
+    base = runner.run(baseline_item(baseline_focus(menu, manifest, model)), reserve_for_menu=sum(planned))
     results.append(base)
     # Alternative media are especially useful when the reference cannot grow.
     # Keep absolute condition results even without a usable relative baseline.

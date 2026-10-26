@@ -26,6 +26,17 @@ import gspa.model.AnnotationType
  * uncertain), and only exact ties fall back to the function key. No weight is fitted and the rank is not a
  * probability; the full ranking and the cut-off are in the report.</p>
  *
+ * <p><b>Shared hypotheses.</b> Proteins that map to the same reactions share ONE hypothesis (one experiment, identical
+ * features). No competition group is declared: the same EC on several proteins can be co-required subunits or
+ * isozymes, and the model, which sees only reactions, cannot say which. A broad EC mapping to several reactions
+ * perturbs them together; the mapper reports the ambiguity instead of attributing activity to one.</p>
+ *
+ * <p><b>Conditions from exact model identity.</b> The template's optional {@code condition_menu} lists candidate media
+ * with their roles ({@code carbon_exchanges}, {@code nitrogen_exchanges}, {@code supplement_exchanges}); a medium is
+ * tried for a hypothesis only where one of its reactions handles that exchange's metabolite by the same SBML species
+ * id or a shared compound cross-reference ({@link SbmlModelInfo#exchangesTouching}). These {@code model_condition}
+ * records choose where to look; they are not evidence for the function and do not enter the ranking.</p>
+ *
  * <p><b>Evidence.</b> Derived only from measurements of this run (a raw claim, a context-positive window of the
  * candidate's genome, a supporting cohort peer) and from claim metadata that names an EXACT model exchange id
  * ({@code substrate_exchange}+{@code substrate_role}, {@code product_exchange}); an id that is not an exchange of the
@@ -48,7 +59,14 @@ class ExperimentManifestBuilder {
         Double probability
         String probabilityBasis
         boolean retained
+        /** Function keys of OTHER candidates tested by the same hypothesis (identical reaction set). */
+        List<String> sharedWith = []
+        /** Conditions chosen from exact model identity: exchange, hint, matched identity. */
+        List<Map> modelConditions = []
     }
+
+    /** At most this many model-identity conditions per hypothesis (each costs solver calls). */
+    static final int MAX_MODEL_CONDITIONS_PER_HYPOTHESIS = 3
 
     static class Built {
         Map<String, Object> manifest
@@ -141,20 +159,48 @@ class ExperimentManifestBuilder {
             c != 0 ? c : (a.functionKey <=> b.functionKey)
         }
         List<Binding> kept = ranked.take(maxHypotheses)
-        Map<String, List<Binding>> byEc = kept.groupBy { it.ec }
-        kept.each { Binding b ->
-            b.hypothesisId = uniqueId('auto:' + b.functionKey, usedIds)
-            Map h = [id: b.hypothesisId, reactions: b.reactions, function_key: b.functionKey, gene_in_model: b.geneInModel,
-                     mapping_sources: b.mapping, perturbation: 'reaction']
-            if (b.geneInModel) h.gene = b.protein
-            if (byEc[b.ec].size() > 1) h.group = 'EC:' + b.ec       // same EC on several proteins: competitors
+        // One hypothesis per distinct reaction set. Proteins that map to the same reactions (the same EC) are NOT
+        // exclusive competitors: they may be co-required subunits, isozymes or paralogues, and the model cannot tell
+        // them apart because it sees only the reactions. They share one experiment (no duplicated solver calls) and
+        // therefore identical features; no competition group is declared.
+        Map<String, List<Binding>> byReactions = new LinkedHashMap<>()
+        kept.each { Binding b -> byReactions.computeIfAbsent(b.reactions.toSorted().join(',')) { [] } << b }
+        Map<String, Object> menuSpec = (template.condition_menu ?: [:]) as Map<String, Object>
+        List<Map> modelConditionRecords = []
+        int truncatedModelConditions = 0
+        byReactions.each { String reactionSet, List<Binding> group ->
+            Binding lead = group[0]
+            String hid = uniqueId('auto:' + lead.functionKey, usedIds)
+            group.each { Binding b -> b.hypothesisId = hid; b.sharedWith = group.findAll { it !== b }*.functionKey }
+            Map h = [id: hid, reactions: lead.reactions, function_key: lead.functionKey, perturbation: 'reaction',
+                     mapping_sources: lead.mapping, genes_in_model: group.collectEntries { [it.protein, it.geneInModel] }]
+            if (group.size() == 1) {
+                h.gene_in_model = lead.geneInModel
+                if (lead.geneInModel) h.gene = lead.protein        // an annotation: a reaction-level hypothesis never deletes it
+            } else {
+                h.function_keys = group*.functionKey
+                h.genes = group.findAll { it.geneInModel }*.protein
+                h.same_reaction_candidates = 'proteins with the same EC share these reactions; co-required subunits and isozymes cannot be told apart by the model'
+            }
             hypotheses << h
-            pending[b.functionKey].each { Map r ->
-                String exch = (r.substrate_exchange ?: r.product_exchange) as String
-                Map rec = [id: uniqueId(r.type + ':' + b.functionKey + (exch ? ':' + exch : ''), usedIds),
-                           hypothesis_id: b.hypothesisId] + r
+            group.each { Binding b ->
+                pending[b.functionKey].each { Map r ->
+                    String exch = (r.substrate_exchange ?: r.product_exchange) as String
+                    Map rec = [id: uniqueId(r.type + ':' + b.functionKey + (exch ? ':' + exch : ''), usedIds),
+                               hypothesis_id: hid] + r
+                    if (group.size() > 1) rec.function_key_of_record = b.functionKey
+                    evidence << rec
+                    derived[r.type as String] = (derived[r.type as String] as int) + 1
+                }
+            }
+            List<Map> conds = modelConditions(template, menuSpec, model, lead.reactions)
+            truncatedModelConditions += Math.max(0, conds.size() - MAX_MODEL_CONDITIONS_PER_HYPOTHESIS)
+            conds.take(MAX_MODEL_CONDITIONS_PER_HYPOTHESIS).each { Map c ->
+                Map rec = [id: uniqueId('model_condition:' + hid + ':' + c.condition_hint + ':' + c.exchange, usedIds),
+                           type: 'model_condition', hypothesis_id: hid] + c
                 evidence << rec
-                derived[r.type as String] = (derived[r.type as String] as int) + 1
+                modelConditionRecords << rec
+                group.each { it.modelConditions << c }
             }
         }
 
@@ -185,7 +231,9 @@ class ExperimentManifestBuilder {
         out.report = [
             context_source: 'evidence_guided_from_run_candidates',
             candidates_with_ec_claims: keys.size(),
-            hypotheses_added: kept.size(),
+            hypotheses_added: byReactions.size(),
+            candidates_in_hypotheses: kept.size(),
+            hypotheses_shared_by_several_candidates: byReactions.count { k, g -> g.size() > 1 },
             hypotheses_with_gene_in_model: kept.count { it.geneInModel },
             hypotheses_reaction_only_gene_missing_from_model: kept.count { !it.geneInModel },
             hypotheses_from_unretained_weak_claims: kept.count { !it.retained },
@@ -200,6 +248,9 @@ class ExperimentManifestBuilder {
             candidates_truncated: ranked.drop(maxHypotheses)*.functionKey,
             mapping_note: 'reaction-level perturbation through a validated EC to reaction mapping; a protein absent from the model\'s gene rules is tested as a reaction, never as a gene knockout',
             evidence_derived_from_this_run: derived,
+            conditions_from_exact_model_identity: modelConditionRecords.size(),
+            conditions_from_exact_model_identity_truncated: truncatedModelConditions,
+            model_condition_note: 'conditions are chosen where a reaction handles a metabolite whose declared exchange has the SAME species id or a shared compound xref (chebi, kegg.compound, bigg.metabolite, metanetx.chemical, seed.compound, hmdb, pubchem.compound, inchikey), from the template\'s condition_menu; they say where to look, are not evidence for the function and are not counted in the ranking',
             evidence_unmapped: evidenceUnmapped,
             evidence_explicit: ((explicitEvidence ?: []).size() - evidenceRejections.size()),
             evidence_rejections: evidenceRejections,
@@ -208,6 +259,38 @@ class ExperimentManifestBuilder {
                                         note: 'medium, biomass objective and maintenance are the template\'s assumptions, copied unchanged'],
         ]
         out
+    }
+
+    /**
+     * Conditions worth testing for a reaction set, from exact model identity only. The candidate media come from the
+     * template's {@code condition_menu} ({@code carbon_exchanges}, {@code nitrogen_exchanges},
+     * {@code supplement_exchanges}; the role of each is declared there, never guessed) plus the baseline's oxygen
+     * exchange. A condition is proposed for an exchange only when {@link SbmlModelInfo#exchangesTouching} finds the
+     * reaction set handling that exchange's metabolite, the exchange is declared in the baseline, and the condition
+     * differs from the baseline (a carbon swap to the baseline carbon source, or removing something not supplied, is
+     * not a condition). Deterministic order: oxygen, carbon, nitrogen, supplement, then exchange id.
+     */
+    static List<Map> modelConditions(Map template, Map<String, Object> menuSpec, SbmlModelInfo model, Collection<String> reactions) {
+        Map baseline = (template.baseline ?: [:]) as Map
+        Set<String> declared = (baseline.exchanges ?: []) as Set<String>
+        Map<String, Object> medium = (baseline.medium ?: [:]) as Map<String, Object>
+        def supplied = { String ex -> medium[ex] instanceof Number && (medium[ex] as double) > 0d }
+        List<Map> candidates = []
+        String oxygen = baseline.oxygen_exchange as String
+        if (oxygen && declared.contains(oxygen) && supplied(oxygen)) candidates << [hint: 'oxygen_removal', ex: oxygen]
+        ((menuSpec.carbon_exchanges ?: []) as List<String>).findAll { !((baseline.carbon_exchanges ?: []) as List).contains(it) }
+            .each { candidates << [hint: 'carbon_swap', ex: it] }
+        ((menuSpec.nitrogen_exchanges ?: []) as List<String>).findAll { !((baseline.nitrogen_exchanges ?: []) as List).contains(it) }
+            .each { candidates << [hint: 'nitrogen_swap', ex: it] }
+        ((menuSpec.supplement_exchanges ?: []) as List<String>).findAll { supplied(it) }.each { candidates << [hint: 'supplement_removal', ex: it] }
+        candidates = candidates.findAll { declared.contains(it.ex) }
+        Map<String, String> touching = model.exchangesTouching(reactions, candidates*.ex as List<String>)
+        List<String> order = ['oxygen_removal', 'carbon_swap', 'nitrogen_swap', 'supplement_removal']
+        candidates.findAll { touching.containsKey(it.ex) }
+            .sort { a, b -> order.indexOf(a.hint) <=> order.indexOf(b.hint) ?: (a.ex as String) <=> (b.ex as String) }
+            .unique { it.hint + '|' + it.ex }
+            .collect { [condition_hint: it.hint, exchange: it.ex, matched_identity: touching[it.ex],
+                        derived_from: 'exact SBML species identity (same species id or shared compound cross-reference); not a name match'] as Map }
     }
 
     private static String uniqueId(String base, Set<String> used) {

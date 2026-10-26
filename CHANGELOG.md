@@ -29,6 +29,11 @@ user-visible deltas; for measured impact, follow the cross-references.
   candidate flagged and excluded; community results organism-specific and not turned into features. User manifests are
   marked as such; evidence-guided construction only from valid EC-reaction-gene mappings, with `no_admissible_experiment`
   when nothing qualifies.
+- **Evidence-guided experiments, follow-up**: reaction-level hypotheses never delete a named gene (the sidecar honours
+  `perturbation: reaction`); proteins with the same EC share one hypothesis instead of an invented competition group;
+  broad EC mappings are reported as ambiguous with per-reaction classes; media come from the template's
+  `condition_menu` through exact species-id / compound-xref identity (no name matching); the unchanged baseline runs matched
+  focus checks (`max_baseline_focus_reactions`) and is unavailable when they were not run.
 - Nextflow: staged `--learned_model`, `--external_context`, `--feature_export`. Cohort, experiments and community are not
   run by the pipeline yet.
 

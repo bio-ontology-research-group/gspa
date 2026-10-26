@@ -115,13 +115,32 @@ See the scenario pages for the models. Production wiring (`--experiment-manifest
   model-reaction mapping (the refiner's `reactions.tsv`, the model's own EC annotation, or a reaction-graph id that is a
   model reaction id). The gene is not required: a protein missing from the model's gene rules, the typical missing
   annotation, is tested as a reaction with `gene_in_model: false` and never as a gene knockout. A gene label without an EC
-  mapping makes the candidate unavailable. Above `--experiment-max-hypotheses` candidates are ranked from measurements
+  mapping makes the candidate unavailable. Proteins that map to the same reactions (the same EC) share ONE hypothesis and
+  one experiment and get identical features; no competition group is declared, because the same EC on several proteins
+  can be co-required subunits or isozymes and a reaction-only model cannot say which. A broad EC that maps to several
+  reactions perturbs them together; the ledger marks every condition `ambiguous_reaction_mapping`, lists the class of
+  each reaction, and the reported class is the strongest among alternatives, never this protein's own activity. A
+  reaction-level hypothesis never deletes its gene, even one that is in the model (that would remove every other reaction the
+  gene controls). Above `--experiment-max-hypotheses` candidates are ranked from measurements
   (more distinct evidence types, then probability closest to 0.5, exact ties by key; no fitted weights, not a
   probability) and the ranking and cut-off are in the ledger. Evidence: what the run measured (raw claim, context-positive
   window, a supporting cohort peer), claim metadata naming an **exact model exchange id** (`substrate_exchange` with
   `substrate_role`, `product_exchange`; others are listed as unmapped), plus explicit `--experiment-evidence` records.
-  Nothing is inferred from metabolite names. With nothing admissible the ledger says `no_admissible_experiment` and no
+  Nothing is inferred from metabolite names. **Conditions** (media) come from the template's optional `condition_menu`
+  (`carbon_exchanges`, `nitrogen_exchanges`, `supplement_exchanges`, each role declared by the template; oxygen from
+  `baseline.oxygen_exchange`): a medium is tried for a hypothesis only where one of its reactions handles that
+  exchange's metabolite by the **same SBML species id or a shared compound cross-reference** (ChEBI, KEGG, BiGG, MetaNetX,
+  SEED, HMDB, PubChem, InChIKey). An unannotated metabolite is never linked by name, id suffix or formula. These
+  `model_condition` records choose where to look; they are not evidence for the function and are not counted in the
+  ranking (at most 3 per hypothesis, truncation reported). With nothing admissible the ledger says `no_admissible_experiment` and no
   solver starts.
+* The unchanged **baseline** experiment also runs FVA and a reaction knockout for the hypothesis reactions (up to
+  `max_baseline_focus_reactions`, default 6, in manifest order, which is the candidate ranking; the planned experiments'
+  minimum calls stay reserved). It is the matched control of every condition and the only context when no condition
+  changes anything. Reactions it did not check (no growth, budget, cap) are listed in
+  `baseline_focus.reactions_not_checked` and give no baseline condition: unavailable, not negative.
+  Without a measured phenotype every number is **model feasibility** under the stated medium, bounds and maintenance;
+  each ledger condition carries that statement, and none confirms the protein.
 * Results map to `ExternalContext.FbaConditional` from the **per-reaction checks** of each condition: share with
   **required** flux, share with **optional** flux, and the reaction knockout's growth relative to the same condition (only
   when one reaction was assessed). A whole-gene knockout is compared with the baseline medium only: it is kept in the ledger
@@ -158,5 +177,10 @@ See the scenario pages for the models. Production wiring (`--experiment-manifest
   (`cohort.w.local_*`) are the neighbourhood information the model receives, and `ctx.nbr.*` stays unavailable unless an
   explicit context file supplies it.
 * Per-genome plausible reaction sets exist only if the metadata file lists them.
-* Transport and BGC evidence for experiments must be supplied; the planner uses cohort evidence only to order its menu.
+* No predictor in the repository emits `substrate_exchange` / `product_exchange` metadata, so transport and BGC evidence
+  for experiments must still be supplied explicitly. Automatic condition choice needs a `condition_menu` in the template
+  and compound cross-references on the model's species; a model without them gets only the baseline control.
+* Empirical function recovery is not established: all experiment output is model-conditional, the reaction graph's compound
+  ids are not yet used for matching, the same EC on several proteins cannot be separated by the model, and no held-out
+  benchmark has compared the conditional features with measured phenotypes.
 * Community features for candidates are undefined; the community result is exported, not consumed.

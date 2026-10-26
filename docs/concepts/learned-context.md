@@ -2,10 +2,13 @@
 
 Status: **mechanism and training/inference code only. There is no trained production
 model in the repository, and nothing here is evidence of improved annotation accuracy.**
-The shared engine does not yet call these classes; wiring and the real training runs are
-separate work (see [What real training needs](#what-real-training-needs)). The pipeline stage and
-the training-row export built on this foundation are described in
-[learned-stage.md](learned-stage.md).
+The shared workflow (`IntegrationWorkflow`) now calls these classes: the `learned_integration` stage runs
+last over the original raw claims, the `cohort_context`, `metabolic_experiments` and `community_metabolism`
+stages fill `ExternalContext`, and `--feature-export-dir` writes production rows from the same extractor. What is
+still missing is the real training run (see [What real training needs](#what-real-training-needs)); until a
+trained artifact exists `scoring_mode` stays `legacy_heuristic`. The stage and the training-row export are
+described in [learned-stage.md](learned-stage.md); stage order, ledger and open gaps in
+[context-workflow.md](context-workflow.md).
 
 This replaces hand-set boosts, floors and count-dependent caps with a model whose weights
 are learned from labelled candidates, calibrated on a separate split, and able to move a

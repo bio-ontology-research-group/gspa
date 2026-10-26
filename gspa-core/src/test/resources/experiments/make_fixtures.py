@@ -19,7 +19,7 @@ out = Path(sys.argv[1])
 out.mkdir(parents=True, exist_ok=True)
 
 
-def write_sbml(path, reactions, species, gene_labels, objective="BIOMASS"):
+def write_sbml(path, reactions, species, gene_labels, objective="BIOMASS", species_xrefs=None, reaction_ecs=None):
     ns = libsbml.SBMLNamespaces(3, 1)
     ns.addPkgNamespace("fbc", 2)
     doc = libsbml.SBMLDocument(ns)
@@ -32,6 +32,10 @@ def write_sbml(path, reactions, species, gene_labels, objective="BIOMASS"):
     for sid in species:
         s = model.createSpecies(); s.setId(sid); s.setCompartment(sid[-1])
         s.setBoundaryCondition(False); s.setConstant(False); s.setHasOnlySubstanceUnits(False)
+        for uri in (species_xrefs or {}).get(sid, []):
+            s.setMetaId("meta_" + sid)
+            cv = libsbml.CVTerm(libsbml.BIOLOGICAL_QUALIFIER); cv.setBiologicalQualifierType(libsbml.BQB_IS)
+            cv.addResource(uri); s.addCVTerm(cv)
     fbc = model.getPlugin("fbc")
     for gid, label in gene_labels.items():
         gp = fbc.createGeneProduct(); gp.setId(gid); gp.setLabel(label)
@@ -42,6 +46,10 @@ def write_sbml(path, reactions, species, gene_labels, objective="BIOMASS"):
                 ref = make(); ref.setSpecies(sp); ref.setStoichiometry(st); ref.setConstant(True)
         for tag, val in (("lb", lo), ("ub", hi)):
             p = model.createParameter(); p.setId(f"{tag}_{rid}"); p.setValue(val); p.setConstant(True)
+        for ec in (reaction_ecs or {}).get(rid, []):
+            r.setMetaId("meta_" + rid)
+            cv = libsbml.CVTerm(libsbml.BIOLOGICAL_QUALIFIER); cv.setBiologicalQualifierType(libsbml.BQB_IS)
+            cv.addResource("https://identifiers.org/ec-code/" + ec); r.addCVTerm(cv)
         rf = r.getPlugin("fbc")
         rf.setLowerFluxBound("lb_" + rid); rf.setUpperFluxBound("ub_" + rid)
         if gpr:
@@ -100,6 +108,41 @@ template = {
     "objectives": {"biomass": "BIOMASS", "maintenance": {"reaction": "ATPM", "lower_bound": 1.0}},
 }
 (out / "template.json").write_text(json.dumps(template, indent=1))
+
+# ---- xref.xml: a model that was NOT built by the refiner (no reactions.tsv), so reactions map to ECs only through
+# the SBML annotation, and metabolites link across compartments only through compound cross-references.
+#  * pD's gene gD controls RESP *and* ACS (a promiscuous gene): a reaction-level hypothesis for RESP must not delete ACS.
+#  * ACS has gene gD only and SEC is controlled by a gene labelled pS: protein pX (EC 6.2.1.1 and 4.4.4.4) is absent.
+#  * glc, ac and o2 carry ChEBI ids on both the cytosolic and the extracellular species; vit and nh4 carry none, so the
+#    declared vitamin exchange must NOT be linked to VITS merely because both are called "vit".
+xdir = out / "xref"          # its own directory: the refiner-style reactions.tsv above must not sit next to it
+xdir.mkdir(exist_ok=True)
+XREF = dict(TOY)
+XREF["ACS"] = ({"ac_c": 1, "atp_c": 1}, {"pyr_c": 1}, 0, 1000, "gD")
+XREF["RESP"] = ({"pyr_c": 1, "o2_c": 1}, {"atp_c": 8}, 0, 1000, "gD")
+XREF["SEC"] = ({"pyr_c": 1, "atp_c": 1}, {"sec_c": 1}, 0, 1000, "gS")
+XREF["VITS"] = ({"pyr_c": 1, "atp_c": 1}, {"vit_c": 1}, 0, 1000, None)
+chebi = lambda n: ["http://identifiers.org/chebi/CHEBI:%d" % n]
+xrefs = {"glc_e": chebi(17234), "glc_c": chebi(17234), "ac_e": chebi(30089), "ac_c": chebi(30089),
+         "o2_e": chebi(15379), "o2_c": chebi(15379)}
+ecs = {"GLYC1": ["1.1.1.1"], "GLYC2": ["1.1.1.1"], "ACS": ["6.2.1.1"], "RESP": ["1.9.3.1"], "SEC": ["4.4.4.4"], "VITS": ["2.3.3.3"]}
+write_sbml(xdir / "xref.xml", XREF, SPECIES, {"gA": "pA", "gB": "pB", "gD": "pD", "gS": "pS"},
+           species_xrefs=xrefs, reaction_ecs=ecs)
+xref_template = {
+    "model": "xref.xml", "config": {},
+    "baseline": {"medium": {"EX_glc_e": 10, "EX_nh4_e": 10, "EX_o2_e": 10, "EX_vit_e": 10},
+                 "exchanges": ["EX_glc_e", "EX_ac_e", "EX_o2_e", "EX_vit_e", "EX_sec_e", "EX_nh4_e", "EX_lac_e"],
+                 "carbon_exchanges": ["EX_glc_e"], "nitrogen_exchanges": ["EX_nh4_e"], "oxygen_exchange": "EX_o2_e"},
+    "condition_menu": {"carbon_exchanges": ["EX_ac_e"], "supplement_exchanges": ["EX_vit_e"]},
+    "objectives": {"biomass": "BIOMASS", "maintenance": {"reaction": "ATPM", "lower_bound": 1.0}},
+}
+(xdir / "xref_template.json").write_text(json.dumps(xref_template, indent=1))
+# the same model in a different medium: acetate is the baseline carbon source and glucose is the alternative
+acetate = json.loads(json.dumps(xref_template))
+acetate["baseline"]["medium"] = {"EX_ac_e": 10, "EX_nh4_e": 10, "EX_o2_e": 10, "EX_vit_e": 10}
+acetate["baseline"]["carbon_exchanges"] = ["EX_ac_e"]
+acetate["condition_menu"] = {"carbon_exchanges": ["EX_glc_e"], "supplement_exchanges": ["EX_vit_e"]}
+(xdir / "xref_template_acetate.json").write_text(json.dumps(acetate, indent=1))
 
 # ---- community: a vitamin producer P and an auxotroph A
 CSPECIES = ["glc_e", "vit_e", "glc_c", "pyr_c", "atp_c", "vit_c"]

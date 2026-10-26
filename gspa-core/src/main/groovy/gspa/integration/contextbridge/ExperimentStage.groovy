@@ -107,7 +107,16 @@ class ExperimentStage {
         ExperimentContextMapper.Mapped mapped = ExperimentContextMapper.map(run.parsed, bindings, basis)
         out.fba = mapped.features
         List<Map> experiments = ((run.parsed.experiments ?: []) as List<Map>).findAll { it.experiment_id != 'baseline' }
+        Map baseRec = ((run.parsed.experiments ?: []) as List<Map>).find { it.experiment_id == 'baseline' }
+        Map baseMeasurements = (baseRec?.measurements ?: [:]) as Map
+        Map<String, Object> baselineFacts = [
+            status: baseRec == null ? 'not_run' : baseRec.status, outcome: baseRec?.outcome,
+            reactions_checked: ((baseMeasurements.focus_checks ?: []) as List<Map>)*.reaction,
+            reactions_not_checked: baseMeasurements.focus_reactions_not_checked ?: [],
+            note: baseMeasurements.focus_checks ? 'matched control: FVA and a reaction knockout in the unchanged medium; model feasibility only' :
+                'no baseline check was run (no growth, no budget or no mapped reaction): unavailable, not negative']
         out.facts = baseFacts(c, modelInfo, report, c.experimentMode) + [
+            baseline_focus: baselineFacts,
             outcome: run.parsed.outcome,
             solver_calls_used: (run.parsed.solver as Map).used,
             solver_calls_max: (run.parsed.solver as Map).max_calls,

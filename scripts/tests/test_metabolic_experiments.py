@@ -748,6 +748,71 @@ class TestHypothesesAndPolicy(Base):
         self.assertIn("undeclared single-metabolite reactions with uptake closed", joined)
         self.assertIn("ATPM", joined)
 
+    def test_reaction_perturbation_never_deletes_the_gene_even_when_it_is_in_the_model(self):
+        model = copy.deepcopy(self.model)
+        model.gpr["GLYC2"] = [["g1"]]          # g1 now controls both glycolysis reactions
+        gene_level = {"hypotheses": [{"id": "g", "gene": "locus_g1"}], "evidence": []}
+        reaction_level = {"hypotheses": [{"id": "r", "gene": "locus_g1", "reactions": ["GLYC1"], "perturbation": "reaction"}],
+                          "evidence": []}
+        g = self.by_id(ME.run_experiments(manifest(gene_level, strategy="fixed"), model))["knockout:g"]
+        r = self.by_id(ME.run_experiments(manifest(reaction_level, strategy="fixed"), model))["knockout:r"]
+        self.assertEqual(g["measurements"]["knocked_out_reactions"], ["GLYC1", "GLYC2"])
+        self.assertEqual(r["measurements"]["knocked_out_reactions"], ["GLYC1"])
+        self.assertEqual(r["outcome"], "growth_unchanged")      # GLYC2 still runs: the gene was not removed
+        self.assertEqual(r["perturbation"], {"r": "reaction"})
+        self.assertEqual(r["candidate_reactions"], ["GLYC1"])
+
+    def test_reaction_hypothesis_with_no_resolvable_reaction_is_rejected_not_rescued_by_its_gene(self):
+        ctx = {"hypotheses": [{"id": "r", "gene": "locus_g1", "reactions": ["NOT_A_REACTION"], "perturbation": "reaction"}],
+               "evidence": []}
+        menu, rej = ME.build_menu(self.model, manifest(ctx), external=ME.validate_boundary(self.model, manifest(ctx)))
+        self.assertEqual(menu, [])
+        self.assertEqual(rej[0]["item"], "r")
+
+    def test_baseline_checks_the_hypothesis_reactions_in_the_unchanged_medium(self):
+        ctx = {"hypotheses": [{"id": "h", "reactions": ["ACS", "RESP", "SEC"], "perturbation": "reaction"}], "evidence": []}
+        out = self.run_all("fixed", ctx=ctx, max_experiments=1)
+        base = self.by_id(out)["baseline"]
+        checks = {c["reaction"]: c for c in base["measurements"]["focus_checks"]}
+        self.assertEqual(sorted(checks), ["ACS", "RESP", "SEC"])
+        self.assertEqual(checks["ACS"]["flux_class"], "carries_no_flux_at_growth_floor")   # glucose medium: acetate unused
+        self.assertEqual(checks["RESP"]["flux_class"], "required_flux")
+        self.assertEqual(base["measurements"]["focus_reactions_not_checked"], [])
+        self.assertLessEqual(out["solver"]["used"], 60)
+
+    def test_baseline_checks_are_capped_listed_and_never_starve_the_planned_experiments(self):
+        ctx = {"hypotheses": [{"id": "h", "reactions": ["ACS", "RESP", "SEC", "GLYC1"], "perturbation": "reaction"}], "evidence": []}
+        out = self.run_all("fixed", ctx=ctx, max_experiments=1, max_baseline_focus_reactions=2)
+        base = self.by_id(out)["baseline"]
+        self.assertEqual(len(base["measurements"]["focus_checks"]), 2)
+        self.assertEqual(base["measurements"]["focus_reactions_not_checked"], ["RESP", "SEC"])   # targets are sorted: ACS, GLYC1 checked
+        tight = self.run_all("fixed", ctx=ctx, max_experiments=1, max_solver_calls=3)
+        self.assertEqual(self.by_id(tight)["knockout:h"]["status"], "completed")
+        self.assertLessEqual(tight["solver"]["used"], 3)
+
+    def test_no_baseline_check_without_growth(self):
+        ctx = {"hypotheses": [{"id": "h", "reactions": ["SEC"], "perturbation": "reaction"}], "evidence": []}
+        m = manifest(ctx, strategy="fixed", max_experiments=1)
+        m["baseline"]["medium"] = {"EX_nh4_e": 10, "EX_o2_e": 10, "EX_vit_e": 10}      # no carbon source
+        base = self.by_id(ME.run_experiments(m, self.model))["baseline"]
+        self.assertNotIn("focus_checks", base["measurements"])
+
+    def test_model_condition_record_selects_a_medium_but_is_not_evidence_for_ranking(self):
+        ctx = {"hypotheses": [{"id": "h_ac", "reactions": ["ACS"], "perturbation": "reaction"},
+                              {"id": "h_seq", "reactions": ["SEC"], "perturbation": "reaction"}],
+               "evidence": [ev("mc", "model_condition", "h_ac", condition_hint="carbon_swap", exchange="EX_ac_e"),
+                            ev("s1", "sequence", "h_seq"), ev("s2", "sequence", "h_ac")]}
+        out = self.run_all("evidence", ctx=ctx, max_experiments=3)
+        menu = {m["id"]: m for m in out["menu"]}
+        self.assertEqual(menu["carbon_source:EX_ac_e"]["mods"], [{"op": "carbon_swap", "exchange": "EX_ac_e"}])
+        acetate = self.by_id(out)["carbon_source:EX_ac_e"]
+        self.assertEqual(acetate["measurements"]["focus_checks"][0]["flux_class"], "required_flux")
+        self.assertEqual(acetate["measurements"]["focus_checks"][0]["reaction"], "ACS")
+        # the model_condition type does not count as an evidence type when ordering
+        items = {m["id"]: m for m in out["menu"]}
+        key = ME.evidence_key(items["carbon_source:EX_ac_e"], ctx["evidence"])
+        self.assertEqual(key[0], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
