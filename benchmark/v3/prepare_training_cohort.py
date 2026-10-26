@@ -132,7 +132,7 @@ def write_clusters(members: dict, unique_ids: set, ids: dict, labelled, genomes,
         fh.write("protein_id\tgenome_id\tcluster\n")
         for g in genomes:
             for pid in sorted(labelled.get(g["genome_id"], ())):
-                fh.write(f"{ids[(g['genome_id'], pid)]}\t{g['genome_id']}\t{members[ids[(g['genome_id'], pid)]]}\n")
+                fh.write(f"{pid}\t{g['genome_id']}\t{members[ids[(g['genome_id'], pid)]]}\n")
                 n += 1
     return {"unique_sequences": len(unique_ids), "clusters": len(set(members[s] for s in unique_ids)), "labelled_examples": n}
 

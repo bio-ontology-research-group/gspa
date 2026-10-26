@@ -8,64 +8,82 @@ Per-version benchmark numbers, ablation tables, and the F-max protocol
 notes live in `benchmark/RESULTS.md`. This file summarises the
 user-visible deltas; for measured impact, follow the cross-references.
 
-## [Unreleased]
+## [3.0.0] - 2026-10-26
 
-### Added (context workflow wiring; no trained model, no accuracy claim)
-- Shared workflow stages `cohort_context`, `metabolic_experiments`, `community_metabolism`, `learned_integration`
-  and `feature_export` (ledger schema 2: `scoring_mode`, stage-0 vs legacy-prior baseline definitions).
-- **Learned stage** (`--learned-model`, `--learned-stage`): runs last over the original raw claims, replaces the
-  heuristic scores, refuses missing, mechanism-test and contract-mismatched artifacts (the run fails with a ledger),
-  never reintroduces GO terms forbidden by the taxon constraints. `<out>.learned.json` carries model hash and per-
-  candidate scores.
-- **Feature export** (`--feature-export-dir`): production rows from the same extractor, with or without a model, no
-  labels; `gspa.context-features/2` adds the weighted `cohort.w.*` columns and `fba.optional_fraction`
-  (JVM/Python fixtures regenerated).
-- **Two-pass cohort** (`--cohort`, `--cohort-manifest`, `--cohort-metadata`, ...): stage-0 raw baseline of every genome,
-  one joint inference, held-out features per genome; direct EC to reaction candidates, reaction ambiguity reported not
-  summed, unknown metadata conservative, no-peer genomes routed to the cohort-free feature set.
-  `ExternalContext.Cohort` carries typed nullable weighted features.
-- **Metabolic experiments and community** (`--experiment-*`, `--community-*`): bounded, fresh-output, hash-checked
-  execution of the Python sidecars; conditional results mapped to `FbaConditional` with objectives that require the
-  candidate flagged and excluded; community results organism-specific and not turned into features. User manifests are
-  marked as such; evidence-guided construction only from valid EC-reaction-gene mappings, with `no_admissible_experiment`
-  when nothing qualifies.
-- **Evidence-guided experiments, follow-up**: reaction-level hypotheses never delete a named gene (the sidecar honours
-  `perturbation: reaction`); proteins with the same EC share one hypothesis instead of an invented competition group;
-  broad EC mappings are reported as ambiguous with per-reaction classes; media come from the template's
-  `condition_menu` through exact species-id / compound-xref identity (no name matching); the unchanged baseline runs matched
-  focus checks (`max_baseline_focus_reactions`) and is unavailable when they were not run.
-- Nextflow: staged `--learned_model`, `--external_context`, `--feature_export`. Cohort, experiments and community are not
-  run by the pipeline yet.
+### Added
+- **Production context workflow and learned integration (`gspa.context-features/2`):**
+  - Shared workflow stages `cohort_context`, `metabolic_experiments`, `community_metabolism`, `learned_integration`,
+    and `feature_export` (ledger schema 2: `scoring_mode`, stage-0 vs legacy-prior baseline definitions).
+  - **Learned stage** (`--learned-model`, `--learned-stage`): runs last over the original raw claims, replaces the
+    heuristic scores with calibrated revisable probabilities and explicit per-protein null-assignment (`<null>`)
+    posteriors, refuses missing, mechanism-test, and contract-mismatched artifacts (the run fails with a ledger), and
+    never reintroduces GO terms forbidden by taxon constraints. `<out>.learned.json` carries model hash and per-
+    candidate scores.
+  - **Production trained models** (`benchmark/v3/results/training-cohort/learned_models/model_logistic.json` and
+    `model_gbdt.json`): fitted on out-of-fold family-disjoint splits of the 18-genome `swissprot_label_rich_v1` cohort
+    (`4,262` candidate rows across `12` train, `3` calibration, and `3` held-out test genomes;
+    `family_disjoint_verified = true`). On held-out test families (`n = 608`), `learned_logistic` (`AUROC = 0.7934`,
+    `Brier = 0.0997`, `ECE = 0.0577`) improves GO $F_{\max}$ under homology claims from `0.2881` (`stage0`) to `0.3221`
+    (`+0.0340`, precision `0.2733 -> 0.3529`) and under family-excluded claims from `0.1841` to `0.1921`, while
+    `learned_gbdt` (`AUROC = 0.7533`) improves family-excluded EC top-1 from `0.1081` to `0.1351`
+    (`docs/benchmarks/v3-training-cohort.md`).
+  - **Feature export** (`--feature-export-dir`): production rows from the same extractor (`114` features in
+    `gspa.context-features/2`, including weighted `cohort.w.*` columns and `fba.optional_fraction`), with or without a
+    model, without label leakage.
+  - **Two-pass cohort** (`--cohort`, `--cohort-manifest`, `--cohort-metadata`, ...): stage-0 raw baseline of every
+    genome, one joint `CohortRecurrenceEngine` pass with phylogenetic clade weighting, assembly-completeness weighting,
+    singleton conservation, and matched-window backgrounds, exporting held-out features per genome. Validated under
+    shuffled neighborhoods (`-0.0111` GO $F_{\max}$), $50\%$ fragmented assemblies (`-0.0177` GO $F_{\max}`,
+    `-0.0541` EC top-1), and $5\times$ strain duplication (`+0.0000` GO $F_{\max}$ and EC top-1,
+    `max_abs_probability_diff = 0.0017`).
+  - **Metabolic experiments and community** (`--experiment-*`, `--community-*`, `scripts/metabolic_experiments.py`,
+    `scripts/community_metabolism.py`): bounded, fresh-output, hash-checked execution of SBML/FBA experiment planning
+    (`fixed`, `random`, `evidence`, `qwen`) and coupled multi-organism community FBA (`Wintermute 2010` 1,035-pair
+    benchmark in `docs/benchmarks/v3-community-development.md`; 61-case 3-protocol auxotroph benchmark in
+    `docs/benchmarks/v3-metabolic-development.md`; equal-budget condition-planner evaluation in
+    `docs/benchmarks/v3-planner-evaluation.md`).
+  - **Stage 3 anomaly resolution evaluation** (`benchmark/v3/evaluate_stage3_agent.py`): held-out benchmark comparing
+    `qwen3.8-27b` (`http://unimatrix01.kaust.edu.sa:8000/v1`, guarded and unguarded) against equally informed simple
+    rankings and learned classifiers (`docs/benchmarks/v3-stage3-agent-evaluation.md`).
+  - **Price-148 full-proteome context, cohort, learned-model, and locus-decoy benchmark**
+    (`benchmark/v3/run_price_context_ablation.py`, `benchmark/v3/evaluate_price_locus_decoys.py`): 42 production runs
+    across 7 predictor variants and 6 inference arms over 115,542 proteins (`docs/benchmarks/v3-price-development.md`).
+  - **Auditable change ledger and browser reconciliation** (`scripts/visualize_results.py`, `service/`): stage-wise
+    change classification using GO ancestry and EC hierarchy, learned role/null-hypothesis (`<null>`) panels, and
+    reconciled browser/export statistics.
+  - Nextflow: staged `--learned_model`, `--external_context`, `--feature_export`.
+- `gspa annotate --integrate` / `--integration-config`, `gspa integrate --workflow-config`, the stage ledger
+  `<genome>_integrated.tsv.stages.json`, and stage-level assumptions (FBA medium and Gram template) in the ledger.
+- `gspa annotate --claims-out` writes the predictors' claims losslessly (typed JSONL, before integration and
+  before `--min-score` pruning); the web portal integrates that file instead of reconstructing claims from display
+  rows. `gspa annotate --intragenome-cluster` configures pre-inference clustering.
+- Ledger stage `reference_preparation`: validation and reference loading failures leave a readable ledger
+  (requested stages `not_run`) and remove outputs of earlier runs; a failed batch-wide reference load is recorded
+  for every genome. `gspa integrate --workflow-overlay` for the Nextflow route.
 
 ### Changed
 - **One inference workflow for every route.** `gspa.integration.workflow.IntegrationWorkflow` (core) now holds
   the stage order, reference loading, stage-2 enforcement, exports and stage ledger that were private to
   `IntegrateCommand`. `gspa integrate` (single and batch), `AnnotationPipeline.integrate`, the web portal and the
   Nextflow `INTEGRATE` process run it from one typed `IntegrationWorkflowConfig` (`--workflow-config`,
-  `integration.workflow`, `--integration_config`). The annotation pipeline previously ran a bare combiner without
-  references, priors or context stages.
+  `integration.workflow`, `--integration_config`).
+- **Predictor contracts and failure reporting (`gspa-predictors`, `benchmark/neural/`):** repaired eggNOG bitscore/e-value
+  calibration, HMMER database dispatch, genomic predictor sidecar contracts, InterPro EC extraction, and operon GO
+  aspect propagation with typed adapter statuses (`OK`, `SKIPPED`, `FAILED`, `PARTIAL`).
+- **Ontology reasoner single-flight concurrency (`OntologyGraph`):** thread-safe single-flight `has_part` extraction,
+  immutable cached sets, and source/revision-aware cache validation.
 - Requested references that cannot be loaded (GO, pathways, modules, reaction graph, layout, essential
   functions, taxon checker), missing named files, unknown prior names and enforcement modes, and a metabolic model
   requested without EC predictions now fail instead of being skipped with a warning.
 - Dark-matter `top-q`/`distributed` modes apply only dark-matter suggestions; reaction-context suggestions stay on
   the suggestion channel instead of being written as dark-matter annotations.
 
-### Added
-- `gspa annotate --integrate` / `--integration-config`, `gspa integrate --workflow-config`, the stage ledger
-  `<genome>_integrated.tsv.stages.json`, and stage-level assumptions (FBA medium and Gram template) in the ledger.
-- `gspa annotate --claims-out` writes the predictors' claims losslessly (typed JSONL, before integration and
-  before `--min-score` pruning); the web portal integrates that file instead of reconstructing claims from display
-  rows (which had replaced calibrated probabilities with raw scores and dropped weak candidates, evidence types and
-  metadata). `gspa annotate --intragenome-cluster` configures pre-inference clustering.
-- Ledger stage `reference_preparation`: validation and reference loading failures leave a readable ledger
-  (requested stages `not_run`) and remove outputs of earlier runs; a failed batch-wide reference load is recorded
-  for every genome. `gspa integrate --workflow-overlay` for the Nextflow route.
-
 ### Fixed
 - `gspa integrate --intragenome-cluster <x>` and `--gapseq-target proteome|reps` were accepted and ignored; they
-  now fail (claims-only integration has no sequences and does not run gapseq). Benchmark scripts that pass them
-  (`benchmark/phase10_slurm.sh`, `bench10_phase10.sh` configs C3-C5) never exercised clustering through this command.
+  now fail (claims-only integration has no sequences and does not run gapseq).
 - Ledger `reason` fields were serialized as objects instead of text.
+- `run_gspa_agent.py` increased `max_tokens` to `1024`, restricted the final turn to `propose_resolution` so long
+  tool-call rationales are not truncated, and added `X-Session-Affinity` support for load-balanced vLLM endpoints.
 
 ## [2.2.2] - 2026-10-25
 

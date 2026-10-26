@@ -42,13 +42,23 @@ S2_ROWS = [("D-Alanine", "EX_ala__D_e", "TPI", "applied"), ("D-Alanine", "EX_ala
 
 
 def workbook(header, rows):
+    import datetime
     wb = openpyxl.Workbook()
+    wb.properties.created = datetime.datetime(2026, 1, 1, 0, 0, 0)
+    wb.properties.modified = datetime.datetime(2026, 1, 1, 0, 0, 0)
     ws = wb.active
     ws.append(header)
     for r in rows:
         ws.append(r)
+    raw = io.BytesIO()
+    wb.save(raw)
+    raw.seek(0)
     buf = io.BytesIO()
-    wb.save(buf)
+    with zipfile.ZipFile(raw, "r") as zin, zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+        for info in sorted(zin.infolist(), key=lambda x: x.filename):
+            zi = zipfile.ZipInfo(info.filename, date_time=(2026, 1, 1, 0, 0, 0))
+            zi.compress_type = zipfile.ZIP_DEFLATED
+            zout.writestr(zi, zin.read(info.filename))
     return buf.getvalue()
 
 

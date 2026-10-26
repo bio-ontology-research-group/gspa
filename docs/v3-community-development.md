@@ -1,15 +1,47 @@
 # v3 community benchmark (item 9): measured Keio auxotroph pairs
 
 The complete revision-1 run is preserved in
-[the full report](../benchmark/v3/results/development-0501c14/report.json), with
-[all 6,210 case predictions](../benchmark/v3/results/development-0501c14/case_artifacts.json)
+[the revision-1 report](../benchmark/v3/results/development-0501c14/report.json), with
+[all 6,210 revision-1 case predictions](../benchmark/v3/results/development-0501c14/case_artifacts.json)
 in six losslessly compressed JSONL files beside it. All 1,035 pairs executed in
 each of six arms, with no failed or unknown predictions. Every arm predicted no
 mutual rescue: TP 0, FN 178, TN 430, FP 0; 427 intermediate pairs remain outside
 the binary metric. Job 9741 completed in 2,478 seconds. This is the result of the
 uptake-bounds defect documented below, **not evidence against biological
-cross-feeding**. Revision 2 reruns the same cases and six conditions after the fix;
-the old output is never overwritten.
+cross-feeding**.
+
+The complete **revision-2 run** (after opening receiving port uptake to the protocol ceiling so secreted pool metabolites can be imported; see `docs/v3-community-diagnosis.md`) is committed in
+[the revision-2 report](../benchmark/v3/results/development-3dfe6a6/report.json), with
+[all 6,210 revision-2 case predictions](../benchmark/v3/results/development-3dfe6a6/case_artifacts.json),
+per-arm summaries (`summary_*.json`), and the full-run independent COBRApy/GLPK verification
+([cobra_oracle_report.json](../benchmark/v3/results/development-3dfe6a6/cobra_oracle_report.json), 30/30 pair-arm checks agreeing, max $|\Delta \mu| = 1.65 \times 10^{-13}$).
+The revision-1 output is preserved untouched.
+
+### Revision-2 6-arm results (`development-3dfe6a6`, Slurm job 9746, `status: complete`)
+
+All 1,035 pairs executed in all six arms (`n_failed = 0`, `n_incomplete_simulation = 0`, `n_unknown_primary = 0`).
+
+| Arm | $\text{O}_2$ | Trace metals | Community growth | Primary positive | Control lost transfer (all / among pos) | TP | FN | FP | TN | Precision | Recall | Specificity | Bal. Acc. | MCC | Intermediate pos |
+|---|---:|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `o2_00_trace_present` | 0 | present | 673 | 466 | 658 / 466 | 110 | 68 | 131 | 299 | 0.4564 (110/241) | 0.6180 (110/178) | 0.6953 (299/430) | 0.6567 | 0.2915 | 225/427 (0.5269) |
+| `o2_02_trace_present` | 2 | present | 673 | 466 | 658 / 466 | 110 | 68 | 131 | 299 | 0.4564 (110/241) | 0.6180 (110/178) | 0.6953 (299/430) | 0.6567 | 0.2915 | 225/427 (0.5269) |
+| `o2_20_trace_present` | 20 | present | 673 | 466 | 658 / 466 | 110 | 68 | 131 | 299 | 0.4564 (110/241) | 0.6180 (110/178) | 0.6953 (299/430) | 0.6567 | 0.2915 | 225/427 (0.5269) |
+| `o2_00_trace_absent` | 0 | absent | 0 | 0 | 0 / 0 | 0 | 178 | 0 | 430 | null (0/0) | 0.0000 (0/178) | 1.0000 (430/430) | 0.5000 | null | 0/427 (0.0000) |
+| `o2_02_trace_absent` | 2 | absent | 0 | 0 | 0 / 0 | 0 | 178 | 0 | 430 | null (0/0) | 0.0000 (0/178) | 1.0000 (430/430) | 0.5000 | null | 0/427 (0.0000) |
+| `o2_20_trace_absent` | 20 | absent | 0 | 0 | 0 / 0 | 0 | 178 | 0 | 430 | null (0/0) | 0.0000 (0/178) | 1.0000 (430/430) | 0.5000 | null | 0/427 (0.0000) |
+
+Key findings from revision 2:
+- **Control-gated parity**: All 466 primary positive predictions in the trace-present arms lose growth when non-nutrient pool uptake is forbidden (`growth_lost_when_other_transfer_forbidden = 466` among primary positives; the 15 `growth_persists_in_control` cases are the 15 pairs where both monocultures already grow alone in iML1515 and are already classified negative). Consequently `evaluation_control_gated` and `evaluation_strict_optimal_only` are identical to `evaluation_primary`.
+- **Both-monocultures-not-growing stratum ($n = 780$)**: In the 780 pairs where neither monoculture grows alone in iML1515 (excluding the 6 single-strain bypasses `guaB`, `leuB`, `ppc`, `pyrD`, `serA`, `serC`), binary recall on synergy is **0.6918** (110/159), specificity is **0.5420** (155/286), precision is **0.4564** (110/241, vs base rate 0.3573), balanced accuracy is **0.6169**, and MCC is **0.2248**.
+- **Observed synergy enrichment**: Across all 1,035 pairs in trace-present arms, the observed synergy rate (> 50-fold growth) is **23.61%** (110/466) among predicted positives versus **11.95%** (68/569) among predicted negatives.
+- **Strain-resampling sensitivity (46 strains, 1,000 vertex-bootstrap replicates)**:
+  - Precision: 0.4564 (LOSO range 0.3963–0.4932, jackknife SE 0.1381, vertex bootstrap 2.5–97.5% `[0.2131, 0.7160]`)
+  - Recall: 0.6180 (LOSO range 0.5904–0.6707, jackknife SE 0.1098, vertex bootstrap `[0.3949, 0.8372]`)
+  - Specificity: 0.6953 (LOSO range 0.6692–0.7190, jackknife SE 0.0955, vertex bootstrap `[0.4784, 0.8623]`)
+  - Balanced accuracy: 0.6567 (LOSO range 0.6442–0.6760, jackknife SE 0.0495, vertex bootstrap `[0.5555, 0.7564]`)
+  - MCC: 0.2915 (LOSO range 0.2584–0.3221, jackknife SE 0.1012, vertex bootstrap `[0.0964, 0.4855]`)
+- **Oxygen insensitivity of binary class**: Growth rates $\mu$ increase from $\sim 0.157\text{ h}^{-1}$ ($\text{O}_2 = 0$) to $\sim 0.236\text{ h}^{-1}$ ($\text{O}_2 = 2$) and $\sim 0.821\text{ h}^{-1}$ ($\text{O}_2 = 20$), but binary feasibility ($\mu \ge 10^{-6}$) is identical across the three oxygen levels because glucose fermentation supports positive balanced growth in iML1515 when essential biosynthetic intermediates are cross-fed.
+- **Trace-absent sensitivity**: Without the unprinted trace metals required by the iML1515 biomass objective, 0/1,035 pairs grow in either monoculture or community.
 
 `benchmark/v3/run_community_benchmark.py` runs the 1,035 measured Wintermute & Silver 2010 pairs
 (`wintermute2010_cases.jsonl`, see `docs/benchmarks/v3-metabolic-data.md`) through the production

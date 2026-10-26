@@ -1,0 +1,3187 @@
+{
+  "dataset_status": "real",
+  "engine": {
+    "args_style": "plain",
+    "command": [
+      "java",
+      "-Xmx24g",
+      "-jar",
+      "/data/hohndor/gspa-v3/price-context-ablation/gspa-2.2.2.jar"
+    ],
+    "jar": {
+      "bytes": 46133034,
+      "path": "/data/hohndor/gspa-v3/price-context-ablation/gspa-2.2.2.jar",
+      "sha256": "3e23cc29c91314b2b2cf6831cf1f2abcddde1bde4c01a59d2983d5920e82258b",
+      "status": "ok"
+    },
+    "java_version": [
+      "openjdk version \"21.0.12.1\" 2026-08-18",
+      "OpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)",
+      "OpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)"
+    ],
+    "launcher": {
+      "bytes": 14456,
+      "path": "/usr/bin/java",
+      "resolved": "/usr/bin/java",
+      "sha256": "635baf419576ec4ad4f785014283fb93f1be1103e6d02252f7a00517f0e2a245",
+      "status": "ok"
+    },
+    "source_dirty": null,
+    "source_revision": null
+  },
+  "evaluation": {
+    "assumptions": [
+      "Evaluation universe per genome = true pairs + every pair emitted by any executed arm, on labelled proteins only; the universe (and hence ECE/Brier) depends on which arms are compared and is identical for all arms of a genome.",
+      "A pair in the universe that an arm did not emit has score 0 (omission is not rewarded).",
+      "Closed world: a universe pair without a label is counted false, although labels are incomplete, so precision is a lower bound. This is a convention, not a guarantee of equal bias: arms that call more specific, novel or less-studied functions are penalised more than arms that call well-annotated ones, and correct but unlabelled calls are invisible. Compare arms with different specificity profiles conditionally on label completeness.",
+      "Proteins without any label of the scored kind are not evaluated; global Fmax picks its threshold on the evaluated labels."
+    ],
+    "bootstrap": 1000,
+    "eval_failures": {},
+    "kinds": {
+      "ec": {
+        "arms": {
+          "learned_gbdt": {
+            "calibration": {
+              "brier": 0.0027405034305287767,
+              "brier_ci": {
+                "ci_high": 0.003866071677061526,
+                "ci_low": 0.0019513586189326877,
+                "estimate": 0.0027405034305287767,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "ece": 0.04453190239968534,
+              "ece_ci": {
+                "ci_high": 0.05033244964700673,
+                "ci_low": 0.04032418185294732,
+                "estimate": 0.04453190239968534,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "n_pairs": 750508.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 0.0002040198856933484,
+                  "mean_score": 0.04022533732063557,
+                  "n": 720518.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.0001598721023181455,
+                  "mean_score": 0.14368331742954665,
+                  "n": 25020.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.0,
+                  "mean_score": 0.20010318078593392,
+                  "n": 4970.0
+                }
+              ]
+            },
+            "ec_top1": {
+              "accuracy_ci": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "coverage": 1.0,
+              "n_labelled": 148.0,
+              "top1_accuracy": 0.0,
+              "top1_precision_when_called": 0.0
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "precision": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "recall": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.0018954351603222242,
+                "ci_low": 0.00043381124872567947,
+                "estimate": 0.0006358896095637797,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "fmax": 0.0006358896095637797,
+              "precision": 0.0003194786109069998,
+              "recall": 0.06622516556291391,
+              "threshold": 0.06,
+              "threshold_on_test": true
+            }
+          },
+          "learned_logistic": {
+            "calibration": {
+              "brier": 0.0017943987506856785,
+              "brier_ci": {
+                "ci_high": 0.001917375231116619,
+                "ci_low": 0.00168859510070153,
+                "estimate": 0.0017943987506856785,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "ece": 0.038815271519137044,
+              "ece_ci": {
+                "ci_high": 0.04036418634870126,
+                "ci_low": 0.03752976674084395,
+                "estimate": 0.038815271519137044,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "n_pairs": 750508.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 0.00019987181554229888,
+                  "mean_score": 0.03901309876150842,
+                  "n": 750481.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.04,
+                  "mean_score": 0.11772622433287036,
+                  "n": 25.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.0,
+                  "mean_score": 0.24000366840980827,
+                  "n": 1.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.0,
+                  "mean_score": 0.39926637217329586,
+                  "n": 1.0
+                }
+              ]
+            },
+            "ec_top1": {
+              "accuracy_ci": {
+                "ci_high": 0.020689655172413793,
+                "ci_low": 0.0,
+                "estimate": 0.006756756756756757,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "coverage": 1.0,
+              "n_labelled": 148.0,
+              "top1_accuracy": 0.006756756756756757,
+              "top1_precision_when_called": 0.006756756756756757
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "precision": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "recall": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.0457516339869281,
+                "ci_low": 0.012903225806451613,
+                "estimate": 0.030534351145038163,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "fmax": 0.030534351145038163,
+              "precision": 0.036036036036036036,
+              "recall": 0.026490066225165563,
+              "threshold": 0.07,
+              "threshold_on_test": true
+            }
+          },
+          "stage0": {
+            "calibration": {
+              "brier": 0.008940581822107453,
+              "brier_ci": {
+                "ci_high": 0.009069236098735493,
+                "ci_low": 0.008804792062879008,
+                "estimate": 0.008940581822107453,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "ece": 0.09343417435518148,
+              "ece_ci": {
+                "ci_high": 0.09407479870989753,
+                "ci_low": 0.09275478771550905,
+                "estimate": 0.09343417435518148,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "n_pairs": 750508.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 9.189993934604003e-05,
+                  "mean_score": 0.09274977939219334,
+                  "n": 707291.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.0012566322256352975,
+                  "mean_score": 0.10691768656388285,
+                  "n": 42972.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.061224489795918366,
+                  "mean_score": 0.23654250172309946,
+                  "n": 147.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.04878048780487805,
+                  "mean_score": 0.34712797930447326,
+                  "n": 41.0
+                },
+                {
+                  "bin": 4,
+                  "frac_true": 0.4482758620689655,
+                  "mean_score": 0.4457891867035524,
+                  "n": 29.0
+                },
+                {
+                  "bin": 5,
+                  "frac_true": 0.3333333333333333,
+                  "mean_score": 0.5748632731823771,
+                  "n": 21.0
+                },
+                {
+                  "bin": 6,
+                  "frac_true": 0.14285714285714285,
+                  "mean_score": 0.6280066606219482,
+                  "n": 7.0
+                }
+              ]
+            },
+            "ec_top1": {
+              "accuracy_ci": {
+                "ci_high": 0.19736842105263158,
+                "ci_low": 0.04938271604938271,
+                "estimate": 0.12162162162162163,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "coverage": 1.0,
+              "n_labelled": 148.0,
+              "top1_accuracy": 0.12162162162162163,
+              "top1_precision_when_called": 0.12162162162162163
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.14054054054054052,
+                "ci_low": 0.034482758620689655,
+                "estimate": 0.0893854748603352,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "precision": {
+                "ci_high": 0.375,
+                "ci_low": 0.19047619047619047,
+                "estimate": 0.2857142857142857,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "recall": {
+                "ci_high": 0.08994708994708994,
+                "ci_low": 0.01904761904761905,
+                "estimate": 0.052980132450331126,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.31501831501831506,
+                "ci_low": 0.10526315789473684,
+                "estimate": 0.20952380952380953,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "fmax": 0.20952380952380953,
+              "precision": 0.3728813559322034,
+              "recall": 0.1456953642384106,
+              "threshold": 0.39,
+              "threshold_on_test": true
+            }
+          },
+          "stage1": {
+            "calibration": {
+              "brier": 0.008940581822107453,
+              "brier_ci": {
+                "ci_high": 0.009069236098735493,
+                "ci_low": 0.008804792062879008,
+                "estimate": 0.008940581822107453,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "ece": 0.09343417435518148,
+              "ece_ci": {
+                "ci_high": 0.09407479870989753,
+                "ci_low": 0.09275478771550905,
+                "estimate": 0.09343417435518148,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "n_pairs": 750508.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 9.189993934604003e-05,
+                  "mean_score": 0.09274977939219334,
+                  "n": 707291.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.0012566322256352975,
+                  "mean_score": 0.10691768656388285,
+                  "n": 42972.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.061224489795918366,
+                  "mean_score": 0.23654250172309946,
+                  "n": 147.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.04878048780487805,
+                  "mean_score": 0.34712797930447326,
+                  "n": 41.0
+                },
+                {
+                  "bin": 4,
+                  "frac_true": 0.4482758620689655,
+                  "mean_score": 0.4457891867035524,
+                  "n": 29.0
+                },
+                {
+                  "bin": 5,
+                  "frac_true": 0.3333333333333333,
+                  "mean_score": 0.5748632731823771,
+                  "n": 21.0
+                },
+                {
+                  "bin": 6,
+                  "frac_true": 0.14285714285714285,
+                  "mean_score": 0.6280066606219482,
+                  "n": 7.0
+                }
+              ]
+            },
+            "ec_top1": {
+              "accuracy_ci": {
+                "ci_high": 0.19736842105263158,
+                "ci_low": 0.04938271604938271,
+                "estimate": 0.12162162162162163,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "coverage": 1.0,
+              "n_labelled": 148.0,
+              "top1_accuracy": 0.12162162162162163,
+              "top1_precision_when_called": 0.12162162162162163
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.14054054054054052,
+                "ci_low": 0.034482758620689655,
+                "estimate": 0.0893854748603352,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "precision": {
+                "ci_high": 0.375,
+                "ci_low": 0.19047619047619047,
+                "estimate": 0.2857142857142857,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "recall": {
+                "ci_high": 0.08994708994708994,
+                "ci_low": 0.01904761904761905,
+                "estimate": 0.052980132450331126,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.31501831501831506,
+                "ci_low": 0.10526315789473684,
+                "estimate": 0.20952380952380953,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "fmax": 0.20952380952380953,
+              "precision": 0.3728813559322034,
+              "recall": 0.1456953642384106,
+              "threshold": 0.39,
+              "threshold_on_test": true
+            }
+          },
+          "stage1_rlc": {
+            "calibration": {
+              "brier": 0.008940581822107453,
+              "brier_ci": {
+                "ci_high": 0.009069236098735493,
+                "ci_low": 0.008804792062879008,
+                "estimate": 0.008940581822107453,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "ece": 0.09343417435518148,
+              "ece_ci": {
+                "ci_high": 0.09407479870989753,
+                "ci_low": 0.09275478771550905,
+                "estimate": 0.09343417435518148,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "n_pairs": 750508.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 9.189993934604003e-05,
+                  "mean_score": 0.09274977939219334,
+                  "n": 707291.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.0012566322256352975,
+                  "mean_score": 0.10691768656388285,
+                  "n": 42972.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.061224489795918366,
+                  "mean_score": 0.23654250172309946,
+                  "n": 147.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.04878048780487805,
+                  "mean_score": 0.34712797930447326,
+                  "n": 41.0
+                },
+                {
+                  "bin": 4,
+                  "frac_true": 0.4482758620689655,
+                  "mean_score": 0.4457891867035524,
+                  "n": 29.0
+                },
+                {
+                  "bin": 5,
+                  "frac_true": 0.3333333333333333,
+                  "mean_score": 0.5748632731823771,
+                  "n": 21.0
+                },
+                {
+                  "bin": 6,
+                  "frac_true": 0.14285714285714285,
+                  "mean_score": 0.6280066606219482,
+                  "n": 7.0
+                }
+              ]
+            },
+            "ec_top1": {
+              "accuracy_ci": {
+                "ci_high": 0.19736842105263158,
+                "ci_low": 0.04938271604938271,
+                "estimate": 0.12162162162162163,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "coverage": 1.0,
+              "n_labelled": 148.0,
+              "top1_accuracy": 0.12162162162162163,
+              "top1_precision_when_called": 0.12162162162162163
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.14054054054054052,
+                "ci_low": 0.034482758620689655,
+                "estimate": 0.0893854748603352,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "precision": {
+                "ci_high": 0.375,
+                "ci_low": 0.19047619047619047,
+                "estimate": 0.2857142857142857,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "recall": {
+                "ci_high": 0.08994708994708994,
+                "ci_low": 0.01904761904761905,
+                "estimate": 0.052980132450331126,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.31501831501831506,
+                "ci_low": 0.10526315789473684,
+                "estimate": 0.20952380952380953,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "fmax": 0.20952380952380953,
+              "precision": 0.3728813559322034,
+              "recall": 0.1456953642384106,
+              "threshold": 0.39,
+              "threshold_on_test": true
+            }
+          },
+          "stage1_rlc_cohort": {
+            "calibration": {
+              "brier": 0.008940581822107453,
+              "brier_ci": {
+                "ci_high": 0.009069236098735493,
+                "ci_low": 0.008804792062879008,
+                "estimate": 0.008940581822107453,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "ece": 0.09343417435518148,
+              "ece_ci": {
+                "ci_high": 0.09407479870989753,
+                "ci_low": 0.09275478771550905,
+                "estimate": 0.09343417435518148,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "n_pairs": 750508.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 9.189993934604003e-05,
+                  "mean_score": 0.09274977939219334,
+                  "n": 707291.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.0012566322256352975,
+                  "mean_score": 0.10691768656388285,
+                  "n": 42972.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.061224489795918366,
+                  "mean_score": 0.23654250172309946,
+                  "n": 147.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.04878048780487805,
+                  "mean_score": 0.34712797930447326,
+                  "n": 41.0
+                },
+                {
+                  "bin": 4,
+                  "frac_true": 0.4482758620689655,
+                  "mean_score": 0.4457891867035524,
+                  "n": 29.0
+                },
+                {
+                  "bin": 5,
+                  "frac_true": 0.3333333333333333,
+                  "mean_score": 0.5748632731823771,
+                  "n": 21.0
+                },
+                {
+                  "bin": 6,
+                  "frac_true": 0.14285714285714285,
+                  "mean_score": 0.6280066606219482,
+                  "n": 7.0
+                }
+              ]
+            },
+            "ec_top1": {
+              "accuracy_ci": {
+                "ci_high": 0.19736842105263158,
+                "ci_low": 0.04938271604938271,
+                "estimate": 0.12162162162162163,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "coverage": 1.0,
+              "n_labelled": 148.0,
+              "top1_accuracy": 0.12162162162162163,
+              "top1_precision_when_called": 0.12162162162162163
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.14054054054054052,
+                "ci_low": 0.034482758620689655,
+                "estimate": 0.0893854748603352,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "precision": {
+                "ci_high": 0.375,
+                "ci_low": 0.19047619047619047,
+                "estimate": 0.2857142857142857,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "recall": {
+                "ci_high": 0.08994708994708994,
+                "ci_low": 0.01904761904761905,
+                "estimate": 0.052980132450331126,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.31501831501831506,
+                "ci_low": 0.10526315789473684,
+                "estimate": 0.20952380952380953,
+                "n_boot": 1000,
+                "n_genomes": 22
+              },
+              "fmax": 0.20952380952380953,
+              "precision": 0.3728813559322034,
+              "recall": 0.1456953642384106,
+              "threshold": 0.39,
+              "threshold_on_test": true
+            }
+          }
+        },
+        "universe": {
+          "GCA_000006965.1": {
+            "labelled_proteins": 18,
+            "pairs": 91278,
+            "true_pairs": 18
+          },
+          "GCA_003443575.1": {
+            "labelled_proteins": 9,
+            "pairs": 45639,
+            "true_pairs": 9
+          },
+          "GCA_004402975.1": {
+            "labelled_proteins": 1,
+            "pairs": 5071,
+            "true_pairs": 2
+          },
+          "GCF_000015245.1": {
+            "labelled_proteins": 7,
+            "pairs": 35497,
+            "true_pairs": 7
+          },
+          "GCF_000016065.1": {
+            "labelled_proteins": 1,
+            "pairs": 5071,
+            "true_pairs": 1
+          },
+          "GCF_000018145.1": {
+            "labelled_proteins": 2,
+            "pairs": 10142,
+            "true_pairs": 2
+          },
+          "GCF_000020125.1": {
+            "labelled_proteins": 11,
+            "pairs": 55781,
+            "true_pairs": 13
+          },
+          "GCF_000146165.2": {
+            "labelled_proteins": 1,
+            "pairs": 5071,
+            "true_pairs": 1
+          },
+          "GCF_000166295.1": {
+            "labelled_proteins": 2,
+            "pairs": 10142,
+            "true_pairs": 2
+          },
+          "GCF_000203935.1": {
+            "labelled_proteins": 4,
+            "pairs": 20284,
+            "true_pairs": 4
+          },
+          "GCF_000236665.1": {
+            "labelled_proteins": 1,
+            "pairs": 5071,
+            "true_pairs": 1
+          },
+          "GCF_000237365.1": {
+            "labelled_proteins": 1,
+            "pairs": 5071,
+            "true_pairs": 1
+          },
+          "GCF_000327065.1": {
+            "labelled_proteins": 10,
+            "pairs": 50710,
+            "true_pairs": 10
+          },
+          "GCF_000698265.1": {
+            "labelled_proteins": 17,
+            "pairs": 86207,
+            "true_pairs": 17
+          },
+          "GCF_000832305.1": {
+            "labelled_proteins": 5,
+            "pairs": 25355,
+            "true_pairs": 5
+          },
+          "GCF_001307155.1": {
+            "labelled_proteins": 13,
+            "pairs": 65923,
+            "true_pairs": 13
+          },
+          "GCF_001307275.1": {
+            "labelled_proteins": 16,
+            "pairs": 81136,
+            "true_pairs": 16
+          },
+          "GCF_001440325.1": {
+            "labelled_proteins": 6,
+            "pairs": 30426,
+            "true_pairs": 6
+          },
+          "GCF_001623525.1": {
+            "labelled_proteins": 10,
+            "pairs": 50710,
+            "true_pairs": 10
+          },
+          "GCF_001625455.1": {
+            "labelled_proteins": 6,
+            "pairs": 30426,
+            "true_pairs": 6
+          },
+          "GCF_001633105.1": {
+            "labelled_proteins": 3,
+            "pairs": 15213,
+            "true_pairs": 3
+          },
+          "GCF_002797435.1": {
+            "labelled_proteins": 4,
+            "pairs": 20284,
+            "true_pairs": 4
+          }
+        },
+        "vs_baseline": {
+          "learned_gbdt": {
+            "delta_ece": {
+              "ci_high": -0.04294156150808629,
+              "ci_low": -0.05327905149730765,
+              "estimate": -0.04890227195549614,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_f1_at_threshold": {
+              "ci_high": -0.034482758620689655,
+              "ci_low": -0.14054054054054052,
+              "estimate": -0.0893854748603352,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_global_fmax": {
+              "ci_high": -0.10339516287605689,
+              "ci_low": -0.3140350308491902,
+              "estimate": -0.20888791991424574,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_precision_at_threshold": {
+              "ci_high": -0.19047619047619047,
+              "ci_low": -0.375,
+              "estimate": -0.2857142857142857,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_recall_at_threshold": {
+              "ci_high": -0.01904761904761905,
+              "ci_low": -0.08994708994708994,
+              "estimate": -0.052980132450331126,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "matched_genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "pair_correction": {
+              "corrected": 20.0,
+              "harmed": 8.0,
+              "mcnemar_p": 0.03569813817739487,
+              "net": 12.0,
+              "net_ci": {
+                "ci_high": 22.0,
+                "ci_low": 4.0,
+                "estimate": 12.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "top1_correction": {
+              "corrected": 0.0,
+              "harmed": 18.0,
+              "mcnemar_p": 7.62939453125e-06,
+              "net": -18.0,
+              "net_ci": {
+                "ci_high": -6.0,
+                "ci_low": -35.0,
+                "estimate": -18.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            }
+          },
+          "learned_logistic": {
+            "delta_ece": {
+              "ci_high": -0.05335005939260083,
+              "ci_low": -0.055548724837121366,
+              "estimate": -0.05461890283604443,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_f1_at_threshold": {
+              "ci_high": -0.034482758620689655,
+              "ci_low": -0.14054054054054052,
+              "estimate": -0.0893854748603352,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_global_fmax": {
+              "ci_high": -0.0790662466730154,
+              "ci_low": -0.28486590038314175,
+              "estimate": -0.17898945837877137,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_precision_at_threshold": {
+              "ci_high": -0.19047619047619047,
+              "ci_low": -0.375,
+              "estimate": -0.2857142857142857,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_recall_at_threshold": {
+              "ci_high": -0.01904761904761905,
+              "ci_low": -0.08994708994708994,
+              "estimate": -0.052980132450331126,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "matched_genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "pair_correction": {
+              "corrected": 20.0,
+              "harmed": 8.0,
+              "mcnemar_p": 0.03569813817739487,
+              "net": 12.0,
+              "net_ci": {
+                "ci_high": 22.0,
+                "ci_low": 4.0,
+                "estimate": 12.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "top1_correction": {
+              "corrected": 0.0,
+              "harmed": 17.0,
+              "mcnemar_p": 1.52587890625e-05,
+              "net": -17.0,
+              "net_ci": {
+                "ci_high": -5.0,
+                "ci_low": -33.0,
+                "estimate": -17.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            }
+          },
+          "stage1": {
+            "delta_ece": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_f1_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_global_fmax": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_precision_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_recall_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "matched_genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "pair_correction": {
+              "corrected": 0.0,
+              "harmed": 0.0,
+              "mcnemar_p": 1.0,
+              "net": 0.0,
+              "net_ci": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "top1_correction": {
+              "corrected": 0.0,
+              "harmed": 0.0,
+              "mcnemar_p": 1.0,
+              "net": 0.0,
+              "net_ci": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            }
+          },
+          "stage1_rlc": {
+            "delta_ece": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_f1_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_global_fmax": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_precision_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_recall_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "matched_genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "pair_correction": {
+              "corrected": 0.0,
+              "harmed": 0.0,
+              "mcnemar_p": 1.0,
+              "net": 0.0,
+              "net_ci": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "top1_correction": {
+              "corrected": 0.0,
+              "harmed": 0.0,
+              "mcnemar_p": 1.0,
+              "net": 0.0,
+              "net_ci": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            }
+          },
+          "stage1_rlc_cohort": {
+            "delta_ece": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_f1_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_global_fmax": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_precision_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "delta_recall_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 1000,
+              "n_genomes": 22
+            },
+            "matched_genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "pair_correction": {
+              "corrected": 0.0,
+              "harmed": 0.0,
+              "mcnemar_p": 1.0,
+              "net": 0.0,
+              "net_ci": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            },
+            "top1_correction": {
+              "corrected": 0.0,
+              "harmed": 0.0,
+              "mcnemar_p": 1.0,
+              "net": 0.0,
+              "net_ci": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 1000,
+                "n_genomes": 22
+              }
+            }
+          }
+        }
+      }
+    },
+    "seed": 13,
+    "threshold": 0.5
+  },
+  "execution_status": {
+    "learned_gbdt": {
+      "GCA_000006965.1": "executed",
+      "GCA_003443575.1": "executed",
+      "GCA_004402975.1": "executed",
+      "GCF_000015245.1": "executed",
+      "GCF_000016065.1": "executed",
+      "GCF_000018145.1": "executed",
+      "GCF_000020125.1": "executed",
+      "GCF_000146165.2": "executed",
+      "GCF_000166295.1": "executed",
+      "GCF_000203935.1": "executed",
+      "GCF_000236665.1": "executed",
+      "GCF_000237365.1": "executed",
+      "GCF_000327065.1": "executed",
+      "GCF_000698265.1": "executed",
+      "GCF_000832305.1": "executed",
+      "GCF_001307155.1": "executed",
+      "GCF_001307275.1": "executed",
+      "GCF_001440325.1": "executed",
+      "GCF_001623525.1": "executed",
+      "GCF_001625455.1": "executed",
+      "GCF_001633105.1": "executed",
+      "GCF_002797435.1": "executed"
+    },
+    "learned_logistic": {
+      "GCA_000006965.1": "executed",
+      "GCA_003443575.1": "executed",
+      "GCA_004402975.1": "executed",
+      "GCF_000015245.1": "executed",
+      "GCF_000016065.1": "executed",
+      "GCF_000018145.1": "executed",
+      "GCF_000020125.1": "executed",
+      "GCF_000146165.2": "executed",
+      "GCF_000166295.1": "executed",
+      "GCF_000203935.1": "executed",
+      "GCF_000236665.1": "executed",
+      "GCF_000237365.1": "executed",
+      "GCF_000327065.1": "executed",
+      "GCF_000698265.1": "executed",
+      "GCF_000832305.1": "executed",
+      "GCF_001307155.1": "executed",
+      "GCF_001307275.1": "executed",
+      "GCF_001440325.1": "executed",
+      "GCF_001623525.1": "executed",
+      "GCF_001625455.1": "executed",
+      "GCF_001633105.1": "executed",
+      "GCF_002797435.1": "executed"
+    },
+    "stage0": {
+      "GCA_000006965.1": "executed",
+      "GCA_003443575.1": "executed",
+      "GCA_004402975.1": "executed",
+      "GCF_000015245.1": "executed",
+      "GCF_000016065.1": "executed",
+      "GCF_000018145.1": "executed",
+      "GCF_000020125.1": "executed",
+      "GCF_000146165.2": "executed",
+      "GCF_000166295.1": "executed",
+      "GCF_000203935.1": "executed",
+      "GCF_000236665.1": "executed",
+      "GCF_000237365.1": "executed",
+      "GCF_000327065.1": "executed",
+      "GCF_000698265.1": "executed",
+      "GCF_000832305.1": "executed",
+      "GCF_001307155.1": "executed",
+      "GCF_001307275.1": "executed",
+      "GCF_001440325.1": "executed",
+      "GCF_001623525.1": "executed",
+      "GCF_001625455.1": "executed",
+      "GCF_001633105.1": "executed",
+      "GCF_002797435.1": "executed"
+    },
+    "stage1": {
+      "GCA_000006965.1": "executed",
+      "GCA_003443575.1": "executed",
+      "GCA_004402975.1": "executed",
+      "GCF_000015245.1": "executed",
+      "GCF_000016065.1": "executed",
+      "GCF_000018145.1": "executed",
+      "GCF_000020125.1": "executed",
+      "GCF_000146165.2": "executed",
+      "GCF_000166295.1": "executed",
+      "GCF_000203935.1": "executed",
+      "GCF_000236665.1": "executed",
+      "GCF_000237365.1": "executed",
+      "GCF_000327065.1": "executed",
+      "GCF_000698265.1": "executed",
+      "GCF_000832305.1": "executed",
+      "GCF_001307155.1": "executed",
+      "GCF_001307275.1": "executed",
+      "GCF_001440325.1": "executed",
+      "GCF_001623525.1": "executed",
+      "GCF_001625455.1": "executed",
+      "GCF_001633105.1": "executed",
+      "GCF_002797435.1": "executed"
+    },
+    "stage1_rlc": {
+      "GCA_000006965.1": "executed",
+      "GCA_003443575.1": "executed",
+      "GCA_004402975.1": "executed",
+      "GCF_000015245.1": "executed",
+      "GCF_000016065.1": "executed",
+      "GCF_000018145.1": "executed",
+      "GCF_000020125.1": "executed",
+      "GCF_000146165.2": "executed",
+      "GCF_000166295.1": "executed",
+      "GCF_000203935.1": "executed",
+      "GCF_000236665.1": "executed",
+      "GCF_000237365.1": "executed",
+      "GCF_000327065.1": "executed",
+      "GCF_000698265.1": "executed",
+      "GCF_000832305.1": "executed",
+      "GCF_001307155.1": "executed",
+      "GCF_001307275.1": "executed",
+      "GCF_001440325.1": "executed",
+      "GCF_001623525.1": "executed",
+      "GCF_001625455.1": "executed",
+      "GCF_001633105.1": "executed",
+      "GCF_002797435.1": "executed"
+    },
+    "stage1_rlc_cohort": {
+      "GCA_000006965.1": "executed",
+      "GCA_003443575.1": "executed",
+      "GCA_004402975.1": "executed",
+      "GCF_000015245.1": "executed",
+      "GCF_000016065.1": "executed",
+      "GCF_000018145.1": "executed",
+      "GCF_000020125.1": "executed",
+      "GCF_000146165.2": "executed",
+      "GCF_000166295.1": "executed",
+      "GCF_000203935.1": "executed",
+      "GCF_000236665.1": "executed",
+      "GCF_000237365.1": "executed",
+      "GCF_000327065.1": "executed",
+      "GCF_000698265.1": "executed",
+      "GCF_000832305.1": "executed",
+      "GCF_001307155.1": "executed",
+      "GCF_001307275.1": "executed",
+      "GCF_001440325.1": "executed",
+      "GCF_001623525.1": "executed",
+      "GCF_001625455.1": "executed",
+      "GCF_001633105.1": "executed",
+      "GCF_002797435.1": "executed"
+    }
+  },
+  "experiment_id": "v3-price148-graphec-context-ablation",
+  "go_propagation": false,
+  "leakage_controls": {
+    "cluster_disjoint": "not_declared",
+    "declared:context": "declared_unverified: target genomic neighborhoods (+-5 genes) with full coordinates (price-layout-v4) and 22-genome MMseqs2 family cohort (price-cohort-v2, clade holdout)",
+    "declared:learned_model_provenance": "declared_unverified: trained on swissprot_label_rich_v1 (18 genomes, 0 Price genera); Price labels never used in training or calibration",
+    "declared:predictor_training_overlap": "declared_unverified: not assessed: the six predictors' training sets may contain Price enzymes",
+    "declared:test_only": "declared_unverified: all 22 Price genomes evaluated as test; no parameter or threshold fitted on Price",
+    "genome_id_disjoint": "verified",
+    "homology_clusters": "not_declared",
+    "label_separation": "verified",
+    "pretrained_model_leakage": "not_assessed",
+    "protein_id_disjoint": "not_assessed: no train/calibration proteins declared",
+    "species_disjoint": "not_declared"
+  },
+  "leakage_problems": [],
+  "n_not_executed": 0,
+  "provenance": {
+    "code": {
+      "v3_metrics.py": "c98b70bf9760b9605413f0b034e4712ccaa2a586d0ed7c671d952982e1504532",
+      "v3_runner.py": "302cfc635ae521603d803d300d96610b325f366e2be81072c50fd7caab4785aa"
+    },
+    "git_commit": null,
+    "gspa_binary": {
+      "bytes": 46133034,
+      "path": "/data/hohndor/gspa-v3/price-context-ablation/gspa-2.2.2.jar",
+      "sha256": "3e23cc29c91314b2b2cf6831cf1f2abcddde1bde4c01a59d2983d5920e82258b",
+      "status": "ok"
+    },
+    "inputs": {
+      "GCA_000006965.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 243142,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCA_000006965.1.layout.tsv",
+            "sha256": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 18652208,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCA_000006965.1.claims.jsonl",
+          "sha256": "3282ae53f14aae7c5701680a873be0f3a5a667533e81d305b157e7823d6b7de3",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 375,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCA_000006965.1.ec.tsv",
+            "sha256": "7d095996a696dfce0edbd93005cee97b69b93c6b533adfbb4f31199e9fdcf060",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCA_003443575.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 149355,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCA_003443575.1.layout.tsv",
+            "sha256": "bc5c8107ef781a631dccf5f9c94c2e32024777535fcc24144239e6e089e62af2",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 9324637,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCA_003443575.1.claims.jsonl",
+          "sha256": "73674ec8c078d64d862d394bd7b95ac5951eaae6f107afdf4dc78ee156e5a4f6",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 192,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCA_003443575.1.ec.tsv",
+            "sha256": "db6a97912b1e7b9ff5d1d01ffd76e13d4c5ebb5123328333c4071d6a5c9007b9",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCA_004402975.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 372284,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCA_004402975.1.layout.tsv",
+            "sha256": "0aabe2956dcecd28ec6d5a620fc27f665c8f9d97f8433f755fd2d9488d8c86d8",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 1043784,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCA_004402975.1.claims.jsonl",
+          "sha256": "370f2bb86f0ae8f9ac9eb052c45e06d2ac93313988f23e40dfe91424ebe2d5a6",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 54,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCA_004402975.1.ec.tsv",
+            "sha256": "cb70a481cc1e37ae419ef8c41dbc6fab9325d9ef521c0ddc4acb66431a0c3e34",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000015245.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 162818,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000015245.1.layout.tsv",
+            "sha256": "6914e7d162a2f4dde29d8ac8b0997b346b109f536a84d65c4d9a84d57c558667",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 7399521,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000015245.1.claims.jsonl",
+          "sha256": "fd2b7b5cc73b7900ead600b4e29fbe796abbe2c683845c00cd80be594183b9fd",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 178,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000015245.1.ec.tsv",
+            "sha256": "ea619ae921131ddc316deb5313a2d492997affde12a99b810f6350e3e3586000",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000016065.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 173227,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000016065.1.layout.tsv",
+            "sha256": "149a68c9ea5f7f4c346f03925a60593f1799b6b3e4ba109c0e479d357fc911ca",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 1058445,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000016065.1.claims.jsonl",
+          "sha256": "bb195690e7d952a086d50bf019c90ab60b3223f6c06ca3cd6e611b69d2f8c119",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 38,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000016065.1.ec.tsv",
+            "sha256": "e456bf4315815e4d338abd1eb5904cdf57f6b6733a1921988bf8bd916ef5fcce",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000018145.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 177505,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000018145.1.layout.tsv",
+            "sha256": "7559f9f69174cf234b2f90b2048357357a68313308ef449126af5b631f034175",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 2114744,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000018145.1.claims.jsonl",
+          "sha256": "ee5c3491724bbb90f9b2b8dd86a410c08c43a2aa7a98a79744fc914ce4867d1b",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 61,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000018145.1.ec.tsv",
+            "sha256": "53826ae33c8c4b585b516c1a42ddf503c496b77793db267cdbbd95574f9418ae",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000020125.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 318454,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000020125.1.layout.tsv",
+            "sha256": "4fde55882bcf1b9a8689f8cc0ecd86ee8fa655c85c5248579650bd02ad670200",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 11623482,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000020125.1.claims.jsonl",
+          "sha256": "4c15d80a06da5de908770e668cd4892528372dd68d976435c022766f619baba6",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 324,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000020125.1.ec.tsv",
+            "sha256": "a3ad13beeb6f73eb0c9bf1ccc29bf4852b89845ca69d0977702ad2e389e61abb",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000146165.2": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 186155,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000146165.2.layout.tsv",
+            "sha256": "4d5644152513a119afc005bc96952601167b2e501d9b06e9f1333292f015fc06",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 1059687,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000146165.2.claims.jsonl",
+          "sha256": "9df0c376a2f3c6c3c87d153033299b796a14f0817254e51f012a56f75030db47",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 38,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000146165.2.ec.tsv",
+            "sha256": "18d8a339842a3f4e032bf2556d88eb3d7bfb59121613055b7b5a691510ea037b",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000166295.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 187583,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000166295.1.layout.tsv",
+            "sha256": "f78b2b8cc3bfbed8433eb4052a8ae52ae05965b4c58f84b9f05dfa35b993bd7d",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 2119734,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000166295.1.claims.jsonl",
+          "sha256": "a3e996424d97ae0641492f55dba50f17e8be55bc2d60261dddf500c0f9612d67",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 61,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000166295.1.ec.tsv",
+            "sha256": "faae429a0a4b36f2e6cd9151dcc83860e3edf6548f70336e8fdd035fbae80307",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000203935.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 194959,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000203935.1.layout.tsv",
+            "sha256": "41c9d8762a7bfec77205ad011812144dc51f73094eec7665b2357df09ff8c996",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 4235822,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000203935.1.claims.jsonl",
+          "sha256": "54a10cb2ad5842d85b79d5d1b3a9d024ed66dcfad8671e320adc2f7e64f36fb2",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 109,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000203935.1.ec.tsv",
+            "sha256": "f71a6fa2df4526286429b24bfe83b9fb293b9afb8af1856c25b653b33ec82a86",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000236665.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 155078,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000236665.1.layout.tsv",
+            "sha256": "08703ce9e5a732c8cfedc8051808bd48b756453c7c7bdab28273b9074ef03461",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 1059050,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000236665.1.claims.jsonl",
+          "sha256": "9a3af15dbf3b6fb877ac8d09acb7a1fe6b98205164e5020a91ebdadaccb5f7e6",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 38,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000236665.1.ec.tsv",
+            "sha256": "5fc5bed8ab14c8022c3b8f764acfad87bc085b8383532622ccb6bd363fb7c926",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000237365.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 289274,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000237365.1.layout.tsv",
+            "sha256": "b40279a568bfc30753d5f63128e12d62cc56b05a6d159d21c69fd072038db6f1",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 1059093,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000237365.1.claims.jsonl",
+          "sha256": "a230e18cae2246ed3d5ff5765e2d39da3ac36c43633f27ffacc1ba993530389d",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 37,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000237365.1.ec.tsv",
+            "sha256": "56919e68b7ff3ca5679ea29f52f24b55bf0b11a27a7623b8f11ea4350cc257cf",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000327065.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 185965,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000327065.1.layout.tsv",
+            "sha256": "fb04a19966bf0667d51a3ffa420783f52c0be3d8e984e1c2710ef23c581b6ce3",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 10579818,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000327065.1.claims.jsonl",
+          "sha256": "e69a8ba8669dfb6eac683ac88a6cefda3eeed0ef99133d2f49a4439b9a4ce6ee",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 248,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000327065.1.ec.tsv",
+            "sha256": "6a4a40c93958c0e34fcacc37a75e50a698ecd810ee8e36c51d69a2fae4b93b8d",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000698265.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 259021,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000698265.1.layout.tsv",
+            "sha256": "111a433045125a5958315bd471a252e2a3f8744500e1abfb534f1c2ccc739e4c",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 17968083,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000698265.1.claims.jsonl",
+          "sha256": "f475631f442a1ffd65d6a2143603e6b875710dd2e5ff4a6beb703f57ccac98cb",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 414,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000698265.1.ec.tsv",
+            "sha256": "29cffaf2a8a46f44d1e20997d4cf36391664af29a49b94509aa2ee6dcfdfbc4d",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000832305.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 347025,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_000832305.1.layout.tsv",
+            "sha256": "4e4d8c2a1eb091b653de05c2f4ccd6aaf9d8bc87ed0aacc15d089c7b443469c7",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 5280554,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_000832305.1.claims.jsonl",
+          "sha256": "654b21bbec7f3f203b31655d7909e99115012ed01fa1da668d0ad315986bb3e4",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 135,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000832305.1.ec.tsv",
+            "sha256": "6331bc190e222bdaa06ba71ba78b633980cc6cadc4a3b7404e09a3a55f6acbc4",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001307155.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 269774,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_001307155.1.layout.tsv",
+            "sha256": "7d9560ff41eb0c67b5f427e021627767e60f22e1db803c41f5c2dfb7f1ffe500",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 13748125,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_001307155.1.claims.jsonl",
+          "sha256": "c875b5dc2a3e956f50a2302f8fba7f3bff641821df16cbcd192074ba9915ea82",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 319,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001307155.1.ec.tsv",
+            "sha256": "242ce3d5c47f87a6000d0f6a901a787f231bbce2d8932bd2e99f3b67ef5ccd10",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001307275.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 280675,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_001307275.1.layout.tsv",
+            "sha256": "201b0fd3a1f8c84fcaedf6f561749b65139e8d3dfed84aad0c8817bb31187a73",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 16912940,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_001307275.1.claims.jsonl",
+          "sha256": "d5bf4fa8c43251813d9c4e8d0f45d5e4dc733de8c9b87fecdf4cab1b3b1b77f1",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 395,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001307275.1.ec.tsv",
+            "sha256": "b221f50beeec77513463345b6cf53a4965e80c1d6faeb45b238dcc6e36b60e3a",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001440325.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 255992,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_001440325.1.layout.tsv",
+            "sha256": "50ebfbf3809335125441197d5943abaf40bbd7f4fd292956666c687626b84ec4",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 6356592,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_001440325.1.claims.jsonl",
+          "sha256": "177cc685ebca1fa28b4b650b599d29a549ba1e65e3ec9a87f28913f2b3a72284",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 156,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001440325.1.ec.tsv",
+            "sha256": "6a52b28c034859001bf66b42410ff6acd5be264669ed439c40e0e21102d47c28",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001623525.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 279788,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_001623525.1.layout.tsv",
+            "sha256": "4c292277d125c545a0e545cc943b2509fe05559dece921fe273e4327c01e0826",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 10592001,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_001623525.1.claims.jsonl",
+          "sha256": "b4563e62e3d90adc2c85b42ab84ed383a7fb6cbae33d161a2d8dc3c2a8126f10",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 254,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001623525.1.ec.tsv",
+            "sha256": "8ac0401d5158b2cee45de50f0af90d072f18c2369965e9d98c2f41e454bc64e9",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001625455.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 294625,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_001625455.1.layout.tsv",
+            "sha256": "c5ed2c6445faa33cc10c3a4e9b991f6e043d141adb73d316de290540bff8124e",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 6351950,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_001625455.1.claims.jsonl",
+          "sha256": "3f81ca5b8e50d5a27c70e9b8e95132409d9c1a8545b96716f143bbb42d3ca9c9",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 158,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001625455.1.ec.tsv",
+            "sha256": "e035f98658244e0ffcd2252f0d391387a4bb3d06fa9ebd7d0c6c7c3682845885",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001633105.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 234331,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_001633105.1.layout.tsv",
+            "sha256": "31fd8bbdb3e48c945f409b70544b5e16dde639d0a84734bae763e7f13358f69a",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 3167902,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_001633105.1.claims.jsonl",
+          "sha256": "6f640da1ed0966da59c8d4a78aa778c48799583cf421bf8f0e534d95b3850267",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 85,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001633105.1.ec.tsv",
+            "sha256": "421f802699384ab233fafec633d1ec0fda99bb55d6f2850cd4e5af2143659b9d",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_002797435.1": {
+        "aux": {
+          "genome_layout": {
+            "bytes": 208378,
+            "path": "/data/hohndor/gspa-v3/price-context-preparation/layout/GCF_002797435.1.layout.tsv",
+            "sha256": "8470db436d554f1a0d3eb440607d121f9ecffc380795851a6501a7aa08f63481",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 4226593,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/graphec/GCF_002797435.1.claims.jsonl",
+          "sha256": "736052b5db34ba459b5f91de88a6206c185284dd3e2ec57a35710ed408e816cf",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 111,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_002797435.1.ec.tsv",
+            "sha256": "92519ecef786152e51316043901bbad1a789c0d7785fe7630d2d1fb91c887b0d",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      }
+    },
+    "manifest": {
+      "bytes": 15154,
+      "path": "/data/hohndor/gspa-v3/price-context-ablation/manifests/v3_price_graphec.json",
+      "sha256": "7161116289b4bbcf3ccce8d8eae93df094303124b2bf6028986816a2b41eb459",
+      "status": "ok"
+    },
+    "reference": {}
+  },
+  "runs": {
+    "learned_gbdt": {
+      "arm": "learned_gbdt",
+      "batch_manifest": {
+        "bytes": 7578,
+        "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/batch_manifest.tsv",
+        "sha256": "e5dd1303c36ecc83c15b8aeea4e196ed4ee3af5eb31133c7b7250e9af006ad04",
+        "status": "ok"
+      },
+      "command": [
+        "java",
+        "-Xmx24g",
+        "-jar",
+        "/data/hohndor/gspa-v3/price-context-ablation/gspa-2.2.2.jar",
+        "integrate",
+        "--batch-manifest",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/batch_manifest.tsv",
+        "--batch-stats-out",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/batch_stats.tsv",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8",
+        "--reaction-graph",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/seed_reactions.tsv",
+        "--diffusion-mets",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/diffusion_mets.tsv",
+        "--reaction-ec-aliases",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+        "--rlc-suggester",
+        "--cohort",
+        "--cohort-metadata",
+        "/data/hohndor/gspa-v3/price-context-ablation/cohort/cohort_metadata.json",
+        "--cohort-orthogroups",
+        "/data/hohndor/gspa-v3/price-context-ablation/cohort/cohort_orthogroups.tsv",
+        "--cohort-holdout",
+        "CLADE",
+        "--learned-model",
+        "/data/hohndor/gspa-v3/price-context-ablation/learned_models/model_gbdt.json"
+      ],
+      "failed": {},
+      "genomes": {
+        "GCA_000006965.1": {
+          "bytes": 14321181,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCA_000006965.1.integrated.tsv",
+          "sha256": "f246f3e0b217ac3b86b97371917329611d546367b187012282cb4632437a1c8d",
+          "status": "ok"
+        },
+        "GCA_003443575.1": {
+          "bytes": 7181894,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCA_003443575.1.integrated.tsv",
+          "sha256": "906587f8288db2c25c264b8052073f505598b4ff8104fc4c0f4dcc0a370748d6",
+          "status": "ok"
+        },
+        "GCA_004402975.1": {
+          "bytes": 801398,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCA_004402975.1.integrated.tsv",
+          "sha256": "ea8790982792ffa4cb4873afc6fe66fda4a03bea920d61e3177000d523d82af7",
+          "status": "ok"
+        },
+        "GCF_000015245.1": {
+          "bytes": 5712794,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000015245.1.integrated.tsv",
+          "sha256": "9b770bcabb937c1260853eb67a619a75a5ce2063b3c7f815b1ddb3463d02b114",
+          "status": "ok"
+        },
+        "GCF_000016065.1": {
+          "bytes": 816098,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000016065.1.integrated.tsv",
+          "sha256": "33d1630fe44d0bfc23b745b485aff2252dd608b3fd603d989efdec0051040e14",
+          "status": "ok"
+        },
+        "GCF_000018145.1": {
+          "bytes": 1633116,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000018145.1.integrated.tsv",
+          "sha256": "938a2a2f3b9e03892942bfc56c707e4b6e7af74440a717adc5b9e19acaf3ca9c",
+          "status": "ok"
+        },
+        "GCF_000020125.1": {
+          "bytes": 8972151,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000020125.1.integrated.tsv",
+          "sha256": "6e2870ff66418a4a53ccdfd35bce024579e2d95fab35f132ea694f19bca6cc07",
+          "status": "ok"
+        },
+        "GCF_000146165.2": {
+          "bytes": 822246,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000146165.2.integrated.tsv",
+          "sha256": "21ed830004929c4bf240427ccfc341ad278c2613c02027d87d29761a9f606824",
+          "status": "ok"
+        },
+        "GCF_000166295.1": {
+          "bytes": 1634093,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000166295.1.integrated.tsv",
+          "sha256": "19f314feeaa57c1434204eff77a64e73a35014135a8469dca5babd7e3152bdb3",
+          "status": "ok"
+        },
+        "GCF_000203935.1": {
+          "bytes": 3269874,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000203935.1.integrated.tsv",
+          "sha256": "5bdcb57369fe3f6225e1e59983bd9cf868b97b5114c40e0aa5c14bc1c15371a0",
+          "status": "ok"
+        },
+        "GCF_000236665.1": {
+          "bytes": 822610,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000236665.1.integrated.tsv",
+          "sha256": "16d46ec86672f8427b7b01aec4fa102dc483f8ffafd6dc1ecb43d6d96a1cfa74",
+          "status": "ok"
+        },
+        "GCF_000237365.1": {
+          "bytes": 815638,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000237365.1.integrated.tsv",
+          "sha256": "2b54b89382b79ecae544b70abeaeb1befda2b797dae28f187c386e9a63705b32",
+          "status": "ok"
+        },
+        "GCF_000327065.1": {
+          "bytes": 8167197,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000327065.1.integrated.tsv",
+          "sha256": "d87d70743605cf1049a89e96e8074d9d2bd72ecd823e58d79b1bd005537ee0ae",
+          "status": "ok"
+        },
+        "GCF_000698265.1": {
+          "bytes": 13885135,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000698265.1.integrated.tsv",
+          "sha256": "d87481467c0d5f0d9ec145be247f787f0ceb97cf1fbce60f81243d6b47db6363",
+          "status": "ok"
+        },
+        "GCF_000832305.1": {
+          "bytes": 4079932,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_000832305.1.integrated.tsv",
+          "sha256": "d23eeb7baf907c257c3e0bec58b066fa7c5cec63ccf9f347369e933853962f5c",
+          "status": "ok"
+        },
+        "GCF_001307155.1": {
+          "bytes": 10626410,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_001307155.1.integrated.tsv",
+          "sha256": "86a29a760c00b861dbe2ad218a551b76a5bf96e0494a0570216b417956234824",
+          "status": "ok"
+        },
+        "GCF_001307275.1": {
+          "bytes": 13064421,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_001307275.1.integrated.tsv",
+          "sha256": "c9b201e5bdd19404dafc99fa8fb03303ff57499f740a73d74d09c7a76298e53c",
+          "status": "ok"
+        },
+        "GCF_001440325.1": {
+          "bytes": 4923441,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_001440325.1.integrated.tsv",
+          "sha256": "e892fd0460c98c6118af558c8e57ac0e7aff811db032bb5b9bc85c2c30b4532f",
+          "status": "ok"
+        },
+        "GCF_001623525.1": {
+          "bytes": 8184462,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_001623525.1.integrated.tsv",
+          "sha256": "8b56fd88952a356d9397d2d1aa32890a6f019d6bc685b1148eca40faad72b54d",
+          "status": "ok"
+        },
+        "GCF_001625455.1": {
+          "bytes": 4908811,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_001625455.1.integrated.tsv",
+          "sha256": "9a95afa41c492f7e5c190aa40dbbfc8ee60aab302c348c0b6cc4e745f76ac326",
+          "status": "ok"
+        },
+        "GCF_001633105.1": {
+          "bytes": 2436775,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_001633105.1.integrated.tsv",
+          "sha256": "a35de03c2cbb6d4dc38bbaedbcc2d37ec8bf1f5a75fbf4813e87e3e8966d7524",
+          "status": "ok"
+        },
+        "GCF_002797435.1": {
+          "bytes": 3272036,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_gbdt/GCF_002797435.1.integrated.tsv",
+          "sha256": "5e98ee07fdfb256f8f6d07087af0de09f1d59c6afcb59450fef6a1d304a91a1a",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 393.997,
+      "skipped": {},
+      "status": "executed"
+    },
+    "learned_logistic": {
+      "arm": "learned_logistic",
+      "batch_manifest": {
+        "bytes": 7666,
+        "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/batch_manifest.tsv",
+        "sha256": "3c55b10009f7ac2f75829ab96bc49dfd5823a6923056f23a4438f1693cf4d5c2",
+        "status": "ok"
+      },
+      "command": [
+        "java",
+        "-Xmx24g",
+        "-jar",
+        "/data/hohndor/gspa-v3/price-context-ablation/gspa-2.2.2.jar",
+        "integrate",
+        "--batch-manifest",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/batch_manifest.tsv",
+        "--batch-stats-out",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/batch_stats.tsv",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8",
+        "--reaction-graph",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/seed_reactions.tsv",
+        "--diffusion-mets",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/diffusion_mets.tsv",
+        "--reaction-ec-aliases",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+        "--rlc-suggester",
+        "--cohort",
+        "--cohort-metadata",
+        "/data/hohndor/gspa-v3/price-context-ablation/cohort/cohort_metadata.json",
+        "--cohort-orthogroups",
+        "/data/hohndor/gspa-v3/price-context-ablation/cohort/cohort_orthogroups.tsv",
+        "--cohort-holdout",
+        "CLADE",
+        "--learned-model",
+        "/data/hohndor/gspa-v3/price-context-ablation/learned_models/model_logistic.json"
+      ],
+      "failed": {},
+      "genomes": {
+        "GCA_000006965.1": {
+          "bytes": 14292536,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCA_000006965.1.integrated.tsv",
+          "sha256": "1d3240db946c16eabcba37d9c3b5f3f3441446d51b88e15d2a2b8940d1399c8a",
+          "status": "ok"
+        },
+        "GCA_003443575.1": {
+          "bytes": 7135767,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCA_003443575.1.integrated.tsv",
+          "sha256": "d7960aa8f86e311216515e8541d8d504f3b99b0965e18154f2c309a8ca9ab7b7",
+          "status": "ok"
+        },
+        "GCA_004402975.1": {
+          "bytes": 799991,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCA_004402975.1.integrated.tsv",
+          "sha256": "5f57ec2e1fc6cb37bc3adce00dd9d7a639b0428ffe4af53df8dfc0de0fe3061e",
+          "status": "ok"
+        },
+        "GCF_000015245.1": {
+          "bytes": 5698713,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000015245.1.integrated.tsv",
+          "sha256": "d446127af6340acac5f5031fc974048ce1ffed713fc91d4df1e4e7557325ace8",
+          "status": "ok"
+        },
+        "GCF_000016065.1": {
+          "bytes": 814786,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000016065.1.integrated.tsv",
+          "sha256": "57734b4465142262586f6ccd30271408153c004d9d0d77bd81adcf25589df572",
+          "status": "ok"
+        },
+        "GCF_000018145.1": {
+          "bytes": 1630479,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000018145.1.integrated.tsv",
+          "sha256": "365c22deccb2328adc1072ee307a6d1f940ce90ce890ec2186f570caf1ce3dd5",
+          "status": "ok"
+        },
+        "GCF_000020125.1": {
+          "bytes": 8957674,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000020125.1.integrated.tsv",
+          "sha256": "896624d90261b06948973cf4a0b05ea50d7aa0d4601960acb0c2d5a69ff07ab2",
+          "status": "ok"
+        },
+        "GCF_000146165.2": {
+          "bytes": 815875,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000146165.2.integrated.tsv",
+          "sha256": "9f7077701e7cd0a8ca0a8f590e0ed7188bd718e6c7be224ce06b7bc98eb95cc0",
+          "status": "ok"
+        },
+        "GCF_000166295.1": {
+          "bytes": 1631454,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000166295.1.integrated.tsv",
+          "sha256": "784f557f589c107fc5a8b6f0618b02ea3ecbe0685510ff8f30e8d83c75c3ccd7",
+          "status": "ok"
+        },
+        "GCF_000203935.1": {
+          "bytes": 3259686,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000203935.1.integrated.tsv",
+          "sha256": "c63ad361c0f79e7ada6d0c06bbb0233f79e297536c958c83fe9ff5498e89b768",
+          "status": "ok"
+        },
+        "GCF_000236665.1": {
+          "bytes": 816216,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000236665.1.integrated.tsv",
+          "sha256": "e92c18971de64f411a0f19a1e9b38769fad4f036c24089a9dc29e1944f0e34d9",
+          "status": "ok"
+        },
+        "GCF_000237365.1": {
+          "bytes": 814375,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000237365.1.integrated.tsv",
+          "sha256": "608ac0cebfdb7232ac946f0bfe2606603f2167deea34589e3e84a6f0cd0ed26d",
+          "status": "ok"
+        },
+        "GCF_000327065.1": {
+          "bytes": 8144566,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000327065.1.integrated.tsv",
+          "sha256": "3d7fab3e0edc1b05b48b0373894d3b832bef2bce0bfa338aacc025e86e3115b3",
+          "status": "ok"
+        },
+        "GCF_000698265.1": {
+          "bytes": 13853251,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000698265.1.integrated.tsv",
+          "sha256": "5ee8244d5a6ee15539450332937a3354f4f70e6de2dd3f30fc27b30ad792174f",
+          "status": "ok"
+        },
+        "GCF_000832305.1": {
+          "bytes": 4068467,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_000832305.1.integrated.tsv",
+          "sha256": "26f264df17a22208aacec34e331032b9b94c5e4128ec7e06eb33192155d16909",
+          "status": "ok"
+        },
+        "GCF_001307155.1": {
+          "bytes": 10599839,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_001307155.1.integrated.tsv",
+          "sha256": "fa1b8f0bec0bf812e18103f04e75a9807ef58c3523a073b1c91e0db2588c7b6e",
+          "status": "ok"
+        },
+        "GCF_001307275.1": {
+          "bytes": 13041061,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_001307275.1.integrated.tsv",
+          "sha256": "d97a1ced3473af83603a8d2dc3ff84f9b104cb82931fe08bafe79258272ccc29",
+          "status": "ok"
+        },
+        "GCF_001440325.1": {
+          "bytes": 4905556,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_001440325.1.integrated.tsv",
+          "sha256": "a68417a7db17b67806f004637133afe4dfd522628502ce42a7bc9142f8fb67fc",
+          "status": "ok"
+        },
+        "GCF_001623525.1": {
+          "bytes": 8168764,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_001623525.1.integrated.tsv",
+          "sha256": "102cfc0941747154a34d74507304a59f9d0d5615448c92828d20da8cc38ece49",
+          "status": "ok"
+        },
+        "GCF_001625455.1": {
+          "bytes": 4895996,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_001625455.1.integrated.tsv",
+          "sha256": "a982694aa83542f8eeb1eebedf3a60581c21125f1c40a347de2dd77988380afc",
+          "status": "ok"
+        },
+        "GCF_001633105.1": {
+          "bytes": 2442873,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_001633105.1.integrated.tsv",
+          "sha256": "4cc1b7759b6e08d203f3905526861b1470c2671951eb479b84fd043c943217cf",
+          "status": "ok"
+        },
+        "GCF_002797435.1": {
+          "bytes": 3257075,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/learned_logistic/GCF_002797435.1.integrated.tsv",
+          "sha256": "431786af72b72ace2da53e4771fe732af96b398414cb1c862ab0a0f75d400540",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 401.101,
+      "skipped": {},
+      "status": "executed"
+    },
+    "stage0": {
+      "arm": "stage0",
+      "batch_manifest": {
+        "bytes": 7446,
+        "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/batch_manifest.tsv",
+        "sha256": "dfd0c630ac0785f58cc7a58e5a0c44901c7aafc943151432dd107e8ea51bc570",
+        "status": "ok"
+      },
+      "command": [
+        "java",
+        "-Xmx24g",
+        "-jar",
+        "/data/hohndor/gspa-v3/price-context-ablation/gspa-2.2.2.jar",
+        "integrate",
+        "--batch-manifest",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/batch_manifest.tsv",
+        "--batch-stats-out",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/batch_stats.tsv",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8",
+        "--enable-priors",
+        "none"
+      ],
+      "failed": {},
+      "genomes": {
+        "GCA_000006965.1": {
+          "bytes": 8104008,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCA_000006965.1.integrated.tsv",
+          "sha256": "7b43ccbdb1ccdad9c297fc21cc51aad98796c032fd9d7d63f4cb777880d3c850",
+          "status": "ok"
+        },
+        "GCA_003443575.1": {
+          "bytes": 4046225,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCA_003443575.1.integrated.tsv",
+          "sha256": "5ada198ec44842fe9734597db22238e70b640ed443bc5107b53322c174f9f174",
+          "status": "ok"
+        },
+        "GCA_004402975.1": {
+          "bytes": 453807,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCA_004402975.1.integrated.tsv",
+          "sha256": "e1edf528801ef816ba143cfa99ec09b2a2a913b06cfa6cd12e0ef45001966ba0",
+          "status": "ok"
+        },
+        "GCF_000015245.1": {
+          "bytes": 3293065,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000015245.1.integrated.tsv",
+          "sha256": "f8fd020593c0668436a26090b474de7ba3c342a925e3282344661eea484cb777",
+          "status": "ok"
+        },
+        "GCF_000016065.1": {
+          "bytes": 470858,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000016065.1.integrated.tsv",
+          "sha256": "78c3a82e889e849dc3a95e44551ae0fa7f7c0a2fe83a9c6584fc616ef7265639",
+          "status": "ok"
+        },
+        "GCF_000018145.1": {
+          "bytes": 942337,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000018145.1.integrated.tsv",
+          "sha256": "7a5d03efcc3fe51ad49c0cb1ea7acba1115e8860efd5f7155b793d11db54bfa6",
+          "status": "ok"
+        },
+        "GCF_000020125.1": {
+          "bytes": 5177027,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000020125.1.integrated.tsv",
+          "sha256": "40538997da036dfd04b4ec3cbb8135f2c161ac03b01b1e63dac8d72739fe58e5",
+          "status": "ok"
+        },
+        "GCF_000146165.2": {
+          "bytes": 471479,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000146165.2.integrated.tsv",
+          "sha256": "31dc993ecbfc86028d564084faf698b1bb92e0a00a93ce101a4008af40c25a7c",
+          "status": "ok"
+        },
+        "GCF_000166295.1": {
+          "bytes": 942902,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000166295.1.integrated.tsv",
+          "sha256": "35fd9f9603f1e261d4d11a727d9cd872866f01cd75ee713ef2c4bd5480637110",
+          "status": "ok"
+        },
+        "GCF_000203935.1": {
+          "bytes": 1883691,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000203935.1.integrated.tsv",
+          "sha256": "0a749f50dbd022330566e499f9564ec0550d08024c6db744ff9f181bc9a856c4",
+          "status": "ok"
+        },
+        "GCF_000236665.1": {
+          "bytes": 471769,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000236665.1.integrated.tsv",
+          "sha256": "81543c75bcdd9d1ff0b322f8c8fcc68fb4d14770befbef973ce2e8874c558231",
+          "status": "ok"
+        },
+        "GCF_000237365.1": {
+          "bytes": 470607,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000237365.1.integrated.tsv",
+          "sha256": "d0770aa1df265e70fc1d2c5f86f42eb0194a9db61632e4d73f43d9de1c17861f",
+          "status": "ok"
+        },
+        "GCF_000327065.1": {
+          "bytes": 4706323,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000327065.1.integrated.tsv",
+          "sha256": "47b996d6a93bdddfb7d87d4f16854a5228dd1ec086298e359fb0433470e7d983",
+          "status": "ok"
+        },
+        "GCF_000698265.1": {
+          "bytes": 8000619,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000698265.1.integrated.tsv",
+          "sha256": "6c4a82b190db5cecb75cfb95c09cae635e1f436dc7ec8bb774f405cfb03b8ffb",
+          "status": "ok"
+        },
+        "GCF_000832305.1": {
+          "bytes": 2351163,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_000832305.1.integrated.tsv",
+          "sha256": "4307a3c25cfe93cbd13ba7fab4b170dbb8d8b7302630db34a8341ebc7586670f",
+          "status": "ok"
+        },
+        "GCF_001307155.1": {
+          "bytes": 6119786,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_001307155.1.integrated.tsv",
+          "sha256": "4b7323c200077de14505afde3a0a8d05581a80f503af787d87acb38c093be71e",
+          "status": "ok"
+        },
+        "GCF_001307275.1": {
+          "bytes": 7532263,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_001307275.1.integrated.tsv",
+          "sha256": "1fa362b7c2b4cb3173046228625d44b7206b6c0d0a0a7c68a489346adaf4350a",
+          "status": "ok"
+        },
+        "GCF_001440325.1": {
+          "bytes": 2835040,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_001440325.1.integrated.tsv",
+          "sha256": "b50a549bf81bd94aa737d41ec83990efd10b6cfd941c12cc5e3cd6c7c574986f",
+          "status": "ok"
+        },
+        "GCF_001623525.1": {
+          "bytes": 4719839,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_001623525.1.integrated.tsv",
+          "sha256": "a666c232450499fb5cfaee72a0d2540ea4d587ffca5d61869c18b65bb447f178",
+          "status": "ok"
+        },
+        "GCF_001625455.1": {
+          "bytes": 2829390,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_001625455.1.integrated.tsv",
+          "sha256": "d1b73eb73787125874033649282fab9e883ba3828b36b4cc2334c86bc8ea93d0",
+          "status": "ok"
+        },
+        "GCF_001633105.1": {
+          "bytes": 1411633,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_001633105.1.integrated.tsv",
+          "sha256": "6f9248c9ad0f31a6d70d13c18a7ba957296c1754cf747f7a1260a70178a57f78",
+          "status": "ok"
+        },
+        "GCF_002797435.1": {
+          "bytes": 1882242,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage0/GCF_002797435.1.integrated.tsv",
+          "sha256": "f6524624c98d7fb5e42b59bec3970f5ffb322665f29639344a29966859d7779e",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 32.871,
+      "skipped": {},
+      "status": "executed"
+    },
+    "stage1": {
+      "arm": "stage1",
+      "batch_manifest": {
+        "bytes": 7446,
+        "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/batch_manifest.tsv",
+        "sha256": "09f1f9cf7e40d42c3d3514ffd0f7190b68afad51bc21e3a7ae238611ade42c06",
+        "status": "ok"
+      },
+      "command": [
+        "java",
+        "-Xmx24g",
+        "-jar",
+        "/data/hohndor/gspa-v3/price-context-ablation/gspa-2.2.2.jar",
+        "integrate",
+        "--batch-manifest",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/batch_manifest.tsv",
+        "--batch-stats-out",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/batch_stats.tsv",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8"
+      ],
+      "failed": {},
+      "genomes": {
+        "GCA_000006965.1": {
+          "bytes": 8104008,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCA_000006965.1.integrated.tsv",
+          "sha256": "7b43ccbdb1ccdad9c297fc21cc51aad98796c032fd9d7d63f4cb777880d3c850",
+          "status": "ok"
+        },
+        "GCA_003443575.1": {
+          "bytes": 4046225,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCA_003443575.1.integrated.tsv",
+          "sha256": "5ada198ec44842fe9734597db22238e70b640ed443bc5107b53322c174f9f174",
+          "status": "ok"
+        },
+        "GCA_004402975.1": {
+          "bytes": 453807,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCA_004402975.1.integrated.tsv",
+          "sha256": "e1edf528801ef816ba143cfa99ec09b2a2a913b06cfa6cd12e0ef45001966ba0",
+          "status": "ok"
+        },
+        "GCF_000015245.1": {
+          "bytes": 3293065,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000015245.1.integrated.tsv",
+          "sha256": "f8fd020593c0668436a26090b474de7ba3c342a925e3282344661eea484cb777",
+          "status": "ok"
+        },
+        "GCF_000016065.1": {
+          "bytes": 470858,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000016065.1.integrated.tsv",
+          "sha256": "78c3a82e889e849dc3a95e44551ae0fa7f7c0a2fe83a9c6584fc616ef7265639",
+          "status": "ok"
+        },
+        "GCF_000018145.1": {
+          "bytes": 942337,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000018145.1.integrated.tsv",
+          "sha256": "7a5d03efcc3fe51ad49c0cb1ea7acba1115e8860efd5f7155b793d11db54bfa6",
+          "status": "ok"
+        },
+        "GCF_000020125.1": {
+          "bytes": 5177027,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000020125.1.integrated.tsv",
+          "sha256": "40538997da036dfd04b4ec3cbb8135f2c161ac03b01b1e63dac8d72739fe58e5",
+          "status": "ok"
+        },
+        "GCF_000146165.2": {
+          "bytes": 471479,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000146165.2.integrated.tsv",
+          "sha256": "31dc993ecbfc86028d564084faf698b1bb92e0a00a93ce101a4008af40c25a7c",
+          "status": "ok"
+        },
+        "GCF_000166295.1": {
+          "bytes": 942902,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000166295.1.integrated.tsv",
+          "sha256": "35fd9f9603f1e261d4d11a727d9cd872866f01cd75ee713ef2c4bd5480637110",
+          "status": "ok"
+        },
+        "GCF_000203935.1": {
+          "bytes": 1883691,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000203935.1.integrated.tsv",
+          "sha256": "0a749f50dbd022330566e499f9564ec0550d08024c6db744ff9f181bc9a856c4",
+          "status": "ok"
+        },
+        "GCF_000236665.1": {
+          "bytes": 471769,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000236665.1.integrated.tsv",
+          "sha256": "81543c75bcdd9d1ff0b322f8c8fcc68fb4d14770befbef973ce2e8874c558231",
+          "status": "ok"
+        },
+        "GCF_000237365.1": {
+          "bytes": 470607,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000237365.1.integrated.tsv",
+          "sha256": "d0770aa1df265e70fc1d2c5f86f42eb0194a9db61632e4d73f43d9de1c17861f",
+          "status": "ok"
+        },
+        "GCF_000327065.1": {
+          "bytes": 4706323,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000327065.1.integrated.tsv",
+          "sha256": "47b996d6a93bdddfb7d87d4f16854a5228dd1ec086298e359fb0433470e7d983",
+          "status": "ok"
+        },
+        "GCF_000698265.1": {
+          "bytes": 8000619,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000698265.1.integrated.tsv",
+          "sha256": "6c4a82b190db5cecb75cfb95c09cae635e1f436dc7ec8bb774f405cfb03b8ffb",
+          "status": "ok"
+        },
+        "GCF_000832305.1": {
+          "bytes": 2351163,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_000832305.1.integrated.tsv",
+          "sha256": "4307a3c25cfe93cbd13ba7fab4b170dbb8d8b7302630db34a8341ebc7586670f",
+          "status": "ok"
+        },
+        "GCF_001307155.1": {
+          "bytes": 6119786,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_001307155.1.integrated.tsv",
+          "sha256": "4b7323c200077de14505afde3a0a8d05581a80f503af787d87acb38c093be71e",
+          "status": "ok"
+        },
+        "GCF_001307275.1": {
+          "bytes": 7532263,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_001307275.1.integrated.tsv",
+          "sha256": "1fa362b7c2b4cb3173046228625d44b7206b6c0d0a0a7c68a489346adaf4350a",
+          "status": "ok"
+        },
+        "GCF_001440325.1": {
+          "bytes": 2835040,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_001440325.1.integrated.tsv",
+          "sha256": "b50a549bf81bd94aa737d41ec83990efd10b6cfd941c12cc5e3cd6c7c574986f",
+          "status": "ok"
+        },
+        "GCF_001623525.1": {
+          "bytes": 4719839,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_001623525.1.integrated.tsv",
+          "sha256": "a666c232450499fb5cfaee72a0d2540ea4d587ffca5d61869c18b65bb447f178",
+          "status": "ok"
+        },
+        "GCF_001625455.1": {
+          "bytes": 2829390,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_001625455.1.integrated.tsv",
+          "sha256": "d1b73eb73787125874033649282fab9e883ba3828b36b4cc2334c86bc8ea93d0",
+          "status": "ok"
+        },
+        "GCF_001633105.1": {
+          "bytes": 1411633,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_001633105.1.integrated.tsv",
+          "sha256": "6f9248c9ad0f31a6d70d13c18a7ba957296c1754cf747f7a1260a70178a57f78",
+          "status": "ok"
+        },
+        "GCF_002797435.1": {
+          "bytes": 1882242,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1/GCF_002797435.1.integrated.tsv",
+          "sha256": "f6524624c98d7fb5e42b59bec3970f5ffb322665f29639344a29966859d7779e",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 134.196,
+      "skipped": {},
+      "status": "executed"
+    },
+    "stage1_rlc": {
+      "arm": "stage1_rlc",
+      "batch_manifest": {
+        "bytes": 7534,
+        "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/batch_manifest.tsv",
+        "sha256": "1eec6a3136ebbeda75cecde73022bacb1cbeef255c14dfd7e85a23c427d64a5f",
+        "status": "ok"
+      },
+      "command": [
+        "java",
+        "-Xmx24g",
+        "-jar",
+        "/data/hohndor/gspa-v3/price-context-ablation/gspa-2.2.2.jar",
+        "integrate",
+        "--batch-manifest",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/batch_manifest.tsv",
+        "--batch-stats-out",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/batch_stats.tsv",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8",
+        "--reaction-graph",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/seed_reactions.tsv",
+        "--diffusion-mets",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/diffusion_mets.tsv",
+        "--reaction-ec-aliases",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+        "--rlc-suggester"
+      ],
+      "failed": {},
+      "genomes": {
+        "GCA_000006965.1": {
+          "bytes": 8104008,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCA_000006965.1.integrated.tsv",
+          "sha256": "7b43ccbdb1ccdad9c297fc21cc51aad98796c032fd9d7d63f4cb777880d3c850",
+          "status": "ok"
+        },
+        "GCA_003443575.1": {
+          "bytes": 4046225,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCA_003443575.1.integrated.tsv",
+          "sha256": "5ada198ec44842fe9734597db22238e70b640ed443bc5107b53322c174f9f174",
+          "status": "ok"
+        },
+        "GCA_004402975.1": {
+          "bytes": 453807,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCA_004402975.1.integrated.tsv",
+          "sha256": "e1edf528801ef816ba143cfa99ec09b2a2a913b06cfa6cd12e0ef45001966ba0",
+          "status": "ok"
+        },
+        "GCF_000015245.1": {
+          "bytes": 3293065,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000015245.1.integrated.tsv",
+          "sha256": "f8fd020593c0668436a26090b474de7ba3c342a925e3282344661eea484cb777",
+          "status": "ok"
+        },
+        "GCF_000016065.1": {
+          "bytes": 470858,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000016065.1.integrated.tsv",
+          "sha256": "78c3a82e889e849dc3a95e44551ae0fa7f7c0a2fe83a9c6584fc616ef7265639",
+          "status": "ok"
+        },
+        "GCF_000018145.1": {
+          "bytes": 942337,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000018145.1.integrated.tsv",
+          "sha256": "7a5d03efcc3fe51ad49c0cb1ea7acba1115e8860efd5f7155b793d11db54bfa6",
+          "status": "ok"
+        },
+        "GCF_000020125.1": {
+          "bytes": 5177027,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000020125.1.integrated.tsv",
+          "sha256": "40538997da036dfd04b4ec3cbb8135f2c161ac03b01b1e63dac8d72739fe58e5",
+          "status": "ok"
+        },
+        "GCF_000146165.2": {
+          "bytes": 471479,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000146165.2.integrated.tsv",
+          "sha256": "31dc993ecbfc86028d564084faf698b1bb92e0a00a93ce101a4008af40c25a7c",
+          "status": "ok"
+        },
+        "GCF_000166295.1": {
+          "bytes": 942902,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000166295.1.integrated.tsv",
+          "sha256": "35fd9f9603f1e261d4d11a727d9cd872866f01cd75ee713ef2c4bd5480637110",
+          "status": "ok"
+        },
+        "GCF_000203935.1": {
+          "bytes": 1883691,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000203935.1.integrated.tsv",
+          "sha256": "0a749f50dbd022330566e499f9564ec0550d08024c6db744ff9f181bc9a856c4",
+          "status": "ok"
+        },
+        "GCF_000236665.1": {
+          "bytes": 471769,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000236665.1.integrated.tsv",
+          "sha256": "81543c75bcdd9d1ff0b322f8c8fcc68fb4d14770befbef973ce2e8874c558231",
+          "status": "ok"
+        },
+        "GCF_000237365.1": {
+          "bytes": 470607,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000237365.1.integrated.tsv",
+          "sha256": "d0770aa1df265e70fc1d2c5f86f42eb0194a9db61632e4d73f43d9de1c17861f",
+          "status": "ok"
+        },
+        "GCF_000327065.1": {
+          "bytes": 4706323,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000327065.1.integrated.tsv",
+          "sha256": "47b996d6a93bdddfb7d87d4f16854a5228dd1ec086298e359fb0433470e7d983",
+          "status": "ok"
+        },
+        "GCF_000698265.1": {
+          "bytes": 8000619,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000698265.1.integrated.tsv",
+          "sha256": "6c4a82b190db5cecb75cfb95c09cae635e1f436dc7ec8bb774f405cfb03b8ffb",
+          "status": "ok"
+        },
+        "GCF_000832305.1": {
+          "bytes": 2351163,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_000832305.1.integrated.tsv",
+          "sha256": "4307a3c25cfe93cbd13ba7fab4b170dbb8d8b7302630db34a8341ebc7586670f",
+          "status": "ok"
+        },
+        "GCF_001307155.1": {
+          "bytes": 6119786,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_001307155.1.integrated.tsv",
+          "sha256": "4b7323c200077de14505afde3a0a8d05581a80f503af787d87acb38c093be71e",
+          "status": "ok"
+        },
+        "GCF_001307275.1": {
+          "bytes": 7532263,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_001307275.1.integrated.tsv",
+          "sha256": "1fa362b7c2b4cb3173046228625d44b7206b6c0d0a0a7c68a489346adaf4350a",
+          "status": "ok"
+        },
+        "GCF_001440325.1": {
+          "bytes": 2835040,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_001440325.1.integrated.tsv",
+          "sha256": "b50a549bf81bd94aa737d41ec83990efd10b6cfd941c12cc5e3cd6c7c574986f",
+          "status": "ok"
+        },
+        "GCF_001623525.1": {
+          "bytes": 4719839,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_001623525.1.integrated.tsv",
+          "sha256": "a666c232450499fb5cfaee72a0d2540ea4d587ffca5d61869c18b65bb447f178",
+          "status": "ok"
+        },
+        "GCF_001625455.1": {
+          "bytes": 2829390,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_001625455.1.integrated.tsv",
+          "sha256": "d1b73eb73787125874033649282fab9e883ba3828b36b4cc2334c86bc8ea93d0",
+          "status": "ok"
+        },
+        "GCF_001633105.1": {
+          "bytes": 1411633,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_001633105.1.integrated.tsv",
+          "sha256": "6f9248c9ad0f31a6d70d13c18a7ba957296c1754cf747f7a1260a70178a57f78",
+          "status": "ok"
+        },
+        "GCF_002797435.1": {
+          "bytes": 1882242,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc/GCF_002797435.1.integrated.tsv",
+          "sha256": "f6524624c98d7fb5e42b59bec3970f5ffb322665f29639344a29966859d7779e",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 143.371,
+      "skipped": {},
+      "status": "executed"
+    },
+    "stage1_rlc_cohort": {
+      "arm": "stage1_rlc_cohort",
+      "batch_manifest": {
+        "bytes": 7688,
+        "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/batch_manifest.tsv",
+        "sha256": "954e93de39a0d8c3175cce01448dcd75a7be014a1362754683a40af10279b75b",
+        "status": "ok"
+      },
+      "command": [
+        "java",
+        "-Xmx24g",
+        "-jar",
+        "/data/hohndor/gspa-v3/price-context-ablation/gspa-2.2.2.jar",
+        "integrate",
+        "--batch-manifest",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/batch_manifest.tsv",
+        "--batch-stats-out",
+        "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/batch_stats.tsv",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8",
+        "--reaction-graph",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/seed_reactions.tsv",
+        "--diffusion-mets",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/diffusion_mets.tsv",
+        "--reaction-ec-aliases",
+        "/data/hohndor/gspa-v3/price-context-ablation/rxn_ref/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+        "--rlc-suggester",
+        "--cohort",
+        "--cohort-metadata",
+        "/data/hohndor/gspa-v3/price-context-ablation/cohort/cohort_metadata.json",
+        "--cohort-orthogroups",
+        "/data/hohndor/gspa-v3/price-context-ablation/cohort/cohort_orthogroups.tsv",
+        "--cohort-holdout",
+        "CLADE"
+      ],
+      "failed": {},
+      "genomes": {
+        "GCA_000006965.1": {
+          "bytes": 8104008,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCA_000006965.1.integrated.tsv",
+          "sha256": "7b43ccbdb1ccdad9c297fc21cc51aad98796c032fd9d7d63f4cb777880d3c850",
+          "status": "ok"
+        },
+        "GCA_003443575.1": {
+          "bytes": 4046225,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCA_003443575.1.integrated.tsv",
+          "sha256": "5ada198ec44842fe9734597db22238e70b640ed443bc5107b53322c174f9f174",
+          "status": "ok"
+        },
+        "GCA_004402975.1": {
+          "bytes": 453807,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCA_004402975.1.integrated.tsv",
+          "sha256": "e1edf528801ef816ba143cfa99ec09b2a2a913b06cfa6cd12e0ef45001966ba0",
+          "status": "ok"
+        },
+        "GCF_000015245.1": {
+          "bytes": 3293065,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000015245.1.integrated.tsv",
+          "sha256": "f8fd020593c0668436a26090b474de7ba3c342a925e3282344661eea484cb777",
+          "status": "ok"
+        },
+        "GCF_000016065.1": {
+          "bytes": 470858,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000016065.1.integrated.tsv",
+          "sha256": "78c3a82e889e849dc3a95e44551ae0fa7f7c0a2fe83a9c6584fc616ef7265639",
+          "status": "ok"
+        },
+        "GCF_000018145.1": {
+          "bytes": 942337,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000018145.1.integrated.tsv",
+          "sha256": "7a5d03efcc3fe51ad49c0cb1ea7acba1115e8860efd5f7155b793d11db54bfa6",
+          "status": "ok"
+        },
+        "GCF_000020125.1": {
+          "bytes": 5177027,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000020125.1.integrated.tsv",
+          "sha256": "40538997da036dfd04b4ec3cbb8135f2c161ac03b01b1e63dac8d72739fe58e5",
+          "status": "ok"
+        },
+        "GCF_000146165.2": {
+          "bytes": 471479,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000146165.2.integrated.tsv",
+          "sha256": "31dc993ecbfc86028d564084faf698b1bb92e0a00a93ce101a4008af40c25a7c",
+          "status": "ok"
+        },
+        "GCF_000166295.1": {
+          "bytes": 942902,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000166295.1.integrated.tsv",
+          "sha256": "35fd9f9603f1e261d4d11a727d9cd872866f01cd75ee713ef2c4bd5480637110",
+          "status": "ok"
+        },
+        "GCF_000203935.1": {
+          "bytes": 1883691,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000203935.1.integrated.tsv",
+          "sha256": "0a749f50dbd022330566e499f9564ec0550d08024c6db744ff9f181bc9a856c4",
+          "status": "ok"
+        },
+        "GCF_000236665.1": {
+          "bytes": 471769,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000236665.1.integrated.tsv",
+          "sha256": "81543c75bcdd9d1ff0b322f8c8fcc68fb4d14770befbef973ce2e8874c558231",
+          "status": "ok"
+        },
+        "GCF_000237365.1": {
+          "bytes": 470607,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000237365.1.integrated.tsv",
+          "sha256": "d0770aa1df265e70fc1d2c5f86f42eb0194a9db61632e4d73f43d9de1c17861f",
+          "status": "ok"
+        },
+        "GCF_000327065.1": {
+          "bytes": 4706323,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000327065.1.integrated.tsv",
+          "sha256": "47b996d6a93bdddfb7d87d4f16854a5228dd1ec086298e359fb0433470e7d983",
+          "status": "ok"
+        },
+        "GCF_000698265.1": {
+          "bytes": 8000619,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000698265.1.integrated.tsv",
+          "sha256": "6c4a82b190db5cecb75cfb95c09cae635e1f436dc7ec8bb774f405cfb03b8ffb",
+          "status": "ok"
+        },
+        "GCF_000832305.1": {
+          "bytes": 2351163,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_000832305.1.integrated.tsv",
+          "sha256": "4307a3c25cfe93cbd13ba7fab4b170dbb8d8b7302630db34a8341ebc7586670f",
+          "status": "ok"
+        },
+        "GCF_001307155.1": {
+          "bytes": 6119786,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_001307155.1.integrated.tsv",
+          "sha256": "4b7323c200077de14505afde3a0a8d05581a80f503af787d87acb38c093be71e",
+          "status": "ok"
+        },
+        "GCF_001307275.1": {
+          "bytes": 7532263,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_001307275.1.integrated.tsv",
+          "sha256": "1fa362b7c2b4cb3173046228625d44b7206b6c0d0a0a7c68a489346adaf4350a",
+          "status": "ok"
+        },
+        "GCF_001440325.1": {
+          "bytes": 2835040,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_001440325.1.integrated.tsv",
+          "sha256": "b50a549bf81bd94aa737d41ec83990efd10b6cfd941c12cc5e3cd6c7c574986f",
+          "status": "ok"
+        },
+        "GCF_001623525.1": {
+          "bytes": 4719839,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_001623525.1.integrated.tsv",
+          "sha256": "a666c232450499fb5cfaee72a0d2540ea4d587ffca5d61869c18b65bb447f178",
+          "status": "ok"
+        },
+        "GCF_001625455.1": {
+          "bytes": 2829390,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_001625455.1.integrated.tsv",
+          "sha256": "d1b73eb73787125874033649282fab9e883ba3828b36b4cc2334c86bc8ea93d0",
+          "status": "ok"
+        },
+        "GCF_001633105.1": {
+          "bytes": 1411633,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_001633105.1.integrated.tsv",
+          "sha256": "6f9248c9ad0f31a6d70d13c18a7ba957296c1754cf747f7a1260a70178a57f78",
+          "status": "ok"
+        },
+        "GCF_002797435.1": {
+          "bytes": 1882242,
+          "path": "/data/hohndor/gspa-v3/price-context-ablation/runs/graphec/arms/stage1_rlc_cohort/GCF_002797435.1.integrated.tsv",
+          "sha256": "f6524624c98d7fb5e42b59bec3970f5ffb322665f29639344a29966859d7779e",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 231.871,
+      "skipped": {},
+      "status": "executed"
+    }
+  },
+  "schema_version": 1,
+  "status": "evaluated"
+}

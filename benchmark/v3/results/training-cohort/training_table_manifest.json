@@ -1,0 +1,324 @@
+{
+ "dataset_status": "real",
+ "excluded_rows": {
+  "complex_subunit_without_role_truth": 916,
+  "no_truth_not_negative": 472019,
+  "obsolete_go_candidate": 6929,
+  "role_not_labelled": 916
+ },
+ "family_masking": {
+  "family_disjoint_verified": true,
+  "kept": 4262,
+  "labelled_examples_before": 4338,
+  "masked": 76,
+  "masked_by_split": {
+   "calibration": 0,
+   "test": 0,
+   "train": 76
+  },
+  "masked_positives_by_split": {
+   "calibration": 0,
+   "test": 0,
+   "train": 19
+  },
+  "test_examples_with_family_in_train_retained": 31
+ },
+ "inputs": {
+  "contract": "/home/leechuck/.cache/gspa-v3-data/training-cohort/features/GCA_000007005.1/feature_contract.json",
+  "contract_fingerprint": "7106d884d3225a04724ef589ca15a99c4ced7ea7864e3677f0c7c82be0f1a7e2",
+  "example_clusters": "benchmark/v3/results/training-cohort/example_clusters.tsv",
+  "example_clusters_sha256": "7bbe6ce1d8b6bf24298e2d64fbfc9c379c4b747504d9fab7b118c97a4db4a5b4",
+  "feature_dir": "/home/leechuck/.cache/gspa-v3-data/training-cohort/features",
+  "go_obo": "/home/leechuck/.cache/gspa-v3-data/training-cohort/go-basic.obo",
+  "go_obo_sha256": "b08d45b268b8c24ccb2513dbbbc7d4df9f6521c099b413f79eb31e06e0fa3bcc",
+  "go_propagation": "is_a+part_of",
+  "label_policy": "benchmark/v3/results/training-cohort/label_policy.json",
+  "label_policy_sha256": "10f3f664de31a0fcb376c466bcc385ea72c6f8d94bbd18d05d2826875c1377c0",
+  "labels": "benchmark/v3/results/training-cohort/labels.tsv",
+  "labels_sha256": "7be9a66904d214be03abcc580cffb8430c443a6dc6d4b2fdd1ea80dd7b1afdc3",
+  "registry": "benchmark/v3/registry/training_cohort_registry.json",
+  "splits": "benchmark/v3/results/training-cohort/splits.tsv",
+  "splits_sha256": "7d601436fd72ef9407e272004f026b4b5456b69eb2e058d6be35f7ba19252fdc"
+ },
+ "label_basis_note": "label 0 rows exist only where a dataset declared closed_world_declared; they are 'unconfirmed', not verified-false",
+ "label_records_dropped": {
+  "evidence_curated_inferential_not_experimental": 51,
+  "evidence_not_allowed": 51,
+  "obsolete_go_term": 22
+ },
+ "masked_examples_file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/training_table/masked_examples.tsv",
+ "per_split": {
+  "calibration": {
+   "closed_world_negatives": 544,
+   "genomes": 3,
+   "groups": 3,
+   "locus_group_rows": 0,
+   "positives": 72,
+   "role_basis": {
+    "default_role": 72
+   },
+   "rows": 616
+  },
+  "test": {
+   "closed_world_negatives": 533,
+   "genomes": 4,
+   "groups": 4,
+   "locus_group_rows": 0,
+   "positives": 75,
+   "role_basis": {
+    "default_role": 75
+   },
+   "rows": 608
+  },
+  "train": {
+   "closed_world_negatives": 2644,
+   "genomes": 11,
+   "groups": 9,
+   "locus_group_rows": 0,
+   "positives": 394,
+   "role_basis": {
+    "default_role": 394
+   },
+   "rows": 3038
+  }
+ },
+ "schema": "gspa.training-table-manifest/1",
+ "split_audit": {
+  "claims": {
+   "all_sources_registered": true,
+   "checked_axes": [
+    "genome_id",
+    "group",
+    "source_registry",
+    "taxonomy:genus",
+    "taxonomy:family",
+    "protein_id_overlap(targets)",
+    "homology_clusters(targets)"
+   ],
+   "genome_disjoint_splits": true,
+   "group_disjoint_splits": true,
+   "homology_disjoint_checked": true,
+   "homology_scope": "labelled_target_proteins_only",
+   "independent_test_claim_supportable": true,
+   "independent_test_claim_text": "test is disjoint from train/calibration on: genome_id, group, source_registry, taxonomy:genus, taxonomy:family, protein_id_overlap(targets), homology_clusters(targets); not checked: taxonomy:species, pretrained_model_leakage, untouched_test_use",
+   "pretrained_model_leakage": "not_assessed",
+   "protein_overlap_checked": true,
+   "species_disjoint_splits": true,
+   "test_contains_development_data": false,
+   "test_contains_examined_or_development_data": false,
+   "unchecked_axes": [
+    "taxonomy:species",
+    "pretrained_model_leakage",
+    "untouched_test_use"
+   ],
+   "untouched_test_claim": "not_assessed"
+  },
+  "context_sharing": {
+   "clusters_shared_across_splits": 3905,
+   "note": "context proteins may share conserved families across splits; this is reported, not a violation (only labelled target examples must be family-disjoint)",
+   "protein_ids_shared_across_splits": 0
+  },
+  "counts": {
+   "calibration": {
+    "genomes": 3,
+    "groups": 3,
+    "sources": [
+     "swissprot_label_rich_v1"
+    ]
+   },
+   "test": {
+    "genomes": 4,
+    "groups": 4,
+    "sources": [
+     "swissprot_label_rich_v1"
+    ]
+   },
+   "train": {
+    "genomes": 11,
+    "groups": 9,
+    "sources": [
+     "swissprot_label_rich_v1"
+    ]
+   }
+  },
+  "disjoint_keys": [
+   "genome_id",
+   "group",
+   "genus",
+   "family"
+  ],
+  "violations": [],
+  "warnings": [
+   "17 homology cluster(s) of labelled target proteins span several splits, e.g. [('seq_08ce0ffb2601170f2c42', ['test', 'train']), ('seq_0b8c153ac0fb2fb0840f', ['calibration', 'train']), ('seq_2a32e60c5f4079bdf73e', ['calibration', 'train'])]; labelled examples will be masked by build-table (masked_examples.tsv)",
+   "only 4 test genome(s) (< 5): genome-level uncertainty will be wide"
+  ]
+ },
+ "table": "/home/leechuck/.cache/gspa-v3-data/training-cohort/training_table/training_table.jsonl",
+ "table_sha256": "3e26bc4179ebabb02807dbe1b125443e0465702dd27353752da86ccfc3bbf6ba",
+ "truth_recall_ceiling": {
+  "GCA_000007005.1/EC/CATALYTIC": {
+   "truth_pairs": 32,
+   "with_candidate_row": 21
+  },
+  "GCA_000007005.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 63,
+   "with_candidate_row": 0
+  },
+  "GCA_000007005.1/GO/UNSPECIFIED": {
+   "truth_pairs": 481,
+   "with_candidate_row": 36
+  },
+  "GCA_000007065.1/EC/CATALYTIC": {
+   "truth_pairs": 21,
+   "with_candidate_row": 5
+  },
+  "GCA_000007065.1/GO/UNSPECIFIED": {
+   "truth_pairs": 96,
+   "with_candidate_row": 12
+  },
+  "GCA_000008485.1/EC/CATALYTIC": {
+   "truth_pairs": 4,
+   "with_candidate_row": 2
+  },
+  "GCA_000008485.1/GO/UNSPECIFIED": {
+   "truth_pairs": 293,
+   "with_candidate_row": 9
+  },
+  "GCA_000008765.1/EC/CATALYTIC": {
+   "truth_pairs": 13,
+   "with_candidate_row": 6
+  },
+  "GCA_000008765.1/GO/UNSPECIFIED": {
+   "truth_pairs": 370,
+   "with_candidate_row": 29
+  },
+  "GCA_000009085.1/EC/CATALYTIC": {
+   "truth_pairs": 15,
+   "with_candidate_row": 6
+  },
+  "GCA_000009085.1/GO/UNSPECIFIED": {
+   "truth_pairs": 370,
+   "with_candidate_row": 16
+  },
+  "GCA_000009965.1/EC/CATALYTIC": {
+   "truth_pairs": 42,
+   "with_candidate_row": 30
+  },
+  "GCA_000009965.1/GO/UNSPECIFIED": {
+   "truth_pairs": 326,
+   "with_candidate_row": 38
+  },
+  "GCA_000009985.1/GO/UNSPECIFIED": {
+   "truth_pairs": 171,
+   "with_candidate_row": 5
+  },
+  "GCA_000011125.1/EC/CATALYTIC": {
+   "truth_pairs": 20,
+   "with_candidate_row": 9
+  },
+  "GCA_000011125.1/GO/UNSPECIFIED": {
+   "truth_pairs": 88,
+   "with_candidate_row": 14
+  },
+  "GCA_000011205.1/EC/CATALYTIC": {
+   "truth_pairs": 28,
+   "with_candidate_row": 13
+  },
+  "GCA_000011205.1/GO/UNSPECIFIED": {
+   "truth_pairs": 213,
+   "with_candidate_row": 22
+  },
+  "GCA_000011585.1/EC/CATALYTIC": {
+   "truth_pairs": 15,
+   "with_candidate_row": 4
+  },
+  "GCA_000011585.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 35,
+   "with_candidate_row": 0
+  },
+  "GCA_000011585.1/GO/UNSPECIFIED": {
+   "truth_pairs": 291,
+   "with_candidate_row": 24
+  },
+  "GCA_000012285.1/EC/CATALYTIC": {
+   "truth_pairs": 28,
+   "with_candidate_row": 13
+  },
+  "GCA_000012285.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 84,
+   "with_candidate_row": 0
+  },
+  "GCA_000012285.1/GO/UNSPECIFIED": {
+   "truth_pairs": 446,
+   "with_candidate_row": 26
+  },
+  "GCA_000012525.1/EC/CATALYTIC": {
+   "truth_pairs": 8,
+   "with_candidate_row": 6
+  },
+  "GCA_000012525.1/GO/UNSPECIFIED": {
+   "truth_pairs": 315,
+   "with_candidate_row": 33
+  },
+  "GCA_000025685.1/EC/CATALYTIC": {
+   "truth_pairs": 23,
+   "with_candidate_row": 12
+  },
+  "GCA_000025685.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 24,
+   "with_candidate_row": 0
+  },
+  "GCA_000025685.1/GO/UNSPECIFIED": {
+   "truth_pairs": 510,
+   "with_candidate_row": 35
+  },
+  "GCA_000027305.1/EC/CATALYTIC": {
+   "truth_pairs": 21,
+   "with_candidate_row": 19
+  },
+  "GCA_000027305.1/GO/UNSPECIFIED": {
+   "truth_pairs": 219,
+   "with_candidate_row": 19
+  },
+  "GCA_000046845.1/EC/CATALYTIC": {
+   "truth_pairs": 13,
+   "with_candidate_row": 11
+  },
+  "GCA_000046845.1/GO/UNSPECIFIED": {
+   "truth_pairs": 125,
+   "with_candidate_row": 17
+  },
+  "GCA_000145295.1/EC/CATALYTIC": {
+   "truth_pairs": 28,
+   "with_candidate_row": 7
+  },
+  "GCA_000145295.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 32,
+   "with_candidate_row": 0
+  },
+  "GCA_000145295.1/GO/UNSPECIFIED": {
+   "truth_pairs": 229,
+   "with_candidate_row": 5
+  },
+  "GCA_000147055.1/EC/CATALYTIC": {
+   "truth_pairs": 5,
+   "with_candidate_row": 4
+  },
+  "GCA_000147055.1/GO/UNSPECIFIED": {
+   "truth_pairs": 315,
+   "with_candidate_row": 14
+  },
+  "GCA_000195915.1/EC/CATALYTIC": {
+   "truth_pairs": 19,
+   "with_candidate_row": 9
+  },
+  "GCA_000195915.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 18,
+   "with_candidate_row": 0
+  },
+  "GCA_000195915.1/GO/UNSPECIFIED": {
+   "truth_pairs": 311,
+   "with_candidate_row": 29
+  }
+ }
+}

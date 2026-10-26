@@ -1,12 +1,12 @@
-# GSPA v2.2.2 — Genome-Scale Protein Annotation
+# GSPA v3.0.0 — Genome-Scale Protein Annotation
 
-[![Release](https://img.shields.io/badge/release-v2.2.2-blue.svg)](https://github.com/bio-ontology-research-group/gspa/releases/tag/v2.2.2)
+[![Release](https://img.shields.io/badge/release-v3.0.0-blue.svg)](https://github.com/bio-ontology-research-group/gspa/releases/tag/v3.0.0)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Java 21+](https://img.shields.io/badge/Java-21%2B-orange.svg)](https://adoptium.net/)
 
-**GSPA (Genome-Scale Protein Annotation)** is a stand-alone, three-stage neuro-symbolic and flux-certified stoichiometric framework for whole-proteome protein function prediction and genome-scale quality assessment across **Bacteria**, **Archaea**, and **Eukaryota**.
+**GSPA (Genome-Scale Protein Annotation)** is a stand-alone neuro-symbolic and flux-certified stoichiometric framework for whole-proteome protein function prediction, multi-genome cohort context inference, and genome-scale quality assessment across **Bacteria**, **Archaea**, and **Eukaryota**.
 
-Whereas standard annotation pipelines and protein language model (PLM) predictors annotate each protein in isolation, **GSPA v2.1.0** formulates function prediction as a **joint genome-wide inference problem**:
+Whereas standard annotation pipelines and protein language model (PLM) predictors annotate each protein in isolation, **GSPA v3.0.0** formulates function prediction as a **joint genome- and cohort-wide inference problem** executed through one shared `IntegrationWorkflow` across CLI, batch, web portal, and Nextflow routes:
 1. **Stage 1 — Iterative Bayesian Evidence Integration**: Combines calibrated per-protein evidence across sequence homology (`DIAMOND`, `MMseqs2`), domain profiles (`Pfam`, `InterProScan`), structural similarity (`FoldSeek`, `DeepFRI`), and deep protein language models (`ESM-2`, `ProtT5`, `DeepGOWeb`, `ProtInfer`, `CLEAN`) via group-wise Noisy-OR pooling, then iteratively refines log-odds posteriors across the entire proteome using **six genome-scale priors**:
    - `EssentialityPrior`: Core domain-universal essential function completeness (`bacteria`, `archaea`, `eukaryote`).
    - `CoherencePrior`: Metabolic pathway/module stoichiometry (KEGG, MetaCyc) and obligate heteromeric protein complex completion (`complex_terms.tsv`).
@@ -26,7 +26,7 @@ Whereas standard annotation pipelines and protein language model (PLM) predictor
 
 ## Quickstart (Stand-Alone Tool)
 
-### 1. Build or Download Stand-Alone Release (`v2.2.2`)
+### 1. Build or Download Stand-Alone Release (`v3.0.0`)
 
 ```bash
 git clone https://github.com/bio-ontology-research-group/gspa.git
@@ -101,6 +101,35 @@ large-download sizes, model coverage and custom bundles.
   --enable-agent --agent-model qwen3.8-27b \
   --lite
 ```
+
+---
+
+## GSPA v3.0.0 Empirical Benchmark Suites & Biological Validation
+
+All v3.0.0 benchmarks run through the shared production inference engine (`gspa integrate` / `IntegrationWorkflow`) and sidecar engines with SHA-256-recorded inputs, manifests, and stage ledgers. Full reports, case-level accounting, and honest positive and negative findings are documented in [`docs/benchmarks/`](docs/benchmarks/) and [`benchmark/v3/results/`](benchmark/v3/results/):
+
+1. **Family-Masked Learned Context Integration, 10-Arm Ablation & Structural Perturbation Controls (`swissprot_label_rich_v1`, 18 Prokaryotic Genomes, 4,262 candidates):**
+   - Out-of-fold / held-out family-disjoint evaluation (`train` = 12 genomes, `calibration` = 3, `test` = 3; `family_disjoint_verified = true`).
+   - Production logistic model (`model_logistic.json`, held-out AUROC = `0.7934`, Brier = `0.0997`, ECE = `0.0577`) improves held-out GO $F_{\max}$ under homology claims from `0.2881` (`stage0`) to **`0.3221`** (`+0.0340`, precision rising from `0.2733` to `0.3529`) and under family-excluded claims from `0.1841` to **`0.1921`**, while GBDT (`model_gbdt.json`) lifts family-excluded EC top-1 from `0.1081` to **`0.1351`**.
+   - Perturbation controls verify biological mechanism: shuffling gene neighborhoods drops GO $F_{\max}$ by `-0.0111` (precision `0.3529` $\to$ `0.2878`), $50\%$ assembly fragmentation drops GO $F_{\max}$ by `-0.0177` and EC top-1 by `-0.0541`, and $5\times$ strain duplication leaves GO $F_{\max}$ (`0.3221`) and EC top-1 (`0.3784`) invariant (`max_abs_probability_diff = 0.0017`).
+   - Report: [`docs/benchmarks/v3-training-cohort.md`](docs/benchmarks/v3-training-cohort.md) | [`docs/benchmarks/v3-training-data.md`](docs/benchmarks/v3-training-data.md).
+2. **Full-Proteome Price-148 RB-TnSeq Context, Cohort, Learned-Model & Locus-Decoy Benchmark (22 NCBI Assemblies, 115,542 Proteins, 42 Production Runs):**
+   - Evaluates 7 predictor variants (`clean`, `dpz`, `enzbert`, `graphec`, `mapred`, `topec`, `ensemble_pool4`) across 6 inference arms (`stage0`, `stage1`, `stage1_rlc`, `stage1_rlc_cohort`, `learned_logistic`, `learned_gbdt`).
+   - On isolated 4-digit EC numbers lacking curated `ec2go` mappings, heuristic `stage1` priors leave raw EC rankings unchanged, whereas `learned_logistic` / `learned_gbdt` revise candidate probabilities directly (`ensemble_pool4` top-1 = `61/148`, `0.4122`; `graphec` top-1 improves from `18/148` to `23/148`, `+3.38%`) and `stage1_rlc_cohort` generates `5,693–6,942` stoichiometric gap-rescue EC suggestions per variant.
+   - Report: [`docs/benchmarks/v3-price-development.md`](docs/benchmarks/v3-price-development.md) | [`docs/benchmarks/v3-price-context-data.md`](docs/benchmarks/v3-price-context-data.md).
+3. **Metabolic Knockout & Auxotroph Phenotype Validation Across 3 Registered Protocols (61 Measured Cases, `iML1515`):**
+   - Evaluates `legacy_code_defaults`, `manuscript_unregulated`, and `manuscript_regulatory_closures` (with independent COBRApy/GLPK cross-verification, max growth difference $< 10^{-9}$). Regulatory reaction closures (`R_TPI` on D-alanine) rescue `tpiA5` (`25/44` $\to$ `26/44` binary agreement, `59.1%`).
+   - Report: [`docs/benchmarks/v3-metabolic-development.md`](docs/benchmarks/v3-metabolic-development.md).
+4. **Coupled SBML Community Cross-Feeding Benchmark (Wintermute et al. 2010, 1,035 Synthetic Lethal Pairs × 6 Regimes = 6,210 Coupled LPs):**
+   - Evaluates joint two-strain stoichiometric FBA against matched no-transfer controls across 46 *E. coli* Keio auxotrophs (`1,035` pairs). Under trace-rescue aerobic conditions, best-F1 reaches `0.340` (`precision = 0.219`, `recall = 0.765`, `AUROC = 0.562`), quantifying the structural limits of mass-balance stoichiometry without metabolite-specific exporter kinetics.
+   - Report: [`docs/benchmarks/v3-community-development.md`](docs/benchmarks/v3-community-development.md).
+5. **Stage 3 Anomaly Resolution: `qwen3.8-27b` vs. Equally Informed Simple Models (40 Held-Out Test Anomalies):**
+   - Compares `qwen3.8-27b` (`http://unimatrix01.kaust.edu.sa:8000/v1`, with and without symbolic guardrails) against 6 deterministic and learned comparators on identical held-out anomaly packets. Learned classifiers (`learned_gbdt` net gain `+23`, precision `0.8966`; `learned_logistic` net gain `+22`, precision `0.8667`) outperform `qwen3.8-27b` (`qwen_agent_no_guardrail` net gain `+15`, precision `1.0000`; `qwen_agent_guarded` net gain `+7`, precision `1.0000`) at $10^6\times$ lower latency (`0.0001 s` vs. `131.6 s`).
+   - Report: [`docs/benchmarks/v3-stage3-agent-evaluation.md`](docs/benchmarks/v3-stage3-agent-evaluation.md).
+6. **Equal-Budget Condition-Planner Benchmark (`qwen3.8-27b` vs. 5 Deterministic Planners, 44 Genes × 24 Carbon Sources):**
+   - Compares `fixed_paired`, `random_paired`, `evidence_paired`, `random_item`, `evidence_item`, and `qwen` (`qwen3.8-27b`) under identical solver budgets ($B \in \{8, 16\}$) alongside a secondary metabolism (`MIBiG` / Westhoff 2021) condition-dependence audit.
+   - At budget $B=8$ (LP cap 9), strict Qwen-attributable discovery reaches **`85.4%`** (`35/41` eligible genes, `100.0%` on clean runs) vs. `39.0%` (`16/41`) for `evidence_paired` (exact McNemar $p = 0.0000$), `19.5%` for `random_paired`, `17.1%` for `evidence_item`, and `12.2%` for `fixed_paired`. At budget $B=16$ (LP cap 17), `qwen` achieves **`80.5%`** strict Qwen-attributable (`87.8%` hybrid) vs. `75.6%` for `evidence_paired`, and **`75.9%`** (`22/29`) binary agreement on visited measured pairs.
+   - Report: [`docs/benchmarks/v3-planner-evaluation.md`](docs/benchmarks/v3-planner-evaluation.md).
 
 ---
 

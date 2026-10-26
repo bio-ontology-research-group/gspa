@@ -1,0 +1,94 @@
+{
+  "schema": "gspa.v3.planner_benchmark/1",
+  "frozen": {
+    "protocol": "manuscript_regulatory",
+    "budgets_experiments": [
+      8,
+      16
+    ],
+    "lp_calls_per_experiment": 1,
+    "random_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "qwen": {
+      "model": "qwen3.8-27b",
+      "seed": 0,
+      "max_invalid": 2,
+      "max_tokens": 300,
+      "timeout_s": 600
+    },
+    "evidence": {
+      "currency_degree_gt": 25,
+      "near_hops_le": 4,
+      "reachable_hops_le": 10
+    },
+    "bootstrap": {
+      "seed": 20261026,
+      "n": 10000
+    },
+    "arms": [
+      "fixed_paired",
+      "random_item",
+      "random_paired",
+      "evidence_item",
+      "evidence_paired",
+      "qwen"
+    ]
+  },
+  "inputs": {
+    "cases_sha256": "b1620f35f3261ebf3da3ae0c34c616d5689d0e0a4886137902676b3e51c1ecf7",
+    "runner_sha256": "c981c76739b40bc392e46d29cbfcd50b5f019c4470439e0b2ae0a36a3ca87df2",
+    "engine_sha256": "f059182b208e153371ed3351458e4959953ec44a6fc39c4f607172f21427f803",
+    "model_sha256": "9c772d44ca43350e40dc7ee86c7aa148796856be1eea45e5406c6df8f7dcde28"
+  },
+  "n_genes": 44,
+  "n_substrates": 24,
+  "substrates": [
+    "R_EX_acgam_e",
+    "R_EX_ala__D_e",
+    "R_EX_asp__L_e",
+    "R_EX_fru_e",
+    "R_EX_g6p_e",
+    "R_EX_gal_e",
+    "R_EX_galctn__D_e",
+    "R_EX_glcr_e",
+    "R_EX_glcur_e",
+    "R_EX_lac__L_e",
+    "R_EX_lcts_e",
+    "R_EX_mal__D_e",
+    "R_EX_mal__L_e",
+    "R_EX_malt_e",
+    "R_EX_man_e",
+    "R_EX_mnl_e",
+    "R_EX_pyr_e",
+    "R_EX_rib__D_e",
+    "R_EX_sbt__D_e",
+    "R_EX_ser__D_e",
+    "R_EX_ser__L_e",
+    "R_EX_succ_e",
+    "R_EX_uri_e",
+    "R_EX_xyl__D_e"
+  ],
+  "roles": {
+    "experiment_A": "model-derived condition discovery (development); not measured function recovery",
+    "experiment_B": "measured phenotype comparison on visited conditions; selected cases, no recall claim"
+  },
+  "revisions": [
+    {
+      "changed": "qwen.timeout_s",
+      "from": 180,
+      "to": 600,
+      "reason": "endpoint latency of 87-115 s per request observed in a smoke run before any evaluated Qwen request",
+      "utc": "2026-10-26T08:43:01Z"
+    }
+  ]
+}

@@ -156,9 +156,9 @@ python benchmark/v3/check_community_cobra.py --model iML1515.xml --cases subset.
 
 A full revision-2 production run can be validated the same way (`--production-report` of that run, or
 `--arm-cases cases_<arm>.jsonl ...` for per-arm files, which leaves provenance marked unverified); only the selected
-pairs are re-solved. Committed result: `benchmark/v3/results/community-oracle-revision2-bounded/` (the oracle report
-and the bounded production fixture it compared against: production at `65ec9bd`, protocol revision 2, status
-`complete`, 5 pairs x 6 arms).
+pairs are re-solved. Committed results:
+- Bounded fixture (`benchmark/v3/results/community-oracle-revision2-bounded/`, production at `65ec9bd`, protocol revision 2, status `complete`, 5 pairs x 6 arms).
+- Full 1,035-pair x 6-arm revision-2 production run (`benchmark/v3/results/development-3dfe6a6/report.json`, Slurm job 9746) and its oracle verification (`benchmark/v3/results/development-3dfe6a6/cobra_oracle_report.json`, 30/30 pair x arm checks agreeing, max $|\Delta \mu| = 1.65 \times 10^{-13}$). See `docs/v3-community-development.md` for the full 6-arm confusion matrices and strain-resampling intervals.
 
 Result on this selection: all 30 pair x arm comparisons (four simulations each: both monocultures, community,
 transfer-forbidden control) agree in growth class and `mu`, largest |delta mu| 1.7e-13. In the arms with trace metals

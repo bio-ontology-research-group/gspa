@@ -150,3 +150,7 @@ one usable coordinate as `unplacedProteins`. A declared family member remains
 present with unknown neighborhood context; it is never counted as absent because
 its coordinate is missing. A placed unsupported paralog plus an unresolved paralog
 also has unknown context. Arbitrary undeclared protein IDs still fail validation.
+
+## Completed 7-Variant × 6-Arm Production Execution
+
+Using the verified layouts (`115,263` placed proteins + `279` `unplacedProteins`), MMseqs2 30%-identity/80%-coverage families (`35,298` clusters, `familySearchComplete: true`), and NCBI genus/species metadata (`18` taxa), all 7 predictor variants (`clean`, `dpz`, `enzbert`, `graphec`, `mapred`, `topec`, `ensemble_pool4`) were run end-to-end through `gspa integrate` across all 6 inference arms (`stage0`, `stage1`, `stage1_rlc`, `stage1_rlc_cohort`, `learned_logistic`, `learned_gbdt`) on Unimatrix (`benchmark/v3/results/price-context-ablation/`). Full results, SHA-256 digests, and locus-decoy metrics are reported in [`docs/benchmarks/v3-price-development.md`](v3-price-development.md).

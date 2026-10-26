@@ -32,6 +32,12 @@ class CohortConfig {
     HoldoutLevel holdout = HoldoutLevel.STRAIN_CLUSTER
     /** Cut height for clade extraction from a supplied tree (max leaf-to-leaf distance within a clade). */
     double treeCutDistance = 0.05d
+    /** Whether to compute descriptive all-genome aggregates in CohortResult.aggregates. */
+    boolean includeAggregates = true
+    /** Maximum per-record reaction alternatives materialized on FeatureRecord.alternatives (n_reaction_alternatives feature stays exact). */
+    int maxReactionAlternatives = 32
+    /** Maximum EC calls per protein expanded into reaction candidates for cohort recurrence (keeps all ties at cutoff). */
+    int maxEcCallsPerProtein = 128
 
     void validate() {
         if (halfWidthBp <= 0) throw new IllegalArgumentException('halfWidthBp must be positive')

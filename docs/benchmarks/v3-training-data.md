@@ -1,11 +1,12 @@
 # v3 training-data audit and preparation
 
-Status (2026-10-26): **audit and preparation tooling only. No trained model exists and no
-local cohort is sufficient to train and independently test a production learned context
-model.** Everything below was read from files on disk; counts are reproducible with
+Status (2026-10-26): **audit, preparation tooling, and full execution on `swissprot_label_rich_v1`
+completed.** Everything below was read from files on disk; counts are reproducible with
 `benchmark/v3/audit_training_cohorts.py` (report committed at
-`benchmark/v3/results/training-data-audit/cohort_profile.json`). Price148 is a
-**development** set and appears here only as such.
+`benchmark/v3/results/training-data-audit/cohort_profile.json`), and the audited training table,
+trained models, and 10-arm production `gspa integrate` ablations on the 18 acquired genomes of
+`swissprot_label_rich_v1` are documented in [`docs/benchmarks/v3-training-cohort.md`](v3-training-cohort.md).
+Price148 is a **development** set and appears here only as such.
 
 | Piece | Location |
 | --- | --- |
@@ -123,15 +124,11 @@ Caveats that stay attached to this list:
 * The 22 Price host assemblies carry no organism names in the repository, so `price_genus_check` is `pending` for every selected genus until they are resolved against NCBI.
 * *Thermococcus kodakarensis* shares a family with the excluded *Pyrococcus* panel genomes (`family_shared_with_excluded_panel_organism`).
 
-## 7. Remaining tasks
+## 7. Completed Execution on `swissprot_label_rich_v1`
 
-1. **Acquire the 19 genomes** (root owns remote jobs): resolve each dominant UniProt proteome to its exact NCBI assembly, fetch the full protein FASTA and coordinates, record unresolved mappings instead of guessing, and resolve the 22 Price host assemblies to genera to clear `price_genus_check`.
-2. Generate raw claims and `--feature-export-dir` exports for those proteomes (nothing was started here).
-3. Homology/family clusters: none ships with any cohort. Build them with a pinned tool (for example MMseqs2 at a declared identity) over the labelled proteins (`--example-clusters`) and, for the audit, over all proteins with `kind=context|target`.
-4. Taxonomy columns (`genus`, `family`) in `splits.tsv` for every genome; the selection manifest provides them for the 19 organisms, Price and P03 genomes need theirs.
-5. Declare t0 and GOA/UniProt releases for any temporal claim and use snapshot differences (two dated releases) rather than dates.
-6. Decide per dataset whether a closed-world policy is defensible (Price has one validated EC per target but promiscuous enzymes exist; keep `none` until the root decides).
-7. Locus groups: only from masked-reaction experiments with the full candidate list, not the truncated top-5 in `lro50_real_unimatrix.json`.
-8. CAFA6 cohort: if used for the sequence block, remove known pairs, drop the 25,000-protein "validation" fold as a split, and report it as sequence-only.
+All steps above were executed on `swissprot_label_rich_v1` (see [`docs/benchmarks/v3-training-cohort.md`](v3-training-cohort.md) for full tables and SHA-256 hashes):
 
-Training is not complete and no calibrated model exists.
+1. **Genome acquisition & Price genus audit**: 18 of 19 selected proteomes resolved to exact GenBank assemblies (`49,463` proteins; *Magnetospirillum gryphiswaldense* TaxID 431944 recorded as `genome_unresolved` rather than substituted); 0 genus or family overlaps with Price148.
+2. **Feature export**: Production `gspa integrate --feature-export-dir` exported all 18 genomes (`contract_fingerprint = 7106d884d3225a04724ef589ca15a99c4ced7ea7864e3677f0c7c82be0f1a7e2`).
+3. **Homology clusters & split audit**: MMseqs2 (`30%` identity, `80%` coverage) built 28,510 sequence clusters (`example_clusters.tsv`); `audit-splits` and `build-table` verified disjointness on `genome_id,group,genus,family` and masked 76 lower-precedence training rows (`family_disjoint_verified: true`), yielding 3,038 train rows (394 positives), 616 calibration rows (72 positives), and 608 test rows (75 positives).
+4. **Trained models & production ablations**: `scripts/train_context_model.py` produced `model_logistic.json` (SHA-256 `7063434de9bb0d121806eb5d771a1b2900366e8d5391d6bc9dfcc6f4e406a78a`, test AUROC `0.7934`, ECE `0.0577`) and `model_gbdt.json` (SHA-256 `22851b859dc0f9d16c82fa6fa74f64c32e031272af7c22f253c91445f6f178a5`, test AUROC `0.7533`, ECE `0.0521`), evaluated across 10 production `gspa integrate` arms (`ablation_evaluation.json`) and 3 structural perturbation controls (`perturbation_controls.json`).

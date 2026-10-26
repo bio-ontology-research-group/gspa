@@ -586,6 +586,7 @@ def call_chat_completion(
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {api_key}",
+                    "X-Session-Affinity": os.environ.get("GSPA_LLM_AFFINITY", "s1"),
                 },
                 method="POST",
             )
@@ -730,13 +731,18 @@ def solve_single_anomaly(
 
     try:
         for _turn in range(effective_turns):
+            turn_tools = (
+                [t for t in tools_schema if t["function"]["name"] == "propose_resolution"]
+                if _turn == effective_turns - 1
+                else tools_schema
+            )
             resp = call_chat_completion(
                 api_base=api_base,
                 api_key=api_key,
                 model=model,
                 messages=messages,
-                tools=tools_schema,
-                max_tokens=450,
+                tools=turn_tools,
+                max_tokens=1024,
                 temperature=temperature,
                 seed=seed,
             )

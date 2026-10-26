@@ -105,7 +105,27 @@ class CohortContextBuilder {
             requireProteinsInLayout(m, (meta?.genomes?.get(m.genomeId)?.unplacedProteins ?: []) as Set<String>)
             m.families.each { CohortInput.FamilyAssignment a -> input.assign(m.genomeId, a) }
 
-            List<CohortInput.EcCall> calls = m.baseline.calls
+            List<CohortInput.EcCall> allCalls = m.baseline.calls
+            List<CohortInput.EcCall> calls = allCalls
+            if (settings.config.maxEcCallsPerProtein > 0 && allCalls.size() > settings.config.maxEcCallsPerProtein) {
+                Map<String, List<CohortInput.EcCall>> byProt = allCalls.groupBy { it.proteinId }
+                calls = new ArrayList<>()
+                byProt.each { String pid, List<CohortInput.EcCall> pCalls ->
+                    if (pCalls.size() <= settings.config.maxEcCallsPerProtein) {
+                        calls.addAll(pCalls)
+                    } else {
+                        List<CohortInput.EcCall> sortedCalls = pCalls.sort(false) { CohortInput.EcCall a, CohortInput.EcCall b ->
+                            int c = Double.compare(b.confidence, a.confidence)
+                            c != 0 ? c : (a.ecNumber <=> b.ecNumber)
+                        }
+                        double cutoff = sortedCalls.get(settings.config.maxEcCallsPerProtein - 1).confidence
+                        for (CohortInput.EcCall sc : sortedCalls) {
+                            if (sc.confidence >= cutoff) calls.add(sc)
+                            else break
+                        }
+                    }
+                }
+            }
             Map<String, CohortInput.CandidateClaim> byTriple = new TreeMap<>()
             Map<String, List<String>> reactionsOf = new LinkedHashMap<>()
             int withoutReaction = 0
@@ -134,6 +154,7 @@ class CohortContextBuilder {
         settings.edges.each { input.addEdge(it) }
         settings.directions.each { String r, ReactionDirection d -> input.reactionDirections.put(r, d) }
 
+        settings.config.includeAggregates = false
         CohortResult cohort = new CohortInference(input, settings.graph, settings.config).run()
 
         Result out = new Result(snapshotId: snapshotId, provenance: cohort.provenance)
@@ -183,7 +204,7 @@ class CohortContextBuilder {
                                      Settings settings, Result out) {
         ExternalContext ctx = new ExternalContext()
         List<Map> ambiguities = []
-        int bridged = 0, noPeers = 0, familyUnknown = 0
+        int bridged = 0, noPeers = 0, familyUnknown = 0, ambiguousKeys = 0
         List<String> heldOut = null
         Number nPeers = null
         m.baseline.functionKeys.each { String protEc, Set<String> keys ->
@@ -215,10 +236,13 @@ class CohortContextBuilder {
                 ctx.cohort.put(key, co)
                 bridged++
                 if (!co.reactionAlternatives.isEmpty()) {
-                    ambiguities << [function_key: key, representative_reaction: rep.reactionId,
-                                    representative_rule: 'highest weighted support fraction, then reaction id',
-                                    alternatives: co.reactionAlternatives.collect {
-                                        [reaction_id: it.reactionId, support_fraction: it.supportFraction, effective_n: it.effectiveN] }]
+                    ambiguousKeys++
+                    if (ambiguities.size() < 128) {
+                        ambiguities << [function_key: key, representative_reaction: rep.reactionId,
+                                        representative_rule: 'highest weighted support fraction, then reaction id',
+                                        alternatives: co.reactionAlternatives.collect {
+                                            [reaction_id: it.reactionId, support_fraction: it.supportFraction, effective_n: it.effectiveN] }]
+                    }
                 }
             }
         }
@@ -240,7 +264,7 @@ class CohortContextBuilder {
                                         phylogeny_supplied: meta?.hasPhylogeny() ?: false,
                                         note: 'Genomes without metadata are read as unknown: one unresolved block, never independent; adjusted intervals and permutation p are withheld when no peer has a resolved clade.'],
             candidates               : counts + [keys_with_cohort_features: bridged, keys_without_peers: noPeers,
-                                                 keys_with_unknown_family: familyUnknown, keys_with_reaction_alternatives: ambiguities.size()],
+                                                 keys_with_unknown_family: familyUnknown, keys_with_reaction_alternatives: ambiguousKeys],
             no_peers                 : bridged == 0 && noPeers > 0,
             reaction_ambiguity       : ambiguities,
             orthogroup_input         : m.orthogroupNotes,

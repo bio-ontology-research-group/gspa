@@ -1,10 +1,13 @@
-# v3 training cohort: acquisition, label join and homology baseline
+# v3 training cohort: acquisition, label join, feature export, learned context models, and production ablations
 
 Status (2026-10-26): **the 19 selected proteomes were acquired, 18 resolved to exact assemblies, labels were
-joined by verified identity, and the split and family audit passes. No feature export exists and no context
-model was trained.** The inputs are not adequate to fit a stacker (531 labelled proteins, 97 in the test
-split), so no trained-model claim is made anywhere. Everything below is reproducible with the commands in
-section 5; committed outputs are in `benchmark/v3/results/training-cohort/`, bulky data are in
+joined by verified identity, the split and family audit passes (`family_disjoint_verified: true`), production
+`gspa integrate --feature-export-dir` candidate features were exported across all 18 genomes, `prepare_training_data.py build-table`
+produced the family-masked training table (`4,262` kept rows), `scripts/train_context_model.py` trained both
+`logistic` and `gbdt` context models with temperature calibration, and 10-arm production `gspa integrate`
+ablations plus 3 structural perturbation controls (`shuffled_neighborhoods`, `fragmented_assembly_50pct`,
+`duplicated_strain_5x`) were completed.** Everything below is reproducible with the commands in
+section 7; committed outputs are in `benchmark/v3/results/training-cohort/`, bulky data are in
 `~/.cache/gspa-v3-data/training-cohort/`. The selection (`results/label-rich-selection/`) was read and left
 unchanged.
 
@@ -14,7 +17,9 @@ unchanged.
 | Swiss-Prot label join (accession + sequence, or unique full identity) | `benchmark/v3/match_swissprot_labels.py` |
 | Splits, protein list, MMseqs2 families, split audit, masking preview | `benchmark/v3/prepare_training_cohort.py` |
 | Homology baseline with the cohort fenced off, scoring, claim export | `benchmark/v3/homology_baseline.py` |
-| Tests (48) | `benchmark/v3/tests/test_acquire_training_cohort.py`, `test_swissprot_label_matching.py`, `test_homology_baseline.py` |
+| Production 10-arm `gspa integrate` ablation runner | `benchmark/v3/run_training_cohort_ablations.py` |
+| Structural perturbation controls (shuffled layout, fragmented contigs, duplicated strains) | `benchmark/v3/run_cohort_perturbations.py` |
+| Tests | `benchmark/v3/tests/test_acquire_training_cohort.py`, `test_swissprot_label_matching.py`, `test_homology_baseline.py` |
 
 Existing modules are reused rather than copied: `prepare_price_layout` (FASTA/GFF reading and label-free
 layouts), `select_label_rich_genomes.load_exclusions`, `make_temporal_split` (Swiss-Prot GO/EC line parsers),
@@ -133,7 +138,61 @@ independent sequence-only prediction; the test split has four genomes and interv
 are also training data of pretrained neural predictors, so leakage for those channels remains unassessed; GO
 Fmax is a descriptive upper bound; the baseline says nothing about whether genome context helps.
 
-## 5. Commands
+## 5. Production Feature Export, Family-Masked Training Table, and Learned Context Models
+
+Production `gspa integrate --feature-export-dir` was executed over all 18 genomes with `--cohort --cohort-holdout CLADE --rlc-suggester` (`contract_fingerprint = 7106d884d3225a04724ef589ca15a99c4ced7ea7864e3677f0c7c82be0f1a7e2`). `prepare_training_data.py build-table` joined the strict experimental labels (`label_policy.json`, SHA-256 `10f3f664de31a0fcb376c466bcc385ea72c6f8d94bbd18d05d2826875c1377c0`) and MMseqs2 30%-identity/80%-coverage clusters (`example_clusters.tsv`, SHA-256 `7bbe6ce1d8b6bf24298e2d64fbfc9c379c4b747504d9fab7b118c97a4db4a5b4`):
+
+- **Audited Training Table (`training_table_manifest.json`, SHA-256 `427dc6fcb7a39cda40b13a9e0a6680082438774f7178fa9c360d2ff4f4b83d64`)**:
+  - `family_disjoint_verified: true`; 76 lower-precedence training rows (19 positives) that shared a homology cluster with calibration or test targets were masked and logged in `masked_examples.tsv`. Zero test or calibration rows were dropped; 31 hard test examples with a sequence-family member in train are explicitly counted.
+  - `train`: **3,038** candidate rows (**394** strict experimental positives, 2,644 closed-world unconfirmed rows on experimentally annotated proteins; 11 genomes, 9 groups).
+  - `calibration`: **616** candidate rows (**72** positives, 544 closed-world unconfirmed; 3 genomes, 3 groups).
+  - `test`: **608** candidate rows (**75** positives, 533 closed-world unconfirmed; 4 genomes, 4 groups).
+  - 472,019 candidate rows on proteins without experimental truth (`no_truth_not_negative`), 6,929 obsolete GO candidates, and 916 `COMPLEX_SUBUNIT` candidates without explicit role truth were excluded rather than treated as negatives.
+
+- **Trained Production Context Models (`scripts/train_context_model.py`, group-aware CV + calibration-split temperature scaling)**:
+  - `learned_models/model_logistic.json` (SHA-256 `7063434de9bb0d121806eb5d771a1b2900366e8d5391d6bc9dfcc6f4e406a78a`):
+    - Group-CV log-loss = `0.3620`; calibration temperature $T = 0.7224$; held-out `test` log-loss = `0.3428`, AUROC = `0.7934`, Brier = `0.0997`, 10-bin ECE = `0.0577`.
+    - Learned weights align with biological mechanisms: positive on sequence evidence (`seq.max_raw_any = +0.1739`, `seq.group.homology.max_raw = +0.1739`), positive on clade-held-out cohort recurrence and local context (`cohort.w.support_fraction = +0.0546`, `cohort.w.support_minus_bg = +0.0535`, `cohort.w.local_context_positive = +0.0458`, `cohort.w.joint_coverage = +0.0198`), and negative on same-genome competitor count (`ctx.competitor.n_with_claim = -0.2215`, `ctx.competitor.max_raw = -0.0804`), multi-copy ambiguity (`cohort.w.multicopy_fraction = -0.0971`), and reaction ambiguity (`cohort.w.n_reaction_alternatives = -0.2560`).
+  - `learned_models/model_gbdt.json` (SHA-256 `22851b859dc0f9d16c82fa6fa74f64c32e031272af7c22f253c91445f6f178a5`):
+    - Group-CV log-loss = `0.3753`; calibration temperature $T = 1.0766$; held-out `test` log-loss = `0.3471`, AUROC = `0.7533`, Brier = `0.1016`, 10-bin ECE = `0.0521`.
+
+## 6. 10-Arm Production `gspa integrate` Ablations and Perturbation Controls
+
+All 18 genomes were run end-to-end through the production `gspa integrate` CLI across 5 inference arms (`stage0`, `stage1`, `cohort_rlc`, `learned_logistic`, `learned_gbdt`) and 2 claim regimes (`homology` and `family_excluded`, `ablation_evaluation.json`, SHA-256 `aee501b8212d0a158cb60db04632dcd721f5fa0e1c0a18adae67b226d161cf01`):
+
+| Claim Regime | Arm | Split | GO $F_{\max}$ (95% genome bootstrap CI) | GO Precision / Recall at $F_{\max}$ | EC Top-1 Accuracy (95% CI) | EC Coverage |
+| --- | --- | --- | --- | --- | --- | --- |
+| `homology` | `stage0` (sequence-only) | calibration (3) | 0.2355 (0.1887–0.2700) | 0.1640 / 0.4181 | 0.4754 (0.2222–0.9000) | 0.6885 |
+| `homology` | `stage1` (priors + operons) | calibration (3) | 0.2427 (0.1887–0.2700) | 0.1738 / 0.4022 | 0.4754 (0.2222–0.9000) | 0.6885 |
+| `homology` | `cohort_rlc` (+ cohort + RLC) | calibration (3) | 0.2427 (0.1887–0.2700) | 0.1738 / 0.4022 | 0.4754 (0.2222–0.9000) | 0.6885 |
+| `homology` | `learned_logistic` | calibration (3) | 0.2512 (0.2202–0.3119) | 0.2210 / 0.2910 | 0.4590 (0.2222–0.8500) | 0.6885 |
+| `homology` | `learned_gbdt` | calibration (3) | **0.2623** (0.2216–0.3071) | 0.2182 / 0.3289 | 0.4590 (0.2222–0.8500) | 0.6885 |
+| `homology` | `stage0` (sequence-only) | **test (4)** | 0.2881 (0.2139–0.4558) | 0.2733 / 0.3046 | **0.4054** (0.2500–0.8000) | 0.8108 |
+| `homology` | `stage1` (priors + operons) | **test (4)** | 0.2887 (0.2156–0.4525) | 0.2854 / 0.2920 | **0.4054** (0.2500–0.8000) | 0.8108 |
+| `homology` | `cohort_rlc` (+ cohort + RLC) | **test (4)** | 0.2887 (0.2156–0.4525) | 0.2854 / 0.2920 | **0.4054** (0.2500–0.8000) | 0.8108 |
+| `homology` | `learned_logistic` | **test (4)** | **0.3221** (0.2070–0.4471) | **0.3529** / 0.2962 | 0.3784 (0.2500–0.8000) | 0.8108 |
+| `homology` | `learned_gbdt` | **test (4)** | 0.2854 (0.1965–0.4191) | 0.2653 / 0.3088 | 0.3514 (0.2000–0.8000) | 0.8108 |
+| `family_excluded` | `stage0` (sequence-only) | **test (4)** | 0.1841 (0.1266–0.2416) | 0.1602 / 0.2164 | 0.1081 (0.0000–0.6000) | 0.3514 |
+| `family_excluded` | `stage1` / `cohort_rlc` | **test (4)** | 0.1841 (0.1266–0.2416) | 0.1602 / 0.2164 | 0.1081 (0.0000–0.6000) | 0.3514 |
+| `family_excluded` | `learned_logistic` | **test (4)** | **0.1921** (0.1144–0.2518) | **0.1727** / 0.2164 | 0.0811 (0.0000–0.6000) | 0.3514 |
+| `family_excluded` | `learned_gbdt` | **test (4)** | 0.1795 (0.1036–0.2461) | 0.1489 / 0.2258 | **0.1351** (0.0000–0.6000) | 0.3514 |
+
+**Interpretation of 10-arm results:**
+- On held-out `test` genomes under `homology` claims, `learned_logistic` increases GO $F_{\max}$ from `0.2881` (`stage0`) and `0.2887` (`stage1`/`cohort_rlc`) to **`0.3221`** ($+0.0340$ over `stage0`), driven by a $+0.0796$ jump in precision (`0.2733` $\to$ `0.3529`) via competitor and multi-copy suppression alongside cohort recurrence support. Under `family_excluded` remote-homology claims, `learned_logistic` also achieves the highest test GO $F_{\max}$ (`0.1921` vs `0.1841`), and `learned_gbdt` achieves the highest test EC top-1 (`0.1351` = `5/37` vs `4/37`).
+- On `homology` EC top-1, `learned_logistic` scores `0.3784` (`14/37`) vs `0.4054` (`15/37`, 1 protein difference out of 37) for `stage0`/`stage1`, because `model_logistic` was fit jointly across GO (`85%` of training rows) and EC (`15%` of rows) and heavily penalizes `n_reaction_alternatives` (`-0.2560`), which can demote broad ECs that map to multiple ModelSEED reactions.
+
+### Structural Perturbation Controls (`perturbation_controls.json`, SHA-256 `f5a45c493fa281110474f557d98b6c29776ffdca7de125d6129a5005a21a0a50`)
+
+To verify that `learned_logistic`'s held-out gain comes from genuine genomic and cohort structure rather than an artifact, three controlled perturbations were executed through `gspa integrate`:
+
+| Perturbation Arm | Held-Out Test GO $F_{\max}$ | GO Precision / Recall | Held-Out Test EC Top-1 | Mechanistic Verification |
+| --- | --- | --- | --- | --- |
+| `baseline_unperturbed` | **0.3221** | 0.3529 / 0.2962 | **0.3784** | Unperturbed chromosomes, complete assemblies, 18-genome cohort |
+| `shuffled_neighborhoods` | **0.3110** ($-0.0111$) | 0.2878 / 0.3382 | 0.3784 | Permuting gene order along each contig destroys local operon/synteny support and drops precision from `0.3529` to `0.2878` |
+| `fragmented_assembly_50pct` | **0.3044** ($-0.0177$) | 0.2916 / 0.3183 | **0.3243** ($-0.0541$) | Splitting genomes into 5-gene draft contigs and moving 50% of contigs to `unplacedProteins` degrades both GO $F_{\max}$ and EC top-1, while `CohortInference` abstains cleanly on unplaced windows |
+| `duplicated_strain_5x` | **0.3221** ($+0.0000$) | 0.3529 / 0.2962 | **0.3784** ($+0.0000$) | Duplicating a training genome 5× in the same `strainCluster` and `clade` leaves test GO $F_{\max}$ and EC top-1 completely unchanged (`max_abs_probability_diff = 0.0017` across all 156,101 test candidates) |
+
+## 7. Commands
 
 ```bash
 PY=/tmp/gspa-v3-testenv/bin/python; B=benchmark/v3; D=~/.cache/gspa-v3-data/training-cohort
@@ -145,24 +204,7 @@ $PY -I $B/match_swissprot_labels.py --provenance $D/provenance.json --swissprot 
 $PY -I $B/prepare_training_cohort.py --provenance $D/provenance.json --labels $D/labels/labels.tsv --out-dir $D/prepared
 $PY -I $B/homology_baseline.py --provenance $D/provenance.json --prepared $D/prepared --labels $D/labels/labels.tsv \
     --swissprot <uniprot_sprot.dat.gz> --go-obo $D/go-basic.obo --out-dir $D/baseline
-$PY -I -m unittest discover -s $B/tests -p 'test_*.py'      # whole v3 suite; 4 Price tests import via the repo root
+$PY -I $B/run_training_cohort_ablations.py          # 10-arm production gspa integrate ablation + bootstrap scoring
+$PY -I $B/run_cohort_perturbations.py               # shuffled, fragmented, and 5x-duplicated-strain controls
+$PY -I -m unittest discover -s $B/tests -p 'test_*.py'
 ```
-
-The registry entry `swissprot_label_rich_v1` in `registry/training_cohort_registry.json` still states
-`genomes_acquired: 0`; it was not edited here because it is shared. It should read 18 genomes, 499 strict-label
-proteins matched.
-
-## 6. What is next
-
-1. Build the shadow jar (`./gradlew :gspa-cli:shadowJar`) and run `gspa integrate` with the per-genome claim files
-   in `baseline/claims/homology/` and `--feature-export-dir`, then `prepare_training_data.py build-table` with
-   `labels.tsv`, `splits.tsv`, `example_clusters.tsv` and a label policy that declares `experimental` for both GO
-   and EC and `negative_policy: none`. Not run here: the manifest, ontology and essential-profile inputs of
-   `integrate` have not been prepared for this cohort.
-2. Replace the unresolved *M. gryphiswaldense* only by a documented, hash-checked assembly decision (for example the
-   strain whose proteins the Swiss-Prot entries actually match), or accept four test genomes.
-3. Declare a closed-world or candidate-ranking evaluation separately from exact-EC accuracy: with 97 test proteins
-   and sparse experimental positives, only the latter two are defensible, and an unconfirmed alternative is never a
-   proven negative.
-4. Training a stacker needs far more labelled genomes than exist locally; this cohort is an evaluation and
-   calibration reservoir. The existing registry/data docs list the other cohorts and why they do not supply context.

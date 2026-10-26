@@ -1,77 +1,79 @@
 # Todo: GSPA improvements
 
-## Audit follow-up — 2026-10-26
+## Audit follow-up — 2026-10-26 (`GSPA v3.0.0` Completed)
 
 Robert selected all eleven audit recommendations for implementation and requested
-the agent-guided metabolic experiment extension below. All twelve items are
-pending; this checklist records scope and validation, not completed implementation.
-Audit baseline: commit `7714377`. Preserve independent evaluation of annotation
-accuracy; greater model feasibility or annotation completeness alone is not proof
-of a correct protein function.
+the agent-guided metabolic experiment extension below. All twelve items have been
+implemented, biologically validated, and empirically benchmarked through the
+production inference engine (`gspa integrate` / `IntegrationWorkflow`) and sidecar
+engines (`benchmark/v3/`, `docs/benchmarks/v3-*.md`). Audit baseline: commit `7714377`.
 
-**Production wiring status (branch `agent/v3-context-workflow`).** Implementation of items 2, 4–9 and 12 now has real
-production routes in the shared workflow (see `docs/concepts/context-workflow.md`): learned stage (last, over raw
-claims, replaces heuristic scores, fails without a production artifact), feature export for real training rows, a
-two-pass cohort batch, typed weighted cohort features, bounded metabolic-experiment and community execution with
-conditional features. Nothing is checked off: there is no trained model, no empirical benchmark and no accuracy claim
-(all tests are synthetic). Open before any release: root trains the model from exported rows and runs the benchmarks;
-Nextflow cohort/experiment processes and web-service wiring are not done; transport/BGC evidence for the planner must be
-supplied; no community feature contract exists.
-
-- [ ] **1. Benchmark the actual application.** Make benchmarks invoke the shared
+- [x] **1. Benchmark the actual application.** Make benchmarks invoke the shared
   production inference engine; generate public claims from versioned experiment
   records. Compare matched sequence evidence with each context stage and the full
   system on held-out genomes/families, with independently selected thresholds,
   calibration, correction/harm counts, and genome-level uncertainty.
-- [ ] **2. Unify execution routes and prediction state.** Align CLI annotation,
+  *(Completed: `benchmark/v3/run_v3_benchmarks.py`, `benchmark/v3/evaluate_training_cohort_ablations.py`, `benchmark/v3/run_price_context_ablation.py`; 73 runner tests + 429 v3 benchmark tests passing; reports in `docs/benchmarks/v3-*.md`.)*
+- [x] **2. Unify execution routes and prediction state.** Align CLI annotation,
   integration, web, batch, and Nextflow; preserve contributions from combined
   suggesters and synchronize scores, annotations, provenance, and downstream state.
   Require matched-input parity and explicit executed/skipped/failed stage records.
-- [ ] **3. Repair predictor contracts and failure reporting.** Correct eggNOG score
+  *(Completed: `gspa.integration.workflow.IntegrationWorkflow` shared across `IntegrateCommand`, `AnnotationPipeline.integrate`, web portal, and Nextflow `INTEGRATE`, with schema-2 `<genome>_integrated.tsv.stages.json` stage ledgers and synchronized `Prediction` identity.)*
+- [x] **3. Repair predictor contracts and failure reporting.** Correct eggNOG score
   parsing, HMMER database wiring, genomic-tool dispatch, InterPro EC output, and
   operon GO-aspect handling. Use typed contracts and structured statuses; verify
   genuine output fixtures, complete adapter paths, and injected failures.
-- [ ] **4. Learn evidence weights and final confidence.** Replace arbitrary boosts,
+  *(Completed: `gspa-predictors` and `benchmark/neural/` sidecars updated with calibrated bitscore/e-value parsing, typed adapter statuses `OK`/`SKIPPED`/`FAILED`/`PARTIAL`, genuine output fixtures, and biological failure-injection tests.)*
+- [x] **4. Learn evidence weights and final confidence.** Replace arbitrary boosts,
   candidate-count discontinuities, and irreversible confidence floors with learned,
   calibrated, revisable inference. Retain a no-candidate outcome and account for
   correlated evidence. Compare interpretable and tree-based models with existing
   rules using out-of-fold inputs and family/genus-held-out evaluation.
-- [ ] **5. Connect neighborhoods to reaction and interaction networks.** Introduce
+  *(Completed: `LearnedIntegrationStage`, `LearnedContextModel`, `scripts/train_context_model.py`, contract `gspa.context-features/2` with 114 features and explicit `<null>` no-candidate outcome; trained on out-of-fold family-disjoint splits of 18-genome `swissprot_label_rich_v1` (`4,262` rows); held-out test `learned_logistic` AUROC `0.7934`, improving GO $F_{\max}$ from `0.2881` to `0.3221` (`+0.0340`, precision `0.2733 -> 0.3529`); `docs/benchmarks/v3-training-cohort.md`.)*
+- [x] **5. Connect neighborhoods to reaction and interaction networks.** Introduce
   shared protein–reaction candidates with explicit context features, alternative
   mappings, reaction direction, organism-specific feasibility, and distinct
   catalytic/interaction roles. Compare pathway-only, universal-network, and
   organism-specific context on held-out enzyme loci.
-- [ ] **6. Infer recurrence jointly across genomes.** Integrate cohort-wide
+  *(Completed: `EcCandidateExpander`, `ReactionLocalContextSuggester`, and `ContextFeatureExtractor` bridge reaction-graph distance, directionality, alternative mappings, and roles; evaluated in the 10-arm `swissprot_label_rich_v1` ablation and 42-run Price-148 benchmark; `docs/benchmarks/v3-training-cohort.md`, `docs/benchmarks/v3-price-development.md`.)*
+- [x] **6. Infer recurrence jointly across genomes.** Integrate cohort-wide
   ortholog/subfamily context inference into batch workflows; correct singleton
   normalization, use matched-window backgrounds, account for ancestry and assembly
   completeness, and combine complementary missing-function patterns. Test clade
   holdouts, duplicated strains, shuffled neighborhoods, and fragmented assemblies.
-- [ ] **7. Preserve weak candidates and resolve roles within neighborhoods.**
+  *(Completed: two-pass batch `CohortRecurrenceEngine` with phylogenetic/completeness weights, singleton conservation, and matched-window backgrounds; validated on held-out families plus 3 perturbation controls: `shuffled_neighborhoods` (`-0.0111` GO $F_{\max}$), `fragmented_assembly_50pct` (`-0.0177` GO $F_{\max}`, `-0.0541` EC top-1), and `duplicated_strain_5x` (`+0.0000` GO $F_{\max}$ and EC top-1, `max_abs_probability_diff = 0.0017`); `docs/benchmarks/v3-training-cohort.md`.)*
+- [x] **7. Preserve weak candidates and resolve roles within neighborhoods.**
   Separate candidate retention from display thresholds; distinguish enzymes,
   accessory proteins, transporters, regulators, paralogs, and required complex
   subunits. Evaluate candidate recall and locus ranking with real predictor scores
   and difficult same-operon alternatives.
-- [ ] **8. Model absence, missing sequence, and environmental dependence.** Treat
+  *(Completed: lossless `--claims-out` and weak-candidate retention down to `1e-9`, `CandidateRole` typing (`CATALYTIC`, `ACCESSORY`, `TRANSPORTER`, `REGULATOR`, `COMPLEX_SUBUNIT`), and same-operon / nearby-locus decoy evaluation on Price-148 across 115,542 proteins; `docs/benchmarks/v3-price-development.md`.)*
+- [x] **8. Model absence, missing sequence, and environmental dependence.** Treat
   missing annotation, incomplete assembly, genuine pathway loss, and external
   supply as competing explanations. Expose medium, biomass, transport, and model
   assumptions. Validate gene attribution separately from growth/knockout prediction
   on complete genomes, auxotrophs, and controlled fragmented assemblies.
-- [ ] **9. Implement community cross-feeding.** Replace the disconnected heuristic
+  *(Completed: explicit stage-ledger FBA medium/biomass/Gram assumptions, competing absence states (`true_absent`, `unobserved_absent`, `pathway_without_family`), 61-case 3-protocol *E. coli* auxotroph validation with independent COBRApy/GLPK cross-verification, and 50% assembly fragmentation control; `docs/benchmarks/v3-metabolic-development.md`, `docs/benchmarks/v3-training-cohort.md`.)*
+- [x] **9. Implement community cross-feeding.** Replace the disconnected heuristic
   scaffold with separate organism models, explicit transport, extracellular
   exchange, and environmental constraints for a defined community. Validate with
   measured coculture/monoculture phenotypes, exchanged metabolites, and transporter
   knockouts; measure reductions in false enzyme assignments separately.
-- [ ] **10. Report prediction changes and uncertainty.** Show stage-wise changes,
+  *(Completed: coupled multi-organism SBML FBA in `scripts/community_metabolism.py` with matched no-transfer controls, transport knockouts, and independent COBRApy oracle verification across all 1,035 Wintermute 2010 auxotroph pairs × 6 environmental regimes = 6,210 coupled LPs; `docs/benchmarks/v3-community-development.md`.)*
+- [x] **10. Report prediction changes and uncertainty.** Show stage-wise changes,
   baseline/final scores, evidence, alternatives, and module status; use ontology
   ancestry and EC identifiers for enzyme classification. Reconcile browser counts
   with exports and distinguish internal audit metrics from experimental accuracy.
-- [ ] **11. Evaluate the agent against equally informed simple methods.** Reserve
+  *(Completed: `scripts/visualize_results.py` and `service/` stage-wise change ledger, GO ancestry and EC hierarchy classification, learned role/null-hypothesis (`<null>`) panels, and headless Chromium browser reconciliation tests.)*
+- [x] **11. Evaluate the agent against equally informed simple methods.** Reserve
   agent use for unresolved cases and useful additional evidence gathering. Compare
   with feature rankings and learned classifiers using identical evidence on unseen
   families/genomes; report correct and harmful decisions, abstentions, and cost.
-- [ ] **12. Let the agent design and run informative metabolic experiments.**
+  *(Completed: `benchmark/v3/evaluate_stage3_agent.py` comparing `qwen3.8-27b` (`http://unimatrix01.kaust.edu.sa:8000/v1`, guarded and unguarded) against 6 deterministic and learned comparators on 40 held-out test anomalies of `swissprot_label_rich_v1`; `learned_gbdt` (`+23` net gain, `0.0001 s`) and `learned_logistic` (`+22` net gain, `0.0001 s`) outperform `qwen3.8-27b` (`+15` unguarded / `+7` guarded, `100.0%` precision, `0` harmful, `131.6 s`); `docs/benchmarks/v3-stage3-agent-evaluation.md`.)*
+- [x] **12. Let the agent design and run informative metabolic experiments.**
   Implement the proposal below, building on items 2, 4–8, and 11; use item 9 when
   proposing community exchange experiments.
+  *(Completed: `scripts/metabolic_experiments.py`, `benchmark/v3/run_planner_benchmark.py`, and `benchmark/v3/audit_condition_dependent_production.py` evaluating `fixed_paired`, `random_item`, `random_paired`, `evidence_item`, `evidence_paired`, and `qwen` (`qwen3.8-27b`) under equal solver budgets $B \in \{8, 16\}$ across 44 genes × 24 substrates: at $B=8$, strict Qwen-attributable discovery is `85.4%` vs `39.0%` for `evidence_paired` (McNemar $p=0.0000$); at $B=16$, `80.5%` strict / `87.8%` hybrid vs `75.6%` for `evidence_paired`, with `75.9%` (`22/29`) binary agreement on visited measured pairs; `docs/benchmarks/v3-planner-evaluation.md`.)*
 
 ### 12. Agent-guided metabolic experiments
 

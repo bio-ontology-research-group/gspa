@@ -1,0 +1,17 @@
+{
+ "datasets": {
+  "swissprot_label_rich_v1": {
+   "EC": {
+    "allowed_evidence": "experimental",
+    "justification": "Discriminative candidate scoring over candidate functions emitted by homology/predictors on Swiss-Prot experimentally characterized proteins: unconfirmed candidate ECs on proteins with at least one experimental EC assertion (ECO:0000269) are treated as closed-world negatives (label_basis=closed_world_unconfirmed); unlabelled proteins are excluded.",
+    "negative_policy": "closed_world_declared"
+   },
+   "GO": {
+    "allowed_evidence": "experimental",
+    "complex_membership_from_cc": "Swiss-Prot experimental GO cellular-component complex terms (GO:0032991 descendants)",
+    "justification": "Discriminative candidate scoring over candidate GO terms (after is_a/part_of ancestor closure) on Swiss-Prot experimentally characterized proteins: unconfirmed candidate GO terms on proteins with at least one experimental GO assertion (EXP/IDA/IPI/IMP/IGI/IEP/H*) are treated as closed-world negatives (label_basis=closed_world_unconfirmed); unlabelled proteins are excluded.",
+    "negative_policy": "closed_world_declared"
+   }
+  }
+ }
+}

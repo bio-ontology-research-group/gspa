@@ -60,6 +60,9 @@ class CohortInference {
     private static class GenomeWindows {
         final List<WindowInfo> all = new ArrayList<>()
         final Map<String, List<WindowInfo>> buckets = new HashMap<>()
+        boolean[] allFalse = new boolean[0]
+        final Map<String, int[]> cleanIdxCache = new HashMap<>()
+        final Map<Integer, boolean[]> falsePoolCache = new HashMap<>()
     }
 
     private static class PermMember {
@@ -101,6 +104,8 @@ class CohortInference {
     private final CladeModel clades
     private final ReactionContext contextModel
     private final Map<String, Map<String, List<CohortInput.CandidateClaim>>> claimsBy = new LinkedHashMap<>()
+    private final Map<String, Map<String, List<CohortInput.CandidateClaim>>> confidentClaimsBy = new LinkedHashMap<>()
+    private final Map<String, RoleEvidenceSummary> roleSummaryCache = new HashMap<>()
     private final Map<String, Map<String, List<Member>>> familyIndex = new LinkedHashMap<>()
     private final Map<String, Set<String>> confidentReactions = new LinkedHashMap<>()
     private final Map<String, Map<String, List<String>>> windowCache = new HashMap<>()
@@ -121,6 +126,8 @@ class CohortInference {
                     .computeIfAbsent(c.proteinId, { new ArrayList<CohortInput.CandidateClaim>() }).add(c)
             if (c.baselineConfidence >= config.anchorMinConfidence) {
                 confidentReactions.computeIfAbsent(c.genomeId, { new LinkedHashSet<String>() }).add(c.reactionId)
+                confidentClaimsBy.computeIfAbsent(c.genomeId, { new LinkedHashMap<String, List<CohortInput.CandidateClaim>>() })
+                        .computeIfAbsent(c.proteinId, { new ArrayList<CohortInput.CandidateClaim>() }).add(c)
             }
         }
         input.membership.each { String g, Map<String, List<CohortInput.FamilyAssignment>> byProtein ->
@@ -155,22 +162,26 @@ class CohortInference {
             c
         } as Comparator<CohortInput.CandidateClaim>)
 
-        Map<String, Integer> aggCounts = new TreeMap<>()
+        Map<String, Integer> aggCounts = cfg.includeAggregates ? new TreeMap<String, Integer>() : null
         for (CohortInput.CandidateClaim claim : claims) {
             result.records.add(buildRecord(claim))
-            for (CohortInput.FamilyAssignment a : input.assignments(claim.genomeId, claim.proteinId)) {
-                if (a.weight < cfg.minMembershipWeight) continue
-                String k = a.familyKey() + '\t' + claim.reactionId
-                aggCounts.put(k, aggCounts.getOrDefault(k, 0) + 1)
+            if (aggCounts != null) {
+                for (CohortInput.FamilyAssignment a : input.assignments(claim.genomeId, claim.proteinId)) {
+                    if (a.weight < cfg.minMembershipWeight) continue
+                    String k = a.familyKey() + '\t' + claim.reactionId
+                    aggCounts.put(k, aggCounts.getOrDefault(k, 0) + 1)
+                }
             }
         }
-        aggCounts.each { String k, Integer n ->
-            String[] parts = k.split('\t')
-            CohortResult.Aggregate agg = new CohortResult.Aggregate(familyKey: parts[0], reactionId: parts[1], nCandidateGenes: n)
-            agg.features.putAll(peerFeatures(parts[0], parts[1], '*', new ArrayList<String>(input.genomes.keySet()), 0L))
-            agg.provenance.put('baselineSnapshotId', input.baselineSnapshotId)
-            agg.provenance.put('note', 'descriptive all-genome aggregate; includes every member genome, do not use to score a member')
-            result.aggregates.add(agg)
+        if (aggCounts != null) {
+            aggCounts.each { String k, Integer n ->
+                String[] parts = k.split('\t')
+                CohortResult.Aggregate agg = new CohortResult.Aggregate(familyKey: parts[0], reactionId: parts[1], nCandidateGenes: n)
+                agg.features.putAll(peerFeatures(parts[0], parts[1], '*', new ArrayList<String>(input.genomes.keySet()), 0L))
+                agg.provenance.put('baselineSnapshotId', input.baselineSnapshotId)
+                agg.provenance.put('note', 'descriptive all-genome aggregate; includes every member genome, do not use to score a member')
+                result.aggregates.add(agg)
+            }
         }
         result
     }
@@ -219,7 +230,10 @@ class CohortInference {
         rec.states.put('assembly_status', assemblyStatus(g).name())
 
         // Raw role evidence only: no probabilities, no null distribution, no threshold.
-        RoleEvidenceSummary rs = RoleEvidenceSummary.summarize(input.roleEvidence.get(g + '|' + p), proteinClaims)
+        String gpKey = g + '|' + p
+        RoleEvidenceSummary rs = roleSummaryCache.computeIfAbsent(gpKey, {
+            RoleEvidenceSummary.summarize(input.roleEvidence.get(gpKey), proteinClaims)
+        })
         rec.roleEvidence.addAll(rs.items)
         rec.roleEvidenceMissing = rs.missing
         rec.roleAlternatives.addAll(rs.alternatives)
@@ -235,10 +249,13 @@ class CohortInference {
             alt.features.putAll(peerFeatures(a.familyKey(), r, hk, peers, seedFor(a.familyKey(), r, hk)))
             rec.alternatives.add(alt)
         }
+        int rxnAltCount = 0
         for (CohortInput.CandidateClaim c : proteinClaims) {
             if (c.reactionId == r) continue
+            if (rxnAltCount >= cfg.maxReactionAlternatives) break
             rec.alternatives.add(new CohortResult.Alternative(kind: 'reaction', reactionId: c.reactionId,
                     weight: c.baselineConfidence))
+            rxnAltCount++
         }
 
         rec.provenance.put('engine', VERSION)
@@ -324,8 +341,9 @@ class CohortInference {
      */
     private Map<String, Double> anchors(String g, List<String> window, String except, String reactionId,
                                         Map<String, ReactionContext.Link> links, String familyKey) {
+        if (links.isEmpty()) return Collections.<String, Double>emptyMap()
         Map<String, Double> out = new LinkedHashMap<>()
-        Map<String, List<CohortInput.CandidateClaim>> byProtein = claimsBy.get(g)
+        Map<String, List<CohortInput.CandidateClaim>> byProtein = confidentClaimsBy.get(g)
         if (byProtein == null) return out
         for (String q : window) {
             if (q == except) continue
@@ -333,7 +351,7 @@ class CohortInference {
             if (cs == null) continue
             if (inFamily(g, q, familyKey)) continue
             for (CohortInput.CandidateClaim c : cs) {
-                if (c.baselineConfidence < cfg.anchorMinConfidence || c.reactionId == reactionId) continue
+                if (c.reactionId == reactionId) continue
                 ReactionContext.Link link = links.get(c.reactionId)
                 if (link == null) continue
                 double w = link.weight * c.baselineConfidence
@@ -350,7 +368,7 @@ class CohortInference {
         if (hit != null) return hit
         GenomeWindows gw = new GenomeWindows()
         GenomeLayout layout = input.genomes.get(g)?.layout
-        Map<String, List<CohortInput.CandidateClaim>> byProtein = claimsBy.get(g)
+        Map<String, List<CohortInput.CandidateClaim>> byProtein = confidentClaimsBy.get(g)
         if (layout != null) {
             for (List<ProteinLocus> contig : layout.byContig.values()) {
                 for (ProteinLocus l : contig) {
@@ -361,7 +379,7 @@ class CohortInference {
                             if (q == l.proteinId) continue
                             List<CohortInput.CandidateClaim> cs = byProtein.get(q)
                             if (cs == null) continue
-                            for (CohortInput.CandidateClaim c : cs) if (c.baselineConfidence >= cfg.anchorMinConfidence) rx.add(c.reactionId)
+                            for (CohortInput.CandidateClaim c : cs) rx.add(c.reactionId)
                         }
                     }
                     WindowInfo wi = new WindowInfo(idx: gw.all.size(), center: l.proteinId, proteins: w, count: w.size(),
@@ -371,6 +389,7 @@ class CohortInference {
                 }
             }
         }
+        gw.allFalse = new boolean[gw.all.size()]
         genomeWindows.put(g, gw)
         gw
     }
@@ -381,6 +400,21 @@ class CohortInference {
         boolean[] hit = positivityCache.get(key)
         if (hit != null) return hit
         GenomeWindows gw = windowsOf(g)
+        Set<String> have = confidentReactions.get(g)
+        if (have == null || have.size() < cfg.minAnchors || links.size() < cfg.minAnchors) {
+            positivityCache.put(key, gw.allFalse)
+            return gw.allFalse
+        }
+        int possible = 0
+        if (have.size() <= links.size()) {
+            for (String x : have) if (links.containsKey(x)) { possible++; if (possible >= cfg.minAnchors) break }
+        } else {
+            for (String x : links.keySet()) if (have.contains(x)) { possible++; if (possible >= cfg.minAnchors) break }
+        }
+        if (possible < cfg.minAnchors) {
+            positivityCache.put(key, gw.allFalse)
+            return gw.allFalse
+        }
         boolean[] out = new boolean[gw.all.size()]
         for (WindowInfo w : gw.all) {
             int n = 0
@@ -419,15 +453,25 @@ class CohortInference {
                               String familyKey, int count, WState state, String closedKey) {
         GenomeWindows gw = windowsOf(g)
         boolean[] pos = positivity(g, reactionId, links)
-        Set<String> bad = contaminated(g, familyKey)
-        List<Boolean> out = new ArrayList<>()
-        for (int c = Math.max(0, count - cfg.densityTolerance); c <= count + cfg.densityTolerance; c++) {
-            List<WindowInfo> b = gw.buckets.get(bucketKey(state, closedKey, c))
-            if (b == null) continue
-            for (WindowInfo w : b) if (!bad.contains(w.center)) out.add(pos[w.idx])
+        String idxKey = (familyKey ?: '') + '|' + state.name() + '|' + closedKey + '|' + count
+        int[] indices = gw.cleanIdxCache.get(idxKey)
+        if (indices == null) {
+            Set<String> bad = contaminated(g, familyKey)
+            List<Integer> tmp = new ArrayList<>()
+            for (int c = Math.max(0, count - cfg.densityTolerance); c <= count + cfg.densityTolerance; c++) {
+                List<WindowInfo> b = gw.buckets.get(bucketKey(state, closedKey, c))
+                if (b == null) continue
+                for (WindowInfo w : b) if (!bad.contains(w.center)) tmp.add(Integer.valueOf(w.idx))
+            }
+            indices = new int[tmp.size()]
+            for (int i = 0; i < indices.length; i++) indices[i] = tmp.get(i).intValue()
+            gw.cleanIdxCache.put(idxKey, indices)
         }
-        boolean[] arr = new boolean[out.size()]
-        for (int i = 0; i < arr.length; i++) arr[i] = out.get(i).booleanValue()
+        if (pos.is(gw.allFalse)) {
+            return gw.falsePoolCache.computeIfAbsent(Integer.valueOf(indices.length), { new boolean[indices.length] })
+        }
+        boolean[] arr = new boolean[indices.length]
+        for (int i = 0; i < indices.length; i++) arr[i] = pos[indices[i]]
         arr
     }
 

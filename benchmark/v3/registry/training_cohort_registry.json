@@ -9,8 +9,8 @@
       "genome_level": true,
       "labels": "RB-TnSeq fitness-validated exact EC per target protein (positive only; one validated EC per target)",
       "counts": {"targets": 148, "genomes": 22, "predictors": 6},
-      "location": "benchmark/manifests/reference_data/ibex_extracted/price149_all6_compact.pkl.gz; whole-proteome matrices on the remote host (root-owned)",
-      "gaps": ["repeatedly examined: cannot be called untouched test", "no negative truth: other ECs on a target are unconfirmed, not false", "family/cluster map pending", "compact artifact has truncated context; full proteome context being prepared by root"]
+      "location": "benchmark/manifests/reference_data/ibex_extracted/price149_all6_compact.pkl.gz; whole-proteome matrices on unimatrix01 (/data/hohndor/gspa-v3/price-context-ablation/); committed 7x6 reports in benchmark/v3/results/price-context-ablation/",
+      "gaps": ["repeatedly examined: cannot be called untouched test", "no negative truth: other ECs on a target are unconfirmed, not false"]
     },
     {
       "id": "p03_panel13_go",
@@ -98,9 +98,9 @@
       "allowed_splits": ["train", "calibration", "test"],
       "genome_level": true,
       "labels": "Swiss-Prot reviewed proteins with strictly experimental GO (EXP/IDA/IPI/IMP/IGI/IEP/H*) or EC with ECO:0000269, on the exact assemblies of the organisms in benchmark/v3/results/label-rich-selection/selection_manifest.json",
-      "counts": {"organisms_selected": 19, "labelled_strict_proteins_total": 577, "genomes_acquired": 0},
-      "location": "selection manifest only; genomes not acquired (assembly mapping unresolved for every organism)",
-      "gaps": ["selection only: no genome, no feature export, no labels table exists yet", "20-58 labelled proteins per organism: partial truth, metrics stay on labelled proteins", "Swiss-Prot labels are inputs of pretrained predictors: pretrained-model leakage not assessed", "Price host organisms not all resolved locally: price_genus_check pending", "family/cluster map pending"]
+      "counts": {"organisms_selected": 19, "labelled_strict_proteins_total": 577, "genomes_acquired": 18, "labelled_strict_proteins_matched": 499, "training_table_rows": 4262, "train_positives": 394, "calibration_positives": 72, "test_positives": 75},
+      "location": "benchmark/v3/results/training-cohort/{assembly_manifest.json,label_match_manifest.json,labels.tsv,splits.tsv,example_clusters.tsv,split_audit.json,training_table_manifest.json,ablation_evaluation.json,perturbation_controls.json,learned_models/}; local cache ~/.cache/gspa-v3-data/training-cohort/",
+      "gaps": ["1 of 19 selected organisms (Magnetospirillum gryphiswaldense, TaxID 431944) has no assembly for that exact TaxID in NCBI Datasets", "20-58 labelled proteins per organism: partial truth, metrics stay on labelled proteins", "Swiss-Prot labels are inputs of pretrained predictors: pretrained-model leakage not assessed"]
     },
     {
       "id": "allthebacteria",
