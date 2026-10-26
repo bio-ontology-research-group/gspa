@@ -126,7 +126,8 @@ def prepare(genomes_dir, outdir):
             if complete:
                 for c in contigs.values():
                     c['closed'] = True
-            metadata['genomes'][asm] = {'assemblyStatus': 'COMPLETE' if complete else 'DRAFT', 'contigs': contigs}
+            metadata['genomes'][asm] = {'assemblyStatus': 'COMPLETE' if complete else 'DRAFT', 'contigs': contigs,
+                                         'unplacedProteins': sorted(missing)}
             layout = outdir / f'{asm}.layout.tsv'
             with layout.open('w') as fh:
                 writer = csv.writer(fh, delimiter='\t', lineterminator='\n')

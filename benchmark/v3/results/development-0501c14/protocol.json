@@ -1,0 +1,48 @@
+{
+  "protocol": {
+    "schema": "gspa.community_benchmark_protocol/1",
+    "dataset": "Wintermute & Silver 2010 (10.1038/msb.2010.66), 1,035 unordered pairs of 46 Keio auxotrophs",
+    "model": "iML1515 (exact acquired file; hash taken from the case inputs); authors modelled iAF1260",
+    "model_role": "development transportability baseline, not the authors' model",
+    "glucose_uptake_mmol_gdw_h": 10.0,
+    "glucose_note": "normalisation assumption (as in the auxotroph protocols); NOT inferred from 20 g/l",
+    "medium_components_from_input": "printed M9 exchanges other than glucose supplied at the ceiling",
+    "ceiling_mmol_gdw_h": 1000.0,
+    "ceiling_applies_to": [
+      "ammonium",
+      "phosphate",
+      "other printed inorganic ions",
+      "H2O",
+      "H+",
+      "assumed trace metals (arm: trace present)"
+    ],
+    "trace_metals": "taken from inputs.medium.assumed_not_in_paper.trace_exchanges; assumed required, not measured",
+    "oxygen_arms_mmol_gdw_h": [
+      0.0,
+      2.0,
+      20.0
+    ],
+    "oxygen_selection": "all three are reported; none is chosen by outcome",
+    "trace_arms": {
+      "present": "primary",
+      "absent": "sensitivity"
+    },
+    "organic_supplements": "none beyond glucose",
+    "maintenance": "model-native R_ATPM lower bound, read from the model, not tuned",
+    "biomass": "the model's single active-objective biomass reaction, normalised to 1 gDW",
+    "community": "balanced growth, common growth rate mu, equal biomass fractions 0.5/0.5, objective max mu",
+    "monocultures": "same pool, ports, supply and removal, fraction 1, identical gene deletion",
+    "pool": "each model-native extracellular species (unique SBML species id) is one pool metabolite; every native external exchange of every organism is a port with support 'predicted'",
+    "port_support": "predicted (model-derived, not experiment-curated)",
+    "removal": "every pool metabolite may be removed up to the ceiling (waste accumulates in the medium); removal never supplies anything",
+    "internal_bounds": "model transport and reaction bounds kept; non-port single-metabolite reactions get no uptake",
+    "gene_deletion": "locus tag -> model gene product -> Model.blocked_by_genes (GPR-aware); no guessed genes",
+    "growth_threshold_mu": 1e-06,
+    "control": "same pair and deletions with uptake from the pool forbidden for every metabolite that is not a medium nutrient or one of H2O, H+, CO2, O2 (no cross-organism transfer of other metabolites)",
+    "prediction": "positive iff community grows AND both matched monocultures do not grow; one or two viable monocultures are flagged separately and are not positive",
+    "infeasibility": "infeasible under fixed maintenance = predicted no growth (primary); strict variant treats it as unknown; solver errors and exhausted budget are unknown",
+    "labels": "paper thresholds on mean day-4 fold growth: synergy > 50, no_synergy < 8, intermediate kept separate",
+    "scope": "feasibility of mutual growth in static balanced growth only; not fold change or fitness"
+  },
+  "sha256": "885facfb46e5aa66a4c239880ab4a6e7e3249bdb0e04ab04957b770bd4149a92"
+}

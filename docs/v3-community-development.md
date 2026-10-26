@@ -1,5 +1,16 @@
 # v3 community benchmark (item 9): measured Keio auxotroph pairs
 
+The complete revision-1 run is preserved in
+[the full report](../benchmark/v3/results/development-0501c14/report.json), with
+[all 6,210 case predictions](../benchmark/v3/results/development-0501c14/case_artifacts.json)
+in six losslessly compressed JSONL files beside it. All 1,035 pairs executed in
+each of six arms, with no failed or unknown predictions. Every arm predicted no
+mutual rescue: TP 0, FN 178, TN 430, FP 0; 427 intermediate pairs remain outside
+the binary metric. Job 9741 completed in 2,478 seconds. This is the result of the
+uptake-bounds defect documented below, **not evidence against biological
+cross-feeding**. Revision 2 reruns the same cases and six conditions after the fix;
+the old output is never overwritten.
+
 `benchmark/v3/run_community_benchmark.py` runs the 1,035 measured Wintermute & Silver 2010 pairs
 (`wintermute2010_cases.jsonl`, see `docs/benchmarks/v3-metabolic-data.md`) through the production
 community engine (`scripts/community_metabolism.py`, which builds on `metabolic_experiments.py`).

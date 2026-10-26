@@ -69,3 +69,18 @@ class CoordinatesTest(unittest.TestCase):
         self.assertNotIn('secret_function', (out / 'all_proteins.faa').read_text())
         self.assertIn('>GCF_2.1__p.1', (out / 'all_proteins.faa').read_text())
         self.assertNotIn('familySearchComplete', (out / 'cohort_metadata.json').read_text())
+
+    def test_unplaced_sequence_is_declared_without_inventing_a_coordinate(self):
+        root = Path(self.temp.name) / 'genomes'
+        folder = root / 'GCA_1.2'
+        folder.mkdir(parents=True)
+        (folder / 'genomic.gff').write_text(self.header + self.row('placed', 1, 300))
+        (folder / 'protein.faa').write_text('>placed\nMAAAA\n>unplaced\nMSSSS\n')
+        (folder / 'assembly_data_report.json').write_text(json.dumps({'accession': 'GCA_1.2', 'assemblyInfo': {'assemblyLevel': 'Complete Genome'}}))
+        out = Path(self.temp.name) / 'out'
+        report = prepare(root, out)
+        genome = json.loads((out / 'cohort_metadata.json').read_text())['genomes']['GCA_1.2']
+        self.assertEqual(genome['unplacedProteins'], ['unplaced'])
+        self.assertEqual(genome['assemblyStatus'], 'COMPLETE')
+        self.assertNotIn('unplaced', (out / 'GCA_1.2.layout.tsv').read_text())
+        self.assertEqual(report['assemblies']['GCA_1.2']['proteins'], 2)

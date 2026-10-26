@@ -167,7 +167,7 @@ class TaxonomyTest(CohortBase):
         self.run_prepare()
         text = (self.last_out() / 'cohort_metadata.json').read_text()
         allowed = {'clade', 'strainCluster', 'assemblyStatus', 'completenessFraction', 'familySearchComplete',
-                   'familySearchCoverage', 'contigs'}
+                   'familySearchCoverage', 'contigs', 'unplacedProteins'}
         for g in json.loads(text)['genomes'].values():
             self.assertLessEqual(set(g), allowed)
             self.assertNotIn('completenessFraction', g)

@@ -30,3 +30,11 @@ class MatrixJoinTest(unittest.TestCase):
                          np.array([[.001] * 150 + [.9]]), {'p.1'}, {'p.1'})
         self.assertEqual(r['nonzero_complete_ec_scores'], 150)
         self.assertEqual(r['threshold_0_01_plus_top100_count'], 100)
+
+    def test_preliminary_ec_is_valid_and_counted_separately(self):
+        r = check_matrix(['p.1'], ['EC:1.1.1.n11', '1.1.-.-', '2.2.2.2'],
+                         np.array([[.4, .6, .5]]), {'p.1'}, {'p.1'})
+        self.assertEqual(r['preliminary_ec_columns'], 1)
+        self.assertEqual(r['nonzero_preliminary_ec_scores'], 1)
+        self.assertEqual(r['partial_ec_columns'], 1)
+        self.assertEqual(r['nonzero_complete_ec_scores'], 1)

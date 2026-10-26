@@ -812,6 +812,13 @@ class TestHypothesesAndPolicy(Base):
         items = {m["id"]: m for m in out["menu"]}
         key = ME.evidence_key(items["carbon_source:EX_ac_e"], ctx["evidence"])
         self.assertEqual(key[0], 0)
+        self.assertEqual(key[1], 0)
+        # Duplicating model-derived condition links cannot increase evidence priority,
+        # including its secondary ranking key.
+        item = dict(items['carbon_source:EX_ac_e'])
+        item['evidence_ids'] = item['evidence_ids'] + ['mc2']
+        extra = ev('mc2', 'model_condition', 'h_ac', condition_hint='carbon_swap', exchange='EX_ac_e')
+        self.assertEqual(ME.evidence_key(item, ctx['evidence'] + [extra]), key)
 
 
 if __name__ == "__main__":

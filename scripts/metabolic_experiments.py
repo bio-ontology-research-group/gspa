@@ -885,8 +885,9 @@ def conditional_record(rec: dict[str, Any]) -> dict[str, Any]:
 
 def evidence_key(item: dict[str, Any], evidence: list[dict[str, Any]]) -> tuple:
     # a model_condition record says why a condition was chosen (exact model identifiers), not that the function is likely
-    types = {e.get("type") for e in evidence if e.get("id") in item["evidence_ids"] and e.get("type") != "model_condition"}
-    return (-len(types), -len(item["evidence_ids"]), -len(item["competing_hypotheses"]), item["id"])
+    records = [e for e in evidence if e.get("id") in item["evidence_ids"] and e.get("type") != "model_condition"]
+    types = {e.get("type") for e in records}
+    return (-len(types), -len({e['id'] for e in records}), -len(item["competing_hypotheses"]), item["id"])
 
 
 def order_menu(strategy: str, menu: list[dict[str, Any]], manifest: dict[str, Any],

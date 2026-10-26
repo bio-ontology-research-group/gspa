@@ -12,10 +12,10 @@ from pathlib import Path
 import numpy as np
 
 try:
-    from .prepare_price import load_matrix, norm_ec, FLOAT_RTOL
+    from .prepare_price import load_matrix, norm_ec, is_preliminary_ec, FLOAT_RTOL
     from .prepare_price_layout import digest, fasta_sequences, read_coordinates
 except ImportError:
-    from prepare_price import load_matrix, norm_ec, FLOAT_RTOL
+    from prepare_price import load_matrix, norm_ec, is_preliminary_ec, FLOAT_RTOL
     from prepare_price_layout import digest, fasta_sequences, read_coordinates
 
 
@@ -25,9 +25,10 @@ def check_matrix(index, columns, values, protein_ids, locus_ids):
     ecs = [norm_ec(c) for c in columns]
     if len(set(ecs)) != len(ecs):
         raise ValueError('duplicate normalized EC columns')
-    if any(not re.fullmatch(r'\d+(?:\.(?:\d+|-)){0,3}', ec) for ec in ecs):
+    if any(not re.fullmatch(r'\d+(?:\.(?:\d+|-)){0,3}', ec) and not is_preliminary_ec(ec) for ec in ecs):
         raise ValueError('invalid EC identifier')
     complete = np.array([bool(re.fullmatch(r'\d+\.\d+\.\d+\.\d+', ec)) for ec in ecs])
+    preliminary = np.array([is_preliminary_ec(ec) for ec in ecs])
     # Versionless IDs have an explicit, unique accession match, not sequence verification.
     versions = {}
     for pid in protein_ids:
@@ -46,7 +47,7 @@ def check_matrix(index, columns, values, protein_ids, locus_ids):
     canonical = list(mapped.values())
     if len(set(canonical)) != len(canonical):
         raise ValueError('multiple matrix rows resolve to the same acquired protein')
-    total, threshold, top100, nonzero_proteins = 0, 0, 0, 0
+    total, threshold, top100, nonzero_proteins, preliminary_nonzero = 0, 0, 0, 0, 0
     for row in values:
         row = np.asarray(row, dtype=float)
         if not np.isfinite(row).all() or (row < 0).any() or (row > 1 + FLOAT_RTOL).any():
@@ -54,12 +55,15 @@ def check_matrix(index, columns, values, protein_ids, locus_ids):
         nz = (row != 0) & complete
         n = int(nz.sum())
         total += n
+        preliminary_nonzero += int(((row != 0) & preliminary).sum())
         nonzero_proteins += bool(n)
         above = int(((row >= .01) & nz).sum())
         threshold += above
         top100 += max(above, min(100, n))
     return {'shape': list(values.shape), 'complete_ec_columns': int(complete.sum()),
-            'partial_ec_columns': int((~complete).sum()), 'nonzero_complete_ec_scores': total,
+            'partial_ec_columns': int((~(complete | preliminary)).sum()),
+            'preliminary_ec_columns': int(preliminary.sum()), 'nonzero_preliminary_ec_scores': preliminary_nonzero,
+            'nonzero_complete_ec_scores': total,
             'proteins_with_nonzero_complete_ec': nonzero_proteins,
             'nonzero_at_least_0_01': threshold, 'threshold_0_01_plus_top100_count': top100,
             'exact_protein_ids': len(mapped) - len(versionless), 'versionless_unique_matches': versionless,
@@ -72,7 +76,9 @@ def audit(verification, genomes, out):
     if Path(out).exists():
         raise ValueError('output already exists')
     records = json.loads(Path(verification).read_text())['files']
-    result = {'schema': 'gspa.price_matrix_audit/1', 'verification_sha256': digest(verification), 'files': []}
+    result = {'schema': 'gspa.price_matrix_audit/1', 'verification_sha256': digest(verification),
+              'code_sha256': {name: digest(Path(__file__).with_name(name)) for name in
+                             ('audit_price_matrices.py', 'prepare_price.py', 'prepare_price_layout.py')}, 'files': []}
     for item in records:
         rec = {k: item[k] for k in ('predictor', 'assembly', 'destination')}
         try:

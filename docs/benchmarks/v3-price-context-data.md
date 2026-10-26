@@ -69,7 +69,26 @@ validates score ranges and unique EC/protein axes, and audits exact or uniquely
 versionless accession joins. An explicit different protein version is never
 silently joined. Its counts of nonzero and threshold-retained candidates are
 resource-planning diagnostics; they are not benchmark results or a chosen pruning
-policy. Slurm job 9743 runs this complete audit.
+policy. The first audit (job 9743) rejected preliminary EC identifiers such as
+`1.1.1.n11`. These are valid preliminary identifiers in the
+[ENZYME nomenclature](https://enzyme.expasy.org/enzyme.html); the corrected audit
+counts them separately from complete numeric ECs and hierarchical classes.
+Job 9744 completed all 132 matrices: no invalid score or matrix-shape failures,
+89 files with fully resolved identifier joins and 43 with some unresolved IDs.
+The [full audit](../../benchmark/v3/results/development-88a15e7/price-matrix-audit.json)
+records 101 distinct absent identifiers (80 versioned, 21 versionless). None is a
+Price target protein. They remain candidate records with unavailable local context.
+
+The 80 exact-version proteins were fetched from NCBI. None has an identical
+sequence in its newly acquired assembly protein FASTA. A further diagnostic aligns
+these proteins against exact-version assembly DNA, retaining only full-length,
+ungapped, identical TBLASTN alignments: 51 have a single returned exact alignment.
+This establishes candidate coordinate repairs, not an exhaustive uniqueness proof;
+the original layouts and family inputs have not yet been replaced with those
+repairs. `recover_price_coordinates.py` reproduces the diagnostic; its
+[report](../../benchmark/v3/results/development-88a15e7/price-coordinate-recovery.json)
+records commands, hashes and tool version. Versionless identifiers are not assigned
+an arbitrary accession version.
 
 ## Cohort families and metadata
 
@@ -87,7 +106,7 @@ python benchmark/v3/prepare_price_cohort.py \
   --layout /tmp/gspa-v3-price-layout-v3 \
   --clusters /tmp/gspa-v3-price-families/id30_cov80_cluster.tsv \
   --taxonomy /tmp/gspa-v3-price-families/taxonomy.xml \
-  --mmseqs-log /tmp/gspa-v3-price-families/id30_cov80.log \
+  --mmseqs-log /tmp/gspa-v3-price-families/id30_cov80-retry.log \
   --out <fresh directory>
 ```
 
@@ -118,8 +137,16 @@ What the outputs mean:
 Only identifiers, assembly status and contig lengths enter the outputs; functional GFF
 annotations never do. Tests: `benchmark/v3/tests/test_price_cohort.py`.
 
-Status: the layout digests (22 assemblies, 115,542 proteins) and the taxonomy
-cross-check (18 distinct requested taxids, all resolved, no mismatch) pass on the
-frozen inputs. The id 0.3 clustering over all proteins was still running when this was
-written, so the verified cohort artifact and its report are pending generation from the
-finished cluster file.
+Status: all 115,542 acquired proteins occur exactly once in 35,298 sequence-similarity
+clusters; 14,255 clusters occur in multiple genomes and 4,269 contain within-genome
+paralogs. All 18 distinct requested taxids resolved. The
+[cohort report](../../benchmark/v3/results/development-88a15e7/price-cohort-report.json)
+binds the inputs and outputs by hash. The first clustering attempt exhausted `/tmp`;
+its failure log is preserved and the successful retry used disk-backed scratch.
+These are context inputs, not evidence of prediction accuracy.
+
+The production metadata now explicitly declares the 279 acquired proteins without
+one usable coordinate as `unplacedProteins`. A declared family member remains
+present with unknown neighborhood context; it is never counted as absent because
+its coordinate is missing. A placed unsupported paralog plus an unresolved paralog
+also has unknown context. Arbitrary undeclared protein IDs still fail validation.
