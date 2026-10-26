@@ -60,6 +60,40 @@ class PairMetrics(unittest.TestCase):
         self.assertAlmostEqual(M.calibration(M.pair_stats(pred, truth))["ece"], 0.0)
 
 
+class CalibrationUniverse(unittest.TestCase):
+    TRUTH = {("p", "A"), ("p", "B")}
+
+    def test_omitting_a_true_pair_cannot_improve_brier(self):
+        omit = {("p", "A"): 0.9}                                   # silently drops true B and (below) false F
+        full = {("p", "A"): 0.9, ("p", "B"): 0.9, ("p", "F"): 0.9}
+        uni = M.candidate_universe(self.TRUTH, omit, full)
+        self.assertEqual(uni, {("p", "A"), ("p", "B"), ("p", "F")})
+        b_omit = M.calibration(M.pair_stats(omit, self.TRUTH, uni))
+        b_full = M.calibration(M.pair_stats(full, self.TRUTH, uni))
+        self.assertAlmostEqual(b_omit["brier"], (0.01 + 1.0 + 0.0) / 3)
+        self.assertAlmostEqual(b_full["brier"], (0.01 + 0.01 + 0.81) / 3)
+        self.assertEqual(b_omit["n_pairs"], b_full["n_pairs"])
+        # the old per-arm universe would have scored the omitting arm on A alone (Brier 0.01)
+        solo = M.calibration(M.pair_stats(omit, self.TRUTH))
+        self.assertAlmostEqual(solo["brier"], 0.5 * (0.01 + 1.0))  # truth pairs are now always in the universe
+        self.assertGreater(solo["brier"], 0.01)
+
+    def test_unemitted_pairs_score_zero_and_fill_bin_zero(self):
+        uni = {("p", "A"), ("p", "B")}
+        c = M.calibration(M.pair_stats({("p", "A"): 1.0}, self.TRUTH, uni))
+        self.assertAlmostEqual(c["brier"], 0.5)           # B missing -> (0-1)^2
+        self.assertAlmostEqual(c["ece"], 0.5 * 0.0 + 0.5 * 1.0)  # bin 0: score 0, frac_true 1 ; bin 9: score 1, frac 1
+
+    def test_universe_is_restricted_to_labelled_proteins(self):
+        uni = M.candidate_universe(self.TRUTH, {("q", "X"): 0.9, ("p", "Y"): 0.2})
+        self.assertEqual(uni, {("p", "A"), ("p", "B"), ("p", "Y")})
+
+    def test_invalid_scores_rejected(self):
+        for bad in (float("nan"), 1.5, -0.1):
+            with self.assertRaises(ValueError):
+                M.pair_stats({("p", "A"): bad}, self.TRUTH)
+
+
 class EcTop1(unittest.TestCase):
     def test_complete_ec_only(self):
         self.assertTrue(M.is_complete_ec("EC:1.1.1.1"))

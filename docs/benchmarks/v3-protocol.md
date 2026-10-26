@@ -33,30 +33,50 @@ python3 -m unittest discover -s benchmark/v3/tests -v
 | `gspa.command`, `binary`, `shared_args`, `args_style`, `cwd`, `timeout_sec` | how to launch the engine; `binary` is hashed |
 | `arms[]` | `{name, args}`; `args` are extra `gspa integrate` flags |
 | `baseline_arm` | the matched baseline all other arms are compared with |
-| `genomes[]` | `genome_id`, `split` (`train`/`calibration`/`test`), `claims`, optional `labels: {go, ec}`, `taxon`, `essential_profile`, `operons`, `gaps`, `species`, `cluster`, `train_protein_ids` |
-| `train_proteins`, `homology_clusters` | optional global training-id list and `protein<TAB>cluster` map |
+| `genomes[]` | `genome_id`, `split` (`train`/`calibration`/`test`), `claims`, optional `labels: {go, ec}`, `species`, `cluster`, `train_protein_ids`, and the batch-manifest inputs `taxon`, `essential_profile`, `operons`, `gaps`, `genome_layout`, `orthogroups`, `cluster_consensus`, `fba_medium`, `fba_gram` |
+| `train_proteins`, `homology_clusters` | optional global training-id list and `protein<TAB>cluster` map. A declared map must cover every claim protein of every split |
+| `declared_controls` | free text per control the runner cannot verify (e.g. predictor masking); recorded as `declared_unverified` |
+
+`genome_id` and arm names must match `[A-Za-z0-9][A-Za-z0-9._-]{0,63}` (they name output files and TSV fields); path fields may not contain tabs or newlines or be `-`; two genomes may not share a claims file. A declared auxiliary file (`operons`, `gaps`, `genome_layout`, `orthogroups`, `cluster_consensus`) that is missing makes the genome `skipped`, because the engine would otherwise ignore it silently and run the arm without that evidence.
+
+### Batch manifest columns
+
+The runner writes the 16-column TSV read by `gspa integrate --batch-manifest`: `genome_id, claims_path, out_path, taxon, essential_profile, operons_path, gaps_path, max_iter, enforce_stage2, enforce_mode, enable_priors, genome_layout_path, orthogroups_path, cluster_consensus_path, fba_medium, fba_gram`; `-` selects the CLI default. Per-arm behaviour is set with CLI flags, not row overrides, so one arm = one engine invocation. A test compares the header with the column list documented in `IntegrateCommand.groovy`.
 | `reference` | hashed reference files; `go_obo` enables is_a/part_of propagation of GO truth and predictions |
 | `settings` | `threshold` (on the 0.01..0.99 grid), `bootstrap` replicates, `seed` |
 
 Only `test` genomes are run and scored. `train`/`calibration` genomes exist so that overlap can be checked against them.
 
-## Leakage controls (implemented in `leakage_problems`)
+## Leakage controls (`leakage_report`)
 
-* No genome id, species or declared cluster is shared between fit (`train`, `calibration`) and `test` genomes.
-* No protein id in a test genome's claims occurs in the training set: union of `train_proteins`, each `train_protein_ids`, and the claims of fit genomes. This is deliberately conservative: because protein ids are FASTA seqids, a collision across genomes is reported even when it is coincidental, and must be resolved by prefixing ids.
-* With `homology_clusters`, no cluster may contain both a training and a test protein.
-* Label/claims separation as in principle 2.
+Each control gets a status in `report.json` under `leakage_controls`: `verified` (evaluated on complete input), `not_declared` / `not_assessed: <why>` (not checked, never counted as passed), or `declared_unverified` (manifest assertion the runner cannot check). A problem aborts the run.
 
-Not enforced by code, and required of every manifest author: (a) predictor channels inside the claims must themselves be homology-masked or leave-target-out (e.g. DIAMOND against a reference with the benchmark proteins removed); (b) hyperparameters (`--theta`, calibration tables) must be frozen before looking at test labels and their provenance listed in `description`; (c) no training on test labels. The v2 calibration genome (*E. coli* K-12) must stay out of test sets that claim out-of-sample results.
+* **Genome, species, cluster ids** are disjoint between every pair of train, calibration and test.
+* **Protein ids** are disjoint between every pair of groups (union of `train_proteins`, `train_protein_ids`, and each group's claims). Conservative: ids are FASTA seqids, so a coincidental collision across genomes is reported and must be resolved by prefixing.
+* **Homology clusters** (if `homology_clusters` is declared) must cover every claim protein of every group, otherwise the unmapped proteins cannot be checked and it is a problem; no cluster may span two groups. Without a declared map the control is `not_declared`.
+* **Label separation**: labels are not claims, not in `gspa` arguments; the *whole* claims file is scanned (not a prefix) for label-like keys at top level or in `metadata`.
+* **Claims validity** (same scan): malformed JSON, non-object lines, missing required fields, non-finite or non-numeric scores, `calibrated_prob` outside [0, 1], and duplicate (protein, type, function, source) claims, which would double-count a source.
+* **`pretrained_model_leakage` is always `not_assessed`.** Deep predictors and protein language models inside the claims may have seen test proteins or close homologs during pretraining; the runner cannot detect this. No report may state that training leakage is excluded; at most that the controls above were verified.
+
+Required of every manifest author and recorded only as `declared_controls`: (a) predictor channels inside the claims are homology-masked or leave-target-out (e.g. DIAMOND against a reference with the benchmark proteins removed); (b) hyperparameters (`--theta`, calibration tables) are frozen before test labels are read, with provenance in `description`; (c) no training on test labels. The v2 calibration genome (*E. coli* K-12) must stay out of test sets that claim out-of-sample results.
+
+## Execution integrity
+
+* Before an arm runs, its previous outputs, batch manifest, logs and run record are deleted. If the engine exits non-zero, any outputs it wrote are deleted too: a failed attempt is never scored.
+* Each arm writes `run_record.json` (exit code, exact launch argv, output hashes, hashes of the claims it consumed). `evaluate` reuses an output only if the recorded run exited 0, the output still has its recorded hash and the claims are unchanged; otherwise the cell is `failed` with the reason (`no run record`, `modified`, `claims changed`).
+* An integrated TSV that is truncated, has non-numeric scores, or scores outside [0, 1] fails its cell (`unparseable output`) instead of being skipped line by line.
+* `report.json` `engine` records the launch argv, the resolved launcher and its hash, the hash of the jar named by `-jar` (a `binary` that disagrees with it is rejected), the `java -version` output, and the git revision and dirty flag. For a Gradle launch the identity is the source revision; compiled classes are not hashed. A launcher that identifies no engine content (e.g. a wrapper script) is flagged with a `warning`.
 
 ## Metrics (`v3_metrics.py`)
 
-All metrics are computed on the **labelled universe**: proteins with at least one label of the scored kind. Predictions for other proteins are ignored because a missing label is not a negative.
+All metrics are computed on the **labelled proteins**: those with at least one label of the scored kind. Predictions for other proteins are ignored because a missing label is not a negative.
+
+**Candidate universe.** Per genome, the evaluated (protein, term) pairs are the true pairs plus every pair emitted by *any* executed arm, on labelled proteins. All arms are scored on exactly this set; a pair an arm did not emit has score 0. Omitting a prediction therefore cannot improve Brier or ECE, and `n_pairs` is identical across arms (the report lists the universe size per genome). The universe depends on which arms are compared, so calibration numbers are comparable between arms of one report, not across reports. **Closed world:** a universe pair without a label counts as false although GO/EC labels are incomplete, so precision is a lower bound; the bias applies to all arms alike. Both statements are written to `report.json` under `evaluation.assumptions`.
 
 * **Complete-EC top-1.** For each labelled protein, the highest-scoring *complete* EC (four numeric levels; `1.1.1.-` and `3.5.1.n2` cannot be top-1) is correct if in the protein's true EC set. Ties go to the lexicographically smaller EC. Proteins with no complete-EC prediction count as not correct; coverage and precision-when-called are reported separately.
 * **Fixed-threshold precision / recall / F1.** Micro over (protein, term) pairs, call = `score >= tau`, recall denominator = all true pairs.
 * **Global Fmax.** Pairs pooled over all genomes, sweep over 0.01..0.99, ties to the lowest threshold. Descriptive (threshold selected on test labels).
-* **Calibration.** ECE (10 equal-width bins), Brier score, reliability table over predicted pairs on the labelled universe. Under-reports calibration for terms outside the labelled universe, so read it with the ontology caveat below.
+* **Calibration.** ECE (10 equal-width bins), Brier score and reliability table over the candidate universe above (missing = 0). Scores outside [0, 1] or NaN are rejected.
 * **Correction / harm against the matched baseline.** Over the pairs called by either arm plus all true pairs: *corrected* = baseline wrong and arm right, *harmed* = baseline right and arm wrong, *net* = difference, exact McNemar p. For EC top-1 the same counts per protein.
 * **Genome bootstrap.** Genomes are resampled with replacement (default 2000 replicates, seed 13, percentile 95 % CI). Paired deltas use identical resamples for arm and baseline. With fewer than 2 genomes the CI is NaN, not zero-width.
 * **GO propagation.** If `reference.go_obo` is set, truth and predictions are propagated over `is_a` and `part_of`, ancestors take the maximum descendant score, alt ids are mapped, obsolete terms and the three roots are dropped. Without it, GO scoring is exact-term and must be labelled as such.
@@ -123,5 +143,25 @@ Report Hit@k/MRR or pair-level correction and harm per planner, with genome-boot
 4. **Labels not located:** operon gold standard, knockout/growth gold set, cross-feeding gold set.
 5. **Frozen hyperparameters.** `--theta` and calibration tables for the production arms must be fixed and hashed before the test labels are read; the P03/P02 values changed during the v2 audit (items 13, 25).
 6. **Stage 2B bundle** (ModelSEED matrices) and **Stage 3 model endpoint** (Qwen3.8-27B-FP8 on 2× RTX 4090 per item 21) for the agent arms.
-7. **The twelve audited recommendations** were not in the task brief. The matrix above covers the validation report's open "To do" items; the mapping to the twelve must be supplied.
-8. **Not yet verified on real data:** the integrated TSV parsing and batch layout were checked against the real CLI on a 3-claim fixture only; `v3_panel13_go.json` has not been executed.
+7. **Not yet verified on real data.** The runner was run against the real `gspa integrate` (Gradle launch, two arms, 16-column batch manifest) on a 6-claim fixture by `GSPA_V3_ENGINE_SMOKE=1`; `v3_panel13_go.json` has not been executed, and no real-data metric exists yet.
+8. **Verification limits of the leakage controls** (see above): pretrained-model leakage and predictor-channel masking are not checkable by the runner; the homology and protein-overlap controls are only as good as the declared map and training-id lists, none of which is declared in the shipped panel manifest (so those controls report `not_declared`/`not_assessed` there; the 13 panel genomes are test-only).
+9. **Engine batch columns 11–15.** The worktree's `IntegrateCommand.groovy` documents columns 0–10; the runner emits all 16 as specified for the root's production batch. Against an engine that predates them the extra columns are ignored, so the parity test checks only the documented prefix.
+
+## Mapping to the twelve audit recommendations (`tasks/todo.md`, 2026-10-26)
+
+| # | Recommendation | v3 foundation provides | Still to do |
+|---|---|---|---|
+| 1 | Benchmark the actual application | Whole benchmark is `gspa integrate`; matched stage arms; fixed threshold, calibration, correction/harm, genome bootstrap; "claims from versioned experiment records" = hashed manifest inputs | Adapters that generate claims from versioned experiment records (Price-149, CAFA splits); held-out *families* need `homology_clusters` and a train/test split declared per experiment; independently selected thresholds require a calibration split (supported via `split: calibration`, not yet used) |
+| 2 | Unify execution routes | Executed/skipped/failed per (arm, genome); run record with exact launch args | Parity runs of CLI annotate/web/Nextflow/batch on matched inputs (needs those routes as manifest `gspa.command` variants); stage-level status from the engine itself |
+| 3 | Predictor contracts and failure reporting | Strict parsing of claims and integrated output; injected-failure tests for the runner | Predictor-adapter fixtures (eggNOG, HMMER, InterPro EC, operon aspect) are outside `benchmark/v3` |
+| 4 | Learned weights and final confidence | Calibration (ECE/Brier on a fixed universe) and paired deltas to compare rule-based and learned arms; `calibration` split recognised | Out-of-fold learners, family/genus-held-out folds, and a no-candidate outcome metric (abstention is not yet scored) |
+| 5 | Neighbourhood to reaction networks | `genome_layout`, `gaps`, `orthogroups` batch columns; arm matrix (`stage1_rlgc`, minus-prior) | Held-out enzyme-locus labels (LRO data) and pathway-only vs universal vs organism-specific arms |
+| 6 | Joint cross-genome recurrence | `orthogroups`, `cluster_consensus` columns; genome-level bootstrap | Cohort-level manifest with clade holdouts, duplicated strains, shuffled-neighbourhood and fragmented-assembly controls |
+| 7 | Preserve weak candidates, resolve roles | Universe includes weak candidates (score 0 if dropped) so retention is not rewarded by omission | Candidate-recall and locus-ranking metrics; same-operon decoy cases |
+| 8 | Absence, missing sequence, environment | `fba_medium`, `fba_gram` columns; failures and skips kept as data | Gene-attribution vs growth/knockout scoring, fragmented-assembly controls |
+| 9 | Community cross-feeding | none (no dataset located) | Dataset with measured exchange/coculture phenotypes and the scorer |
+| 10 | Report prediction changes and uncertainty | Correction/harm counts with McNemar and CIs; assumptions written into the report; internal audit metrics are kept out of the accuracy metrics | Stage-wise change export and browser-count reconciliation live outside `benchmark/v3` |
+| 11 | Agent vs equally informed simple methods | Planner matrix with equal budgets in this document; paired comparison machinery | Planner implementations, per-planner cost logging, abstention scoring |
+| 12 | Agent-guided metabolic experiments | Planner/baseline list extended below | Experiment loop, masked-target phenotype data, secondary-metabolite production labels; frozen planner and confidence rules before testing; count unrecoverable cases |
+
+For items 11 and 12 the budget is *solver calls*, identical across planners (single-medium FBA, fixed condition panel, random condition selection, simple evidence-guided planner, agent). Target gene assignments are masked from all model and evidence inputs; recovery is reported at fixed precision with harmful assignments, withheld-phenotype agreement, abstentions and cost, and cases where no function can be recovered are counted rather than dropped. Selecting an objective that requires a candidate function is not independent confirmation, and feasible secondary-metabolite production is a conditional hypothesis, not evidence of expression. None of this is implemented in `benchmark/v3` yet.

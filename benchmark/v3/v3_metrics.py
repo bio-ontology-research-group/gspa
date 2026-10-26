@@ -165,16 +165,44 @@ def _grid_index(tau: float) -> int:
     return i
 
 
-def pair_stats(pred: Mapping[Pair, float], truth: Set[Pair]) -> List[float]:
-    """Sufficient statistics of one genome for pair-level (protein, term) metrics."""
-    universe = {p for p, _ in truth}
+def candidate_universe(truth: Set[Pair], *preds: Mapping[Pair, float]) -> Set[Pair]:
+    """Declared evaluation universe of one genome: every true pair plus every
+    pair emitted by any compared arm, restricted to labelled proteins.
+
+    Closed-world assumption: a pair in this universe without a label is
+    treated as false. Labels are incomplete, so true-but-unlabelled pairs are
+    counted as errors (this biases precision down, equally for all arms).
+    """
+    labelled = {p for p, _ in truth}
+    out = set(truth)
+    for pred in preds:
+        out.update(k for k in pred if k[0] in labelled)
+    return out
+
+
+def pair_stats(pred: Mapping[Pair, float], truth: Set[Pair],
+               universe: Optional[Set[Pair]] = None) -> List[float]:
+    """Sufficient statistics of one genome for pair-level (protein, term) metrics.
+
+    Calibration (Brier, ECE) is computed over the fixed ``universe`` with an
+    unemitted pair scored 0, so omitting a prediction cannot flatter an arm and
+    arms are compared on the same pairs. Pass the same ``universe`` for every
+    arm of a comparison; the default is truth plus this arm's own pairs, which
+    is only appropriate for a single-arm description.
+    """
+    if universe is None:
+        universe = candidate_universe(truth, pred)
+    labelled = {p for p, _ in truth}
     true_scores: List[float] = []
     false_scores: List[float] = []
     vec = [0.0] * PAIR_VEC_LEN
     vec[_I_NPOS] = float(len(truth))
-    for key, s in pred.items():
-        if key[0] not in universe:
+    for key in universe:
+        if key[0] not in labelled:
             continue
+        s = pred.get(key, 0.0)
+        if not (0.0 <= s <= 1.0):
+            raise ValueError(f"score {s!r} for {key} is outside [0, 1]")
         y = 1.0 if key in truth else 0.0
         (true_scores if y else false_scores).append(s)
         b = min(N_BINS - 1, int(s * N_BINS))

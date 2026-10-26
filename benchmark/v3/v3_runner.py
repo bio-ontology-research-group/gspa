@@ -16,11 +16,14 @@ evaluation phase, after every arm has finished.
 from __future__ import annotations
 
 import argparse
+import glob
 import hashlib
 import json
+import math
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -34,15 +37,35 @@ SCHEMA_VERSION = 1
 SPLITS = ("train", "calibration", "test")
 FORBIDDEN_CLAIM_KEYS = {"label", "labels", "truth", "is_true", "y_true", "ground_truth"}
 CODE_FILES = ("v3_runner.py", "v3_metrics.py")
-BATCH_HEADER = ["genome_id", "claims_path", "out_path", "taxon", "essential_profile",
-                "operons_path", "gaps_path", "max_iter", "enforce_stage2", "enforce_mode",
-                "enable_priors"]
+# Column order of `gspa integrate --batch-manifest` (IntegrateCommand.groovy,
+# "Manifest TSV columns"); '-' selects the CLI default. Each entry is
+# (header, genome-manifest key or None). Columns without a key are always '-'.
+BATCH_COLUMNS = [
+    ("genome_id", "genome_id"), ("claims_path", "claims"), ("out_path", None),
+    ("taxon", "taxon"), ("essential_profile", "essential_profile"),
+    ("operons_path", "operons"), ("gaps_path", "gaps"),
+    ("max_iter", None), ("enforce_stage2", None), ("enforce_mode", None), ("enable_priors", None),
+    ("genome_layout_path", "genome_layout"), ("orthogroups_path", "orthogroups"),
+    ("cluster_consensus_path", "cluster_consensus"),
+    ("fba_medium", "fba_medium"), ("fba_gram", "fba_gram"),
+]
+BATCH_HEADER = [h for h, _ in BATCH_COLUMNS]
+# genome keys naming auxiliary files that the engine silently ignores when absent
+AUX_FILE_KEYS = ("operons", "gaps", "genome_layout", "orthogroups", "cluster_consensus")
+SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+RUN_RECORD = "run_record.json"
+ARM_OUTPUT_GLOBS = ("*.integrated.tsv", "*.integrated.tsv.*", "batch_manifest.tsv", "batch_stats.tsv",
+                    "stdout.log", "stderr.log", RUN_RECORD)
 
 Pair = Tuple[str, str]
 
 
 class ManifestError(ValueError):
     pass
+
+
+class PredictionFormatError(ValueError):
+    """An integrated TSV is truncated, non-numeric, or has non-probability scores."""
 
 
 # ------------------------------------------------------------------ hashing
@@ -114,20 +137,39 @@ def manifest_problems(man: dict) -> List[str]:
     names = [a.get("name") for a in man["arms"]]
     if len(set(names)) != len(names) or not all(names):
         p.append("arm names must be unique and non-empty")
+    for n in names:
+        if not isinstance(n, str) or not SAFE_ID.match(n):
+            p.append(f"arm name {n!r} must match {SAFE_ID.pattern} (it names an output directory)")
     if man["baseline_arm"] not in names:
         p.append("baseline_arm is not one of the arms")
     ids = [g.get("genome_id") for g in man["genomes"]]
     if len(set(ids)) != len(ids) or not all(ids):
         p.append("genome_id values must be unique and non-empty")
+    for i in ids:
+        if not isinstance(i, str) or not SAFE_ID.match(i):
+            p.append(f"genome_id {i!r} must match {SAFE_ID.pattern} (it names output files and a TSV field)")
+    claim_paths: Dict[str, str] = {}
     for g in man["genomes"]:
         gid = g.get("genome_id")
         if g.get("split") not in SPLITS:
             p.append(f"{gid}: split must be one of {SPLITS}")
         if not g.get("claims"):
             p.append(f"{gid}: claims path required")
+        else:
+            real = os.path.realpath(g["claims"])
+            if real in claim_paths:
+                p.append(f"{gid}: claims file is the same as {claim_paths[real]}'s (ambiguous source)")
+            claim_paths[real] = gid
+        for key in ("claims", "taxon", "essential_profile", "fba_medium", "fba_gram") + AUX_FILE_KEYS:
+            v = g.get(key)
+            if v is not None and (not isinstance(v, str) or re.search(r"[\t\r\n]", v) or v in ("", "-")):
+                p.append(f"{gid}: {key} must be a non-empty string without tabs/newlines and not '-'")
         for kind in (g.get("labels") or {}):
             if kind not in ("go", "ec"):
                 p.append(f"{gid}: label kind {kind!r} not in go/ec")
+    jar = launch_jar(man)
+    if man["gspa"].get("binary") and jar and os.path.realpath(man["gspa"]["binary"]) != os.path.realpath(jar):
+        p.append(f"gspa.binary {man['gspa']['binary']} differs from the -jar actually launched ({jar})")
     tau = man.get("settings", {}).get("threshold", 0.5)
     try:
         M._grid_index(tau)
@@ -153,101 +195,174 @@ def read_cluster_map(path: str) -> Dict[str, str]:
     return out
 
 
-def protein_ids_of_claims(path: str) -> Set[str]:
+CLAIM_REQUIRED = ("protein_id", "function_type", "function_id", "source", "raw_score")
+
+
+def scan_claims(path: str) -> Tuple[Set[str], List[str]]:
+    """Stream the *entire* claims file once.
+
+    Returns (protein ids, problems). Problems cover: malformed JSON or
+    non-object lines, missing required fields, non-finite or non-numeric
+    ``raw_score`` / ``calibrated_prob`` (probabilities must be in [0, 1]),
+    label-like keys at top level or in ``metadata``, and exact duplicate
+    (protein, type, function, source) claims, which would double-count a
+    source. At most 3 examples are kept per problem class.
+    """
     ids: Set[str] = set()
+    seen: Set[int] = set()
+    counts: Dict[str, int] = defaultdict(int)
+    first: Dict[str, int] = {}
+
+    def note(kind: str, line: int) -> None:
+        counts[kind] += 1
+        first.setdefault(kind, line)
+
     with open(path, encoding="utf-8") as fh:
         for n, ln in enumerate(fh, 1):
             ln = ln.strip()
-            if ln and not ln.startswith("#"):
-                try:
-                    ids.add(json.loads(ln)["protein_id"])
-                except (ValueError, KeyError, TypeError) as e:
-                    raise ManifestError(f"{path}:{n} is not a claims JSONL record ({type(e).__name__})")
+            if not ln or ln.startswith("#"):
+                continue
+            try:
+                rec = json.loads(ln, parse_constant=lambda c: float("nan"))
+            except ValueError:
+                note("malformed JSON", n)
+                continue
+            if not isinstance(rec, dict):
+                note("record is not a JSON object", n)
+                continue
+            meta = rec.get("metadata")
+            keys = set(rec) | (set(meta) if isinstance(meta, dict) else set())
+            if FORBIDDEN_CLAIM_KEYS & keys:
+                note("label-like field " + "/".join(sorted(FORBIDDEN_CLAIM_KEYS & keys)), n)
+            missing = [k for k in CLAIM_REQUIRED if rec.get(k) in (None, "")]
+            if missing:
+                note("missing required field(s) " + "/".join(missing), n)
+                continue
+            for key in ("raw_score", "calibrated_prob"):
+                v = rec.get(key)
+                if v is None:
+                    continue
+                if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+                    note(f"non-finite or non-numeric {key}", n)
+                elif key == "calibrated_prob" and not 0.0 <= v <= 1.0:
+                    note("calibrated_prob outside [0, 1]", n)
+            ids.add(str(rec["protein_id"]))
+            sig = hash((rec["protein_id"], rec["function_type"], rec["function_id"], rec["source"]))
+            if sig in seen:
+                note("duplicate (protein, type, function, source) claim", n)
+            seen.add(sig)
+    problems = [f"{path}: {c} line(s) with {k} (first at line {first[k]})" for k, c in sorted(counts.items())]
+    return ids, problems
+
+
+def _claims_or_problem(g: dict, problems: List[str]) -> Optional[Set[str]]:
+    if not os.path.isfile(g["claims"]):
+        return None
+    ids, probs = scan_claims(g["claims"])
+    problems.extend(f"{g['genome_id']}: {p}" for p in probs)
     return ids
 
 
-def _claim_ids_or_problem(g: dict, problems: List[str]) -> Optional[Set[str]]:
-    if not os.path.isfile(g["claims"]):
-        return None
-    try:
-        return protein_ids_of_claims(g["claims"])
-    except ManifestError as e:
-        problems.append(f"{g['genome_id']}: {e}")
-        return None
-
-
 def leakage_problems(man: dict) -> List[str]:
-    """Split-overlap and label-separation checks. Reads no label *content*.
+    """Blocking problems only; see ``leakage_report`` for the controls. Reads no label *content*."""
+    return leakage_report(man)["problems"]
 
-    * genome ids / species / declared cluster ids must not be shared by train
-      (or calibration) and test genomes;
-    * the protein ids listed in ``train_proteins`` (global) or in a genome's
-      ``train_protein_ids`` file must not occur in any test genome's claims;
-    * if a ``homology_clusters`` file (protein_id<TAB>cluster) is given, no
-      cluster may contain both a training and a test protein;
-    * label files must not be used as claims, and claims must not carry
-      label-like fields.
+
+def leakage_report(man: dict) -> dict:
+    """Run every leakage control that can be checked from the manifest's files.
+
+    Returns ``{"problems": [...], "controls": {name: status}}``. A control is
+    ``verified`` only if it was actually evaluated on complete input; controls
+    the manifest does not provide are ``not_declared`` / ``not_assessed`` and
+    are never reported as passed. ``pretrained_model_leakage`` (e.g. protein
+    language models or deep predictors pretrained on the test proteins) cannot
+    be checked here and is always ``not_assessed``. Free-text entries in the
+    manifest's ``declared_controls`` are recorded as ``declared_unverified``.
+
+    Checked, between every pair of the train / calibration / test groups:
+    shared genome ids, species, declared cluster ids, protein ids (union of
+    ``train_proteins``, per-genome ``train_protein_ids`` and the claims of the
+    group's genomes), and, when ``homology_clusters`` is declared, shared
+    homology clusters. A declared homology map must cover every claim protein
+    of every group; an absent entry cannot count as checked and is a problem.
+    Label files must not be claims or appear in gspa arguments; all claims
+    files are scanned completely (see ``scan_claims``).
     """
     problems: List[str] = []
+    controls: Dict[str, str] = {}
     genomes = man["genomes"]
-    test = [g for g in genomes if g["split"] == "test"]
-    fit = [g for g in genomes if g["split"] in ("train", "calibration")]
-    for field in ("genome_id", "species", "cluster"):
-        a = {g[field] for g in fit if g.get(field)}
-        b = {g[field] for g in test if g.get(field)}
-        if a & b:
-            problems.append(f"{field} overlap between fit and test splits: {sorted(a & b)[:5]}")
+    groups: Dict[str, List[dict]] = {s: [g for g in genomes if g["split"] == s] for s in SPLITS}
+    pairs = [("train", "test"), ("calibration", "test"), ("train", "calibration")]
 
-    train_ids: Set[str] = set()
-    for src in ([man["train_proteins"]] if man.get("train_proteins") else []) + \
-               [g["train_protein_ids"] for g in genomes if g.get("train_protein_ids")]:
+    for field in ("genome_id", "species", "cluster"):
+        declared = any(g.get(field) for g in genomes)
+        for a, b in pairs:
+            both = {g[field] for g in groups[a] if g.get(field)} & {g[field] for g in groups[b] if g.get(field)}
+            if both:
+                problems.append(f"{field} overlap between {a} and {b} splits: {sorted(both)[:5]}")
+        controls[f"{field}_disjoint"] = "verified" if declared else "not_declared"
+
+    ids: Dict[str, Set[str]] = {s: set() for s in SPLITS}
+    for src in ([man["train_proteins"]] if man.get("train_proteins") else []):
         if os.path.isfile(src):
-            train_ids |= read_id_file(src)
+            ids["train"] |= read_id_file(src)
         else:
             problems.append(f"train protein id file missing: {src}")
-    for g in fit:
-        train_ids |= _claim_ids_or_problem(g, problems) or set()
-    test_ids: Dict[str, Set[str]] = {}
-    for g in test:
-        ids = _claim_ids_or_problem(g, problems)
-        if ids is not None:
-            test_ids[g["genome_id"]] = ids
-            shared = ids & train_ids
-            if shared:
-                problems.append(f"{g['genome_id']}: {len(shared)} test proteins also in training (e.g. {sorted(shared)[:3]})")
+    unreadable = False
+    for g in genomes:
+        if g.get("train_protein_ids"):
+            if os.path.isfile(g["train_protein_ids"]):
+                ids["train"] |= read_id_file(g["train_protein_ids"])
+            else:
+                problems.append(f"{g['genome_id']}: train_protein_ids file missing: {g['train_protein_ids']}")
+        got = _claims_or_problem(g, problems)
+        if got is None:
+            unreadable = True
+        else:
+            ids[g["split"]] |= got
+    for a, b in pairs:
+        shared = ids[a] & ids[b]
+        if shared:
+            problems.append(f"{len(shared)} proteins occur in both {a} and {b} (e.g. {sorted(shared)[:3]})")
+    has_fit = bool(groups["train"] or groups["calibration"] or man.get("train_proteins"))
+    controls["protein_id_disjoint"] = ("verified" if has_fit and not unreadable else
+                                       "not_assessed: claims file missing" if unreadable else
+                                       "not_assessed: no train/calibration proteins declared")
 
     cm = man.get("homology_clusters")
-    if cm:
-        if os.path.isfile(cm):
-            clusters = read_cluster_map(cm)
-            tr = {clusters[p] for p in train_ids if p in clusters}
-            te = {clusters[p] for ids in test_ids.values() for p in ids if p in clusters}
-            if tr & te:
-                problems.append(f"{len(tr & te)} homology clusters span train and test")
-        else:
-            problems.append(f"homology_clusters file missing: {cm}")
+    if not cm:
+        controls["homology_clusters"] = "not_declared"
+    elif not os.path.isfile(cm):
+        problems.append(f"homology_clusters file missing: {cm}")
+        controls["homology_clusters"] = "not_assessed: file missing"
+    else:
+        clusters = read_cluster_map(cm)
+        uncovered = sorted(p for s in SPLITS for p in ids[s] if p not in clusters)
+        if uncovered:
+            problems.append(f"homology map covers {sum(len(ids[s]) for s in SPLITS) - len(uncovered)}"
+                            f" of {sum(len(ids[s]) for s in SPLITS)} proteins; {len(uncovered)} unmapped"
+                            f" proteins cannot be checked (e.g. {uncovered[:3]})")
+        for a, b in pairs:
+            both = {clusters[p] for p in ids[a] if p in clusters} & {clusters[p] for p in ids[b] if p in clusters}
+            if both:
+                problems.append(f"{len(both)} homology clusters span {a} and {b}")
+        controls["homology_clusters"] = "verified" if not uncovered and has_fit else \
+            "not_assessed: incomplete coverage" if uncovered else "not_assessed: no train/calibration proteins"
 
-    label_paths = {os.path.abspath(p) for g in genomes for p in (g.get("labels") or {}).values()}
+    label_paths = {os.path.realpath(p) for g in genomes for p in (g.get("labels") or {}).values()}
     arg_blob = " ".join(map(str, man["gspa"].get("shared_args", []) + [x for a in man["arms"] for x in a.get("args", [])]))
     for g in genomes:
-        if os.path.abspath(g["claims"]) in label_paths:
+        if os.path.realpath(g["claims"]) in label_paths:
             problems.append(f"{g['genome_id']}: claims file is also a label file")
-        for p in label_paths:
-            if p in arg_blob:
-                problems.append(f"label file {p} appears in gspa arguments")
-        if os.path.isfile(g["claims"]):
-            with open(g["claims"], encoding="utf-8") as fh:
-                for i, ln in enumerate(fh):
-                    if i >= 2000:
-                        break
-                    try:
-                        rec = json.loads(ln) if ln.strip() and not ln.startswith("#") else {}
-                    except ValueError:
-                        break  # already reported as unreadable above
-                    if isinstance(rec, dict) and FORBIDDEN_CLAIM_KEYS & set(rec):
-                        problems.append(f"{g['genome_id']}: claims carry label-like field")
-                        break
-    return sorted(set(problems))
+    for p in sorted(label_paths):
+        if p in arg_blob:
+            problems.append(f"label file {p} appears in gspa arguments")
+    controls["label_separation"] = "verified" if not unreadable else "not_assessed: claims file missing"
+
+    controls["pretrained_model_leakage"] = "not_assessed"
+    for name, text in sorted((man.get("declared_controls") or {}).items()):
+        controls[f"declared:{name}"] = f"declared_unverified: {text}"
+    return {"problems": sorted(set(problems)), "controls": controls}
 
 
 # --------------------------------------------------------------- execution
@@ -265,13 +380,21 @@ def write_batch_manifest(arm: dict, genomes: List[dict], outdir: str) -> Tuple[s
     outs: Dict[str, str] = {}
     rows = ["\t".join(BATCH_HEADER)]
     for g in genomes:
+        if not SAFE_ID.match(g["genome_id"]):
+            raise ManifestError(f"unsafe genome_id {g['genome_id']!r}")
         out = os.path.abspath(os.path.join(outdir, f"{g['genome_id']}.integrated.tsv"))
         outs[g["genome_id"]] = out
-        rows.append("\t".join([
-            g["genome_id"], os.path.abspath(g["claims"]), out,
-            g.get("taxon", "-"), g.get("essential_profile", "-"),
-            g.get("operons", "-"), g.get("gaps", "-"),
-            "-", "-", "-", "-"]))
+        cells = []
+        for header, key in BATCH_COLUMNS:
+            if header == "out_path":
+                cells.append(out)
+            elif key is None or not g.get(key):
+                cells.append("-")
+            elif key in ("claims",) + AUX_FILE_KEYS:
+                cells.append(os.path.abspath(g[key]))
+            else:
+                cells.append(str(g[key]))
+        rows.append("\t".join(cells))
     path = os.path.join(outdir, "batch_manifest.tsv")
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(rows) + "\n")
@@ -280,11 +403,24 @@ def write_batch_manifest(arm: dict, genomes: List[dict], outdir: str) -> Tuple[s
 
 def run_arm(man: dict, arm: dict, outdir: str, genomes: List[dict], dry_run: bool = False) -> dict:
     """Invoke the production engine for one arm. Never raises for engine failure."""
-    runnable = [g for g in genomes if os.path.isfile(g["claims"])]
-    skipped = {g["genome_id"]: "claims file missing" for g in genomes if g not in runnable}
+    if not SAFE_ID.match(arm["name"]):
+        raise ManifestError(f"unsafe arm name {arm['name']!r}")
+    clean_arm_dir(outdir)  # outputs of an earlier attempt must never be mistaken for this run's
+    skipped: Dict[str, str] = {}
+    runnable = []
+    for g in genomes:
+        # the engine silently ignores a missing optional file, which would run the arm
+        # without that evidence; a declared-but-absent file is therefore a skip, not a run
+        absent = [k for k in ("claims",) + AUX_FILE_KEYS if g.get(k) and not os.path.isfile(g[k])]
+        if absent:
+            skipped[g["genome_id"]] = ("claims file missing" if "claims" in absent
+                                       else "declared input missing: " + ",".join(absent))
+        else:
+            runnable.append(g)
     record = {"arm": arm["name"], "status": "skipped", "genomes": {}, "skipped": skipped, "failed": {}}
     if not runnable:
         record["reason"] = "no runnable genomes"
+        write_run_record(outdir, record, genomes)
         return record
     bm, outs = write_batch_manifest(arm, runnable, outdir)
     args = (["integrate", "--batch-manifest", bm,
@@ -309,6 +445,8 @@ def run_arm(man: dict, arm: dict, outdir: str, genomes: List[dict], dry_run: boo
         fh.write(so)
     with open(os.path.join(outdir, "stderr.log"), "w", encoding="utf-8") as fh:
         fh.write(se)
+    if rc != 0:
+        clean_arm_dir(outdir, keep_logs=True)  # partial output of a failed attempt is not a result
     for gid, out in outs.items():
         if rc == 0 and os.path.isfile(out):
             record["genomes"][gid] = hash_record(out)
@@ -317,7 +455,99 @@ def run_arm(man: dict, arm: dict, outdir: str, genomes: List[dict], dry_run: boo
     record["status"] = "executed" if record["genomes"] else "failed"
     if record["failed"] and record["genomes"]:
         record["status"] = "partial"
+    write_run_record(outdir, record, genomes)
     return record
+
+
+def clean_arm_dir(outdir: str, keep_logs: bool = False) -> None:
+    """Delete the files a previous attempt of this arm may have left behind."""
+    if not os.path.isdir(outdir):
+        return
+    for pattern in ARM_OUTPUT_GLOBS:
+        if keep_logs and pattern in ("stdout.log", "stderr.log", "batch_manifest.tsv", RUN_RECORD):
+            continue
+        for f in glob.glob(os.path.join(outdir, pattern)):
+            os.remove(f)
+
+
+def write_run_record(outdir: str, record: dict, genomes: List[dict]) -> None:
+    """Persist what ``evaluate`` needs to trust these outputs later: exit status, launch args,
+    output hashes, and the hashes of the claims they were computed from."""
+    os.makedirs(outdir, exist_ok=True)
+    rec = {k: record.get(k) for k in ("arm", "status", "returncode", "command", "runtime_sec", "genomes", "skipped", "failed")}
+    rec["claims_sha256"] = {g["genome_id"]: hash_record(g["claims"]).get("sha256") for g in genomes}
+    with open(os.path.join(outdir, RUN_RECORD), "w", encoding="utf-8") as fh:
+        json.dump(rec, fh, indent=2, sort_keys=True)
+
+
+def load_run_record(outdir: str, genomes: List[dict]) -> dict:
+    """Rebuild an arm record for ``evaluate`` from disk, trusting only verified successes.
+
+    A genome counts as executed only if the recorded run exited 0, its output
+    file still has the recorded hash, and its claims file still has the hash it
+    was run on. Anything else is reported as failed with the reason.
+    """
+    path = os.path.join(outdir, RUN_RECORD)
+    rec = {"arm": os.path.basename(outdir), "status": "reused", "genomes": {}, "skipped": {}, "failed": {}}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            old = json.load(fh)
+    except (OSError, ValueError):
+        rec["failed"] = {g["genome_id"]: "no run record (arm was not run by this runner)" for g in genomes}
+        return rec
+    rec.update({k: old.get(k) for k in ("command", "returncode", "runtime_sec")})
+    for g in genomes:
+        gid = g["genome_id"]
+        info = (old.get("genomes") or {}).get(gid)
+        out = os.path.join(outdir, f"{gid}.integrated.tsv")
+        if gid in (old.get("skipped") or {}):
+            rec["skipped"][gid] = old["skipped"][gid]
+        elif old.get("returncode") != 0 or not info:
+            rec["failed"][gid] = (old.get("failed") or {}).get(gid, f"recorded run failed (returncode {old.get('returncode')})")
+        elif not os.path.isfile(out) or sha256_file(out) != info.get("sha256"):
+            rec["failed"][gid] = "output missing or modified since the recorded run"
+        elif (old.get("claims_sha256") or {}).get(gid) != hash_record(g["claims"]).get("sha256"):
+            rec["failed"][gid] = "claims changed since the recorded run (stale output)"
+        else:
+            rec["genomes"][gid] = hash_record(out)
+    return rec
+
+
+def launch_jar(man: dict) -> Optional[str]:
+    """The jar named by ``-jar`` in the launch command, if any."""
+    cmd = man["gspa"].get("command") or []
+    return cmd[cmd.index("-jar") + 1] if "-jar" in cmd and cmd.index("-jar") + 1 < len(cmd) else None
+
+
+def engine_identity(man: dict, repo: str) -> dict:
+    """What actually runs: resolved launcher, jar content hash, java version, source revision.
+
+    For a Gradle launch the engine is the working tree's own build, so the git
+    revision and dirty flag are its identity (the compiled classes are not
+    hashed). A wrapper script is hashed but says nothing about the jar it calls.
+    """
+    cmd = list(man["gspa"]["command"])
+    exe = shutil.which(cmd[0]) or cmd[0]
+    ident: dict = {"command": cmd, "args_style": man["gspa"].get("args_style", "plain"),
+                   "launcher": hash_record(exe if os.path.isfile(exe) else None)}
+    ident["launcher"]["resolved"] = exe
+    jar = launch_jar(man) or man["gspa"].get("binary")
+    ident["jar"] = hash_record(jar)
+    if os.path.basename(exe) == "java":
+        try:
+            v = subprocess.run([exe, "-version"], capture_output=True, text=True, timeout=20)
+            ident["java_version"] = (v.stderr or v.stdout).strip().splitlines()[:3]
+        except (OSError, subprocess.SubprocessError) as e:
+            ident["java_version"] = f"unavailable: {e}"
+    ident["source_revision"] = git_commit(repo)
+    try:
+        d = subprocess.run(["git", "-C", repo, "status", "--porcelain"], capture_output=True, text=True, timeout=20)
+        ident["source_dirty"] = bool(d.stdout.strip()) if d.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        ident["source_dirty"] = None
+    if not jar and "gradlew" not in os.path.basename(exe):
+        ident["warning"] = "engine content not identified: no -jar, binary or gradle launcher"
+    return ident
 
 
 # ----------------------------------------------------------------- parsing
@@ -328,14 +558,23 @@ def parse_integrated(path: str, kind: str) -> Dict[Pair, float]:
     out: Dict[Pair, float] = {}
     with open(path, encoding="utf-8") as fh:
         head = next(fh, "").rstrip("\n").split("\t")
-        ip, it, if_, ipr = (head.index(c) for c in ("protein_id", "type", "function_id", "posterior_prob"))
-        for ln in fh:
-            f = ln.rstrip("\n").split("\t")
-            if len(f) <= max(ip, it, if_, ipr) or f[it].upper() != want:
+        try:
+            ip, it, if_, ipr = (head.index(c) for c in ("protein_id", "type", "function_id", "posterior_prob"))
+        except ValueError:
+            raise PredictionFormatError(f"{path}: header lacks protein_id/type/function_id/posterior_prob")
+        for n, ln in enumerate(fh, 2):
+            if not ln.strip():
                 continue
+            f = ln.rstrip("\n").split("\t")
+            if len(f) <= max(ip, it, if_, ipr):
+                raise PredictionFormatError(f"{path}:{n}: truncated row ({len(f)} fields)")
             try:
                 s = float(f[ipr])
             except ValueError:
+                raise PredictionFormatError(f"{path}:{n}: posterior_prob {f[ipr]!r} is not a number")
+            if not (0.0 <= s <= 1.0) or not math.isfinite(s):
+                raise PredictionFormatError(f"{path}:{n}: posterior_prob {s!r} is not a probability in [0, 1]")
+            if f[it].upper() != want:
                 continue
             term = M.normalize_ec(f[if_]) if want == "EC" else M.normalize_go(f[if_])
             key = (f[ip], term)
@@ -386,33 +625,61 @@ def evaluate(man: dict, runs: Mapping[str, dict], onto: Optional[M.Ontology] = N
     tau, n_boot, seed = s.get("threshold", 0.5), s.get("bootstrap", 1000), s.get("seed", 13)
     base_name = man["baseline_arm"]
     test_genomes = [g for g in man["genomes"] if g["split"] == "test"]
-    report: dict = {"threshold": tau, "bootstrap": n_boot, "seed": seed, "kinds": {}}
+    report: dict = {
+        "threshold": tau, "bootstrap": n_boot, "seed": seed, "kinds": {},
+        "assumptions": [
+            "Evaluation universe per genome = true pairs + every pair emitted by any executed arm, on labelled proteins only; "
+            "the universe (and hence ECE/Brier) depends on which arms are compared and is identical for all arms of a genome.",
+            "A pair in the universe that an arm did not emit has score 0 (omission is not rewarded).",
+            "Closed world: a universe pair without a label is counted false, although labels are incomplete; "
+            "precision is therefore a lower bound and is biased equally across arms.",
+            "Proteins without any label of the scored kind are not evaluated; global Fmax picks its threshold on the evaluated labels.",
+        ],
+        "eval_failures": {},
+    }
 
     for kind in ("go", "ec"):
         labelled = [g for g in test_genomes if (g.get("labels") or {}).get(kind)
                     and os.path.isfile(g["labels"][kind])]
-        if not labelled:
-            continue
         truth: Dict[str, Set[Pair]] = {}
         for g in labelled:
             t = parse_labels(g["labels"][kind], kind)
-            truth[g["genome_id"]] = onto.propagate_truth(t) if (kind == "go" and onto) else t
+            if t:
+                truth[g["genome_id"]] = onto.propagate_truth(t) if (kind == "go" and onto) else t
+        labelled = [g for g in labelled if g["genome_id"] in truth]
+        if not labelled:
+            continue
         preds: Dict[str, Dict[str, Dict[Pair, float]]] = defaultdict(dict)
         for arm, rec in runs.items():
             for g in labelled:
-                info = rec.get("genomes", {}).get(g["genome_id"])
-                if info and info.get("status") == "ok":
+                gid = g["genome_id"]
+                info = rec.get("genomes", {}).get(gid)
+                if not (info and info.get("status") == "ok"):
+                    continue
+                try:
                     p = parse_integrated(info["path"], kind)
-                    preds[arm][g["genome_id"]] = onto.propagate_scores(p) if (kind == "go" and onto) else p
+                except (PredictionFormatError, OSError) as e:
+                    # an unparseable output is a failed run, never a partial success
+                    rec["genomes"].pop(gid, None)
+                    rec.setdefault("failed", {})[gid] = f"unparseable output: {e}"
+                    report["eval_failures"][f"{arm}/{gid}"] = str(e)
+                    continue
+                preds[arm][gid] = onto.propagate_scores(p) if (kind == "go" and onto) else p
+        universe = {g["genome_id"]: M.candidate_universe(truth[g["genome_id"]],
+                                                          *[preds[a][g["genome_id"]] for a in runs if g["genome_id"] in preds[a]])
+                    for g in labelled}
 
-        kind_rep: dict = {"arms": {}, "vs_baseline": {}}
+        kind_rep: dict = {"arms": {}, "vs_baseline": {},
+                          "universe": {gid: {"pairs": len(u), "true_pairs": len(truth[gid]),
+                                             "labelled_proteins": len({p for p, _ in truth[gid]})}
+                                       for gid, u in universe.items()}}
         pair_vec: Dict[str, Dict[str, List[float]]] = {}
         top1_vec: Dict[str, Dict[str, List[float]]] = {}
         top1_out: Dict[str, Dict[str, dict]] = {}
         for arm in runs:
             pair_vec[arm], top1_vec[arm], top1_out[arm] = {}, {}, {}
             for gid, pred in preds[arm].items():
-                pair_vec[arm][gid] = M.pair_stats(pred, truth[gid])
+                pair_vec[arm][gid] = M.pair_stats(pred, truth[gid], universe[gid])
                 if kind == "ec":
                     top1_out[arm][gid] = M.ec_top1_outcomes(pred, truth[gid])
                     top1_vec[arm][gid] = M.top1_vector(top1_out[arm][gid])
@@ -484,7 +751,7 @@ def provenance(man: dict, manifest_path: str, repo: str) -> dict:
             "split": g["split"],
             "claims": hash_record(g["claims"]),
             "labels": {k: hash_record(v) for k, v in (g.get("labels") or {}).items()},
-            "aux": {k: hash_record(g.get(k)) for k in ("operons", "gaps") if g.get(k)},
+            "aux": {k: hash_record(g.get(k)) for k in AUX_FILE_KEYS if g.get(k)},
         } for g in man["genomes"]},
         "reference": {k: hash_record(v) for k, v in man.get("reference", {}).items()},
     }
@@ -496,8 +763,14 @@ def run_experiment(man: dict, manifest_path: str, outdir: str, phases=("run", "e
     repo = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
     result: dict = {"schema_version": SCHEMA_VERSION, "experiment_id": man["experiment_id"],
                     "dataset_status": man["dataset_status"], "provenance": provenance(man, manifest_path, repo)}
-    leaks = leakage_problems(man)
+    problems = manifest_problems(man)  # run_experiment may be called with a hand-built dict
+    if problems:
+        raise ManifestError("; ".join(problems))
+    rep = leakage_report(man)
+    leaks = rep["problems"]
     result["leakage_problems"] = leaks
+    result["leakage_controls"] = rep["controls"]
+    result["engine"] = engine_identity(man, repo)
     if leaks:
         result["status"] = "aborted: leakage"
         _write(outdir, result)
@@ -509,24 +782,20 @@ def run_experiment(man: dict, manifest_path: str, outdir: str, phases=("run", "e
         armdir = os.path.join(outdir, "arms", arm["name"])
         if "run" in phases:
             runs[arm["name"]] = run_arm(man, arm, armdir, test_genomes, dry_run)
-        else:  # evaluate only: reuse existing outputs
-            recs = {g["genome_id"]: hash_record(os.path.abspath(os.path.join(armdir, f"{g['genome_id']}.integrated.tsv")))
-                    for g in test_genomes}
-            runs[arm["name"]] = {"arm": arm["name"], "status": "reused",
-                                 "genomes": {k: v for k, v in recs.items() if v["status"] == "ok"},
-                                 "skipped": {}, "failed": {k: "no output" for k, v in recs.items() if v["status"] != "ok"}}
+        else:  # evaluate only: reuse outputs whose recorded run succeeded and whose hashes still match
+            runs[arm["name"]] = load_run_record(armdir, test_genomes)
     result["runs"] = runs
-    result["execution_status"] = _status_table(runs, test_genomes)
     result["status"] = "ran"
     if dry_run:
         result["status"] = "dry_run"
     elif "evaluate" in phases:
-        onto = M.load_obo(man["reference"]["go_obo"]) if man.get("reference", {}).get("go_obo") and \
-            os.path.isfile(man["reference"]["go_obo"]) else None
+        ref = man.get("reference", {}).get("go_obo")
+        onto = M.load_obo(ref) if ref and os.path.isfile(ref) else None
         result["go_propagation"] = bool(onto)
-        result["evaluation"] = evaluate(man, runs, onto)
+        result["evaluation"] = evaluate(man, runs, onto)  # may demote unparseable outputs to failed
         result["status"] = "evaluated"
-    bad = [(a, g, s) for a, row in result["execution_status"].items() for g, s in row.items() if s != "executed"]
+    result["execution_status"] = _status_table(runs, test_genomes)
+    bad =[(a, g, s) for a, row in result["execution_status"].items() for g, s in row.items() if s != "executed"]
     result["n_not_executed"] = len(bad)
     if strict and bad and not dry_run:
         result["status"] += " (strict: not all genomes executed)"
@@ -549,9 +818,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     a = ap.parse_args(argv)
     man = load_manifest(a.manifest)
     if a.command == "validate":
-        leaks = leakage_problems(man)
-        print(json.dumps({"leakage_problems": leaks, "provenance": provenance(man, a.manifest, ".")}, indent=2))
-        return 1 if leaks else 0
+        rep = leakage_report(man)
+        print(json.dumps({"leakage_problems": rep["problems"], "leakage_controls": rep["controls"],
+                          "provenance": provenance(man, a.manifest, ".")}, indent=2))
+        return 1 if rep["problems"] else 0
     phases = ("run", "evaluate") if a.command == "run" else ("evaluate",)
     res = run_experiment(man, a.manifest, a.out, phases, a.strict, a.dry_run)
     print(f"{res['status']}: {res.get('n_not_executed', 0)} (arm, genome) cells not executed; report in {a.out}/report.json")

@@ -8,6 +8,7 @@ status accounting, hashing, parsing, scoring). It says nothing about the engine;
 import copy
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -20,18 +21,29 @@ import v3_runner as R  # noqa: E402
 
 STUB = '''#!/usr/bin/env python3
 import sys
+import json
 args = sys.argv[1:]
 bm = args[args.index("--batch-manifest") + 1]
 priors_none = "none" in args
 rows = [l.rstrip("\\n").split("\\t") for l in open(bm)][1:]
 for r in rows:
+    assert len(r) == 16, len(r)
     with open(r[2], "w") as fh:
         fh.write("protein_id\\ttype\\tfunction_id\\tgo_aspect\\tposterior_prob\\n")
         for l in open(r[1]):
-            import json
             c = json.loads(l)
-            p = c["raw_score"] if priors_none else min(1.0, c["raw_score"] * (0.5 if c.get("metadata", {}).get("decoy") else 1.0))
-            fh.write("\\t".join([c["protein_id"], c["function_type"], c["function_id"], "", "%.6f" % p]) + "\\n")
+            decoy = c.get("metadata", {}).get("decoy")
+            if decoy and "--drop-decoys" in args:
+                continue
+            p = c["raw_score"] if priors_none else min(1.0, c["raw_score"] * (0.5 if decoy else 1.0))
+            ps = "%.6f" % p
+            if "--bad-score" in args:
+                ps = "nan"
+            if "--score-above-one" in args:
+                ps = "1.5"
+            fh.write("\\t".join([c["protein_id"], c["function_type"], c["function_id"], "", ps]) + "\\n")
+if "--fail-after-write" in args:
+    sys.exit(2)
 '''
 
 
@@ -118,12 +130,12 @@ class Leakage(Base):
 
     def test_protein_overlap_detected(self):
         probs = R.leakage_problems(self.with_train(shared=True))
-        self.assertTrue(any("also in training" in p for p in probs))
+        self.assertTrue(any("occur in both train and test" in p for p in probs))
 
     def test_declared_train_protein_list(self):
         m = self.manifest()
         m["train_proteins"] = self.write("ids.txt", "b1\nzz\n")
-        self.assertTrue(any("g2" in p for p in R.leakage_problems(m)))
+        self.assertTrue(any("occur in both train and test" in p and "b1" in p for p in R.leakage_problems(m)))
 
     def test_species_and_cluster_overlap(self):
         m = self.with_train(shared=False)
@@ -224,8 +236,35 @@ class Orchestration(Base):
         with open(path) as fh:
             rows = [l.split("\t") for l in fh.read().splitlines()]
         self.assertEqual(rows[0], R.BATCH_HEADER)
-        self.assertEqual(len(rows[1]), 11)
+        self.assertEqual(len(rows[1]), 16)
         self.assertEqual(rows[1][2], outs["g1"])
+        self.assertEqual(rows[1][11:], ["-"] * 5)
+
+    def test_batch_manifest_optional_columns(self):
+        m = self.manifest()
+        layout = self.write("g1.layout.tsv", "x\n")
+        og = self.write("g1.og.tsv", "x\n")
+        cc = self.write("g1.cc.tsv", "x\n")
+        m["genomes"][0].update({"genome_layout": layout, "orthogroups": og, "cluster_consensus": cc,
+                                "fba_medium": "minimal", "fba_gram": "neg", "taxon": "NCBITaxon_562"})
+        path, _ = R.write_batch_manifest(m["arms"][0], m["genomes"], os.path.join(self.tmp, "bm"))
+        with open(path) as fh:
+            row = dict(zip(R.BATCH_HEADER, fh.read().splitlines()[1].split("\t")))
+        self.assertEqual((row["genome_layout_path"], row["orthogroups_path"], row["cluster_consensus_path"]),
+                         (layout, og, cc))
+        self.assertEqual((row["fba_medium"], row["fba_gram"], row["taxon"]), ("minimal", "neg", "NCBITaxon_562"))
+
+    def test_batch_columns_match_engine_documentation(self):
+        """Parity with the column list documented in IntegrateCommand.groovy (0-based indices)."""
+        src = os.path.join(HERE, "..", "..", "..", "gspa-cli", "src", "main", "groovy", "gspa", "cli", "IntegrateCommand.groovy")
+        with open(src, encoding="utf-8") as fh:
+            documented = re.findall(r"^\s*\*\s+(\d+):\s+([a-z_0-9]+)", fh.read(), re.M)
+        self.assertTrue(documented, "column documentation not found in IntegrateCommand.groovy")
+        for idx, name in documented:
+            self.assertEqual(R.BATCH_HEADER[int(idx)], name if name != "tag" else "genome_id")
+        self.assertGreaterEqual(len(R.BATCH_HEADER), len(documented))
+        self.assertEqual(R.BATCH_HEADER[11:], ["genome_layout_path", "orthogroups_path", "cluster_consensus_path",
+                                               "fba_medium", "fba_gram"])
 
     def test_parse_integrated_and_labels(self):
         p = self.write("i.tsv", "protein_id\ttype\tfunction_id\tgo_aspect\tposterior_prob\n"
@@ -244,12 +283,21 @@ class RealEngineSmoke(Base):
         repo = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
         m = self.manifest([os.path.join(repo, "gradlew"), "-q", "--console=plain", ":gspa-cli:run"])
         m["gspa"].update({"args_style": "gradle", "cwd": repo, "timeout_sec": 900})
-        m["arms"] = [{"name": "stage0", "args": ["--enable-priors", "none", "--lite"]}]
+        m["arms"] = [{"name": "stage0", "args": ["--enable-priors", "none", "--lite"]},
+                     {"name": "full", "args": ["--lite"]}]
         res = R.run_experiment(m, self.write("m.json", json.dumps(m)), os.path.join(self.tmp, "out"))
-        self.assertEqual(res["runs"]["stage0"]["returncode"], 0, res["runs"]["stage0"].get("failed"))
-        self.assertEqual(res["execution_status"]["stage0"], {"g1": "executed", "g2": "executed"})
-        ec = res["evaluation"]["kinds"]["ec"]["arms"]["stage0"]["ec_top1"]
-        self.assertGreater(ec["n_labelled"], 0)
+        for arm in ("stage0", "full"):
+            self.assertEqual(res["runs"][arm]["returncode"], 0, res["runs"][arm].get("failed"))
+            self.assertEqual(res["execution_status"][arm], {"g1": "executed", "g2": "executed"})
+        self.assertEqual(res["n_not_executed"], 0)
+        self.assertEqual(res["evaluation"]["eval_failures"], {})
+        ec = res["evaluation"]["kinds"]["ec"]
+        self.assertEqual(ec["arms"]["stage0"]["ec_top1"]["n_labelled"], 3)
+        self.assertEqual(ec["arms"]["stage0"]["ec_top1"]["top1_accuracy"], 1.0)  # true EC has the highest raw score
+        self.assertEqual(ec["arms"]["stage0"]["calibration"]["n_pairs"], ec["arms"]["full"]["calibration"]["n_pairs"])
+        self.assertIn("full", ec["vs_baseline"])
+        self.assertIn("source_revision", res["engine"])
+        self.assertTrue(res["runs"]["full"]["command"][-1].startswith("--args="))
 
 
 if __name__ == "__main__":
