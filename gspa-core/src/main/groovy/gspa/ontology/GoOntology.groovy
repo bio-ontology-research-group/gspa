@@ -45,9 +45,54 @@ class GoOntology {
     private Map<String, Set<String>> directPartOfParentsIndex = new java.util.concurrent.ConcurrentHashMap<>()
     private Map<String, Set<String>> directChildrenIndex = new java.util.concurrent.ConcurrentHashMap<>()
 
+    // Content generation: bumped on every (re)load and on every change to the loaded
+    // ontology or its imports, so derived results can be tied to exact ontology content.
+    private final java.util.concurrent.atomic.AtomicLong revision = new java.util.concurrent.atomic.AtomicLong()
+    // True once the loaded ontology has been edited after loading, i.e. sourceSha256 no longer describes it.
+    private volatile boolean modifiedSinceLoad
+    private volatile boolean loading
+
     GoOntology() {
         manager = OWLManager.createOWLOntologyManager()
         factory = manager.getOWLDataFactory()
+        manager.addOntologyChangeListener({ changes -> onOntologyChanges(changes) } as OWLOntologyChangeListener)
+    }
+
+    /** Monotonic content generation; changes whenever the loaded ontology is (re)loaded or edited. */
+    long getRevision() {
+        revision.get()
+    }
+
+    /**
+     * True if sourceSha256 (plus no unhashed imports) fully identifies the current ontology
+     * content: the ontology was not edited after loading and has no imports whose content
+     * the digest does not cover. Persistent caches must only be read or written when true.
+     */
+    boolean isSourceFingerprintReliable() {
+        def current = ontology
+        sourceSha256 != null && current != null && !modifiedSinceLoad && current.getImportsClosure().size() == 1
+    }
+
+    private void onOntologyChanges(List<? extends OWLOntologyChange> changes) {
+        def current = ontology
+        if (loading || current == null) return
+        def closure = current.getImportsClosure()
+        if (changes.any { closure.contains(it.getOntology()) }) {
+            modifiedSinceLoad = true
+            invalidateDerivedState()
+        }
+    }
+
+    /** Drop every index/cache derived from ontology content; they are rebuilt lazily or on load. */
+    private void invalidateDerivedState() {
+        revision.incrementAndGet()
+        ancestorCache.clear()
+        descendantCache.clear()
+        labelCache.clear()
+        directParentsIndex.clear()
+        directPartOfParentsIndex.clear()
+        directChildrenIndex.clear()
+        existentialAxiomCache.clear()
     }
 
     /**
@@ -60,8 +105,16 @@ class GoOntology {
             def stream = new java.security.DigestInputStream(input, digest)
             stream.transferTo(java.io.OutputStream.nullOutputStream())
         }
-        sourceSha256 = digest.digest().encodeHex().toString()
-        ontology = manager.loadOntologyFromOntologyDocument(owlFile)
+        String newSha = digest.digest().encodeHex().toString()
+        loading = true
+        try {
+            ontology = manager.loadOntologyFromOntologyDocument(owlFile)
+            sourceSha256 = newSha
+            modifiedSinceLoad = false
+            invalidateDerivedState()
+        } finally {
+            loading = false
+        }
         log.info("Loaded ${ontology.classesInSignature.size()} classes")
         buildLabelCache()
         buildHierarchyIndex()

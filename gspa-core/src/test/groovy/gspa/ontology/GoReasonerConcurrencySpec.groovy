@@ -223,22 +223,101 @@ SubClassOf(:GO_0006412 ObjectSomeValuesFrom(:BFO_0000051 :GO_0006418))
         gr.dispose()
     }
 
-    def "in-place axiom edits are detected even when the digest is unchanged"() {
+    private static final String OBO = 'http://purl.obolibrary.org/obo/'
+
+    private static def subClassOf(GoOntology go, String sub, String sup) {
+        go.factory.getOWLSubClassOfAxiom(go.getGoClass(sub), go.getGoClass(sup))
+    }
+
+    private static def hasPart(GoOntology go, String sub, String filler) {
+        go.factory.getOWLSubClassOfAxiom(go.getGoClass(sub), go.factory.getOWLObjectSomeValuesFrom(
+            go.factory.getOWLObjectProperty(IRI.create(GoOntology.HAS_PART)), go.getGoClass(filler)))
+    }
+
+    def "in-place axiom addition with a populated disk cache is detected and the stale file is neither read nor overwritten"() {
         given:
         def go = load()
         def gr = new GoReasoner(go)
+        gr.cacheDir = cache
         gr.initialize()
         assert asSet(gr.getHasPartPairs()) == ENTAILED
+        def cacheFile = new File(cache, 'has_part_pairs.tsv')
+        def original = cacheFile.text
 
         when: 'translation initiation is added as a subclass of translation'
-        go.manager.addAxiom(go.ontology, go.factory.getOWLSubClassOfAxiom(
-            go.factory.getOWLClass(IRI.create('http://purl.obolibrary.org/obo/GO_0006413')), go.getGoClass('GO:0006412')))
+        go.manager.addAxiom(go.ontology, subClassOf(go, 'GO:0006413', 'GO:0006412'))
+        def fresh = new GoReasoner(go)   // a new client, same cacheDir, same unchanged source digest
+        fresh.cacheDir = cache
+        fresh.initialize()
 
         then:
+        !go.sourceFingerprintReliable
+        !fresh.loadHasPartCache()
         asSet(gr.getHasPartPairs()) == ENTAILED + [['GO:0006413', 'GO:0006418']]
+        asSet(fresh.getHasPartPairs()) == ENTAILED + [['GO:0006413', 'GO:0006418']]
+        cacheFile.text == original
 
         cleanup:
         gr.dispose()
+        fresh.dispose()
+    }
+
+    def "replacing one axiom with another of the same count yields the different entailed relation"() {
+        given:
+        def go = load()
+        def gr = new GoReasoner(go)
+        gr.cacheDir = cache
+        gr.initialize()
+        assert asSet(gr.getHasPartPairs()) == ENTAILED
+        int axioms = go.ontology.getAxiomCount()
+
+        when: 'translation now has_part initiation instead of aminoacylation'
+        go.manager.removeAxiom(go.ontology, hasPart(go, 'GO:0006412', 'GO:0006418'))
+        go.manager.addAxiom(go.ontology, hasPart(go, 'GO:0006412', 'GO:0006270'))
+        def after = asSet(gr.getHasPartPairs())
+
+        then:
+        go.ontology.getAxiomCount() == axioms
+        after == (ENTAILED - [['GO:0006412', 'GO:0006418']]) +
+            [['GO:0006412', 'GO:0006270'], ['GO:0006412', 'GO:0006259'], ['GO:0006412', 'GO:0009987']]
+
+        cleanup:
+        gr.dispose()
+    }
+
+    def "hierarchy indexes and caches follow in-place edits"() {
+        given:
+        def go = load()
+        assert go.getAncestors('GO:0006270') == ['GO:0006259', 'GO:0009987'] as Set
+        assert go.getDescendants('GO:0006412').isEmpty()
+        long rev = go.revision
+
+        when: 'initiation is also placed under translation (is_a)'
+        go.manager.addAxiom(go.ontology, subClassOf(go, 'GO:0006270', 'GO:0006412'))
+
+        then:
+        go.revision > rev
+        go.getAncestors('GO:0006270') == ['GO:0006259', 'GO:0009987', 'GO:0006412'] as Set
+        go.getDescendants('GO:0006412') == ['GO:0006270'] as Set
+    }
+
+    def "reloading a file clears the previous ontology's indexes and marks the digest reliable again"() {
+        given:
+        def go = load()
+        assert go.sourceFingerprintReliable
+        go.getAncestors('GO:0006261')
+        go.manager.addAxiom(go.ontology, subClassOf(go, 'GO:0006270', 'GO:0006412'))
+        assert !go.sourceFingerprintReliable
+
+        when:
+        def file = new File(work, 'go-hp-extended.ofn')
+        file.text = FIXTURE_EXTENDED
+        go.loadOwl(file)
+
+        then:
+        go.sourceFingerprintReliable
+        go.getAncestors('GO:0006270') == ['GO:0006259', 'GO:0009987'] as Set
+        go.getAncestors('GO:0006413') == ['GO:0006412'] as Set
     }
 
     def "initializing twice disposes the previous reasoner, and a failed initialization keeps the working one"() {

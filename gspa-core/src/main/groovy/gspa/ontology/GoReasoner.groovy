@@ -44,14 +44,15 @@ class GoReasoner {
     private static final class OntologyState {
         final OWLOntology ontology
         final String sha256
-        final int axiomCount
-        OntologyState(OWLOntology ontology, String sha256) {
-            this.ontology = ontology
-            this.sha256 = sha256
-            this.axiomCount = ontology == null ? -1 : ontology.getAxiomCount()
+        final long revision
+        OntologyState(GoOntology go) {
+            // revision first: an edit racing with this read can only make the state look older
+            this.revision = go.revision
+            this.ontology = go.ontology
+            this.sha256 = go.sourceSha256
         }
         boolean matches(OntologyState other) {
-            other != null && ontology.is(other.ontology) && sha256 == other.sha256 && axiomCount == other.axiomCount
+            other != null && ontology.is(other.ontology) && sha256 == other.sha256 && revision == other.revision
         }
     }
 
@@ -86,7 +87,7 @@ class GoReasoner {
 
     private void initializeLocked() {
         log.info("Initializing ELK reasoner...")
-        def state = new OntologyState(goOntology.ontology, goOntology.sourceSha256)
+        def state = new OntologyState(goOntology)
         OWLReasoner created = null
         try {
             created = new ElkReasonerFactory().createReasoner(goOntology.ontology)
@@ -171,10 +172,11 @@ class GoReasoner {
             if (current != null) return current.pairs
             if (loadHasPartCacheLocked()) return hasPartSnapshot.pairs
 
-            def state = new OntologyState(goOntology.ontology, goOntology.sourceSha256)
+            def state = new OntologyState(goOntology)
             def pairs = extractHasPartPairs(state)
             hasPartSnapshot = new HasPartSnapshot(state, pairs)
-            if (cacheDir) {
+            // Only persist for content the digest fully identifies (not edited, no unhashed imports).
+            if (cacheDir && goOntology.sourceFingerprintReliable && state.matches(new OntologyState(goOntology))) {
                 try {
                     saveHasPartCache(pairs)
                 } catch (IOException e) {
@@ -188,7 +190,7 @@ class GoReasoner {
     /** The in-memory snapshot, only if it was derived from the current ontology version. */
     private HasPartSnapshot currentSnapshot() {
         def snapshot = hasPartSnapshot
-        (snapshot != null && snapshot.state.matches(new OntologyState(goOntology.ontology, goOntology.sourceSha256))) ? snapshot : null
+        (snapshot != null && snapshot.state.matches(new OntologyState(goOntology))) ? snapshot : null
     }
 
     /** Discard in-memory derived has_part results (the disk cache is untouched). */
@@ -316,8 +318,13 @@ class GoReasoner {
     private boolean loadHasPartCacheLocked() {
         if (cacheDir == null) return false
         def cacheFile = new File(cacheDir, CACHE_FILE)
-        String sha = goOntology.sourceSha256
+        def state = new OntologyState(goOntology)
+        String sha = state.sha256
         if (!cacheFile.isFile() || !sha) return false
+        if (!goOntology.sourceFingerprintReliable) {
+            log.info('Ignoring has_part cache: the ontology was edited after loading or has imports, so its digest does not identify its content')
+            return false
+        }
 
         List<String> lines
         try {
@@ -355,7 +362,7 @@ class GoReasoner {
             }
             pairs << (Map.Entry<String, String>) new AbstractMap.SimpleImmutableEntry<>(fields[0], fields[1])
         }
-        hasPartSnapshot = new HasPartSnapshot(new OntologyState(goOntology.ontology, sha), Collections.unmodifiableList(pairs))
+        hasPartSnapshot = new HasPartSnapshot(state, Collections.unmodifiableList(pairs))
         log.info("Loaded ${pairs.size()} cached has_part pairs from ${cacheFile}")
         true
     }
