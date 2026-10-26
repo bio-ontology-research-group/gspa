@@ -109,4 +109,23 @@ class IntegrationParitySpec extends Specification {
         stages.find { it.name == 'metabolic_refinement' }.status == 'failed'
         stages.find { it.name == 'agent_completion' }.status == 'not_run'
     }
+
+    def 'export preserves the ordering of small enzyme model scores'() {
+        given:
+        File claims = file('weak.jsonl',
+            '{"protein_id":"enzyme","function_type":"EC","function_id":"1.1.1.1","source":"clean","raw_score":0.000000001}\n' +
+            '{"protein_id":"enzyme","function_type":"EC","function_id":"2.7.1.1","source":"clean","raw_score":0.000000002}\n')
+        File out = new File(dir, 'weak.tsv')
+
+        when:
+        run(['--claims', claims.path, '--out', out.path, '--enable-priors', 'none', '--lite'])
+        def probabilities = out.readLines().drop(1).collectEntries { line ->
+            def fields = line.split('\t', -1)
+            [(fields[2]): Double.parseDouble(fields[4])]
+        }
+
+        then:
+        probabilities['2.7.1.1'] > probabilities['1.1.1.1']
+        probabilities['2.7.1.1'] - probabilities['1.1.1.1'] < 0.000001d
+    }
 }
