@@ -109,6 +109,7 @@ class Model:
     gene_alias: dict[str, str]               # id or label -> gene product id
     met_compartment: dict[str, str] = field(default_factory=dict)
     n_infinite_bounds: int = 0
+    met_formula: dict[str, str] = field(default_factory=dict)   # FBC chemical formulas where declared
     rxn_index: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -222,7 +223,9 @@ def load_sbml_model(path: Path, default_bound: float = 1000.0) -> Model:
             alias[gp.getLabel()] = gp.getId()
     return Model(str(path), hashlib.sha256(raw).hexdigest(), list(mets), [r.getId() for r in reactions],
                  S, lb_a, ub_a, terms, sense, gpr, alias,
-                 {s.getId(): s.getCompartment() for s in species}, n_inf)
+                 {s.getId(): s.getCompartment() for s in species}, n_inf,
+                 {s.getId(): s.getPlugin("fbc").getChemicalFormula() for s in species
+                  if s.getPlugin("fbc") is not None and s.getPlugin("fbc").isSetChemicalFormula()})
 
 
 # --------------------------------------------------------------------------- solver
