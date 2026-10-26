@@ -10,15 +10,15 @@ No item is complete merely because its scaffolding or synthetic test passes.
 | Item | Required evidence before completion | Status |
 | --- | --- | --- |
 | 1 | Production-engine benchmark runner; frozen splits, input hashes, matched baselines and all-case reports | In progress: production runner and 73 tests including real CLI smoke; full datasets pending |
-| 2 | Equivalent single/batch/web/Nextflow execution; stage status; coherent gene-keyed predictions | In progress: synchronized prediction state, identical single/batch stages, per-stage change ledger; annotate/web/NF parity pending |
+| 2 | Equivalent single/batch/web/Nextflow execution; stage status; coherent gene-keyed predictions | In progress: shared workflow used by integrate/annotate/web/NF, route tests and failure ledgers; full external-tool/Nextflow execution still pending |
 | 3 | Correct tool contracts and end-to-end biological parser/dispatch/failure tests | In progress: adapters repaired with typed statuses, strict output contracts and biological dispatch tests; external-tool fixtures still need validation |
-| 4 | Trained context model and held-out calibration/precision evidence; revisable inference and null assignments | In progress: typed feature extraction, logistic/tree training and JVM inference with explicit null layer; synthetic agreement tests pass; real training and production wiring pending |
-| 5 | Reaction/interaction context wired into production candidates and attribution; biological network ablations | Pending |
-| 6 | Cohort recurrence with evolutionary/missing-data controls; no singleton certainty bug; independent-clade evaluation | Pending |
-| 7 | Weak-candidate retention; role-specific enzyme/complex attribution; same-operon decoy evaluation | Pending |
-| 8 | Explicit media/biomass/assembly assumptions and alternative absence hypotheses; phenotype validation | Pending |
+| 4 | Trained context model and held-out calibration/precision evidence; revisable inference and null assignments | In progress: learned stage and feature export wired into the shared workflow, contract /2, logistic/tree training and JVM inference; real-data fitting and held-out evaluation pending |
+| 5 | Reaction/interaction context wired into production candidates and attribution; biological network ablations | In progress: direct EC/reaction and interaction context bridge implemented; real network ablations pending |
+| 6 | Cohort recurrence with evolutionary/missing-data controls; no singleton certainty bug; independent-clade evaluation | In progress: joint two-pass batch inference and weighted held-out features wired; empirical clade evaluation pending |
+| 7 | Weak-candidate retention; role-specific enzyme/complex attribution; same-operon decoy evaluation | In progress: raw weak candidates and distinct roles retained in learned/cohort paths; independent locus benchmark pending |
+| 8 | Explicit media/biomass/assembly assumptions and alternative absence hypotheses; phenotype validation | In progress: 61 measured auxotroph cases completed under 3 registered protocols; regulatory closures improve binary agreement only 25/44 to 26/44; more organisms and function masking pending |
 | 9 | Executed community models with transport/exchanges; established coculture/auxotroph validation | In progress: coupled SBML community LP and 26 mechanistic tests pass; empirical validation and workflow wiring pending |
-| 10 | Auditable change ledger and truthful UI/statistics reconciled to predictions | In progress: integration ledger implemented; web presentation pending |
+| 10 | Auditable change ledger and truthful UI/statistics reconciled to predictions | In progress: browser/portal ledger implemented, EC/GO ancestry classification, counts and downloads tested in Chromium; full empirical UI reconciliation pending |
 | 11 | Qwen on unimatrix evaluated against equally informed simple models on held-out cases | Pending |
 | 12 | Evidence-guided experimental planning and executed metabolic perturbations; equal-budget controls, independent phenotype evaluation | In progress: SBML experiment engine, fixed/random/evidence/Qwen policies, 40 mechanistic tests pass; workflow and learned attribution pending |
 | Release | Complete matrix above; source/tests/docs/artifacts consistent; v3.0.0 tag and GitHub release with full results | Pending |
@@ -37,16 +37,34 @@ execution must use production inference, not parallel scoring formulas.
 
 ## Current work and process handles
 
-- Root: core prediction-state repair and integration; then context/learning and
-  execution parity. Local Gradle tests are permitted; large jobs use compute nodes.
-- Claude Code Sonnet 5.5 worktrees `/tmp/gspa-v3-predictors`,
-  `/tmp/gspa-v3-benchmarks`, and `/tmp/gspa-v3-experiments`: predictor contracts,
-  production benchmark harness, and executed metabolic experiment planning.
-  Prompts and streaming logs are under `/tmp/gspa-v3-agents/`.
-- agy attempts ended without edits because headless auto mode was unavailable.
-  Claude Code with explicit file/test permissions is running successfully.
-- Unimatrix SSH verified; `/data/hohndor/gspa` exists; no hohndor Slurm jobs at
-  initial inspection. Qwen endpoint is configured in the existing agent sidecar.
+- Root branch `development/v3.0.0`; merged source through `3c75a38`. All twelve
+  acceptance gates remain open. Real-data learned-model fitting is still pending.
+- Claude Sonnet 5.5 `/tmp/gspa-v3-context-workflow`: phase A (`d2e5ef7`) merged
+  as `3c75a38`; phase B is wiring metabolic/community subprocesses and evidence-guided
+  context into the shared workflow. Session `7544`, logs `context-workflow.jsonl`.
+- Claude Sonnet 5.5 `/tmp/gspa-v3-community-benchmark`: full 1,035-pair Wintermute
+  benchmark runner, fixed-medium assumptions and oxygen/trace-metal sensitivities.
+  Session `64780`, logs `community-benchmark.jsonl`.
+- Ontology concurrency agent and two reviews completed; merged as `45c9622`,
+  `d9c5ea1`, `7d36adb`. Single-flight exact inferred has_part extraction, immutable
+  results and source/revision-aware cache validation have biological concurrency tests.
+- Panel13 job 9732 ended TIMEOUT after 30 minutes; stage0 outputs are preserved
+  under `/data/hohndor/gspa-v3/panel13-dedup-6e446bb`. Thread dumps identified repeated
+  full ontology extraction by concurrent genomes. Separate job 9739 uses the
+  repaired `3c75a38` jar, identical deduplicated claims, persistent reasoner cache,
+  2-hour allocation and 2,100-second per-arm timeout. It is a development regression.
+- Metabolic job 9736 completed all 183 case/protocol combinations. Reports committed
+  under `benchmark/v3/results/development-e8bcc07`; no large accuracy gain.
+  Job 9738 independently replays all matched control/deletion LPs with COBRApy/GLPK.
+- All 132 original full-proteome Price predictor files (23.6 GB) copied from IBEX
+  to `/data/hohndor/gspa-v3/price-raw-sources`; destination hashes are being verified.
+  Transfer manifest/log: `/tmp/gspa-v3-agents/price-transfer.jsonl` and `.log`.
+- All 22 exact assembly versions acquired via NCBI Datasets with protein FASTA/GFF3;
+  package MD5 and returned assembly IDs checked. Local sources and acquisition log:
+  `/tmp/gspa-v3-price-genomes`. Functional text in GFF is not independent predictor
+  evidence; context extraction must use coordinates/identifiers only.
+- The Qwen endpoint is configured but the required empirical Qwen-versus-simple-method
+  benchmark has not yet run. AllTheBacteria remains excluded.
 
 ## Validation log
 
@@ -72,10 +90,10 @@ execution must use production inference, not parallel scoring formulas.
   cases are separate. This is unregulated FBA using repository/model defaults,
   not the paper's full regulatory configuration. See
   `docs/benchmarks/v3-metabolic-development.md` and its linked all-case report.
-- Price development runs use full nonzero target candidates. Initial completed
-  DeepProZyme, TopEC and pool4 runs show identical EC top-1 before/after current
-  pathway priors (49/148, 5/148, 60/148 respectively). Remaining runs and raw-rank
-  checks are pending. These are reused-data, limited-context regressions.
+- Price development runs use full nonzero target candidates. All seven variants completed with identical EC top-1
+  before/after current pathway priors: CLEAN 60/148, DPZ 49/148, EnzBERT 53/148,
+  MAPred 50/148, GraphEC 18/148, TopEC 5/148, pool4 60/148. Raw-ranking checks
+  and input/output hashes are verified; reports are committed. These are reused-data, limited-context regressions.
 - Panel13 job 9726 failed its input audit before inference: 420 exact duplicate
   records remain in the historical merged claims (distinct homolog hits are now
   allowed). A separate, hashed deduplication preparation is required; originals
@@ -106,3 +124,14 @@ execution must use production inference, not parallel scoring formulas.
   acquisition and the experimental protocol must distinguish measured data from
   model-imposed export assumptions. Model-fitting phenotypes cannot serve as an
   independent function-recovery test without masking and split controls.
+
+- `3c75a38`: complete JVM suite and fat-jar build passed; Python learned trainer
+  34 tests passed with feature contract /2. No production-trained weights yet.
+- `b37e553` / `aeb602d`: ledger browser/portal tests passed (36 Python tests);
+  three opt-in Chromium tests passed, including removed enzymes, filtered downloads,
+  non-enzyme changes and unavailable ledgers. No JavaScript page errors.
+- `e8bcc07`: 62 metabolic mechanism/runner tests and 187 benchmark tests passed
+  (2 opt-in skips). Active regulatory closures are recorded separately from gene
+  deletion; missing sidecars or malformed constraints fail as unknown.
+- `dae00b3`: independent COBRApy/GLPK replay checker; two biological/hash-integrity
+  tests passed locally. This validates implementation agreement, not biological truth.
