@@ -1390,6 +1390,7 @@ class IntegrateCommand implements Runnable {
                 }
             }
         }
+        integrated.synchronize(state)
         if (verbose) println "  Stage 2 synced to integrated output (relaxed_new=${relaxedAdded})"
 
         if (effActionsOut != null && report.count() > 0) {
@@ -1439,7 +1440,7 @@ class IntegrateCommand implements Runnable {
             w.writeLine([
                 'kind', 'pathway_id', 'reaction_id', 'function_id', 'go_aspect',
                 'operon_id', 'bayes_factor', 'suggestion_score',
-                'protein_ids', 'q_values', 'provenance'
+                'protein_ids', 'q_values', 'provenance', 'source', 'unassigned_probability', 'candidate_probabilities'
             ].join('\t'))
             for (Suggestion s : suggestions) {
                 String proteinList
@@ -1468,6 +1469,9 @@ class IntegrateCommand implements Runnable {
                     proteinList,
                     qList,
                     s.provenance ?: '',
+                    s.source ?: '',
+                    s.unassignedProbability != null ? String.format(Locale.ROOT, '%.6f', s.unassignedProbability) : '',
+                    new ObjectMapper().writeValueAsString(s.candidateProbabilities ?: [:]),
                 ].join('\t'))
             }
         }

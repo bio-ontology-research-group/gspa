@@ -47,10 +47,21 @@ class LocusResponsibilityUpdater {
     int applyUpdatedScores(
         IntegratedAnnotationSet integrated,
         Map<String, Map<String, Double>> updatedGeneEcScores,
-        Map<String, String> ecToGoMap = Collections.emptyMap()
+        Map<String, String> ecToGoMap = Collections.emptyMap(),
+        IntegrationState state = null
     ) {
         if (integrated == null || updatedGeneEcScores == null || updatedGeneEcScores.isEmpty()) {
             return 0
+        }
+        // Validate the entire solver response before changing any gene assignment.
+        for (Map.Entry<String, Map<String, Double>> gene : updatedGeneEcScores.entrySet()) {
+            if (gene.value == null) continue
+            for (Map.Entry<String, Double> candidate : gene.value.entrySet()) {
+                if (candidate.key == null || candidate.value == null ||
+                    !Double.isFinite(candidate.value) || candidate.value < 0d || candidate.value > 1d) {
+                    throw new IllegalArgumentException("Invalid FBA probability for ${gene.key}|${candidate.key}: ${candidate.value}")
+                }
+            }
         }
         int updatedCount = 0
         for (Map.Entry<String, Map<String, Double>> gEntry : updatedGeneEcScores.entrySet()) {
@@ -60,9 +71,12 @@ class LocusResponsibilityUpdater {
             for (Map.Entry<String, Double> eEntry : ecMap.entrySet()) {
                 String rawEc = eEntry.key.replace('EC:', '').trim()
                 double newProb = eEntry.value != null ? eEntry.value.doubleValue() : 0.0d
+                if (!Double.isFinite(newProb) || newProb < 0.0d || newProb > 1.0d) {
+                    throw new IllegalArgumentException("Invalid FBA probability for ${proteinId}|${rawEc}: ${newProb}")
+                }
                 for (String ecKey : [rawEc, "EC:${rawEc}".toString()]) {
                     ClaimProvenance prov = integrated.provenanceFor(proteinId, AnnotationType.EC, ecKey)
-                    if (prov != null && newProb > prov.finalProbability + 1e-5d) {
+                    if (prov != null && Math.abs(newProb - prov.finalProbability) > 1e-5d) {
                         double oldLogOdds = prov.finalLogOdds
                         double newLogOdds = logit(newProb)
                         prov.priorContributions['fba_locus_refiner'] = newLogOdds - oldLogOdds
@@ -73,6 +87,7 @@ class LocusResponsibilityUpdater {
                 }
             }
         }
+        integrated.synchronize(state)
         return updatedCount
     }
 }

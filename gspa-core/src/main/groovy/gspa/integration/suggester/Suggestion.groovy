@@ -21,6 +21,9 @@ import gspa.model.AnnotationType
  */
 abstract class Suggestion {
 
+    /** Owning inference channel; used to refresh one source without erasing others. */
+    String source
+
     /** The missing function (GO or EC ID). */
     String functionId
 
@@ -54,6 +57,16 @@ abstract class Suggestion {
      * users can inspect why a particular protein was ruled out.
      */
     Map<String, PerProteinDecomposition> proteinScores = new LinkedHashMap<>()
+
+    /** Full candidate mass, including candidates outside a displayed credible set. */
+    Map<String, Double> candidateProbabilities = new LinkedHashMap<>()
+
+    /**
+     * Probability left unassigned to the candidate proteins. Null denotes a
+     * legacy suggestion; rescoring preserves its undisplayed probability mass.
+     * A conditional ranking is not a calibrated probability of enzyme presence.
+     */
+    Double unassignedProbability = null
 
     /** Human-readable provenance summary. */
     String provenance

@@ -22,9 +22,9 @@ import groovy.transform.CompileStatic
  *            = (nSigWith / nSigTotal) / (nBaseWith / nBaseTotal)
  * </pre>
  *
- * <p>We compute the LR and a Jeffreys-prior beta-binomial 90% credible
- * interval at lookup time so the scorer can drop low-confidence LRs
- * (CI overlapping 1.0).</p>
+ * <p>Rates use Jeffreys smoothing. The log-ratio uncertainty is a
+ * delta-method approximation using beta posterior variances, not an exact
+ * credible interval. Small panels require independent calibration.</p>
  */
 @CompileStatic
 class ReactionLocusCatalog {
@@ -39,10 +39,10 @@ class ReactionLocusCatalog {
         int nBaseTotal
 
         double rateSig() {
-            nSigTotal == 0 ? 0.0d : (double) nSigWith / (double) nSigTotal
+            (nSigWith + 0.5d) / (nSigTotal + 1.0d)
         }
         double rateBase() {
-            nBaseTotal == 0 ? 0.0d : (double) nBaseWith / (double) nBaseTotal
+            (nBaseWith + 0.5d) / (nBaseTotal + 1.0d)
         }
         double logLR(double epsilon = 1e-3d) {
             double num = Math.max(epsilon, rateSig())
@@ -53,17 +53,16 @@ class ReactionLocusCatalog {
             Math.exp(logLR(epsilon))
         }
         /**
-         * 90% beta-binomial credible-interval half-width on logLR,
-         * using Jeffreys prior α=β=0.5 on the two rates independently.
+         * Approximate 90% log-ratio interval half-width, using beta posterior
+         * variances with Jeffreys prior α=β=0.5 on the two rates independently.
          * Returns the absolute log-space half-width; caller drops the
          * entry if this crosses 0 (CI includes LR=1).
          */
         double logLRCiHalfWidth(double epsilon = 1e-3d) {
-            // Wilson-style interval on each rate; approximate via variance of logit.
             double pSig = Math.max(epsilon, rateSig())
             double pBase = Math.max(epsilon, rateBase())
-            double varSig = pSig * (1 - pSig) / Math.max(1, nSigTotal)
-            double varBase = pBase * (1 - pBase) / Math.max(1, nBaseTotal)
+            double varSig = pSig * (1 - pSig) / (nSigTotal + 2d)
+            double varBase = pBase * (1 - pBase) / (nBaseTotal + 2d)
             // delta-method: Var(log p) ≈ Var(p) / p^2
             double varLog = varSig / (pSig * pSig) + varBase / (pBase * pBase)
             1.645d * Math.sqrt(varLog)   // 90% CI
@@ -84,6 +83,10 @@ class ReactionLocusCatalog {
     }
 
     void put(Entry e) {
+        if (e.nSigTotal < 0 || e.nBaseTotal < 0 || e.nSigWith < 0 || e.nBaseWith < 0 ||
+                e.nSigWith > e.nSigTotal || e.nBaseWith > e.nBaseTotal) {
+            throw new IllegalArgumentException('Catalog counts must satisfy 0 <= occurrences <= observations')
+        }
         entries.put(new Tuple2(e.orthogroupId, e.reactionId), e)
     }
 

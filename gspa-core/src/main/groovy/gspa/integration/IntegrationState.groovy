@@ -188,9 +188,8 @@ class IntegrationState {
 
     /** Replace the whole posterior map in one shot (used by refiner). */
     void updatePosteriors(Map<String, Double> newPosteriors) {
-        if (posteriorLogOdds == null || newPosteriors.size() != posteriorLogOdds.size()) {
-            proteinKeyIndex = null
-        }
+        // Relaxation can replace keys without changing the size.
+        proteinKeyIndex = null
         posteriorLogOdds = newPosteriors
     }
 
@@ -237,6 +236,11 @@ class IntegrationState {
 
     /** Cached maximum baseline likelihood probability per protein. */
     private Map<String, Double> maxLikeProbByProtein = null
+
+    void setLikelihoodLogOdds(Map<String, Double> values) {
+        this.@likelihoodLogOdds = new LinkedHashMap<>(values ?: [:])
+        maxLikeProbByProtein = null
+    }
 
     /** Return number of supporting claims for a functionKey (defaults to 1 if unpopulated). */
     int getClaimCount(String functionKey) {

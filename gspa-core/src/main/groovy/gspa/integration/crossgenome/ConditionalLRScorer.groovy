@@ -100,6 +100,12 @@ class CrossGenomeReScorer {
             // Collect (proteinId, baseScore) list from the suggestion.
             List<Tuple2<String, Double>> baseList = collectProteinScores(s)
             if (baseList.isEmpty()) { out << s; continue }
+            double baseMass = baseList.sum { it.v2 } as double
+            double unassigned = s.unassignedProbability != null ? s.unassignedProbability : Math.max(0d, 1d - baseMass)
+            if (!Double.isFinite(unassigned) || unassigned < 0d || Math.abs(baseMass + unassigned - 1d) > 1e-6d ||
+                    baseList.any { !Double.isFinite(it.v2) || it.v2 < 0d || it.v2 > 1d }) {
+                throw new IllegalArgumentException('Cross-genome rescoring requires a complete probability distribution')
+            }
 
             // Compute LR-adjusted scores.
             List<Tuple2<String, Double>> adjusted = []
@@ -134,15 +140,20 @@ class CrossGenomeReScorer {
 
             // Renormalise and pick singleton vs disjunctive.
             adjusted.sort { a, b -> Double.compare(b.v2, a.v2) }
-            double sum = 0.0d
+            double sum = unassigned
             for (Tuple2<String, Double> t : adjusted) sum += t.v2
             if (sum <= 0.0d) { out << s; continue }
+
+            Map<String, Double> probabilities = new LinkedHashMap<>()
+            for (Tuple2<String, Double> t : adjusted) probabilities[t.v1] = t.v2 / sum
+            double unassignedPosterior = unassigned / sum
 
             double qTop = adjusted[0].v2 / sum
             String topId = adjusted[0].v1
 
             if (qTop > singletonThreshold) {
                 SingletonSuggestion ss = new SingletonSuggestion(
+                    source: s.source,
                     proteinId: topId,
                     q: qTop,
                     functionId: s.functionId,
@@ -153,6 +164,8 @@ class CrossGenomeReScorer {
                     bayesFactor: s.bayesFactor,
                     suggestionScore: Math.min(maxSuggestionScore, qTop),
                     proteinScores: s.proteinScores,
+                    candidateProbabilities: probabilities,
+                    unassignedProbability: unassignedPosterior,
                     provenance: "${s.provenance} | CG rescore λ=${String.format(Locale.ROOT, '%.2f', lambda)}, qTop=${String.format(Locale.ROOT, '%.2f', qTop)}".toString(),
                 )
                 out << ss
@@ -172,8 +185,9 @@ class CrossGenomeReScorer {
                 double H = 0.0d
                 for (double q : qs) if (q > 0.0d) H -= q * Math.log(q)
                 double uniform = Math.log((double) ids.size())
-                double concentration = uniform > 0 ? (1.0d - H / uniform) : 0.0d
+                double concentration = uniform > 0 ? Math.max(0d, 1.0d - H / uniform) : 0.0d
                 DisjunctiveSuggestion ds = new DisjunctiveSuggestion(
+                    source: s.source,
                     proteinIds: ids,
                     qValues: qs,
                     functionId: s.functionId,
@@ -184,6 +198,8 @@ class CrossGenomeReScorer {
                     bayesFactor: s.bayesFactor,
                     suggestionScore: Math.min(maxSuggestionScore, concentration),
                     proteinScores: s.proteinScores,
+                    candidateProbabilities: probabilities,
+                    unassignedProbability: unassignedPosterior,
                     provenance: "${s.provenance} | CG rescore λ=${String.format(Locale.ROOT, '%.2f', lambda)}, k=${ids.size()}, cov=${String.format(Locale.ROOT, '%.2f', cum)}".toString(),
                 )
                 out << ds
@@ -195,6 +211,12 @@ class CrossGenomeReScorer {
     }
 
     private static List<Tuple2<String, Double>> collectProteinScores(Suggestion s) {
+        if (s.candidateProbabilities) {
+            return s.candidateProbabilities.collect { String pid, Double q -> new Tuple2<String, Double>(pid, q) }
+        }
+        if (s.proteinScores) {
+            return s.proteinScores.collect { String pid, def decomposition -> new Tuple2<String, Double>(pid, (Double) decomposition.q) }
+        }
         if (s instanceof SingletonSuggestion) {
             SingletonSuggestion ss = (SingletonSuggestion) s
             return [new Tuple2<String, Double>(ss.proteinId, (Double) ss.q)]

@@ -104,6 +104,7 @@ class ReactionLocalContextSuggester {
 
     IntegratedAnnotationSet suggest(IntegrationState state, IntegratedAnnotationSet integrated) {
         if (integrated.suggestions == null) integrated.suggestions = []
+        integrated.suggestions.removeAll { it.source == 'reaction_local_context' }
 
         if (state.metabolicGaps == null || state.metabolicGaps.isEmpty()) {
             log.info("RLGC: no metabolic gaps; skipping")
@@ -349,6 +350,7 @@ class ReactionLocalContextSuggester {
             if (qTop > singletonThreshold) {
                 double score = Math.min(maxSuggestionScore, qTop)
                 SingletonSuggestion s = new SingletonSuggestion(
+                    source: 'reaction_local_context',
                     proteinId: topId,
                     q: qTop,
                     functionId: gap.goTerm,
@@ -381,6 +383,7 @@ class ReactionLocalContextSuggester {
                 double concentration = uniform > 0 ? (1.0d - H / uniform) : 0.0d
                 double score = Math.min(maxSuggestionScore, concentration)
                 DisjunctiveSuggestion d = new DisjunctiveSuggestion(
+                    source: 'reaction_local_context',
                     proteinIds: pids,
                     qValues: qsOut,
                     functionId: gap.goTerm,

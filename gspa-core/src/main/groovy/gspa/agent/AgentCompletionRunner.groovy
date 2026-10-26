@@ -235,15 +235,6 @@ class AgentCompletionRunner {
                         convergenceIter: 1
                     )
                 }
-                if (newProb >= 0.50d) {
-                    integrated.annotations.add(new Annotation(
-                        type: funcType == 'GO' ? AnnotationType.GO : AnnotationType.EC,
-                        value: funcId,
-                        score: newProb,
-                        source: "gspa-agent:${agentModel}",
-                        evidence: 'ISA'
-                    ))
-                }
                 if (action == 'RELAX') summary.relaxed++ else summary.promoted++
             } else if (action == 'DEMOTE') {
                 ClaimProvenance existing = integrated.provenance[fkey]
@@ -257,5 +248,6 @@ class AgentCompletionRunner {
                 }
             }
         }
+        integrated.synchronize(state)
     }
 }

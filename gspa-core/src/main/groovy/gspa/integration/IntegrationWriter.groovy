@@ -34,15 +34,12 @@ class IntegrationWriter {
      * left untouched.
      */
     static void applyIntegratedAnnotations(Genome genome, IntegratedAnnotationSet integrated) {
-        // Group integrated annotations by proteinId using the provenance map.
+        integrated.synchronize()
+        // Join by biological identity, never parallel list position.
         Map<String, List<Annotation>> byProtein = new LinkedHashMap<>()
-        List<Annotation> annList = integrated.annotations.annotations
-        List<ClaimProvenance> provList = new ArrayList<>(integrated.provenance.values())
-        // annList and provList were built in parallel by IterativeRefiner.
-        int n = Math.min(annList.size(), provList.size())
-        for (int i = 0; i < n; i++) {
-            Annotation ann = annList[i]
-            ClaimProvenance prov = provList[i]
+        for (Map.Entry<String, ClaimProvenance> entry : integrated.provenance.entrySet()) {
+            Annotation ann = integrated.annotationsByFunction[entry.key]
+            ClaimProvenance prov = entry.value
             String pid = prov.proteinId
             if (pid == null) continue
             byProtein.computeIfAbsent(pid, { k -> new ArrayList<Annotation>() }) << ann
@@ -51,13 +48,13 @@ class IntegrationWriter {
         int touched = 0
         for (Protein p : genome.proteins) {
             List<Annotation> integratedForP = byProtein[p.id]
-            if (integratedForP == null || integratedForP.isEmpty()) continue
+            if (integratedForP == null && !integrated.processedProteinIds.contains(p.id)) continue
 
             // Preserve raw evidence: attach provenance summary to protein.sourceFeature metadata.
             stashRawEvidence(p)
 
             // Replace the protein's annotations with the integrated set.
-            p.annotations = new AnnotationSet(integratedForP)
+            p.annotations = new AnnotationSet(integratedForP ?: [])
             touched++
         }
 

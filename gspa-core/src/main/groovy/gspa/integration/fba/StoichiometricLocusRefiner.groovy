@@ -176,7 +176,7 @@ class StoichiometricLocusRefiner {
 
         Map<String, Map<String, Double>> updatedScores = (Map<String, Map<String, Double>>) result.updated_gene_ec_scores
         if (updatedScores != null) {
-            summary.nUpdatedLoci = updater.applyUpdatedScores(integrated, updatedScores)
+            summary.nUpdatedLoci = updater.applyUpdatedScores(integrated, updatedScores, Collections.emptyMap(), state)
         }
         return summary
     }

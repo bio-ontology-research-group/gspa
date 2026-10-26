@@ -124,7 +124,10 @@ class DarkMatterSuggester {
      * @return the same {@link IntegratedAnnotationSet} with {@code suggestions} populated
      */
     IntegratedAnnotationSet suggest(IntegrationState state, IntegratedAnnotationSet integrated) {
-        integrated.suggestions = []
+        // Refresh this source only. Other context channels may already have
+        // emitted suggestions for the same gap and must remain reviewable.
+        if (integrated.suggestions == null) integrated.suggestions = []
+        integrated.suggestions.removeAll { it.source == 'dark_matter' }
 
         if (state.metabolicGaps == null || state.metabolicGaps.isEmpty()) {
             log.info("DarkMatterSuggester: no metabolic gaps; skipping")
@@ -345,6 +348,7 @@ class DarkMatterSuggester {
         if (qTop > 0.5d) {
             double score = Math.min(maxSuggestionScore, qTop * bfSquash * pathwayConfidence)
             return new SingletonSuggestion(
+                source: 'dark_matter',
                 proteinId: sorted[0].proteinId,
                 q: qTop,
                 functionId: gap.goTerm,
@@ -383,6 +387,7 @@ class DarkMatterSuggester {
         double score = Math.min(maxSuggestionScore, concentration * bfSquash * pathwayConfidence)
 
         return new DisjunctiveSuggestion(
+            source: 'dark_matter',
             proteinIds: pids,
             qValues: qs,
             functionId: gap.goTerm,

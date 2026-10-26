@@ -1,4 +1,105 @@
-# Todo: GSPA v1.5.0 release
+# Todo: GSPA improvements
+
+## Audit follow-up — 2026-10-26
+
+Robert selected all eleven audit recommendations for implementation and requested
+the agent-guided metabolic experiment extension below. All twelve items are
+pending; this checklist records scope and validation, not completed implementation.
+Audit baseline: commit `7714377`. Preserve independent evaluation of annotation
+accuracy; greater model feasibility or annotation completeness alone is not proof
+of a correct protein function.
+
+- [ ] **1. Benchmark the actual application.** Make benchmarks invoke the shared
+  production inference engine; generate public claims from versioned experiment
+  records. Compare matched sequence evidence with each context stage and the full
+  system on held-out genomes/families, with independently selected thresholds,
+  calibration, correction/harm counts, and genome-level uncertainty.
+- [ ] **2. Unify execution routes and prediction state.** Align CLI annotation,
+  integration, web, batch, and Nextflow; preserve contributions from combined
+  suggesters and synchronize scores, annotations, provenance, and downstream state.
+  Require matched-input parity and explicit executed/skipped/failed stage records.
+- [ ] **3. Repair predictor contracts and failure reporting.** Correct eggNOG score
+  parsing, HMMER database wiring, genomic-tool dispatch, InterPro EC output, and
+  operon GO-aspect handling. Use typed contracts and structured statuses; verify
+  genuine output fixtures, complete adapter paths, and injected failures.
+- [ ] **4. Learn evidence weights and final confidence.** Replace arbitrary boosts,
+  candidate-count discontinuities, and irreversible confidence floors with learned,
+  calibrated, revisable inference. Retain a no-candidate outcome and account for
+  correlated evidence. Compare interpretable and tree-based models with existing
+  rules using out-of-fold inputs and family/genus-held-out evaluation.
+- [ ] **5. Connect neighborhoods to reaction and interaction networks.** Introduce
+  shared protein–reaction candidates with explicit context features, alternative
+  mappings, reaction direction, organism-specific feasibility, and distinct
+  catalytic/interaction roles. Compare pathway-only, universal-network, and
+  organism-specific context on held-out enzyme loci.
+- [ ] **6. Infer recurrence jointly across genomes.** Integrate cohort-wide
+  ortholog/subfamily context inference into batch workflows; correct singleton
+  normalization, use matched-window backgrounds, account for ancestry and assembly
+  completeness, and combine complementary missing-function patterns. Test clade
+  holdouts, duplicated strains, shuffled neighborhoods, and fragmented assemblies.
+- [ ] **7. Preserve weak candidates and resolve roles within neighborhoods.**
+  Separate candidate retention from display thresholds; distinguish enzymes,
+  accessory proteins, transporters, regulators, paralogs, and required complex
+  subunits. Evaluate candidate recall and locus ranking with real predictor scores
+  and difficult same-operon alternatives.
+- [ ] **8. Model absence, missing sequence, and environmental dependence.** Treat
+  missing annotation, incomplete assembly, genuine pathway loss, and external
+  supply as competing explanations. Expose medium, biomass, transport, and model
+  assumptions. Validate gene attribution separately from growth/knockout prediction
+  on complete genomes, auxotrophs, and controlled fragmented assemblies.
+- [ ] **9. Implement community cross-feeding.** Replace the disconnected heuristic
+  scaffold with separate organism models, explicit transport, extracellular
+  exchange, and environmental constraints for a defined community. Validate with
+  measured coculture/monoculture phenotypes, exchanged metabolites, and transporter
+  knockouts; measure reductions in false enzyme assignments separately.
+- [ ] **10. Report prediction changes and uncertainty.** Show stage-wise changes,
+  baseline/final scores, evidence, alternatives, and module status; use ontology
+  ancestry and EC identifiers for enzyme classification. Reconcile browser counts
+  with exports and distinguish internal audit metrics from experimental accuracy.
+- [ ] **11. Evaluate the agent against equally informed simple methods.** Reserve
+  agent use for unresolved cases and useful additional evidence gathering. Compare
+  with feature rankings and learned classifiers using identical evidence on unseen
+  families/genomes; report correct and harmful decisions, abstentions, and cost.
+- [ ] **12. Let the agent design and run informative metabolic experiments.**
+  Implement the proposal below, building on items 2, 4–8, and 11; use item 9 when
+  proposing community exchange experiments.
+
+### 12. Agent-guided metabolic experiments
+
+A single medium and growth objective can leave alternative catabolic pathways and
+secondary metabolism unused, so their absence from an FBA solution is weak evidence
+against a candidate function. The agent should use sequence/domain evidence,
+neighborhoods, cross-genome recurrence, transport predictions, biosynthetic gene
+clusters, and existing gaps to shortlist competing functional explanations and the
+conditions most likely to distinguish them. It should then design and execute
+bounded computational experiments: change carbon/nitrogen sources, oxygen or
+nutrient availability, remove supplements, test knockouts, and, where supported,
+explore product formation alongside growth or maintenance requirements. Compare
+alternative feasible flux solutions and candidate assignments, retain negative or
+inconclusive results, and record every assumption. For secondary metabolism, the
+relevant reactions must be represented; feasible production is a conditional
+hypothesis, not evidence that a pathway is expressed. Choosing an objective that
+requires a candidate function must not itself count as independent confirmation.
+
+The expected improvement is recovery of condition-specific functions that a single
+growth simulation misses, with fewer unnecessary simulations because prior
+evidence guides the search. Benchmark on held-out organisms with measured growth
+across media, knockout phenotypes, and characterized secondary-metabolite
+production, masking target gene assignments from all model and evidence inputs.
+Compare single-medium FBA, a fixed condition panel, random condition selection, a
+simple evidence-guided planner, and the agent under the same solver-call budget.
+Measure correct gene/function recovery at fixed precision, harmful assignments,
+agreement with withheld phenotypes, abstention, and computational cost. Freeze the
+planner and confidence rules before testing; count cases where no function can be
+recovered rather than evaluating only successful repairs.
+
+Methodological reference: [COBRA Toolbox v3.0: alternative optimal flux solutions
+and flux variability analysis](https://pmc.ncbi.nlm.nih.gov/articles/PMC6635304/).
+Existing starting points: `scripts/stoichiometric_locus_refiner.py` and
+`service/metabolic_conditions.py`; current condition probes do not implement this
+adaptive experiment-selection loop.
+
+## Historical checklist: GSPA v1.5.0 release
 
 Companion checklist for `tasks/plan.md`. Strike tasks as they complete.
 
