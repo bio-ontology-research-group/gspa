@@ -3,6 +3,7 @@ package gspa.predictor.domain
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 /**
  * AntiFam HMM scanner for spurious / pseudogenic ORF detection.
@@ -79,16 +80,20 @@ class AntiFamPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def outputFile = new File(outputDir, 'antifam_domtbl.tsv')
-        if (!outputFile.exists()) return [:]
+        // hmmsearch --domtblout always writes '#' header/footer lines, even with no hit.
+        def outputFile = requireOutput(outputDir, 'antifam_domtbl.tsv',
+            'hmmsearch --domtblout writes comment header/footer on every run')
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
         Set<String> seenPerProtein = [] as Set
 
         outputFile.eachLine { line ->
-            if (line.startsWith('#')) return
+            if (line.startsWith('#') || line.trim().isEmpty()) return
             def fields = line.split(/\s+/)
-            if (fields.length < 22) return
+            if (fields.length < 22) {
+                throw new ToolOutputContractException(
+                    "antifam domtblout row has ${fields.length} columns, the format has at least 22: ${line.take(80)}")
+            }
 
             // hmmsearch domtblout format:
             // [0]=target name (protein), [1]=target acc, [2]=tlen

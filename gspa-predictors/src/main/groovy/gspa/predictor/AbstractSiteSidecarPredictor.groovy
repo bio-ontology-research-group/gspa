@@ -74,27 +74,39 @@ abstract class AbstractSiteSidecarPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def tsv = new File(outputDir, "${tag}.${predictorName}.tsv")
-        if (!tsv.exists()) return [:]
+        // run_site_predictors.py writes the header row only once the wrapped tool ran; for
+        // ScanNet it `continue`s (exit 0, no TSV) when the structure dir/PDB is absent and for
+        // MusiteDeep when no result file exists: no TSV = failed/uncovered run, never zero sites.
+        def tsv = requireOutput(outputDir, "${tag}.${predictorName}.tsv",
+            'run_site_predictors.py writes a header row whenever the wrapped tool produced output')
         Map<String, List<Annotation>> results = [:].withDefault { [] }
         boolean firstLine = true
+        int lineNo = 0
         tsv.eachLine { line ->
+            lineNo++
             if (firstLine) { firstLine = false; return }
             if (!line || line.startsWith('#')) return
             def parts = line.split('\t')
-            if (parts.size() < 5) return
+            if (parts.size() < 5) {
+                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: ${parts.size()} columns, expected 5")
+            }
             AnnotationType t
             try {
                 t = AnnotationType.valueOf(parts[4].toUpperCase(Locale.ROOT))
             } catch (IllegalArgumentException ignored) {
-                return
+                throw new ToolOutputContractException(
+                    "${name} ${tsv.name} line ${lineNo}: unknown annotation type '${parts[4]}'")
             }
             try {
                 String pid = parts[0]
                 int pos = parts[1] as int
                 String siteType = parts[2]
                 double score = parts[3] as double
-                if (Double.isNaN(score) || score < minScore) return
+                if (Double.isNaN(score)) {
+                    throw new ToolOutputContractException(
+                        "${name} ${tsv.name} line ${lineNo}: NaN score for ${pid}")
+                }
+                if (score < minScore) return
                 results[pid] << new Annotation(
                     type: t,
                     value: siteType,
@@ -106,8 +118,8 @@ abstract class AbstractSiteSidecarPredictor extends AbstractToolPredictor {
                     regionEnd: pos,
                     regionType: siteType,
                 )
-            } catch (NumberFormatException ignored) {
-                // Skip malformed row
+            } catch (NumberFormatException e) {
+                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: non-numeric position/score (${e.message})")
             }
         }
         results

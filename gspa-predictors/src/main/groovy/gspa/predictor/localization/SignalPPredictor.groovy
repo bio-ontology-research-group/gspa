@@ -4,6 +4,7 @@ import gspa.integration.EvidenceType
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 import java.util.regex.Pattern
 
@@ -54,7 +55,16 @@ class SignalPPredictor extends AbstractToolPredictor {
             // Try SignalP 5 format
             resultFile = outputDir.listFiles()?.find { it.name.endsWith('.signalp5') || it.name.endsWith('.out') }
         }
-        if (resultFile == null) return [:]
+        // SignalP writes a prediction table (with '#' comment/header lines) for every run,
+        // including proteins predicted OTHER; none after a clean exit is a failed run.
+        // UNVERIFIED: the SignalP 5 file naming fallbacks above are inherited, not re-checked.
+        if (resultFile == null || !resultFile.isFile()) {
+            throw new ToolOutputContractException(
+                'signalp: no prediction_results.txt / *.signalp5 / *.out after a clean exit')
+        }
+        if (resultFile.length() == 0) {
+            throw new ToolOutputContractException("signalp: ${resultFile.name} is empty; SignalP writes a header and one row per protein")
+        }
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
@@ -129,10 +139,10 @@ class SignalPPredictor extends AbstractToolPredictor {
         results
     }
 
-    private static final Pattern CS_POS_PATTERN =
+    protected static final Pattern CS_POS_PATTERN =
             Pattern.compile(/CS pos:?\s*(\d+)\s*-\s*(\d+)/)
 
-    private static double safeDouble(String s) {
+    protected static double safeDouble(String s) {
         try { return s as double } catch (Exception e) { return 0.0 }
     }
 }

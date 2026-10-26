@@ -88,30 +88,48 @@ p2\tGO:0003700\t0.930\tGO
         results['p2'][0].value == 'GO:0003700'
     }
 
-    def "parseOutput skips malformed rows without crashing"() {
+    def "parseOutput rejects a corrupt sidecar TSV instead of silently dropping rows (#why)"() {
         given:
         def predictor = new DeepGoPlusEsm2Predictor(
             sidecarScript: writeSidecarStub().absolutePath,
             checkpoint: '/tmp/m', terms: '/tmp/t',
         )
-        def outDir = tmp.toFile()
-        writeOutputTsv('query.esm2-deepgoplus.tsv', '''\
-protein_id\tterm\tscore\tannotation_type
-p1\tGO:0003824\t0.85\tGO
-garbage line
-p2\tGO:0006412\tNaN\tGO
-p3\tGO:0003700\t0.5\tBOGUS_TYPE
-p4\tGO:0003824\t0.5\tGO
-'''.stripIndent())
+        writeOutputTsv('query.esm2-deepgoplus.tsv',
+            "protein_id\tterm\tscore\tannotation_type\np1\tGO:0003824\t0.85\tGO\n${badRow}\n")
 
         when:
-        def results = predictor.parseOutput(outDir)
+        predictor.parseOutput(tmp.toFile())
 
         then:
-        results['p1']?.size() == 1
-        results['p4']?.size() == 1
-        results.containsKey('p2') == false || results['p2'].isEmpty()
-        results.containsKey('p3') == false || results['p3'].isEmpty()
+        def e = thrown(gspa.predictor.ToolOutputContractException)
+        e.message.contains('line 3')
+
+        where:
+        why                    | badRow
+        'short row'            | 'garbage line'
+        'NaN score'            | 'p2\tGO:0006412\tNaN\tGO'
+        'non-numeric score'    | 'p2\tGO:0006412\thigh\tGO'
+        'unknown type'         | 'p3\tGO:0003700\t0.5\tBOGUS_TYPE'
+    }
+
+    def "no sidecar TSV is a failed run, header-only TSV is a true zero"() {
+        given:
+        def predictor = new DeepGoPlusEsm2Predictor(
+            sidecarScript: writeSidecarStub().absolutePath,
+            checkpoint: '/tmp/m', terms: '/tmp/t',
+        )
+
+        when:
+        predictor.parseOutput(tmp.toFile())
+
+        then:
+        thrown(gspa.predictor.ToolOutputContractException)
+
+        when:
+        writeOutputTsv('query.esm2-deepgoplus.tsv', 'protein_id\tterm\tscore\tannotation_type\n')
+
+        then:
+        predictor.parseOutput(tmp.toFile()).isEmpty()
     }
 
     def "CleanPredictor declares EC output, ProteInfer declares GO"() {

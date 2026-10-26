@@ -64,6 +64,47 @@ quality:
         merged.predictors.similarity.tool == 'mmseqs2'
     }
 
+    def "domains.database defaults to null and is not required"() {
+        expect:
+        new GspaConfig().predictors.domains.database == null
+        ConfigLoader.loadFromString('predictors:\n  domains:\n    tool: hmmer\n').predictors.domains.database == null
+    }
+
+    def "domains.database round-trips through YAML, buildConfig merge and config merge"() {
+        given:
+        def yaml = '''
+predictors:
+  domains:
+    tool: hmmer
+    database: /db/Pfam-A.hmm
+'''
+        def userFile = File.createTempFile('gspa-domains-', '.yaml')
+        userFile.text = yaml
+
+        when: "loaded directly"
+        def loaded = ConfigLoader.loadFromString(yaml)
+
+        and: "serialised and read back"
+        def again = ConfigLoader.loadFromString(ConfigLoader.toYaml(loaded))
+
+        and: "merged through the layered builder (defaults -> kingdom preset -> user file)"
+        def built = ConfigLoader.buildConfig(userFile, 'bacteria')
+
+        and: "merged over a base config that does not set it"
+        def merged = ConfigLoader.merge(new GspaConfig(), loaded)
+
+        then:
+        loaded.predictors.domains.database == '/db/Pfam-A.hmm'
+        again.predictors.domains.database == '/db/Pfam-A.hmm'
+        again.predictors.domains.tool == 'hmmer'
+        built.predictors.domains.database == '/db/Pfam-A.hmm'
+        built.predictors.domains.tool == 'hmmer'
+        merged.predictors.domains.database == '/db/Pfam-A.hmm'
+
+        cleanup:
+        userFile.delete()
+    }
+
     def "should resolve organism domain"() {
         given:
         def config = new GspaConfig()

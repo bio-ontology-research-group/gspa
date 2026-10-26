@@ -4,6 +4,7 @@ import gspa.integration.EvidenceType
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 /**
  * Base class for predictors that delegate to
@@ -89,26 +90,39 @@ abstract class AbstractNeuralSidecarPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def tsv = new File(outputDir, "${tag}.${predictorName}.tsv")
-        if (!tsv.exists()) return [:]
+        // Serves the neural and term sidecars (run_neural_predictors.py / run_term_predictors.py).
+        // They write a header row before any result; PSORTb, DeepARG and mDeepFRI `continue`
+        // with exit 0 and no TSV when the wrapped tool failed or produced nothing parseable,
+        // and run_neural_predictors raises SystemExit (non-zero) on its own errors.
+        // No TSV = failed run; header-only TSV = the tool ran and reported nothing.
+        def tsv = requireOutput(outputDir, "${tag}.${predictorName}.tsv",
+            'the sidecar writes a header row whenever the wrapped tool produced output')
         Map<String, List<Annotation>> results = [:].withDefault { [] }
         boolean firstLine = true
+        int lineNo = 0
         tsv.eachLine { line ->
+            lineNo++
             if (firstLine) { firstLine = false; return }
             if (!line || line.startsWith('#')) return
             def parts = line.split('\t')
-            if (parts.size() < 4) return
+            if (parts.size() < 4) {
+                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: ${parts.size()} columns, expected 4")
+            }
             AnnotationType t
             try {
                 t = AnnotationType.valueOf(parts[3].toUpperCase(Locale.ROOT))
             } catch (IllegalArgumentException ignored) {
-                return
+                throw new ToolOutputContractException(
+                    "${name} ${tsv.name} line ${lineNo}: unknown annotation type '${parts[3]}'")
             }
             try {
                 String pid = parts[0]
                 String term = parts[1]
                 double score = parts[2] as double
-                if (Double.isNaN(score) || Double.isInfinite(score)) return
+                if (Double.isNaN(score) || Double.isInfinite(score)) {
+                    throw new ToolOutputContractException(
+                        "${name} ${tsv.name} line ${lineNo}: non-finite score '${parts[2]}' for ${pid}")
+                }
                 results[pid] << new Annotation(
                     type: t,
                     value: term,
@@ -117,8 +131,8 @@ abstract class AbstractNeuralSidecarPredictor extends AbstractToolPredictor {
                     evidence: 'IEA',
                     evidenceType: evidenceType,
                 )
-            } catch (NumberFormatException ignored) {
-                // skip malformed row
+            } catch (NumberFormatException e) {
+                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: non-numeric score (${e.message})")
             }
         }
         results

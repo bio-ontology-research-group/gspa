@@ -51,7 +51,10 @@ class AnnotationPipeline {
     /**
      * Typed completion status of every registered predictor from the last
      * {@link #annotate} call (unavailable / failed / successful-zero / successful).
-     * Disabled predictors are not registered and therefore not listed.
+     * Predictors that were not requested are deliberately absent: those switched off in the
+     * config (never created) and those named in {@code predictors.disable} (never registered)
+     * are "not requested", not "unavailable". Everything that was requested and registered
+     * appears exactly once, plus {@code gene-caller:<name>} when genes were called.
      */
     final List<PredictorRunStatus> runStatuses = Collections.synchronizedList([])
 
@@ -131,14 +134,11 @@ class AnnotationPipeline {
 
     /**
      * Pfam-A HMM path for the direct HMMER tool. Precedence: the explicit
-     * {@link #hmmerDatabase} override, then an optional {@code domains.database}
-     * config property (the shared config has no such field yet), then
-     * {@link #PFAM_HMM_ENV}.
+     * {@link #hmmerDatabase} override, then {@code predictors.domains.database}
+     * from the config, then {@link #PFAM_HMM_ENV}.
      */
     private String resolveHmmerDatabase() {
-        def domains = config.predictors.domains
-        String fromConfig = domains.hasProperty('database') ? domains.getProperty('database') as String : null
-        hmmerDatabase ?: fromConfig ?: System.getenv(PFAM_HMM_ENV)
+        hmmerDatabase ?: config.predictors.domains.database ?: System.getenv(PFAM_HMM_ENV)
     }
 
     private List<Predictor> createAllPredictors() {
@@ -467,6 +467,7 @@ class AnnotationPipeline {
     Genome annotate(File inputFile) {
         log.info("=== GSPA Annotation Pipeline ===")
         log.info("Input: ${inputFile}")
+        runStatuses.clear()
 
         // 1. Load genome
         Genome genome = loadGenome(inputFile)
@@ -480,6 +481,14 @@ class AnnotationPipeline {
             log.info("Calling genes with ${geneCaller.name}...")
             geneCaller.callGenes(genome)
             log.info("Called ${genome.proteinCount} genes")
+            // GeneCaller reports failure only by logging and returning no genes, so the exit
+            // status of the caller is not observable here: zero genes is recorded as FAILED
+            // (a gene caller that runs on a genome with sequence but finds no ORF is not a
+            // result worth annotating on), with that limitation stated.
+            runStatuses << (genome.proteinCount > 0 ?
+                PredictorRunStatus.completed("gene-caller:${geneCaller.name}", genome.proteinCount) :
+                PredictorRunStatus.failed("gene-caller:${geneCaller.name}",
+                    'no genes called; caller failure vs genuinely gene-free input is not distinguishable (unverified)'))
         }
 
         if (genome.proteinCount == 0) {
@@ -488,7 +497,6 @@ class AnnotationPipeline {
         }
 
         // 3. Run protein-level predictors (in parallel if multiple available)
-        runStatuses.clear()
         // Probe availability once; tools that are not runnable are recorded as
         // UNAVAILABLE so "never ran" is never confused with "ran and found nothing".
         def (List<Predictor> runnable, List<Predictor> missing) = registry.getAll().split { it.isAvailable() }

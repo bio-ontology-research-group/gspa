@@ -104,6 +104,13 @@ class GspaConfig {
         List<String> applications = ['Pfam', 'TIGRFAM', 'CDD', 'SUPERFAMILY']
         /** Use InterProScan or direct HMMER */
         String tool = 'interproscan'
+        /**
+         * Path to the Pfam-A HMM file used by {@code tool: hmmer}. Null by
+         * default: with tool hmmer and no database the predictor reports
+         * UNAVAILABLE (it never runs). Ignored for InterProScan, which
+         * carries its own databases.
+         */
+        String database
     }
 
     /**

@@ -31,6 +31,18 @@ class PhiSpyPredictor extends AbstractGenomicRegionSidecarPredictor {
     @Override
     AnnotationType getOutputAnnotationType() { AnnotationType.PROPHAGE }
 
+    /** PhiSpy emits no confidence; the sidecar writes a nominal 1.0 for every prophage call. */
+    @Override
+    protected Map<String, Object> regionMetadata() {
+        [scoreSemantics: 'nominal 1.0 (PhiSpy reports no confidence)']
+    }
+
+    @Override
+    protected String successNote() {
+        'UNVERIFIED: the sidecar treats a missing prophage_coordinates.tsv as "no prophages", so zero ' +
+            'regions cannot be distinguished from a silent PhiSpy failure'
+    }
+
     @Override
     protected String inputFileName() { 'genome.gbk' }
 

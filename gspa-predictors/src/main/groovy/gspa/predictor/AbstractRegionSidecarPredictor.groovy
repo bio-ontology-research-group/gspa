@@ -94,22 +94,32 @@ abstract class AbstractRegionSidecarPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def tsv = new File(outputDir, "${tag}.${predictorName}.tsv")
-        if (!tsv.exists()) return [:]
+        // The sidecar opens its TSV (header row first) only after the wrapped tool produced
+        // results and `continue`s without writing when the tool failed, while exiting 0:
+        // no TSV = failed run; header-only TSV = the tool ran and found nothing.
+        def tsv = requireOutput(outputDir, "${tag}.${predictorName}.tsv",
+            'run_region_predictors.py writes a header row whenever the wrapped tool produced output')
         Map<String, List<Annotation>> results = [:].withDefault { [] }
         boolean firstLine = true
+        int lineNo = 0
         tsv.eachLine { line ->
+            lineNo++
             if (firstLine) { firstLine = false; return }
             if (!line || line.startsWith('#')) return
             def parts = line.split('\t')
-            if (parts.size() < 5) return
+            if (parts.size() < 5) {
+                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: ${parts.size()} columns, expected 5-6")
+            }
             try {
                 String pid = parts[0]
                 int rStart = parts[1] as int
                 int rEnd = parts[2] as int
                 String regionType = parts[3]
                 double score = parts[4] as double
-                if (Double.isNaN(score)) return
+                if (Double.isNaN(score)) {
+                    throw new ToolOutputContractException(
+                        "${name} ${tsv.name} line ${lineNo}: NaN score for ${pid}")
+                }
                 int len = rEnd - rStart + 1
                 if (len < minRegionLen) return
                 if (score < minScore) return
@@ -124,8 +134,8 @@ abstract class AbstractRegionSidecarPredictor extends AbstractToolPredictor {
                     regionEnd: rEnd,
                     regionType: regionType,
                 )
-            } catch (NumberFormatException ignored) {
-                // Skip malformed row
+            } catch (NumberFormatException e) {
+                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: non-numeric coordinate/score (${e.message})")
             }
         }
         results

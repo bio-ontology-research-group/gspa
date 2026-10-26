@@ -45,8 +45,9 @@ class VfdbPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def outputFile = new File(outputDir, 'vfdb_results.tsv')
-        if (!outputFile.exists()) return [:]
+        // DIAMOND creates --out even when nothing aligned (zero bytes, no header).
+        def outputFile = requireOutput(outputDir, 'vfdb_results.tsv',
+            'diamond blastp creates --out on every successful run, zero bytes if no alignment', true)
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 

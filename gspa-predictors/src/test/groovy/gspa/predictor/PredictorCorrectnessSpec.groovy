@@ -68,16 +68,65 @@ class PredictorCorrectnessSpec extends Specification {
         res['p1'].find { it.type == AnnotationType.COG }.value == 'L'
     }
 
-    def "eggNOG: headerless file falls back to emapper 2.1 layout only when evalue/score are numeric"() {
+    def "eggNOG: headerless file uses the emapper 2.1 layout and still validates the evalue"() {
         given:
-        emapperFile(row('p1', '1e-15', '480') + '\n' + row('bad', 'COG0515@1|root', 'x') + '\n')
+        emapperFile(row('p1', '1e-15', '480') + '\n')
 
         when:
         def res = new EggNogMapperPredictor().parseOutput(tmp.toFile())
 
         then:
         res['p1'].find { it.type == AnnotationType.GO }.score == 0.5d
-        !res.containsKey('bad')
+
+        when: "a shifted layout puts text in the assumed evalue column"
+        emapperFile(row('p1', '1e-15', '480') + '\n' + row('bad', 'COG0515@1|root', 'x') + '\n')
+        new EggNogMapperPredictor().parseOutput(tmp.toFile())
+
+        then:
+        def e = thrown(ToolOutputContractException)
+        e.message.contains('bad')
+        e.message.contains('emapper version')
+    }
+
+    def "eggNOG: invalid E-values are a failed contract, never an invented confidence (#why)"() {
+        given:
+        emapperFile("${EMAPPER_HEADER}\n${row('p1', evalue, '480')}\n")
+
+        when:
+        new EggNogMapperPredictor().parseOutput(tmp.toFile())
+
+        then:
+        def e = thrown(ToolOutputContractException)
+        e.message.contains('p1')
+        e.message.contains('line 2')
+
+        where:
+        why        | evalue
+        'negative' | '-1e-5'
+        'NaN'      | 'NaN'
+        'infinite' | 'Infinity'
+        'dash'     | '-'
+        'empty'    | ''
+        'text'     | 'COG0515'
+    }
+
+    def "eggNOG: E-value 0 is valid; large E-values are weak (0) not errors; short rows are rejected"() {
+        given:
+        emapperFile("${EMAPPER_HEADER}\n${row('p1', '0.0', '900')}\n${row('p2', '5.0', '30')}\n")
+
+        when:
+        def res = new EggNogMapperPredictor().parseOutput(tmp.toFile())
+
+        then:
+        res['p1'].every { it.score == 1.0d }
+        res['p2'].every { it.score == 0.0d }
+
+        when:
+        emapperFile("${EMAPPER_HEADER}\np3\tseed\t1e-9\n")
+        new EggNogMapperPredictor().parseOutput(tmp.toFile())
+
+        then:
+        thrown(ToolOutputContractException)
     }
 
     def "eggNOG: a header missing the evalue column is rejected instead of guessed"() {

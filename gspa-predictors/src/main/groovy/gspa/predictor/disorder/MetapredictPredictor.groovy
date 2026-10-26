@@ -80,8 +80,10 @@ class MetapredictPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def outTsv = new File(outputDir, 'idrs.tsv')
-        if (!outTsv.exists()) return [:]
+        // The driver writes the header before predicting, so a missing/empty file means it died.
+        // (Per-protein metapredict exceptions are only logged to stderr by the driver: UNVERIFIED
+        // whether such proteins are then silently absent from the TSV.)
+        def outTsv = requireOutput(outputDir, 'idrs.tsv', 'the driver script writes a header row first')
         Map<String, List<Annotation>> results = [:].withDefault { [] }
         outTsv.eachLine { line ->
             if (!line || line.startsWith('#') || line.startsWith('protein_id')) return

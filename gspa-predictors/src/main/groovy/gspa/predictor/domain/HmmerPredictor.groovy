@@ -3,6 +3,7 @@ package gspa.predictor.domain
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 /**
  * HMMER predictor for direct Pfam domain searches.
@@ -63,18 +64,20 @@ class HmmerPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def outputFile = new File(outputDir, 'hmmer_domtbl.tsv')
-        // hmmsearch writes the domtblout (header/footer only when nothing hit).
-        if (!outputFile.exists()) {
-            throw new IllegalStateException("hmmsearch produced no ${outputFile.name}")
-        }
+        // hmmsearch --domtblout always writes '#' header/footer lines, even with no hit,
+        // so a missing or empty file is a failed run, not "no domains".
+        def outputFile = requireOutput(outputDir, 'hmmer_domtbl.tsv',
+            'hmmsearch --domtblout writes comment header/footer on every run')
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
         outputFile.eachLine { line ->
-            if (line.startsWith('#')) return
+            if (line.startsWith('#') || line.trim().isEmpty()) return
             def fields = line.split(/\s+/)
-            if (fields.length < 22) return
+            if (fields.length < 22) {
+                throw new ToolOutputContractException(
+                    "hmmer domtblout row has ${fields.length} columns, the format has at least 22: ${line.take(80)}")
+            }
 
             // hmmsearch domtblout format:
             // [0]=target name (protein), [1]=target acc, [2]=tlen

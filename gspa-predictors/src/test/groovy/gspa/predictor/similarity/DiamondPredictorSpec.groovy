@@ -59,12 +59,19 @@ protein_003\tsp|P22222|ATPB_ECOLI\t45.3\t250\t300\t280\t5.0e-20\t120\tATP syntha
         dir.deleteDir()
     }
 
-    def "should handle empty results"() {
+    def "no output file is a failed run; a zero-byte file is a true zero"() {
         given:
         def predictor = new DiamondPredictor()
         def outputDir = File.createTempDir("diamond_test_", "")
 
         when:
+        predictor.parseOutput(outputDir)
+
+        then:
+        thrown(gspa.predictor.ToolOutputContractException)
+
+        when: "DIAMOND creates --out even when nothing aligned, with no header"
+        new File(outputDir, 'diamond_results.tsv').text = ''
         def results = predictor.parseOutput(outputDir)
 
         then:

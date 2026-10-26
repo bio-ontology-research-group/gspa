@@ -32,6 +32,22 @@ class GenomadPredictor extends AbstractGenomicRegionSidecarPredictor {
     @Override
     AnnotationType getOutputAnnotationType() { AnnotationType.PROPHAGE }
 
+    /**
+     * Sidecar output: proviruses carry parent-contig coordinates (summary 'coordinates', also in
+     * the seq_name suffix); viral contigs and plasmids are reported as 1..length of the whole
+     * contig. Score is geNomad's virus_score / plasmid_score.
+     */
+    @Override
+    protected Map<String, Object> regionMetadata() {
+        [scoreSemantics: 'genomad virus_score / plasmid_score']
+    }
+
+    @Override
+    protected String successNote() {
+        'UNVERIFIED: the sidecar writes a header-only TSV even when neither geNomad summary file exists, ' +
+            'so zero regions cannot be distinguished from a silent geNomad failure'
+    }
+
     @Override
     protected String configurationProblem() {
         dbPath ? null : 'dbPath (geNomad model database) is not configured'

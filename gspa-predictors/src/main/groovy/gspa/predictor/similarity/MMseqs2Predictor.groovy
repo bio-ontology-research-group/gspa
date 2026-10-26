@@ -51,8 +51,10 @@ mmseqs convertalis ${queryDb.absolutePath} ${database} ${resultDb.absolutePath} 
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def outputFile = new File(outputDir, 'mmseqs_results.tsv')
-        if (!outputFile.exists()) return [:]
+        // convertalis creates the file even when nothing aligned (zero bytes, no header);
+        // run_mmseqs.sh uses `set -e`, so a failed step already fails the exit code.
+        def outputFile = requireOutput(outputDir, 'mmseqs_results.tsv',
+            'mmseqs convertalis creates its output on every successful run', true)
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
@@ -86,11 +88,11 @@ mmseqs convertalis ${queryDb.absolutePath} ${database} ${resultDb.absolutePath} 
         results
     }
 
-    private static List<String> extractGoTerms(String text) {
+    protected static List<String> extractGoTerms(String text) {
         (text =~ /GO:\d{7}/).collect { it as String }
     }
 
-    private static List<String> extractEcNumbers(String text) {
+    protected static List<String> extractEcNumbers(String text) {
         (text =~ /EC:[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+/).collect { it as String }
     }
 }

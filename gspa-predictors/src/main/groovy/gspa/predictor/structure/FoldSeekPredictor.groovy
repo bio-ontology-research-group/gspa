@@ -120,8 +120,9 @@ class FoldSeekPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def resultFile = new File(outputDir, 'foldseek_results.tsv')
-        if (!resultFile.exists()) return [:]
+        // easy-search creates the result file even when nothing aligned (zero bytes, no header).
+        def resultFile = requireOutput(outputDir, 'foldseek_results.tsv',
+            'foldseek easy-search creates its output on every successful run', true)
 
         boolean prostMode = useProstT5 || prostt5Model
         Map<String, List<Annotation>> results = [:].withDefault { [] }
@@ -188,11 +189,11 @@ class FoldSeekPredictor extends AbstractToolPredictor {
         results
     }
 
-    private static List<String> extractGoTerms(String text) {
+    protected static List<String> extractGoTerms(String text) {
         (text =~ /GO:\d{7}/).collect { it as String }
     }
 
-    private static List<String> extractEcNumbers(String text) {
+    protected static List<String> extractEcNumbers(String text) {
         (text =~ /EC:[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+/).collect { it as String }
     }
 
@@ -204,7 +205,7 @@ class FoldSeekPredictor extends AbstractToolPredictor {
     private static final Pattern MEDOID_ID =
             Pattern.compile(/^(GO:\d{7}|EC:[\d\.\-]+)_medoid_\S+/)
 
-    private static Object[] parseMedoidTarget(String targetId) {
+    protected static Object[] parseMedoidTarget(String targetId) {
         if (targetId == null) return null
         def m = MEDOID_ID.matcher(targetId)
         if (!m.find()) return null

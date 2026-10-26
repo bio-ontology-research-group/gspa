@@ -5,6 +5,7 @@ import gspa.model.AnnotationType
 import gspa.model.Genome
 import gspa.predictor.AbstractToolPredictor
 import gspa.predictor.GenomePredictor
+import gspa.model.Protein
 
 /**
  * CRISPR-Cas system predictor using minced (CRISPR finder).
@@ -38,8 +39,10 @@ class CrisprPredictor extends AbstractToolPredictor implements GenomePredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def outputFile = new File(outputDir, 'minced_results.gff')
-        if (!outputFile.exists()) return [:]
+        // MinCED opens its output file unconditionally (UNVERIFIED here: whether it is zero bytes
+        // or carries a '##gff-version' line when no array is found, hence allowEmpty).
+        def outputFile = requireOutput(outputDir, 'minced_results.gff',
+            'minced writes the GFF output file on every successful run', true)
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
         String currentContig = null
@@ -75,27 +78,12 @@ class CrisprPredictor extends AbstractToolPredictor implements GenomePredictor {
 
     @Override
     Map<String, List<Annotation>> predictGenome(Genome genome) {
-        def tmpDir = File.createTempDir("gspa_crispr_", '')
-        try {
-            def inputFasta = new File(tmpDir, 'genome.fna')
-            inputFasta.withWriter { writer ->
-                genome.contigs.each { contig ->
-                    if (contig.sequence) {
-                        writer.writeLine(">${contig.id}")
-                        writer.writeLine(contig.sequence)
-                    }
-                }
-            }
-            def command = buildCommand(inputFasta, tmpDir)
-            def result = execute(command, tmpDir)
+        runGenomeTool(genome, 'genome.fna')
+    }
 
-            if (result.exitCode != 0) {
-                log.error("minced failed: ${result.stderr}")
-                return [:]
-            }
-            return parseOutput(tmpDir)
-        } finally {
-            tmpDir.deleteDir()
-        }
+    /** MinCED searches nucleotide sequence; protein FASTA is meaningless to it. */
+    @Override
+    Map<String, List<Annotation>> predictBatch(List<Protein> proteins) {
+        throw new UnsupportedOperationException('crispr (MinCED) is a genome-level predictor; call predictGenome(Genome)')
     }
 }

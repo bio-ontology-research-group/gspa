@@ -96,8 +96,9 @@ class DiamondPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def outputFile = new File(outputDir, 'diamond_results.tsv')
-        if (!outputFile.exists()) return [:]
+        // DIAMOND creates --out even when nothing aligned (zero bytes, no header).
+        def outputFile = requireOutput(outputDir, 'diamond_results.tsv',
+            'diamond blastp creates --out on every successful run, zero bytes if no alignment', true)
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
@@ -181,11 +182,11 @@ class DiamondPredictor extends AbstractToolPredictor {
         results
     }
 
-    private static List<String> extractGoTerms(String text) {
+    protected static List<String> extractGoTerms(String text) {
         (text =~ /GO:\d{7}/).collect { it as String }
     }
 
-    private static List<String> extractEcNumbers(String text) {
+    protected static List<String> extractEcNumbers(String text) {
         (text =~ /EC:[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+/).collect { it as String }
     }
 
@@ -193,7 +194,7 @@ class DiamondPredictor extends AbstractToolPredictor {
      * Extract protein product name from UniProt FASTA title.
      * E.g., "sp|P03707|TERS_LAMBD Terminase small subunit OS=..." -> "Terminase small subunit"
      */
-    private static String extractProduct(String title) {
+    protected static String extractProduct(String title) {
         // UniProt format: sp|ACC|NAME Description OS=Organism ...
         def matcher = title =~ /(?:sp|tr)\|\S+\|\S+\s+(.+?)\s+OS=/
         if (matcher.find()) {
@@ -215,7 +216,7 @@ class DiamondPredictor extends AbstractToolPredictor {
      * Extract UniProt accession from subject ID.
      * Handles formats: sp|P03707|TERS_LAMBD, tr|A0A0...|..., or plain P03707
      */
-    private static String extractAccession(String subjectId) {
+    protected static String extractAccession(String subjectId) {
         def parts = subjectId.split('\\|')
         if (parts.length >= 2) return parts[1]
         return subjectId

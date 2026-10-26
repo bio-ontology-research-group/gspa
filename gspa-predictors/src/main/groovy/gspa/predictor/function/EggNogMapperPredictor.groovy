@@ -3,6 +3,7 @@ package gspa.predictor.function
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 /**
  * eggNOG-mapper predictor for ortholog group assignment.
@@ -49,12 +50,11 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def annotFile = new File(outputDir, 'eggnog_results.emapper.annotations')
-        // emapper always writes this file (header only when nothing matched), so
-        // its absence after a clean exit is a failure, not "zero annotations".
-        if (!annotFile.exists()) {
-            throw new IllegalStateException("eggnog-mapper produced no ${annotFile.name}")
-        }
+        // emapper always writes this file (a '#query' header and comment footer even
+        // when nothing matched), so absence or emptiness after a clean exit is a
+        // failed contract, not "zero annotations".
+        def annotFile = requireOutput(outputDir, 'eggnog_results.emapper.annotations',
+            'emapper writes the annotations table with a #query header on every run')
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
@@ -64,8 +64,11 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
         // 10 EC, 11 KEGG_ko ...
         Map<String, Integer> col = [evalue: 2, score: 3, ogs: 4, cog: 6, gos: 9, ec: 10, ko: 11]
         boolean headerSeen = false
+        int dataRows = 0
+        int lineNo = 0
 
         annotFile.eachLine { line ->
+            lineNo++
             if (line.startsWith('#query')) {
                 col = columnsFromHeader(line)
                 headerSeen = true
@@ -73,13 +76,15 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
             }
             if (line.startsWith('#') || line.trim().isEmpty()) return
             def fields = line.split('\t', -1)
-            int needed = col.values().max() + 1
-            if (fields.length < needed || (!headerSeen && fields.length < 21)) return
-
-            // Without a header, validate that the assumed E-value / bit-score
-            // columns are numeric before trusting them; otherwise skip the row
-            // rather than invent confidences from the wrong column.
-            if (!headerSeen && (!isNumeric(fields[col.evalue]) || !isNumeric(fields[col.score]))) return
+            // A data row that is too short or whose E-value is not a finite number >= 0
+            // means the table is corrupt or its columns are not what we think they are.
+            // Rejecting the file is the only honest outcome: no confidence is invented.
+            int needed = headerSeen ? col.values().max() + 1 : 21
+            if (fields.length < needed) {
+                throw new ToolOutputContractException("eggnog-mapper line ${lineNo}: ${fields.length} columns, " +
+                    "expected at least ${needed}${headerSeen ? '' : ' (no #query header found; assumed emapper 2.1 layout)'}")
+            }
+            dataRows++
 
             String proteinId = fields[0]
             String eggNogOGs = field(fields, col.ogs)    // Orthologous groups
@@ -88,15 +93,10 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
             String keggKOs = field(fields, col.ko)       // KEGG KO
             String cogCats = field(fields, col.cog)      // COG categories
             // Confidence derives from the seed-ortholog E-value (smaller = stronger);
-            // an E-value of exactly 0 is the strongest possible hit.
-            String evalueRaw = field(fields, col.evalue)
-            double confScore
-            if (!isNumeric(evalueRaw)) {
-                confScore = 0.7
-            } else {
-                double evalue = evalueRaw as double
-                confScore = evalue <= 0 ? 1.0 : Math.max(0.0, Math.min(1.0, -Math.log10(evalue) / 30.0))
-            }
+            // an E-value of exactly 0 is valid and is the strongest possible hit.
+            double evalue = parseEvalue(field(fields, col.evalue), lineNo, proteinId, headerSeen)
+            double confScore = evalue == 0.0d ? 1.0d : Math.min(1.0d, -Math.log10(evalue) / 30.0d)
+            if (confScore < 0.0d) confScore = 0.0d   // E-values above 1 are weak hits, not errors
 
             // GO annotations
             if (goTerms && goTerms != '-') {
@@ -148,6 +148,10 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
                 )
             }
         }
+        if (!headerSeen && dataRows == 0) {
+            throw new ToolOutputContractException(
+                'eggnog-mapper annotations file has neither a #query header nor data rows')
+        }
         results
     }
 
@@ -155,7 +159,7 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
      * Resolve column indices from the '#query' header. Older emapper releases
      * name the seed columns seed_evalue / seed_score, newer ones evalue / score.
      */
-    private static Map<String, Integer> columnsFromHeader(String headerLine) {
+    protected static Map<String, Integer> columnsFromHeader(String headerLine) {
         List<String> names = headerLine.substring(1).split('\t', -1).collect { it.trim() }
         Map<String, List<String>> wanted = [
             evalue: ['evalue', 'seed_evalue'], score: ['score', 'seed_score'],
@@ -165,7 +169,7 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
         wanted.each { key, aliases ->
             int idx = names.findIndexOf { it in aliases }
             if (idx < 0) {
-                throw new IllegalStateException(
+                throw new ToolOutputContractException(
                     "eggnog-mapper annotations header lacks required column ${aliases.join('/')}: ${names}")
             }
             col[key] = idx
@@ -173,12 +177,26 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
         col
     }
 
-    private static String field(String[] fields, int idx) {
+    protected static String field(String[] fields, int idx) {
         idx < fields.length ? fields[idx] : ''
     }
 
-    private static boolean isNumeric(String s) {
-        if (s == null || s.isEmpty() || s == '-') return false
-        try { Double.parseDouble(s); return true } catch (NumberFormatException e) { return false }
+    /** Strict E-value: a finite number >= 0 (0 is valid). Anything else is a contract violation. */
+    protected static double parseEvalue(String raw, int lineNo, String proteinId, boolean headerSeen) {
+        double v
+        try {
+            v = Double.parseDouble(raw?.trim())
+        } catch (NumberFormatException | NullPointerException e) {
+            throw badEvalue(raw, lineNo, proteinId, headerSeen)
+        }
+        if (!Double.isFinite(v) || v < 0.0d) throw badEvalue(raw, lineNo, proteinId, headerSeen)
+        v
+    }
+
+    protected static ToolOutputContractException badEvalue(String raw, int lineNo, String proteinId, boolean headerSeen) {
+        new ToolOutputContractException(
+            "eggnog-mapper line ${lineNo} (${proteinId}): E-value '${raw}' is not a finite number >= 0" +
+            (headerSeen ? ' in the column named evalue/seed_evalue' :
+                ' in column 3 (no #query header, so the emapper 2.1 layout was assumed; check the emapper version)'))
     }
 }

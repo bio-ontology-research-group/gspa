@@ -3,6 +3,7 @@ package gspa.predictor.domain
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 /**
  * InterProScan domain annotation predictor.
@@ -70,17 +71,22 @@ class InterProScanPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def outputFile = new File(outputDir, 'interproscan_results.tsv')
-        // InterProScan creates the TSV even when no signature matched.
-        if (!outputFile.exists()) {
-            throw new IllegalStateException("interproscan produced no ${outputFile.name}")
-        }
+        // InterProScan creates the TSV (headerless, zero bytes when nothing matched):
+        // missing = failed run, empty = genuinely no signature matches.
+        def outputFile = requireOutput(outputDir, 'interproscan_results.tsv',
+            'InterProScan creates the TSV on every successful run', true)
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
+        int lineNo = 0
 
         outputFile.eachLine { line ->
+            lineNo++
+            if (line.trim().isEmpty()) return
             def fields = line.split('\t')
-            if (fields.length < 11) return
+            if (fields.length < 11) {
+                throw new ToolOutputContractException(
+                    "interproscan line ${lineNo}: ${fields.length} columns, the TSV schema has at least 11")
+            }
 
             String proteinId = fields[0]
             // fields[1] = MD5
@@ -142,7 +148,7 @@ class InterProScanPredictor extends AbstractToolPredictor {
         results
     }
 
-    private static AnnotationType mapAnalysisToType(String analysis) {
+    protected static AnnotationType mapAnalysisToType(String analysis) {
         switch (analysis) {
             case 'Pfam': return AnnotationType.PFAM
             case 'TIGRFAM': return AnnotationType.TIGRFAM
@@ -152,12 +158,12 @@ class InterProScanPredictor extends AbstractToolPredictor {
         }
     }
 
-    private static String unset(String[] fields, int idx) {
+    protected static String unset(String[] fields, int idx) {
         String v = idx < fields.length ? fields[idx].trim() : ''
         v == '-' ? '' : v
     }
 
-    private static double safeDouble(String s) {
+    protected static double safeDouble(String s) {
         try { return s as double } catch (Exception e) { return 0.0 }
     }
 }

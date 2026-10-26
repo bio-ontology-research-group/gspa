@@ -4,6 +4,7 @@ import gspa.integration.EvidenceType
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 /**
  * DeepTMHMM predictor for transmembrane domain prediction.
@@ -39,7 +40,15 @@ class DeepTmhmmPredictor extends AbstractToolPredictor {
             // Also check for biolib output format
             topoFile = outputDir.listFiles()?.find { it.name.endsWith('.3line') }
         }
-        if (topoFile == null) return [:]
+        // DeepTMHMM writes one 3-line record per input protein (also non-TM ones), so a
+        // missing or empty topology file is a failed run, not "no TM proteins".
+        if (topoFile == null || !topoFile.isFile()) {
+            throw new ToolOutputContractException(
+                "deeptmhmm: no predicted_topologies.3line (or *.3line) after a clean exit")
+        }
+        if (topoFile.length() == 0) {
+            throw new ToolOutputContractException("deeptmhmm: ${topoFile.name} is empty; DeepTMHMM writes a record for every protein")
+        }
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
@@ -95,7 +104,7 @@ class DeepTmhmmPredictor extends AbstractToolPredictor {
      * Walk the topology string and collect contiguous runs of {@code 'M'}
      * as 1-based inclusive (start, end) residue spans.
      */
-    private static List<int[]> transmembraneHelixRegions(String topology) {
+    protected static List<int[]> transmembraneHelixRegions(String topology) {
         List<int[]> out = []
         int start = -1
         for (int i = 0; i < topology.length(); i++) {

@@ -3,7 +3,9 @@ package gspa.predictor.pathway
 import gspa.model.*
 import gspa.predictor.AbstractToolPredictor
 import gspa.predictor.GenomePredictor
+import gspa.predictor.PredictorOutcome
 import gspa.predictor.PredictorRunStatus
+import gspa.predictor.ToolOutputContractException
 
 /**
  * Pathway/gap predictor wrapping gapsmith (default) or gapseq.
@@ -111,8 +113,17 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
         // gapseq outputs reaction lists and pathway completeness
+        // A successful gapseq/gapsmith find run writes <name>-Reactions.tbl with a header row.
+        // A missing file, or the zero-byte table gapseq leaves behind when an internal step fails
+        // while the shell still exits 0 (documented in tasks/todo.md, Phase C1), is a failed run.
         def reactionsFile = findOutputFile(outputDir, '*-Reactions.tbl')
-        if (reactionsFile == null) return [:]
+        if (reactionsFile == null) {
+            throw new ToolOutputContractException("${name}: no *-Reactions.tbl after a clean exit")
+        }
+        if (reactionsFile.length() == 0) {
+            throw new ToolOutputContractException(
+                "${name}: ${reactionsFile.name} is zero bytes (gapseq internal failure with exit 0); not 'no reactions'")
+        }
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
@@ -151,25 +162,46 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
                 "by an earlier intra-genome clustering step")
         }
 
+        lastRunStatus = null
         def tmpDir = File.createTempDir("gspa_gapseq_", '')
         long t0 = System.currentTimeMillis()
         try {
-            File inputFasta = writeTargetFasta(genome, tmpDir)
-
-            def command = buildCommand(inputFasta, tmpDir)
-            log.info("Running ${tool} (target=${target}): ${command.join(' ')}")
-            def result = execute(command, tmpDir)
-
-            if (result.exitCode != 0) {
-                log.error("${tool} failed: ${result.stderr}")
-                recordStatus(PredictorRunStatus.failed(name,
-                    "exit code ${result.exitCode}: ${result.stderr?.trim()?.take(500)}", result.exitCode), t0)
-                return [:]
+            File inputFasta
+            ContigExport export = null
+            if (target == 'genome') {
+                inputFasta = new File(tmpDir, 'genome.fna')
+                export = writeContigFasta(genome, inputFasta)
+                if (export.written.isEmpty()) {
+                    recordStatus(PredictorRunStatus.failed(name,
+                        'target=genome but no contig carries nucleotide sequence'), t0)
+                    return [:]
+                }
+            } else {
+                inputFasta = writeTargetFasta(genome, tmpDir)
+                if (inputFasta.length() == 0) {
+                    recordStatus(PredictorRunStatus.failed(name,
+                        "target=${target} selected no protein sequences to search"), t0)
+                    return [:]
+                }
             }
 
-            def parsed = parseOutput(tmpDir)
-            recordStatus(PredictorRunStatus.completed(name, countAnnotations(parsed), result.exitCode), t0)
+            def result = runOrFail(buildCommand(inputFasta, tmpDir), tmpDir, t0)
+            if (result == null) return [:]
+
+            def parsed = parseGuarded(t0) { parseOutput(tmpDir) }
+            int n = countAnnotations(parsed)
+            if (export?.skipped) {
+                recordStatus(PredictorRunStatus.partial(name, n, describeSkipped(export, genome.contigs.size()),
+                    export.skipped, result.exitCode), t0)
+            } else {
+                recordStatus(PredictorRunStatus.completed(name, n, result.exitCode), t0)
+            }
             return parsed
+        } catch (Exception e) {
+            if (lastRunStatus == null || lastRunStatus.outcome != PredictorOutcome.FAILED) {
+                recordStatus(PredictorRunStatus.failed(name, "${e.class.simpleName}: ${e.message}"), t0)
+            }
+            throw e
         } finally {
             tmpDir.deleteDir()
         }

@@ -38,8 +38,11 @@ class DbCanPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def overviewFile = new File(outputDir, 'overview.txt')
-        if (!overviewFile.exists()) return [:]
+        // UNVERIFIED across versions: run_dbcan 2.x writes overview.txt (with a 'Gene ID' header)
+        // for every run; later releases renamed outputs. A missing file is reported as failed
+        // rather than guessed to be "no CAZymes".
+        def overviewFile = requireOutput(outputDir, 'overview.txt',
+            'run_dbcan 2.x writes overview.txt with a header row on every run; unverified for other versions')
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 

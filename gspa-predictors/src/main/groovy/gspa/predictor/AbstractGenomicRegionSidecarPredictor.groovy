@@ -115,10 +115,15 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
         f
     }
 
+    /** Extra metadata stamped on every emitted region (score semantics, coordinate scope). */
+    protected Map<String, Object> regionMetadata() { [:] }
+
     @Override
     Map<String, List<Annotation>> predictGenome(Genome genome) {
+        lastRunStatus = null
         long t0 = System.currentTimeMillis()
-        if (!genome.contigs.any { it.sequence }) {
+        List<String> noSequence = genome.contigs.findAll { !it.sequence }*.id
+        if (noSequence.size() == genome.contigs.size()) {
             recordStatus(PredictorRunStatus.failed(name,
                 'no contig carries nucleotide sequence (protein-only input cannot be scanned for genomic regions)'), t0)
             return [:]
@@ -126,59 +131,101 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
         def tmpDir = File.createTempDir("gspa_${name}_", '')
         try {
             File input = writeGenomeInput(genome, tmpDir)
-            def command = buildCommand(input, tmpDir)
-            log.info("Running ${name}: ${command.join(' ')}")
-            def result = execute(command, tmpDir)
-            if (result.exitCode != 0) {
-                log.error("${name} failed with exit code ${result.exitCode}: ${result.stderr}")
-                recordStatus(PredictorRunStatus.failed(name,
-                    "exit code ${result.exitCode}: ${result.stderr?.trim()?.take(500)}", result.exitCode), t0)
-                return [:]
-            }
-            // The sidecar exits 0 even when the wrapped tool failed; it then writes
-            // no TSV. A header-only TSV is the genuine "no regions" result.
-            def tsv = new File(tmpDir, "${tag}.${predictorName}.genomic.tsv")
-            if (!tsv.exists()) {
-                recordStatus(PredictorRunStatus.failed(name,
-                    "sidecar wrote no ${tsv.name}; wrapped tool failed (see sidecar log)", result.exitCode), t0)
-                return [:]
-            }
-            Map<String, List<Annotation>> regions = parseOutput(tmpDir)
+            def result = runOrFail(buildCommand(input, tmpDir), tmpDir, t0)
+            if (result == null) return [:]
+
+            // The sidecar exits 0 even when the wrapped tool failed and then writes no TSV;
+            // parseOutput turns that into a contract failure. A header-only TSV is the
+            // sidecar's "tool ran, no region passed" result.
+            Map<String, List<Annotation>> regions = parseGuarded(t0) { parseOutput(tmpDir) }
+
+            def projection = projectRegions(genome, regions)
             // Full contig-level records stay available even where no CDS overlaps.
-            genome.metadata["genomic_regions:${name}".toString()] = regions.values().flatten()
-            Map<String, List<Annotation>> byProtein = mapRegionsToProteins(genome, regions)
-            recordStatus(PredictorRunStatus.completed(name, countAnnotations(regions), result.exitCode), t0)
-            byProtein
+            genome.metadata["genomic_regions:${name}".toString()] = projection.validRegions
+            int n = projection.validRegions.size()
+
+            List<String> problems = []
+            List<String> uncovered = []
+            if (noSequence) {
+                problems << "${noSequence.size()} of ${genome.contigs.size()} contigs have no nucleotide sequence and were not " +
+                    "analysed: ${noSequence.take(10).join(', ')}${noSequence.size() > 10 ? ', ...' : ''}"
+                uncovered.addAll(noSequence)
+            }
+            if (projection.invalidRegions) {
+                problems << "${projection.invalidRegions.size()} region row(s) rejected for invalid coordinates " +
+                    "(outside the contig or end < start): ${projection.invalidRegions.take(5).join('; ')}"
+                uncovered.addAll(projection.invalidRegionContigs)
+            }
+            if (projection.invalidCds) {
+                problems << "${projection.invalidCds.size()} CDS have invalid or missing coordinates; region membership " +
+                    "could not be determined for: ${projection.invalidCds.take(10).join(', ')}${projection.invalidCds.size() > 10 ? ', ...' : ''}"
+                uncovered.addAll(projection.invalidCds)
+            }
+            if (problems) {
+                recordStatus(PredictorRunStatus.partial(name, n, problems.join(' | '), uncovered.unique(), result.exitCode), t0)
+            } else {
+                recordStatus(PredictorRunStatus.completed(name, n, result.exitCode, successNote()), t0)
+            }
+            projection.byProtein
         } catch (Exception e) {
-            recordStatus(PredictorRunStatus.failed(name, "${e.class.simpleName}: ${e.message}"), t0)
+            if (lastRunStatus == null || lastRunStatus.outcome != PredictorOutcome.FAILED) {
+                recordStatus(PredictorRunStatus.failed(name, "${e.class.simpleName}: ${e.message}"), t0)
+            }
             throw e
         } finally {
             tmpDir.deleteDir()
         }
     }
 
+    /** Outcome of validating regions and projecting them onto CDS. */
+    static class RegionProjection {
+        /** protein id -> region copies for CDS overlapping a valid region */
+        Map<String, List<Annotation>> byProtein = [:]
+        List<Annotation> validRegions = []
+        /** "contig:start-end" descriptions of rejected region rows */
+        List<String> invalidRegions = []
+        /** contig ids carrying at least one rejected region row */
+        Set<String> invalidRegionContigs = [] as Set
+        /** ids of proteins whose CDS coordinates are missing/invalid on a contig that has regions */
+        List<String> invalidCds = []
+    }
+
     /**
-     * Project contig-keyed regions onto the proteins whose CDS overlaps them
-     * (same contig, 1-based inclusive coordinates). Each protein receives a copy
-     * of the region annotation tagged with how much of the CDS lies in the region.
+     * Validate region coordinates against the contig (1-based inclusive, start >= 1,
+     * start <= end <= contig length when the length is known, contig must exist) and
+     * project valid regions onto the proteins whose CDS overlaps them. Proteins with
+     * missing or impossible CDS coordinates are not guessed at; they are reported.
      */
-    static Map<String, List<Annotation>> mapRegionsToProteins(Genome genome, Map<String, List<Annotation>> regions) {
-        Map<String, List<Annotation>> out = [:]
+    static RegionProjection projectRegions(Genome genome, Map<String, List<Annotation>> regions) {
+        def out = new RegionProjection()
         regions.each { String contigId, List<Annotation> anns ->
             Contig contig = genome.findContig(contigId)
-            if (contig == null) return
+            Set<String> badCdsSeen = [] as Set
             anns.each { Annotation region ->
+                int rs = region.genomicStart, re = region.genomicEnd
+                boolean ok = contig != null && rs >= 1 && re >= rs && (contig.length == 0 || re <= contig.length)
+                if (!ok) {
+                    out.invalidRegions << "${contigId}:${rs}-${re}".toString()
+                    out.invalidRegionContigs << contigId
+                    return
+                }
+                out.validRegions << region
                 contig.proteins.each { Protein p ->
                     int s = p.start, e = p.end
-                    if (e == 0 || e < region.genomicStart || s > region.genomicEnd) return
-                    boolean contained = s >= region.genomicStart && e <= region.genomicEnd
+                    boolean cdsOk = p.sourceFeature != null && s >= 1 && e >= s && (contig.length == 0 || e <= contig.length)
+                    if (!cdsOk) {
+                        if (badCdsSeen.add(p.id)) out.invalidCds << p.id
+                        return
+                    }
+                    if (e < rs || s > re) return
+                    boolean contained = s >= rs && e <= re
                     Map<String, Object> meta = new LinkedHashMap<>(region.metadata ?: [:])
                     meta.cdsOverlap = contained ? 'contained' : 'partial'
-                    (out.computeIfAbsent(p.id) { [] } as List<Annotation>) << new Annotation(
+                    (out.byProtein.computeIfAbsent(p.id) { [] } as List<Annotation>) << new Annotation(
                         type: region.type, value: region.value, score: region.score,
                         source: region.source, evidence: region.evidence,
                         evidenceType: region.evidenceType, contigId: region.contigId,
-                        genomicStart: region.genomicStart, genomicEnd: region.genomicEnd,
+                        genomicStart: rs, genomicEnd: re,
                         regionType: region.regionType, metadata: meta)
                 }
             }
@@ -212,15 +259,25 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def tsv = new File(outputDir, "${tag}.${predictorName}.genomic.tsv")
-        if (!tsv.exists()) return [:]
+        // Sidecar contract (run_genomic_predictors.py): the 6-column TSV is opened, header first,
+        // only after the wrapped tool produced results; on tool failure the sidecar logs a warning,
+        // writes NOTHING and still exits 0. So: no TSV = failed run; header-only = no region passed.
+        // UNVERIFIED limits of the sidecar itself: for geNomad it writes a header-only TSV even if
+        // neither summary file exists, and PhiSpy's missing prophage_coordinates.tsv is treated as
+        // "no prophages"; both are indistinguishable from a true zero here (see successNote()).
+        def tsv = requireOutput(outputDir, "${tag}.${predictorName}.genomic.tsv",
+            'run_genomic_predictors.py writes a header row whenever the wrapped tool produced output')
         Map<String, List<Annotation>> results = [:].withDefault { [] }
         boolean firstLine = true
+        int lineNo = 0
         tsv.eachLine { line ->
+            lineNo++
             if (firstLine) { firstLine = false; return }
             if (!line || line.startsWith('#')) return
             def parts = line.split('\t')
-            if (parts.size() < 5) return
+            if (parts.size() < 5) {
+                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: ${parts.size()} columns, expected 5-6")
+            }
             try {
                 String contig = parts[0]
                 int start = parts[1] as int
@@ -228,7 +285,10 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
                 String regionType = parts[3]
                 double score = parts[4] as double
                 String attributesRaw = parts.size() >= 6 ? parts[5] : ''
-                if (Double.isNaN(score) || score < minScore) return
+                if (Double.isNaN(score)) {
+                    throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: NaN score for ${contig}")
+                }
+                if (score < minScore) return
                 // Resolve annotation type from region_type when the predictor
                 // emits multiple kinds (e.g. geNomad: prophage / plasmid /
                 // viral_contig); fall back to the predictor's primary type.
@@ -251,6 +311,7 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
                         if (i > 0) meta[kv.substring(0, i)] = kv.substring(i + 1)
                     }
                 }
+                meta.putAll(regionMetadata())
                 // Genomic-region annotations are keyed by contig (not protein);
                 // we use the contig id as the map key so downstream consumers
                 // can group / flatten by chromosomal location.
@@ -267,8 +328,8 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
                     regionType: regionType,
                     metadata: meta,
                 )
-            } catch (NumberFormatException ignored) {
-                // skip malformed row
+            } catch (NumberFormatException e) {
+                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: non-numeric coordinate/score (${e.message})")
             }
         }
         results

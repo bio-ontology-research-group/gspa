@@ -46,12 +46,20 @@ real_protein_007 - 350 ANF00099 ANF00099 320 1.0e-05 25.1  0.0 1 1 5.0e-06  5.0e
         outputDir.deleteDir()
     }
 
-    def "handles missing output file"() {
+    def "missing domtblout is a failed run; a comment-only domtblout is a true zero"() {
         given:
         def predictor = new AntiFamPredictor()
         def outputDir = File.createTempDir("antifam_test_", "")
 
         when:
+        predictor.parseOutput(outputDir)
+
+        then:
+        thrown(gspa.predictor.ToolOutputContractException)
+
+        when: "hmmsearch with no hit still writes its '#' header and footer"
+        new File(outputDir, 'antifam_domtbl.tsv').text =
+            '# target name  accession  tlen query name ...\n# Program:         hmmsearch\n# [ok]\n'
         def results = predictor.parseOutput(outputDir)
 
         then:

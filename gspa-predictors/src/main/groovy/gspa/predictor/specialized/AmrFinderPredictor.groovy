@@ -40,8 +40,9 @@ class AmrFinderPredictor extends AbstractToolPredictor {
 
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
-        def outputFile = new File(outputDir, 'amrfinder_results.tsv')
-        if (!outputFile.exists()) return [:]
+        // AMRFinderPlus -o always writes the 'Protein identifier ...' header row.
+        def outputFile = requireOutput(outputDir, 'amrfinder_results.tsv',
+            'amrfinder -o always writes a header row, also with no hits')
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
@@ -80,7 +81,7 @@ class AmrFinderPredictor extends AbstractToolPredictor {
         results
     }
 
-    private static double safeDouble(String s) {
+    protected static double safeDouble(String s) {
         try { return s as double } catch (Exception e) { return 0.0 }
     }
 }

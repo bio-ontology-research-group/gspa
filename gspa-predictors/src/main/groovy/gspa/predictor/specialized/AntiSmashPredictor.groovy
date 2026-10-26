@@ -5,6 +5,8 @@ import gspa.model.AnnotationType
 import gspa.model.Genome
 import gspa.predictor.AbstractToolPredictor
 import gspa.predictor.GenomePredictor
+import gspa.predictor.ToolOutputContractException
+import gspa.model.Protein
 
 /**
  * antiSMASH predictor for biosynthetic gene cluster (BGC) detection.
@@ -43,8 +45,11 @@ class AntiSmashPredictor extends AbstractToolPredictor implements GenomePredicto
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
         // antiSMASH outputs a JSON file with region/cluster information
+        // antiSMASH always writes <record>.json (zero regions = empty 'areas'/'regions' list).
         def jsonFiles = outputDir.listFiles()?.findAll { it.name.endsWith('.json') && it.name != 'regions.js' }
-        if (!jsonFiles) return [:]
+        if (!jsonFiles) {
+            throw new ToolOutputContractException('antismash: no results .json in the output directory after a clean exit')
+        }
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
@@ -72,7 +77,8 @@ class AntiSmashPredictor extends AbstractToolPredictor implements GenomePredicto
                     }
                 }
             } catch (Exception e) {
-                log.warn("Failed to parse antiSMASH JSON ${jsonFile}: ${e.message}")
+                // an unreadable results file must not look like "no clusters"
+                throw new ToolOutputContractException("antismash: cannot parse ${jsonFile.name}: ${e.message}")
             }
         }
         results
@@ -80,28 +86,21 @@ class AntiSmashPredictor extends AbstractToolPredictor implements GenomePredicto
 
     @Override
     Map<String, List<Annotation>> predictGenome(Genome genome) {
-        def tmpDir = File.createTempDir("gspa_antismash_", '')
-        try {
-            def inputFasta = new File(tmpDir, 'genome.fna')
-            inputFasta.withWriter { writer ->
-                genome.contigs.each { contig ->
-                    if (contig.sequence) {
-                        writer.writeLine(">${contig.id}")
-                        writer.writeLine(contig.sequence)
-                    }
-                }
-            }
-            def outputDir = new File(tmpDir, 'output')
-            def command = buildCommand(inputFasta, outputDir)
-            def result = execute(command, tmpDir)
+        runGenomeTool(genome, 'genome.fna') { File tmp -> new File(tmp, 'output') }
+    }
 
-            if (result.exitCode != 0) {
-                log.error("antiSMASH failed: ${result.stderr}")
-                return [:]
-            }
-            return parseOutput(outputDir)
-        } finally {
-            tmpDir.deleteDir()
-        }
+    /** antiSMASH needs nucleotide records (it re-calls genes itself); protein FASTA is invalid input. */
+    @Override
+    Map<String, List<Annotation>> predictBatch(List<Protein> proteins) {
+        throw new UnsupportedOperationException('antismash is a genome-level predictor; call predictGenome(Genome)')
+    }
+
+    /**
+     * UNVERIFIED: antiSMASH is run with --genefinding-tool prodigal, so its CDS locus tags need
+     * not match the GSPA protein ids; unmatched ids are dropped by the pipeline's id join.
+     */
+    @Override
+    protected String successNote() {
+        'region members are keyed by antiSMASH locus tags; unmatched ids are not mapped to GSPA proteins (unverified)'
     }
 }
