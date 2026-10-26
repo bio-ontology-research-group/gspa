@@ -666,6 +666,16 @@ class TestBoundaries(unittest.TestCase):
 
 
 class TestHypothesesAndPolicy(Base):
+    def test_redundant_isozyme_deletion_is_executed_without_removing_shared_reaction(self):
+        model = copy.deepcopy(self.model)
+        model.gpr["GLYC1"] = [["g1"], ["g2"]]
+        ctx = {"hypotheses": [{"id": "isozyme", "gene": "g1"}], "evidence": []}
+        out = ME.run_experiments(manifest(ctx, strategy="fixed"), model)
+        ko = self.by_id(out)["knockout:isozyme"]
+        self.assertEqual(ko["outcome"], "growth_unchanged")
+        self.assertEqual(ko["measurements"]["knocked_out_reactions"], [])
+        self.assertEqual(ko["candidate_genes"], ["g1"])
+
     def test_reaction_hypothesis_survives_masked_gpr(self):
         ctx = {"hypotheses": [{"id": "H_masked", "gene": "masked_locus", "reactions": ["SEC"]},
                               {"id": "H_gene_only", "gene": "masked_locus"}],

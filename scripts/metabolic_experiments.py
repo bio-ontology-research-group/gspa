@@ -494,7 +494,7 @@ def build_menu(model: Model, manifest: dict[str, Any], max_focus: int = DEFAULT_
     for hid, h in hyps.items():
         rxns, genes = hyp_reactions(h)
         ev_ids = [e.get("id", "?") for e in ev_by_hyp[hid]]
-        if not rxns:
+        if not rxns and not genes:
             rejected.append({"item": hid, "reason": "hypothesis resolves to no model reaction"})
             continue
         ko = {"op": "knockout", "reactions": rxns, "genes": genes}
@@ -504,7 +504,7 @@ def build_menu(model: Model, manifest: dict[str, Any], max_focus: int = DEFAULT_
             if c.get(key) and exch_ok(c[key], hid):
                 cond.append({"op": op, "exchange": c[key]})
         suffix = "" if not cond else "@" + ",".join(m["exchange"] for m in cond)
-        add(f"knockout:{hid}{suffix}", "knockout", cond + [ko], f"knock out {','.join(rxns)}"
+        add(f"knockout:{hid}{suffix}", "knockout", cond + [ko], f"knock out {','.join(genes or rxns)}"
             + (f" under {suffix[1:]}" if cond else ""), ev_ids, [hid], rxns)
         resc = h.get("rescue_exchange")
         if resc and exch_ok(resc, hid):
