@@ -21,22 +21,45 @@ class GoReasoner {
 
     private static final String CACHE_FILE = 'has_part_pairs.tsv'
     private static final String CACHE_END = '# end'
+    private static final java.util.regex.Pattern GO_ID = java.util.regex.Pattern.compile('GO:\\d{7}')
 
     /**
      * Immutable has_part result, tagged with the ontology source digest it was
      * derived from so that a changed ontology never reuses it.
      */
     private static final class HasPartSnapshot {
-        final String ontologySha256
+        final OntologyState state
         final List<Map.Entry<String, String>> pairs
-        HasPartSnapshot(String ontologySha256, List<Map.Entry<String, String>> pairs) {
-            this.ontologySha256 = ontologySha256
+        HasPartSnapshot(OntologyState state, List<Map.Entry<String, String>> pairs) {
+            this.state = state
             this.pairs = pairs
         }
     }
 
+    /**
+     * Identity of the ontology a reasoner or a derived result belongs to: the
+     * OWL ontology instance, its source digest and its axiom count (the last
+     * catches in-place axiom edits).
+     */
+    private static final class OntologyState {
+        final OWLOntology ontology
+        final String sha256
+        final int axiomCount
+        OntologyState(OWLOntology ontology, String sha256) {
+            this.ontology = ontology
+            this.sha256 = sha256
+            this.axiomCount = ontology == null ? -1 : ontology.getAxiomCount()
+        }
+        boolean matches(OntologyState other) {
+            other != null && ontology.is(other.ontology) && sha256 == other.sha256 && axiomCount == other.axiomCount
+        }
+    }
+
     GoOntology goOntology
-    OWLReasoner reasoner
+    volatile OWLReasoner reasoner
+
+    // The ontology state the current reasoner was built over (guarded by hasPartLock).
+    private OntologyState reasonerState
 
     // Single-flight: the first caller computes (or loads) under this lock; the rest wait and reuse.
     private final Object hasPartLock = new Object()
@@ -51,18 +74,42 @@ class GoReasoner {
 
     /**
      * Initialize the ELK reasoner and precompute the class hierarchy.
-     * Any previously derived has_part results are discarded.
+     * Any previously derived has_part results are discarded. Re-initializing
+     * replaces the reasoner and disposes the previous one only after the new
+     * one is ready; if creation fails the previous reasoner stays in place.
      */
     void initialize() {
-        log.info("Initializing ELK reasoner...")
-        def factory = new ElkReasonerFactory()
-        def created = factory.createReasoner(goOntology.ontology)
-        created.precomputeInferences(InferenceType.CLASS_HIERARCHY)
         synchronized (hasPartLock) {
-            hasPartSnapshot = null
-            reasoner = created
+            initializeLocked()
         }
+    }
+
+    private void initializeLocked() {
+        log.info("Initializing ELK reasoner...")
+        def state = new OntologyState(goOntology.ontology, goOntology.sourceSha256)
+        OWLReasoner created = null
+        try {
+            created = new ElkReasonerFactory().createReasoner(goOntology.ontology)
+            created.precomputeInferences(InferenceType.CLASS_HIERARCHY)
+        } catch (Throwable t) {
+            disposeQuietly(created)
+            throw t
+        }
+        def previous = reasoner
+        hasPartSnapshot = null
+        reasoner = created
+        reasonerState = state
+        disposeQuietly(previous)
         log.info("ELK reasoner initialized, hierarchy precomputed")
+    }
+
+    private static void disposeQuietly(OWLReasoner toDispose) {
+        if (toDispose == null) return
+        try {
+            toDispose.dispose()
+        } catch (RuntimeException e) {
+            log.warn("Reasoner disposal failed: ${e.message}")
+        }
     }
 
     /**
@@ -124,8 +171,9 @@ class GoReasoner {
             if (current != null) return current.pairs
             if (loadHasPartCacheLocked()) return hasPartSnapshot.pairs
 
-            def pairs = extractHasPartPairs()
-            hasPartSnapshot = new HasPartSnapshot(goOntology.sourceSha256, pairs)
+            def state = new OntologyState(goOntology.ontology, goOntology.sourceSha256)
+            def pairs = extractHasPartPairs(state)
+            hasPartSnapshot = new HasPartSnapshot(state, pairs)
             if (cacheDir) {
                 try {
                     saveHasPartCache(pairs)
@@ -140,7 +188,7 @@ class GoReasoner {
     /** The in-memory snapshot, only if it was derived from the current ontology version. */
     private HasPartSnapshot currentSnapshot() {
         def snapshot = hasPartSnapshot
-        (snapshot != null && snapshot.ontologySha256 == goOntology.sourceSha256) ? snapshot : null
+        (snapshot != null && snapshot.state.matches(new OntologyState(goOntology.ontology, goOntology.sourceSha256))) ? snapshot : null
     }
 
     /** Discard in-memory derived has_part results (the disk cache is untouched). */
@@ -150,9 +198,15 @@ class GoReasoner {
         }
     }
 
-    private List<Map.Entry<String, String>> extractHasPartPairs() {
+    private List<Map.Entry<String, String>> extractHasPartPairs(OntologyState state) {
         if (reasoner == null) {
             throw new IllegalStateException('GoReasoner is not initialized or was disposed; cannot extract has_part pairs')
+        }
+        if (!state.matches(reasonerState)) {
+            // The reasoner was built over a different ontology instance/version: entailments
+            // from it must never be attributed to the current one.
+            log.info('Ontology changed since the reasoner was initialized; re-initializing before extraction')
+            initializeLocked()
         }
         log.info("Extracting has_part dependency pairs...")
         def df = goOntology.factory
@@ -290,16 +344,18 @@ class GoReasoner {
 
         List<Map.Entry<String, String>> pairs = new ArrayList<>(expected)
         Set<String> seen = new HashSet<>()
+        Set<String> known = goOntology.getAllGoTerms()
         for (String line : body) {
             def fields = line.split('\t', -1)
-            if (fields.length != 2 || !fields[0].startsWith('GO:') || !fields[1].startsWith('GO:')
+            if (fields.length != 2 || !GO_ID.matcher(fields[0]).matches() || !GO_ID.matcher(fields[1]).matches()
+                    || !known.contains(fields[0]) || !known.contains(fields[1])
                     || fields[0] == fields[1] || !seen.add(line)) {
                 log.warn("Ignoring has_part cache with an invalid record: ${cacheFile}")
                 return false
             }
             pairs << (Map.Entry<String, String>) new AbstractMap.SimpleImmutableEntry<>(fields[0], fields[1])
         }
-        hasPartSnapshot = new HasPartSnapshot(sha, Collections.unmodifiableList(pairs))
+        hasPartSnapshot = new HasPartSnapshot(new OntologyState(goOntology.ontology, sha), Collections.unmodifiableList(pairs))
         log.info("Loaded ${pairs.size()} cached has_part pairs from ${cacheFile}")
         true
     }
@@ -310,10 +366,10 @@ class GoReasoner {
      */
     void dispose() {
         synchronized (hasPartLock) {
-            if (reasoner != null) {
-                reasoner.dispose()
-                reasoner = null
-            }
+            def previous = reasoner
+            reasoner = null
+            reasonerState = null
+            disposeQuietly(previous)
         }
     }
 }
