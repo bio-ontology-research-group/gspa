@@ -1,0 +1,1341 @@
+{
+  "dataset_status": "real",
+  "engine": {
+    "args_style": "plain",
+    "command": [
+      "java",
+      "-Xmx24g",
+      "-jar",
+      "/data/hohndor/gspa-v3/development-e2303a9/gspa-development-e2303a9.jar"
+    ],
+    "jar": {
+      "bytes": 45073032,
+      "path": "/data/hohndor/gspa-v3/development-e2303a9/gspa-development-e2303a9.jar",
+      "sha256": "225c78615a563fa3b20c8d3bd00f56adcd41535f3995897381fb867aea491d56",
+      "status": "ok"
+    },
+    "java_version": [
+      "openjdk version \"21.0.12.1\" 2026-08-18",
+      "OpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)",
+      "OpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)"
+    ],
+    "launcher": {
+      "bytes": 14456,
+      "path": "/usr/bin/java",
+      "resolved": "/usr/bin/java",
+      "sha256": "635baf419576ec4ad4f785014283fb93f1be1103e6d02252f7a00517f0e2a245",
+      "status": "ok"
+    },
+    "source_dirty": null,
+    "source_revision": null
+  },
+  "evaluation": {
+    "assumptions": [
+      "Evaluation universe per genome = true pairs + every pair emitted by any executed arm, on labelled proteins only; the universe (and hence ECE/Brier) depends on which arms are compared and is identical for all arms of a genome.",
+      "A pair in the universe that an arm did not emit has score 0 (omission is not rewarded).",
+      "Closed world: a universe pair without a label is counted false, although labels are incomplete, so precision is a lower bound. This is a convention, not a guarantee of equal bias: arms that call more specific, novel or less-studied functions are penalised more than arms that call well-annotated ones, and correct but unlabelled calls are invisible. Compare arms with different specificity profiles conditionally on label completeness.",
+      "Proteins without any label of the scored kind are not evaluated; global Fmax picks its threshold on the evaluated labels."
+    ],
+    "bootstrap": 2000,
+    "eval_failures": {},
+    "kinds": {
+      "ec": {
+        "arms": {
+          "stage0": {
+            "calibration": {
+              "brier": 0.01391327808097831,
+              "brier_ci": {
+                "ci_high": 0.014664430988640214,
+                "ci_low": 0.013209738298698802,
+                "estimate": 0.01391327808097831,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "ece": 0.07148914607179788,
+              "ece_ci": {
+                "ci_high": 0.07282592447517526,
+                "ci_low": 0.0706914103111657,
+                "estimate": 0.07148914607179788,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "n_pairs": 14852.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 0.006244909041542221,
+                  "mean_score": 0.07744593588185875,
+                  "n": 14732.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.47619047619047616,
+                  "mean_score": 0.14414954405352462,
+                  "n": 21.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.45454545454545453,
+                  "mean_score": 0.25068778209100456,
+                  "n": 11.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.3333333333333333,
+                  "mean_score": 0.3510131157845533,
+                  "n": 6.0
+                },
+                {
+                  "bin": 4,
+                  "frac_true": 0.14285714285714285,
+                  "mean_score": 0.44738245529888426,
+                  "n": 7.0
+                },
+                {
+                  "bin": 5,
+                  "frac_true": 0.5466666666666666,
+                  "mean_score": 0.5649362692416596,
+                  "n": 75.0
+                }
+              ]
+            },
+            "ec_top1": {
+              "accuracy_ci": {
+                "ci_high": 0.42857142857142855,
+                "ci_low": 0.28,
+                "estimate": 0.3581081081081081,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "coverage": 1.0,
+              "n_labelled": 148.0,
+              "top1_accuracy": 0.3581081081081081,
+              "top1_precision_when_called": 0.3581081081081081
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.4351851851851852,
+                "ci_low": 0.2844036697247706,
+                "estimate": 0.36283185840707965,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "precision": {
+                "ci_high": 0.6521739130434783,
+                "ci_low": 0.4264705882352941,
+                "estimate": 0.5466666666666666,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "recall": {
+                "ci_high": 0.3333333333333333,
+                "ci_low": 0.21022727272727273,
+                "estimate": 0.271523178807947,
+                "n_boot": 2000,
+                "n_genomes": 22
+              }
+            },
+            "genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.5279187817258884,
+                "ci_low": 0.35156249999999994,
+                "estimate": 0.44029850746268656,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "fmax": 0.44029850746268656,
+              "precision": 0.5042735042735043,
+              "recall": 0.39072847682119205,
+              "threshold": 0.11,
+              "threshold_on_test": true
+            }
+          },
+          "stage1": {
+            "calibration": {
+              "brier": 0.01391327808097831,
+              "brier_ci": {
+                "ci_high": 0.014664430988640214,
+                "ci_low": 0.013209738298698802,
+                "estimate": 0.01391327808097831,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "ece": 0.07148914607179788,
+              "ece_ci": {
+                "ci_high": 0.07282592447517526,
+                "ci_low": 0.0706914103111657,
+                "estimate": 0.07148914607179788,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "n_pairs": 14852.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 0.006244909041542221,
+                  "mean_score": 0.07744593588185875,
+                  "n": 14732.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.47619047619047616,
+                  "mean_score": 0.14414954405352462,
+                  "n": 21.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.45454545454545453,
+                  "mean_score": 0.25068778209100456,
+                  "n": 11.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.3333333333333333,
+                  "mean_score": 0.3510131157845533,
+                  "n": 6.0
+                },
+                {
+                  "bin": 4,
+                  "frac_true": 0.14285714285714285,
+                  "mean_score": 0.44738245529888426,
+                  "n": 7.0
+                },
+                {
+                  "bin": 5,
+                  "frac_true": 0.5466666666666666,
+                  "mean_score": 0.5649362692416596,
+                  "n": 75.0
+                }
+              ]
+            },
+            "ec_top1": {
+              "accuracy_ci": {
+                "ci_high": 0.42857142857142855,
+                "ci_low": 0.28,
+                "estimate": 0.3581081081081081,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "coverage": 1.0,
+              "n_labelled": 148.0,
+              "top1_accuracy": 0.3581081081081081,
+              "top1_precision_when_called": 0.3581081081081081
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.4351851851851852,
+                "ci_low": 0.2844036697247706,
+                "estimate": 0.36283185840707965,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "precision": {
+                "ci_high": 0.6521739130434783,
+                "ci_low": 0.4264705882352941,
+                "estimate": 0.5466666666666666,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "recall": {
+                "ci_high": 0.3333333333333333,
+                "ci_low": 0.21022727272727273,
+                "estimate": 0.271523178807947,
+                "n_boot": 2000,
+                "n_genomes": 22
+              }
+            },
+            "genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.5279187817258884,
+                "ci_low": 0.35156249999999994,
+                "estimate": 0.44029850746268656,
+                "n_boot": 2000,
+                "n_genomes": 22
+              },
+              "fmax": 0.44029850746268656,
+              "precision": 0.5042735042735043,
+              "recall": 0.39072847682119205,
+              "threshold": 0.11,
+              "threshold_on_test": true
+            }
+          }
+        },
+        "universe": {
+          "GCA_000006965.1": {
+            "labelled_proteins": 18,
+            "pairs": 1809,
+            "true_pairs": 18
+          },
+          "GCA_003443575.1": {
+            "labelled_proteins": 9,
+            "pairs": 904,
+            "true_pairs": 9
+          },
+          "GCA_004402975.1": {
+            "labelled_proteins": 1,
+            "pairs": 102,
+            "true_pairs": 2
+          },
+          "GCF_000015245.1": {
+            "labelled_proteins": 7,
+            "pairs": 701,
+            "true_pairs": 7
+          },
+          "GCF_000016065.1": {
+            "labelled_proteins": 1,
+            "pairs": 100,
+            "true_pairs": 1
+          },
+          "GCF_000018145.1": {
+            "labelled_proteins": 2,
+            "pairs": 201,
+            "true_pairs": 2
+          },
+          "GCF_000020125.1": {
+            "labelled_proteins": 11,
+            "pairs": 1104,
+            "true_pairs": 13
+          },
+          "GCF_000146165.2": {
+            "labelled_proteins": 1,
+            "pairs": 100,
+            "true_pairs": 1
+          },
+          "GCF_000166295.1": {
+            "labelled_proteins": 2,
+            "pairs": 200,
+            "true_pairs": 2
+          },
+          "GCF_000203935.1": {
+            "labelled_proteins": 4,
+            "pairs": 400,
+            "true_pairs": 4
+          },
+          "GCF_000236665.1": {
+            "labelled_proteins": 1,
+            "pairs": 100,
+            "true_pairs": 1
+          },
+          "GCF_000237365.1": {
+            "labelled_proteins": 1,
+            "pairs": 100,
+            "true_pairs": 1
+          },
+          "GCF_000327065.1": {
+            "labelled_proteins": 10,
+            "pairs": 1003,
+            "true_pairs": 10
+          },
+          "GCF_000698265.1": {
+            "labelled_proteins": 17,
+            "pairs": 1702,
+            "true_pairs": 17
+          },
+          "GCF_000832305.1": {
+            "labelled_proteins": 5,
+            "pairs": 504,
+            "true_pairs": 5
+          },
+          "GCF_001307155.1": {
+            "labelled_proteins": 13,
+            "pairs": 1303,
+            "true_pairs": 13
+          },
+          "GCF_001307275.1": {
+            "labelled_proteins": 16,
+            "pairs": 1608,
+            "true_pairs": 16
+          },
+          "GCF_001440325.1": {
+            "labelled_proteins": 6,
+            "pairs": 603,
+            "true_pairs": 6
+          },
+          "GCF_001623525.1": {
+            "labelled_proteins": 10,
+            "pairs": 1005,
+            "true_pairs": 10
+          },
+          "GCF_001625455.1": {
+            "labelled_proteins": 6,
+            "pairs": 602,
+            "true_pairs": 6
+          },
+          "GCF_001633105.1": {
+            "labelled_proteins": 3,
+            "pairs": 301,
+            "true_pairs": 3
+          },
+          "GCF_002797435.1": {
+            "labelled_proteins": 4,
+            "pairs": 400,
+            "true_pairs": 4
+          }
+        },
+        "vs_baseline": {
+          "stage1": {
+            "delta_ece": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 2000,
+              "n_genomes": 22
+            },
+            "delta_f1_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 2000,
+              "n_genomes": 22
+            },
+            "delta_global_fmax": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 2000,
+              "n_genomes": 22
+            },
+            "delta_precision_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 2000,
+              "n_genomes": 22
+            },
+            "delta_recall_at_threshold": {
+              "ci_high": 0.0,
+              "ci_low": 0.0,
+              "estimate": 0.0,
+              "n_boot": 2000,
+              "n_genomes": 22
+            },
+            "matched_genomes": [
+              "GCA_000006965.1",
+              "GCA_003443575.1",
+              "GCA_004402975.1",
+              "GCF_000015245.1",
+              "GCF_000016065.1",
+              "GCF_000018145.1",
+              "GCF_000020125.1",
+              "GCF_000146165.2",
+              "GCF_000166295.1",
+              "GCF_000203935.1",
+              "GCF_000236665.1",
+              "GCF_000237365.1",
+              "GCF_000327065.1",
+              "GCF_000698265.1",
+              "GCF_000832305.1",
+              "GCF_001307155.1",
+              "GCF_001307275.1",
+              "GCF_001440325.1",
+              "GCF_001623525.1",
+              "GCF_001625455.1",
+              "GCF_001633105.1",
+              "GCF_002797435.1"
+            ],
+            "pair_correction": {
+              "corrected": 0.0,
+              "harmed": 0.0,
+              "mcnemar_p": 1.0,
+              "net": 0.0,
+              "net_ci": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 2000,
+                "n_genomes": 22
+              }
+            },
+            "top1_correction": {
+              "corrected": 0.0,
+              "harmed": 0.0,
+              "mcnemar_p": 1.0,
+              "net": 0.0,
+              "net_ci": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "estimate": 0.0,
+                "n_boot": 2000,
+                "n_genomes": 22
+              }
+            }
+          }
+        }
+      }
+    },
+    "seed": 13,
+    "threshold": 0.5
+  },
+  "execution_status": {
+    "stage0": {
+      "GCA_000006965.1": "executed",
+      "GCA_003443575.1": "executed",
+      "GCA_004402975.1": "executed",
+      "GCF_000015245.1": "executed",
+      "GCF_000016065.1": "executed",
+      "GCF_000018145.1": "executed",
+      "GCF_000020125.1": "executed",
+      "GCF_000146165.2": "executed",
+      "GCF_000166295.1": "executed",
+      "GCF_000203935.1": "executed",
+      "GCF_000236665.1": "executed",
+      "GCF_000237365.1": "executed",
+      "GCF_000327065.1": "executed",
+      "GCF_000698265.1": "executed",
+      "GCF_000832305.1": "executed",
+      "GCF_001307155.1": "executed",
+      "GCF_001307275.1": "executed",
+      "GCF_001440325.1": "executed",
+      "GCF_001623525.1": "executed",
+      "GCF_001625455.1": "executed",
+      "GCF_001633105.1": "executed",
+      "GCF_002797435.1": "executed"
+    },
+    "stage1": {
+      "GCA_000006965.1": "executed",
+      "GCA_003443575.1": "executed",
+      "GCA_004402975.1": "executed",
+      "GCF_000015245.1": "executed",
+      "GCF_000016065.1": "executed",
+      "GCF_000018145.1": "executed",
+      "GCF_000020125.1": "executed",
+      "GCF_000146165.2": "executed",
+      "GCF_000166295.1": "executed",
+      "GCF_000203935.1": "executed",
+      "GCF_000236665.1": "executed",
+      "GCF_000237365.1": "executed",
+      "GCF_000327065.1": "executed",
+      "GCF_000698265.1": "executed",
+      "GCF_000832305.1": "executed",
+      "GCF_001307155.1": "executed",
+      "GCF_001307275.1": "executed",
+      "GCF_001440325.1": "executed",
+      "GCF_001623525.1": "executed",
+      "GCF_001625455.1": "executed",
+      "GCF_001633105.1": "executed",
+      "GCF_002797435.1": "executed"
+    }
+  },
+  "experiment_id": "v3-price148-enzbert-development-e2303a9",
+  "go_propagation": false,
+  "leakage_controls": {
+    "cluster_disjoint": "not_declared",
+    "declared:context": "declared_unverified: truncated compact context",
+    "declared:predictor_training_overlap": "declared_unverified: not assessed: the six predictors' training sets may contain Price enzymes",
+    "declared:test_only": "declared_unverified: all genomes are test; no parameter was fitted or thresholded on Price labels",
+    "genome_id_disjoint": "verified",
+    "homology_clusters": "not_declared",
+    "label_separation": "verified",
+    "pretrained_model_leakage": "not_assessed",
+    "protein_id_disjoint": "not_assessed: no train/calibration proteins declared",
+    "species_disjoint": "not_declared"
+  },
+  "leakage_problems": [],
+  "n_not_executed": 0,
+  "provenance": {
+    "code": {
+      "v3_metrics.py": "c98b70bf9760b9605413f0b034e4712ccaa2a586d0ed7c671d952982e1504532",
+      "v3_runner.py": "3f7f8f3174840f8bacf3a08e066142464794c330e2300facd7d0907cbb190b67"
+    },
+    "git_commit": null,
+    "gspa_binary": {
+      "bytes": 45073032,
+      "path": "/data/hohndor/gspa-v3/development-e2303a9/gspa-development-e2303a9.jar",
+      "sha256": "225c78615a563fa3b20c8d3bd00f56adcd41535f3995897381fb867aea491d56",
+      "status": "ok"
+    },
+    "inputs": {
+      "GCA_000006965.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 398746,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCA_000006965.1.claims.jsonl",
+          "sha256": "20f47161959c9651cbc9c0dfe9fa5cfaf2623967b79c08763559a62b45b050f2",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 375,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCA_000006965.1.ec.tsv",
+            "sha256": "7d095996a696dfce0edbd93005cee97b69b93c6b533adfbb4f31199e9fdcf060",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCA_003443575.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 202007,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCA_003443575.1.claims.jsonl",
+          "sha256": "570b8c85f5ba25d89f5921c2870400ae3d903378f4f58c4d635aeffa60bbab12",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 192,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCA_003443575.1.ec.tsv",
+            "sha256": "db6a97912b1e7b9ff5d1d01ffd76e13d4c5ebb5123328333c4071d6a5c9007b9",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCA_004402975.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 21094,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCA_004402975.1.claims.jsonl",
+          "sha256": "404f675d29bb76d969c3f0a865fbe314f31bcf0fe8a2c8b55515f6e567a79b4f",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 54,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCA_004402975.1.ec.tsv",
+            "sha256": "cb70a481cc1e37ae419ef8c41dbc6fab9325d9ef521c0ddc4acb66431a0c3e34",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000015245.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 159964,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000015245.1.claims.jsonl",
+          "sha256": "df1d50258c3effd5cfd1426aed32beb9161c3cdd87c22d048c618abb606daf97",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 178,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000015245.1.ec.tsv",
+            "sha256": "ea619ae921131ddc316deb5313a2d492997affde12a99b810f6350e3e3586000",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000016065.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 22890,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000016065.1.claims.jsonl",
+          "sha256": "688823ec32a867997c7d3da1fce130053747665279e9dd8167b008ebe49c0984",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 38,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000016065.1.ec.tsv",
+            "sha256": "e456bf4315815e4d338abd1eb5904cdf57f6b6733a1921988bf8bd916ef5fcce",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000018145.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 43673,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000018145.1.claims.jsonl",
+          "sha256": "b8e636769e33f1a0edd5b64a5f157ce5a55524eb7feaa3c555cddd675d84c925",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 61,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000018145.1.ec.tsv",
+            "sha256": "53826ae33c8c4b585b516c1a42ddf503c496b77793db267cdbbd95574f9418ae",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000020125.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 246532,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000020125.1.claims.jsonl",
+          "sha256": "d5e794b96cb0fed1f6e76fc88e8233d0a06c30c539b335c52af0c41a65743eee",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 324,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000020125.1.ec.tsv",
+            "sha256": "a3ad13beeb6f73eb0c9bf1ccc29bf4852b89845ca69d0977702ad2e389e61abb",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000146165.2": {
+        "aux": {},
+        "claims": {
+          "bytes": 22868,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000146165.2.claims.jsonl",
+          "sha256": "66a4013f0a8bd16ddfba76ad0738bd9fdc526d95d3bba4f9e41fc0a892551b82",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 38,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000146165.2.ec.tsv",
+            "sha256": "18d8a339842a3f4e032bf2556d88eb3d7bfb59121613055b7b5a691510ea037b",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000166295.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 44906,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000166295.1.claims.jsonl",
+          "sha256": "2dd54adde935cfdd6eaa4c6872f4fa3b305d83d8ac68ac76bb6fd1546ba7066d",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 61,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000166295.1.ec.tsv",
+            "sha256": "faae429a0a4b36f2e6cd9151dcc83860e3edf6548f70336e8fdd035fbae80307",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000203935.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 94295,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000203935.1.claims.jsonl",
+          "sha256": "ad2df85a02ba94fd5b60697134387498455e46ca0fb17b64c5c08828afc3c342",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 109,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000203935.1.ec.tsv",
+            "sha256": "f71a6fa2df4526286429b24bfe83b9fb293b9afb8af1856c25b653b33ec82a86",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000236665.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 21843,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000236665.1.claims.jsonl",
+          "sha256": "91dccf4b881c324c2f41da4478b60fe935d42cce490beb64f07f8d17a44b1800",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 38,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000236665.1.ec.tsv",
+            "sha256": "5fc5bed8ab14c8022c3b8f764acfad87bc085b8383532622ccb6bd363fb7c926",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000237365.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 22395,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000237365.1.claims.jsonl",
+          "sha256": "8f21c530b89e845899ed9ba57408098284faf9313f010b07e08c818cfd7c1e9c",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 37,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000237365.1.ec.tsv",
+            "sha256": "56919e68b7ff3ca5679ea29f52f24b55bf0b11a27a7623b8f11ea4350cc257cf",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000327065.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 226238,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000327065.1.claims.jsonl",
+          "sha256": "6e5b7665bbea304a6cf37b1b3dd04c440ed0bec00195461ef8b8da909efc87d1",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 248,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000327065.1.ec.tsv",
+            "sha256": "6a4a40c93958c0e34fcacc37a75e50a698ecd810ee8e36c51d69a2fae4b93b8d",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000698265.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 387033,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000698265.1.claims.jsonl",
+          "sha256": "76560a80c372c14a84dcb35f026b77b6fb4cc4be33966e282baaf80375a94034",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 414,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000698265.1.ec.tsv",
+            "sha256": "29cffaf2a8a46f44d1e20997d4cf36391664af29a49b94509aa2ee6dcfdfbc4d",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_000832305.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 114427,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_000832305.1.claims.jsonl",
+          "sha256": "f7d21309be49145a5ad679a67354ef75745507eeb85b024162d7d3c409f589b9",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 135,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_000832305.1.ec.tsv",
+            "sha256": "6331bc190e222bdaa06ba71ba78b633980cc6cadc4a3b7404e09a3a55f6acbc4",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001307155.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 295384,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_001307155.1.claims.jsonl",
+          "sha256": "ff5590969a8532cf4dce5865f78743ccedc575f31c065438336c1368a23cf7b8",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 319,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001307155.1.ec.tsv",
+            "sha256": "242ce3d5c47f87a6000d0f6a901a787f231bbce2d8932bd2e99f3b67ef5ccd10",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001307275.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 357460,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_001307275.1.claims.jsonl",
+          "sha256": "e9c362e0701e6e0f04955fc920b721f98f682e384bd4dae4b988261dd0c936a5",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 395,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001307275.1.ec.tsv",
+            "sha256": "b221f50beeec77513463345b6cf53a4965e80c1d6faeb45b238dcc6e36b60e3a",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001440325.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 135643,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_001440325.1.claims.jsonl",
+          "sha256": "8bd2cccb03f4ab7297bafc8a90e2d1cbb24624496461fa29b765506f7274346f",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 156,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001440325.1.ec.tsv",
+            "sha256": "6a52b28c034859001bf66b42410ff6acd5be264669ed439c40e0e21102d47c28",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001623525.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 226343,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_001623525.1.claims.jsonl",
+          "sha256": "561c9642e9f95a7b69406e0c973478f727638b7bd3cafbfe3e8e28a60f704816",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 254,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001623525.1.ec.tsv",
+            "sha256": "8ac0401d5158b2cee45de50f0af90d072f18c2369965e9d98c2f41e454bc64e9",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001625455.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 137865,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_001625455.1.claims.jsonl",
+          "sha256": "ebbc413966eca20cc660211737158f8ae13406952f77ce4ef1b198e64dcbeb54",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 158,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001625455.1.ec.tsv",
+            "sha256": "e035f98658244e0ffcd2252f0d391387a4bb3d06fa9ebd7d0c6c7c3682845885",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_001633105.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 64786,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_001633105.1.claims.jsonl",
+          "sha256": "5baca67448427ab975d4520b5a63fa9e2358b508c0292be8d823f0dda3ab3dee",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 85,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_001633105.1.ec.tsv",
+            "sha256": "421f802699384ab233fafec633d1ec0fda99bb55d6f2850cd4e5af2143659b9d",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "GCF_002797435.1": {
+        "aux": {},
+        "claims": {
+          "bytes": 89609,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/claims/enzbert/GCF_002797435.1.claims.jsonl",
+          "sha256": "5b04671ef497ae774658a7711d6202a060674db12b2d07498113d2591717cefd",
+          "status": "ok"
+        },
+        "labels": {
+          "ec": {
+            "bytes": 111,
+            "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/labels/GCF_002797435.1.ec.tsv",
+            "sha256": "92519ecef786152e51316043901bbad1a789c0d7785fe7630d2d1fb91c887b0d",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      }
+    },
+    "manifest": {
+      "bytes": 9996,
+      "path": "/data/hohndor/gspa-v3/price-development-e2303a9/inputs/manifests/v3_price_enzbert.json",
+      "sha256": "03ceeffd2bfe9c49754696f4fbd66fb3ee676d9ae78b475023c403ac08ec390b",
+      "status": "ok"
+    },
+    "reference": {}
+  },
+  "runs": {
+    "stage0": {
+      "arm": "stage0",
+      "batch_manifest": {
+        "bytes": 5972,
+        "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/batch_manifest.tsv",
+        "sha256": "c1c67659a633afa1a5087402cf4e0837153a7664e33106e58d99adaa55f6a84f",
+        "status": "ok"
+      },
+      "command": [
+        "java",
+        "-Xmx24g",
+        "-jar",
+        "/data/hohndor/gspa-v3/development-e2303a9/gspa-development-e2303a9.jar",
+        "integrate",
+        "--batch-manifest",
+        "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/batch_manifest.tsv",
+        "--batch-stats-out",
+        "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/batch_stats.tsv",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8",
+        "--enable-priors",
+        "none"
+      ],
+      "failed": {},
+      "genomes": {
+        "GCA_000006965.1": {
+          "bytes": 173795,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCA_000006965.1.integrated.tsv",
+          "sha256": "8d4dead16768118a783efab1060c82e812c3f5630ea8bc3a22d6506d2b410474",
+          "status": "ok"
+        },
+        "GCA_003443575.1": {
+          "bytes": 88206,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCA_003443575.1.integrated.tsv",
+          "sha256": "25f8fd5f75a4a3a325c08914c29a706e6ff9ce0b9564043919de3bd794b6c4b0",
+          "status": "ok"
+        },
+        "GCA_004402975.1": {
+          "bytes": 9287,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCA_004402975.1.integrated.tsv",
+          "sha256": "334c733d9d8cd21fb033cd1c5e5928724faaa4daed3776da7f766cc19d6c7b28",
+          "status": "ok"
+        },
+        "GCF_000015245.1": {
+          "bytes": 71488,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000015245.1.integrated.tsv",
+          "sha256": "263726b9818341d45645bc38ca8fd2d74ab39db7a69b6b13ac6d97cbbf6061f5",
+          "status": "ok"
+        },
+        "GCF_000016065.1": {
+          "bytes": 10295,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000016065.1.integrated.tsv",
+          "sha256": "0d8c9711439f112b9fd9f566d389d8059325c07cda9015de1d7258edd3fc4c44",
+          "status": "ok"
+        },
+        "GCF_000018145.1": {
+          "bytes": 19626,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000018145.1.integrated.tsv",
+          "sha256": "85dbfe5c874c5b7af1d4fc7038174919aca44b28a1c6dc7622ec41a497193f52",
+          "status": "ok"
+        },
+        "GCF_000020125.1": {
+          "bytes": 110170,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000020125.1.integrated.tsv",
+          "sha256": "1507c11567728f7f210ef68889b5d944c9041d58169009ca85623e4cd1d001dd",
+          "status": "ok"
+        },
+        "GCF_000146165.2": {
+          "bytes": 10309,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000146165.2.integrated.tsv",
+          "sha256": "841513a765c06b5246f1cfb3fb4af55e5782bd6a3b2af4f4e3fa65b7f2b0dc9b",
+          "status": "ok"
+        },
+        "GCF_000166295.1": {
+          "bytes": 20159,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000166295.1.integrated.tsv",
+          "sha256": "460c34c40683f9cb3a3b7b11cffd74f19fc59681078ef44a82b26ebd8f9efefe",
+          "status": "ok"
+        },
+        "GCF_000203935.1": {
+          "bytes": 42328,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000203935.1.integrated.tsv",
+          "sha256": "a4a788572cb3e27182aea761ff265aacaab1da66be2db605bef8f0092957aff9",
+          "status": "ok"
+        },
+        "GCF_000236665.1": {
+          "bytes": 9877,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000236665.1.integrated.tsv",
+          "sha256": "4fcc47a5f61cb3e58841cd1c1850570505051e59c0e6d6c6dd3dcd1ac96501b2",
+          "status": "ok"
+        },
+        "GCF_000237365.1": {
+          "bytes": 10150,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000237365.1.integrated.tsv",
+          "sha256": "f1fc41893c6916b159e840912cff627498af0428a1578d4e139afcc0907959c6",
+          "status": "ok"
+        },
+        "GCF_000327065.1": {
+          "bytes": 101029,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000327065.1.integrated.tsv",
+          "sha256": "fdd256b3b88809e0375909adda1b10626db1afbda8a64495a16a1db270a109c0",
+          "status": "ok"
+        },
+        "GCF_000698265.1": {
+          "bytes": 172968,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000698265.1.integrated.tsv",
+          "sha256": "a5bd079b2417909ba0feed6b74578709fcb2b550487081f311359692ce39de9a",
+          "status": "ok"
+        },
+        "GCF_000832305.1": {
+          "bytes": 51237,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_000832305.1.integrated.tsv",
+          "sha256": "64809033d449843456d74b30501dab6348e09582ca287059bfc95275f84572c3",
+          "status": "ok"
+        },
+        "GCF_001307155.1": {
+          "bytes": 131961,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_001307155.1.integrated.tsv",
+          "sha256": "5206bfbcbacd1afe3821e7dac2a4ba8df5dfac30ef06197b657dee205ef4feb5",
+          "status": "ok"
+        },
+        "GCF_001307275.1": {
+          "bytes": 159601,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_001307275.1.integrated.tsv",
+          "sha256": "5fdc39c522318305fce23c8ee8a95dca5a1cf1bdb119c02f28e9248a905c1d8f",
+          "status": "ok"
+        },
+        "GCF_001440325.1": {
+          "bytes": 60742,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_001440325.1.integrated.tsv",
+          "sha256": "5521fc3df098e879ce902c56c4b330e6101f0194c9afac79d807446eed7d9e90",
+          "status": "ok"
+        },
+        "GCF_001623525.1": {
+          "bytes": 101289,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_001623525.1.integrated.tsv",
+          "sha256": "061fe00fa759013d2612b8afef258a665bf3e2d0718675a7c10e2217aa44efde",
+          "status": "ok"
+        },
+        "GCF_001625455.1": {
+          "bytes": 61745,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_001625455.1.integrated.tsv",
+          "sha256": "d7255c02eec0e2dfacda0aae9f44776cf25a04cc66f3b10eab60ad2cd778d7ae",
+          "status": "ok"
+        },
+        "GCF_001633105.1": {
+          "bytes": 28920,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_001633105.1.integrated.tsv",
+          "sha256": "cc6fa722c9cb5638af1b6f791fcdd45aa9fe961e3a9d1bc380bcd5ef20f762eb",
+          "status": "ok"
+        },
+        "GCF_002797435.1": {
+          "bytes": 40118,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage0/GCF_002797435.1.integrated.tsv",
+          "sha256": "0d95000c0c8755c2738b997274fcba5462969f9a78c5fa7fac4b7398076223ed",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 8.97,
+      "skipped": {},
+      "status": "executed"
+    },
+    "stage1": {
+      "arm": "stage1",
+      "batch_manifest": {
+        "bytes": 5972,
+        "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/batch_manifest.tsv",
+        "sha256": "78adaa9703ba6f56344eddfa28b6fa995863d620e247a6e8813d391200476234",
+        "status": "ok"
+      },
+      "command": [
+        "java",
+        "-Xmx24g",
+        "-jar",
+        "/data/hohndor/gspa-v3/development-e2303a9/gspa-development-e2303a9.jar",
+        "integrate",
+        "--batch-manifest",
+        "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/batch_manifest.tsv",
+        "--batch-stats-out",
+        "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/batch_stats.tsv",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8"
+      ],
+      "failed": {},
+      "genomes": {
+        "GCA_000006965.1": {
+          "bytes": 173795,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCA_000006965.1.integrated.tsv",
+          "sha256": "8d4dead16768118a783efab1060c82e812c3f5630ea8bc3a22d6506d2b410474",
+          "status": "ok"
+        },
+        "GCA_003443575.1": {
+          "bytes": 88206,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCA_003443575.1.integrated.tsv",
+          "sha256": "25f8fd5f75a4a3a325c08914c29a706e6ff9ce0b9564043919de3bd794b6c4b0",
+          "status": "ok"
+        },
+        "GCA_004402975.1": {
+          "bytes": 9287,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCA_004402975.1.integrated.tsv",
+          "sha256": "334c733d9d8cd21fb033cd1c5e5928724faaa4daed3776da7f766cc19d6c7b28",
+          "status": "ok"
+        },
+        "GCF_000015245.1": {
+          "bytes": 71488,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000015245.1.integrated.tsv",
+          "sha256": "263726b9818341d45645bc38ca8fd2d74ab39db7a69b6b13ac6d97cbbf6061f5",
+          "status": "ok"
+        },
+        "GCF_000016065.1": {
+          "bytes": 10295,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000016065.1.integrated.tsv",
+          "sha256": "0d8c9711439f112b9fd9f566d389d8059325c07cda9015de1d7258edd3fc4c44",
+          "status": "ok"
+        },
+        "GCF_000018145.1": {
+          "bytes": 19626,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000018145.1.integrated.tsv",
+          "sha256": "85dbfe5c874c5b7af1d4fc7038174919aca44b28a1c6dc7622ec41a497193f52",
+          "status": "ok"
+        },
+        "GCF_000020125.1": {
+          "bytes": 110170,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000020125.1.integrated.tsv",
+          "sha256": "1507c11567728f7f210ef68889b5d944c9041d58169009ca85623e4cd1d001dd",
+          "status": "ok"
+        },
+        "GCF_000146165.2": {
+          "bytes": 10309,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000146165.2.integrated.tsv",
+          "sha256": "841513a765c06b5246f1cfb3fb4af55e5782bd6a3b2af4f4e3fa65b7f2b0dc9b",
+          "status": "ok"
+        },
+        "GCF_000166295.1": {
+          "bytes": 20159,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000166295.1.integrated.tsv",
+          "sha256": "460c34c40683f9cb3a3b7b11cffd74f19fc59681078ef44a82b26ebd8f9efefe",
+          "status": "ok"
+        },
+        "GCF_000203935.1": {
+          "bytes": 42328,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000203935.1.integrated.tsv",
+          "sha256": "a4a788572cb3e27182aea761ff265aacaab1da66be2db605bef8f0092957aff9",
+          "status": "ok"
+        },
+        "GCF_000236665.1": {
+          "bytes": 9877,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000236665.1.integrated.tsv",
+          "sha256": "4fcc47a5f61cb3e58841cd1c1850570505051e59c0e6d6c6dd3dcd1ac96501b2",
+          "status": "ok"
+        },
+        "GCF_000237365.1": {
+          "bytes": 10150,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000237365.1.integrated.tsv",
+          "sha256": "f1fc41893c6916b159e840912cff627498af0428a1578d4e139afcc0907959c6",
+          "status": "ok"
+        },
+        "GCF_000327065.1": {
+          "bytes": 101029,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000327065.1.integrated.tsv",
+          "sha256": "fdd256b3b88809e0375909adda1b10626db1afbda8a64495a16a1db270a109c0",
+          "status": "ok"
+        },
+        "GCF_000698265.1": {
+          "bytes": 172968,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000698265.1.integrated.tsv",
+          "sha256": "a5bd079b2417909ba0feed6b74578709fcb2b550487081f311359692ce39de9a",
+          "status": "ok"
+        },
+        "GCF_000832305.1": {
+          "bytes": 51237,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_000832305.1.integrated.tsv",
+          "sha256": "64809033d449843456d74b30501dab6348e09582ca287059bfc95275f84572c3",
+          "status": "ok"
+        },
+        "GCF_001307155.1": {
+          "bytes": 131961,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_001307155.1.integrated.tsv",
+          "sha256": "5206bfbcbacd1afe3821e7dac2a4ba8df5dfac30ef06197b657dee205ef4feb5",
+          "status": "ok"
+        },
+        "GCF_001307275.1": {
+          "bytes": 159601,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_001307275.1.integrated.tsv",
+          "sha256": "5fdc39c522318305fce23c8ee8a95dca5a1cf1bdb119c02f28e9248a905c1d8f",
+          "status": "ok"
+        },
+        "GCF_001440325.1": {
+          "bytes": 60742,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_001440325.1.integrated.tsv",
+          "sha256": "5521fc3df098e879ce902c56c4b330e6101f0194c9afac79d807446eed7d9e90",
+          "status": "ok"
+        },
+        "GCF_001623525.1": {
+          "bytes": 101289,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_001623525.1.integrated.tsv",
+          "sha256": "061fe00fa759013d2612b8afef258a665bf3e2d0718675a7c10e2217aa44efde",
+          "status": "ok"
+        },
+        "GCF_001625455.1": {
+          "bytes": 61745,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_001625455.1.integrated.tsv",
+          "sha256": "d7255c02eec0e2dfacda0aae9f44776cf25a04cc66f3b10eab60ad2cd778d7ae",
+          "status": "ok"
+        },
+        "GCF_001633105.1": {
+          "bytes": 28920,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_001633105.1.integrated.tsv",
+          "sha256": "cc6fa722c9cb5638af1b6f791fcdd45aa9fe961e3a9d1bc380bcd5ef20f762eb",
+          "status": "ok"
+        },
+        "GCF_002797435.1": {
+          "bytes": 40118,
+          "path": "/data/hohndor/gspa-v3/price-development-e2303a9/results-retry1/enzbert/arms/stage1/GCF_002797435.1.integrated.tsv",
+          "sha256": "0d95000c0c8755c2738b997274fcba5462969f9a78c5fa7fac4b7398076223ed",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 14.142,
+      "skipped": {},
+      "status": "executed"
+    }
+  },
+  "schema_version": 1,
+  "status": "evaluated"
+}
