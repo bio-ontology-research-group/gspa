@@ -1,0 +1,106 @@
+{
+  "schema": "gspa.training-cohort-registry/1",
+  "description": "Roles of every local dataset considered for the learned context model (audit 2026-10-26). `role`: development = repeatedly examined, never test; examined = touched by v2 tuning/audit, test use supports disjointness only; reference = labels from external curated truth, not yet used to tune; results_only = aggregates, no raw per-candidate rows; unlabelled = no truth; excluded = out by instruction. `genome_level: false` cohorts have no genome layout and cannot enter a genome split table. Counts are quoted from files read on 2026-10-26 (see docs/benchmarks/v3-training-data.md).",
+  "datasets": [
+    {
+      "id": "price148",
+      "role": "development",
+      "allowed_splits": ["train", "calibration"],
+      "genome_level": true,
+      "labels": "RB-TnSeq fitness-validated exact EC per target protein (positive only; one validated EC per target)",
+      "counts": {"targets": 148, "genomes": 22, "predictors": 6},
+      "location": "benchmark/manifests/reference_data/ibex_extracted/price149_all6_compact.pkl.gz; whole-proteome matrices on the remote host (root-owned)",
+      "gaps": ["repeatedly examined: cannot be called untouched test", "no negative truth: other ECs on a target are unconfirmed, not false", "family/cluster map pending", "compact artifact has truncated context; full proteome context being prepared by root"]
+    },
+    {
+      "id": "p03_panel13_go",
+      "role": "examined",
+      "allowed_splits": ["train", "calibration", "test"],
+      "genome_level": true,
+      "labels": "GOA experimental-evidence GO per protein (bench10/truth/*_truth_exp.tsv); all-evidence files are mostly IEA and are not truth",
+      "counts": {"genomes": 13, "experimental_truth_bytes": "vcholerae 46, rprowazekii 25, tpallidum 46, saureus 1125, spneumoniae 1631, ccrescentus 814"},
+      "location": "unimatrix01 /data/hohndor/gspa/proteomes/bench10 (hashes in paper-reproducibility/manifest/data_manifest.tsv)",
+      "gaps": ["cluster-resident, not verified locally", "v2 hyperparameters were retuned during the v2 audit while these genomes were in view", "most genomes carry almost no experimental truth", "E. coli K-12 is the v2 calibration genome and must not be test"]
+    },
+    {
+      "id": "cafa6_recon_go",
+      "role": "reference",
+      "allowed_splits": ["train", "calibration", "test"],
+      "genome_level": false,
+      "labels": "Kaggle CAFA6 pre-t0 train_terms (537,027 pairs, 82,404 proteins) and a later-snapshot experimental superset reconstruction (562,499 pairs)",
+      "counts": {"train_proteins": 82404, "validation_fold_subset_of_train": 25000, "test_superset": 224309},
+      "location": "benchmark/neural/cafa6_recon (untracked, local); /home/leechuck/Public/software/cafa6/kaggle-official",
+      "gaps": ["protein-level: no genome layout/operon/assembly context, so context features are unobservable", "validation fold is a subset of train", "GOA record dates are not first-assertion dates", "no homology clusters shipped for a family-disjoint split"]
+    },
+    {
+      "id": "swissprot_holdout227",
+      "role": "reference",
+      "allowed_splits": ["test"],
+      "genome_level": false,
+      "labels": "UniProt EC numbers on entries created 2025-02-05 .. 2026-01-28 (model-training cutoff proxy, not annotation time)",
+      "counts": {"proteins": 227, "organisms": 121, "strict_zero_seq_hash_leakage": 66},
+      "location": "benchmark/manifests/reference_data/paperA_2026/benchmark/swissprot_holdout; raw EC matrices in ibex_extracted/holdout227_*.pkl",
+      "gaps": ["protein-level", "227 proteins, 121 organisms: no genome context", "EC may be inherited from homologues of older entries"]
+    },
+    {
+      "id": "lro50_masking",
+      "role": "development",
+      "allowed_splits": ["train", "calibration"],
+      "genome_level": false,
+      "labels": "50 masked-reaction cases, true protein among top-5 RLGC candidates",
+      "counts": {"cases": 50, "candidates_per_case": 5},
+      "location": "benchmark/manifests/reference_data/lro50_real_unimatrix.json; pillar4_proteome_candidates.json",
+      "gaps": ["candidate lists are truncated at 5 and pre-ranked by the earlier RLGC stage: cannot teach a null outcome", "development set"]
+    },
+    {
+      "id": "cafa_temporal_holdout_real",
+      "role": "results_only",
+      "allowed_splits": [],
+      "genome_level": false,
+      "labels": "aggregate F-max per aspect/bucket (4,712 MF / 5,969 CC / 5,444 BP test proteins)",
+      "counts": {},
+      "location": "benchmark/manifests/reference_data/ibex_extracted/cafa_temporal_holdout_real.json",
+      "gaps": ["no per-protein rows, no raw candidates, t0 and GOA release undefined"]
+    },
+    {
+      "id": "full_genome_eval_gbff_pkls",
+      "role": "results_only",
+      "allowed_splits": [],
+      "genome_level": true,
+      "labels": "scores computed by the old whole_genome_cafa runner",
+      "counts": {"files": 12, "genomes_per_file": 73, "evaluated_proteins_per_file": 52814},
+      "location": "benchmark/manifests/reference_data/ibex_extracted/full_genome_eval_gbff_fmax_*.pkl",
+      "gaps": ["each file is a dict of old-runner outputs (per-protein F-max, 184 corrections / 76 regressions, 54,642 score changes, per-GCF summaries), not raw candidate matrices", "the 'meteor' arm is the old Python reimplementation; the truth source is not recorded in the file", "no candidate-level features or labels can be rebuilt from it"]
+    },
+    {
+      "id": "suite2_multikingdom_3100",
+      "role": "unlabelled",
+      "allowed_splits": [],
+      "genome_level": false,
+      "labels": "metadata only; 2,268 rows are eggNOG predictions (not truth), 832 are partial GOA archaeal proteomes (annotated proteins only)",
+      "counts": {"taxa": 3100, "goa_sourced": 832},
+      "location": "benchmark/manifests/suite2_multikingdom_3100_manifest.tsv",
+      "gaps": ["no sequences or truth for whole genomes", "useful only for taxonomy-aware split design"]
+    },
+    {
+      "id": "emptyquarter_cultures",
+      "role": "unlabelled",
+      "allowed_splits": [],
+      "genome_level": true,
+      "labels": "none",
+      "counts": {"soil_bins": 16333, "culture_genomes": 722},
+      "location": "benchmark/emptyquarter_mags/results",
+      "gaps": ["no experimental truth: usable only for unlabelled context features (cohort recurrence), not labels"]
+    },
+    {
+      "id": "allthebacteria",
+      "role": "excluded",
+      "allowed_splits": [],
+      "genome_level": true,
+      "labels": "n/a",
+      "counts": {},
+      "location": "n/a",
+      "gaps": ["excluded by instruction"]
+    }
+  ]
+}
