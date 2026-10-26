@@ -570,6 +570,50 @@ def resolve_objective(model: Model, manifest: dict[str, Any]) -> tuple[str, str]
     return terms[0][0], "sbml_active_objective"
 
 
+def validate_condition_constraints(model: Model, manifest: dict[str, Any], external: set[str]) -> list[dict]:
+    """Validate independently specified regulatory closures, never infer them from outcomes."""
+    constraints = manifest.get("condition_constraints", [])
+    if not isinstance(constraints, list):
+        raise ManifestError("condition_constraints must be a list")
+    for con in constraints:
+        if not isinstance(con, dict) or con.get("schema") != "gspa.v3.condition_constraint/1" or \
+                con.get("type") != "regulatory_reaction_closure":
+            raise ManifestError("unsupported condition constraint schema or type")
+        if con.get("status") != "fully_specified":
+            raise ManifestError("condition constraint is not fully specified")
+        if con.get("bounds") != {"lower": 0.0, "upper": 0.0, "units": "mmol/gDW/h"}:
+            raise ManifestError("regulatory closure requires zero bounds in mmol/gDW/h")
+        if con.get("substrate_exchange") not in external:
+            raise ManifestError("regulatory substrate is not a declared external exchange")
+        if con.get("applies_to") != ["wild_type_control", "knockout"]:
+            raise ManifestError("regulatory closure must apply to both control and knockout")
+        reactions = con.get("closed_reactions")
+        if not isinstance(reactions, list) or any(not isinstance(r, str) for r in reactions) or \
+                len(reactions) != len(set(reactions)) or any(r not in model.rxn_index for r in reactions):
+            raise ManifestError("regulatory closures require unique mapped reaction identifiers")
+        if not isinstance(con.get("source"), dict) or not con["source"]:
+            raise ManifestError("regulatory closure requires source provenance")
+    return constraints
+
+
+def apply_condition_constraints(model: Model, constraints: list[dict], lb, ub) -> list[dict]:
+    """Apply closures only when their substrate can be taken up in this experiment.
+
+    Intersect with existing constraints: a closure cannot erase an ATP maintenance
+    or biomass lower bound. Activation is evaluated before applying any closure.
+    """
+    active = []
+    for con in constraints:
+        col, coeff = model.exchange(con["substrate_exchange"])
+        if (lb[col] < 0 if coeff < 0 else ub[col] > 0):
+            active.append(con)
+    for con in active:
+        for rid in con["closed_reactions"]:
+            col = model.rxn_index[rid]
+            lb[col], ub[col] = max(lb[col], 0.0), min(ub[col], 0.0)
+    return active
+
+
 class Runner:
     def __init__(self, model: Model, manifest: dict[str, Any], cfg: dict[str, Any]):
         self.model, self.manifest, self.cfg = model, manifest, cfg
@@ -582,6 +626,7 @@ class Runner:
         obj, self.objective_source = resolve_objective(model, manifest)
         self.bio = model.rxn_index[obj]
         self.external = validate_boundary(model, manifest)
+        self.condition_constraints = validate_condition_constraints(model, manifest, self.external)
         self.base_lb, self.base_ub = baseline_bounds(model, manifest, cfg, self.external)
         self.baseline_growth: float | None = None
         self.baseline_outcome: str | None = None
@@ -618,6 +663,7 @@ class Runner:
         first = len(self.solver.log)
         try:
             killed = apply_mods(model, self.manifest, cfg, lb, ub, item["mods"], self.external)
+            rec["condition_constraints"] = apply_condition_constraints(model, self.condition_constraints, lb, ub)
             rec["measurements"]["knocked_out_reactions"] = killed
             r, growth = self._growth(lb, ub, f"{item['id']}:max_growth")
             m = rec["measurements"]

@@ -8,6 +8,7 @@ Labels are passed only to the evaluator, after each simulation has completed.
 from __future__ import annotations
 
 import argparse
+import copy
 from collections import Counter
 import hashlib
 import json
@@ -85,6 +86,30 @@ def summarize(rows: list[dict]) -> dict:
     }
 
 
+def execution_manifest(record: dict) -> dict:
+    """Translate the frozen regulatory sidecar without consulting measured labels."""
+    if "manifest" in record:
+        if record.get("constraints"):
+            raise ValueError("ambiguous manifest plus sidecar constraints")
+        return copy.deepcopy(record["manifest"])
+    manifest = copy.deepcopy(record["manifest_without_closures"])
+    constraints = record.get("constraints")
+    if not isinstance(constraints, list) or not constraints:
+        raise ValueError("regulatory case lacks constraints")
+    if manifest.get("condition_constraints"):
+        raise ValueError("regulatory constraints specified twice")
+    expected = record.get("inputs_sha256")
+    digest = hashlib.sha256(json.dumps({"manifest": manifest, "constraints": constraints},
+                                     sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if expected != digest:
+        raise ValueError("regulatory input digest mismatch")
+    substrate = record["case"].get("substrate_exchange")
+    if any(c.get("substrate_exchange") != substrate for c in constraints):
+        raise ValueError("regulatory substrate differs from registered case")
+    manifest["condition_constraints"] = copy.deepcopy(constraints)
+    return manifest
+
+
 def run_benchmark(cases_path: Path, out: Path, model_override: Path | None = None) -> dict:
     records = [json.loads(line) for line in cases_path.read_text().splitlines() if line.strip()]
     ids = [r["case"]["case_id"] for r in records]
@@ -96,9 +121,10 @@ def run_benchmark(cases_path: Path, out: Path, model_override: Path | None = Non
     model_cache: dict[tuple, Any] = {}
     rows = []
     for i, record in enumerate(records):
-        case, manifest = record["case"], record["manifest"]
+        case = record["case"]
         result_path = out / f"case-{i:04d}.json"
         try:
+            manifest = execution_manifest(record)
             model_path = model_override or Path(manifest["model"])
             if not model_path.is_absolute():
                 model_path = cases_path.resolve().parent / model_path
@@ -125,6 +151,10 @@ def run_benchmark(cases_path: Path, out: Path, model_override: Path | None = Non
             ko_conditions = [m for m in knockouts[0]["mods"] if m["op"] != "knockout"]
             if controls[0]["mods"] != ko_conditions:
                 raise ValueError("wild-type control and knockout conditions differ")
+            if manifest.get("condition_constraints") and any(
+                    not any(m.get("exchange") == c["substrate_exchange"] and m["op"] == "carbon_swap"
+                            for m in controls[0]["mods"]) for c in manifest["condition_constraints"]):
+                raise ValueError("regulatory substrate differs from simulated carbon condition")
             # No measured label, OD value or case metadata is passed to inference.
             result = ME.run_experiments(manifest, model)
             result_path.write_text(json.dumps(result, indent=2) + "\n")

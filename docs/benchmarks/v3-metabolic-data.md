@@ -55,7 +55,7 @@ registered baseline, SHA-256 `58504287...`; a test rebuilds it with and without 
 |---|---:|---:|---:|---|---|---|
 | `legacy_repository_defaults` | 6.86 | 15 | 10 | no | `cases.jsonl` | supported (frozen baseline, not the paper) |
 | `manuscript_unregulated` | 8.39 | 20 | 10 | no | `cases_manuscript_unregulated.jsonl` | **supported**: runnable manifests that differ from legacy only in the ATPM bound and the O2 limit |
-| `manuscript_regulatory` | 8.39 | 20 | 10 | S2 | `cases_manuscript_regulatory.jsonl` | **unsupported until wired** |
+| `manuscript_regulatory` | 8.39 | 20 | 10 | S2 | `cases_manuscript_regulatory.jsonl` | **supported**: typed substrate-specific closures applied to both matched experiments |
 
 `protocol_registry.json` stores, per parameter, its provenance (quote or constant name, source hash), the discrepancy
 list against the legacy run, and the closure semantics. `regulatory_closures.json` holds the closures of 46 substrates
@@ -64,9 +64,11 @@ for every substrate) with the hashes of the S1 and S2 members.
 
 Regulatory records carry **typed sidecar constraints** (`regulatory_reaction_closure`: lower = upper = 0 on each listed
 reaction, applying to both matched experiments, only S2 rows flagged `applied`; the `relaxed_FlagB` rows were relaxed by
-the authors to keep the model viable and are listed, not closed). `scripts/metabolic_experiments.py` has no
-baseline-condition closure, so these records have **no `manifest` key**: a runner that is not wired fails the case
-visibly instead of running it as an unregulated one. The base manifest is stored as `manifest_without_closures`.
+the authors to keep the model viable and are listed, not closed). The frozen records have **no `manifest` key**;
+the runner validates their original digest and translates `manifest_without_closures` plus the sidecar into
+`condition_constraints`. The engine applies closures when the specified substrate has uptake enabled, equally
+to control and knockout, and intersects them with existing bounds so maintenance cannot be erased. It records
+active closures separately from gene deletions. Unsupported or incomplete constraints fail explicitly.
 Closures are not encoded as gene knockouts. All 61 strain/substrate cases are fully specified (24 substrates; 21
 distinct closure sets among the cases). A substrate without an S2 set, or a closure naming a reaction absent from the
 model, becomes `excluded:<reason>` and is never guessed (neither occurs in the real data).
@@ -180,8 +182,8 @@ with measured negatives or conditions was not located.
 
 ## What the root can run
 
-- **`manuscript_unregulated`**: `python benchmark/v3/run_metabolic_benchmark.py --cases <data>/derived/cases_manuscript_unregulated.jsonl --model <data>/raw/iML1515.xml --out <new dir>`. The runner is unchanged and accepts these records (`manifest` key present, model hash registered); the manifests were validated with the engine's `validate_manifest` / `build_menu` in tests, but no LP was run here.
-- **`manuscript_regulatory`**: needs a baseline-condition closure in the engine (lower = upper = 0 on the sidecar's reactions, in both matched experiments, before the knockout). Until then it must not be run or reported.
+- **`manuscript_unregulated`**: `python benchmark/v3/run_metabolic_benchmark.py --cases <data>/derived/cases_manuscript_unregulated.jsonl --model <data>/raw/iML1515.xml --out <new dir>`. The manifest and model hash are validated before execution.
+- **`manuscript_regulatory`**: use the same command with `cases_manuscript_regulatory.jsonl`. The runner validates and applies the frozen sidecar; mechanistic LP tests verify isozyme suppression, matched controls, substrate specificity and maintenance preservation.
 - **Community pairs**: `wintermute2010_cases.jsonl` needs a pair-growth runner with a frozen trace-metal and oxygen choice.
 - Report the three protocols side by side with the legacy run labelled as repository defaults. No condition may be tuned against the 61 labels.
 
@@ -219,4 +221,4 @@ No LP benchmark was run here; the root runs them.
 - Secondary-metabolite production with measured negatives, titres or media (item 12): not located. MIBiG is
   positive-only.
 - Held-out organisms with measured growth across media beyond E. coli (item 12) are not covered.
-- The manuscript regulatory protocol needs engine support for baseline-condition reaction closures before it can run.
+- The manuscript protocols require separate empirical reports; passing mechanistic tests is not evidence of phenotype accuracy.
