@@ -475,5 +475,64 @@ class TestBlockCache(Base):
         self.assertIsNot(CM._block_coo(m), first)
 
 
+class TestNativeClosedUptake(unittest.TestCase):
+    """BiGG-style models (iML1515) have uptake lower bound 0 on every exchange outside their own medium."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.dir = Path(cls.tmp.name)
+        a = auxotroph()
+        a["EX_vit_e"] = ({"vit_e": 1}, {}, 0, 1000, None)          # uptake closed natively
+        write_sbml(cls.dir / "P.xml", producer(), SPECIES)
+        write_sbml(cls.dir / "A_closed.xml", a, SPECIES)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def manifest(self, open_uptake):
+        extra = {"open_uptake": open_uptake} if open_uptake else {}
+        return {
+            "organisms": [spec("P", "P.xml", {"EX_glc_e": port("glc"), "EX_vit_e": port("vit")}),
+                          spec("A", "A_closed.xml", {"EX_glc_e": port("glc"),
+                                                     "EX_vit_e": port("vit", "predicted", **extra)})],
+            "pool": {"metabolites": {"glc": {}, "vit": {}}, "supply": {"glc": 10.0}, "removal": {}},
+            "community": {"biomass_ratio": {"P": 1, "A": 1}}, "experiments": [], "config": {}}
+
+    def outcome(self, open_uptake):
+        out = CM.run_community(self.manifest(open_uptake), self.dir)
+        return next(r for r in out["experiments"] if r["id"] == "community")["outcome"]
+
+    def test_native_bounds_make_the_transfer_impossible(self):
+        self.assertEqual(self.outcome(None), "no_common_growth")
+
+    def test_open_uptake_lets_the_partner_product_be_imported(self):
+        self.assertEqual(self.outcome(1000.0), "common_growth")
+
+    def test_open_uptake_does_not_create_nutrients_from_nothing(self):
+        m = self.manifest(1000.0)
+        m["organisms"][0]["ports"].pop("EX_vit_e")                   # producer cannot export: nothing to import
+        m["organisms"][0]["closed_ports"] = ["EX_vit_e"]
+        out = CM.run_community(m, self.dir)
+        self.assertEqual(next(r for r in out["experiments"] if r["id"] == "community")["outcome"],
+                         "no_common_growth")
+
+    def test_uptake_closure_still_overrides_open_uptake(self):
+        m = self.manifest(1000.0)
+        m["experiments"] = [{"id": "close_import", "closed_ports": [
+            {"organism": "A", "exchange": "EX_vit_e", "direction": "uptake"}]}]
+        out = CM.run_community(m, self.dir)
+        self.assertEqual(next(r for r in out["experiments"] if r["id"] == "user:close_import")["outcome"],
+                         "no_common_growth")
+
+    def test_invalid_open_uptake_is_rejected(self):
+        for bad in (0, -1.0, float("nan"), "x"):
+            m = self.manifest(None)
+            m["organisms"][1]["ports"]["EX_vit_e"]["open_uptake"] = bad
+            with self.assertRaises(ManifestError):
+                CM.run_community(m, self.dir)
+
+
 if __name__ == "__main__":
     unittest.main()

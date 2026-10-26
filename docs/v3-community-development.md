@@ -4,8 +4,10 @@
 (`wintermute2010_cases.jsonl`, see `docs/benchmarks/v3-metabolic-data.md`) through the production
 community engine (`scripts/community_metabolism.py`, which builds on `metabolic_experiments.py`).
 
-**Status: implemented and mechanistically tested; no real run has been made.** The full run is the
-root's Slurm job. Nothing below is a result.
+**Status: implemented and mechanistically tested.** A first real run (protocol revision 1) was all
+negative because native exchange bounds closed uptake of every organic; see
+`docs/v3-community-diagnosis.md` for the cause and the revision-2 fix. The sections below describe the
+design; the "no real run" statements in them predate that run.
 
 ## What is tested, and what is not
 

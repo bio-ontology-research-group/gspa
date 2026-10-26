@@ -25,7 +25,7 @@ TRACE_EX = ["R_EX_fe2_e"]
 MINERALS = ["glc__D", "nh4", "pi", "fe2", "h2o", "h", "co2", "o2", "vitA", "vitB"]
 
 
-def write_model(path, atpm=1.0):
+def write_model(path, atpm=1.0, organic_uptake_closed=False):
     ns = libsbml.SBMLNamespaces(3, 1)
     ns.addPkgNamespace("fbc", 2)
     doc = libsbml.SBMLDocument(ns)
@@ -60,6 +60,9 @@ def write_model(path, atpm=1.0):
         "R_BIOMASS": ({"M_pyr_c": 1, "M_vitA_c": 1, "M_vitB_c": 1, "M_fe_c": 1, "M_atp_c": 3}, {}, 0, 1000, None),
     })
     rx["R_EX_glc__D_e"] = ({"M_glc__D_e": 1}, {}, -10, 1000, None)
+    if organic_uptake_closed:       # BiGG convention (iML1515): only the model's own medium can be imported
+        for m in ("vitA", "vitB"):
+            rx[f"R_EX_{m}_e"] = ({f"M_{m}_e": 1}, {}, 0, 1000, None)
     for rid, (react, prod, lo, hi, gpr) in rx.items():
         r = model.createReaction(); r.setId(rid); r.setReversible(lo < 0); r.setFast(False)
         for refs, make in ((react, r.createReactant), (prod, r.createProduct)):
@@ -127,7 +130,7 @@ class Base(unittest.TestCase):
 class ProtocolTests(unittest.TestCase):
     def test_protocol_is_pinned(self):
         # Changing the protocol must be a deliberate, reviewed edit that updates this hash.
-        self.assertEqual(B.PROTOCOL_SHA256, "885facfb46e5aa66a4c239880ab4a6e7e3249bdb0e04ab04957b770bd4149a92")
+        self.assertEqual(B.PROTOCOL_SHA256, "d62dc7ecf94f7206471f7178055b5b04929f92e8757309b3c267184ead4a77dc")
         self.assertEqual(len(B.ARMS), 6)
         self.assertEqual({a["o2"] for a in B.ARMS}, {0.0, 2.0, 20.0})
         self.assertEqual(B.PROTOCOL["glucose_uptake_mmol_gdw_h"], 10.0)
@@ -187,6 +190,19 @@ class SimulationTests(Base):
         self.assertEqual(arm["monoculture_growth"]["pairs_one_viable"], 1)
         self.assertEqual(arm["monoculture_growth"]["pairs_both_viable"], 1)
         self.assertEqual(arm["model_outcomes"]["positive_with_control_growth"], 0)
+
+    def test_native_closed_organic_uptake_does_not_prevent_cross_feeding(self):
+        # Regression for the all-negative first run: iML1515 closes uptake of every organic, so a model that
+        # follows that convention must still let a partner's product be imported through the pool.
+        closed = self.base / "closed.xml"
+        write_model(closed, organic_uptake_closed=True)
+        recs = [case(B.sha256_file(closed), "vitA_ko", "vitB_ko", "synergy")]
+        self.run_bench(recs, name="closed", model=closed)
+        row = json.loads((self.base / "closed" / "cases_o2_20_trace_present.jsonl").read_text().splitlines()[0])
+        self.assertEqual(row["mono_a"]["outcome"], "no_growth")
+        self.assertEqual(row["community"]["outcome"], "growth")
+        self.assertEqual(row["control"]["outcome"], "no_growth")                # still needs the transfer
+        self.assertEqual(row["prediction_primary"], "positive")
 
     def test_trace_metal_arm_changes_feasibility_and_is_reported(self):
         rep = self.run_bench(self.records())

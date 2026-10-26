@@ -68,7 +68,11 @@ PROTOCOL: dict[str, Any] = {
     "port_support": "predicted (model-derived, not experiment-curated)",
     "removal": "every pool metabolite may be removed up to the ceiling (waste accumulates in the medium); "
                "removal never supplies anything",
-    "internal_bounds": "model transport and reaction bounds kept; non-port single-metabolite reactions get no uptake",
+    "internal_bounds": "model internal reaction and transport bounds kept; non-port single-metabolite reactions get no uptake",
+    "port_uptake": "every port may import up to the ceiling (the model's own exchange bounds describe its own medium; "
+                   "iML1515 closes uptake of all but 24 exchanges, which made every cross-feeding transfer impossible "
+                   "in the first run, see docs/v3-community-diagnosis.md); the pool balance limits what can be imported",
+    "protocol_revision": 2,
     "gene_deletion": "locus tag -> model gene product -> Model.blocked_by_genes (GPR-aware); no guessed genes",
     "growth_threshold_mu": 1e-6,
     "control": "same pair and deletions with uptake from the pool forbidden for every metabolite that is not a "
@@ -118,8 +122,8 @@ class Context:
         self.exchanges = ext
         self.species_of = {r: m.exchange_metabolite(r) for r in ext}
         self.pool_mets = {s: ({"formula": m.met_formula[s]} if s in m.met_formula else {}) for s in by_species}
-        self.ports = {r: {"pool": self.species_of[r], "support": "predicted", "metabolite": self.species_of[r]}
-                      for r in ext}
+        self.ports = {r: {"pool": self.species_of[r], "support": "predicted", "metabolite": self.species_of[r],
+                          "open_uptake": PROTOCOL["ceiling_mmol_gdw_h"]} for r in ext}
         bio_id, _ = ME.resolve_objective(m, {"objectives": {"biomass": None}})
         self.biomass = bio_id
         if MAINTENANCE_REACTION not in m.rxn_index:
@@ -217,6 +221,7 @@ class Simulator:
         kos = sorted(self.ctx.strains[s]["blocked_reactions"] for s in strains)
         return CM_hash({"model": self.ctx.model.sha256, "deletions": kos, "kind": kind,
                         "supply": self.cond["supply"], "removal": self.cond["removal"],
+                        "open_uptake": PROTOCOL["ceiling_mmol_gdw_h"],
                         "fractions": "equal", "threshold": self.ctx.cfg["growth_threshold"],
                         "maintenance": self.ctx.maintenance})
 

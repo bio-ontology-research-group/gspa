@@ -42,7 +42,7 @@ from scipy.sparse import coo_matrix, csc_matrix
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from metabolic_experiments import (  # noqa: E402
     BudgetedSolver, BudgetExhausted, ManifestError, Model, canonical_hash, close_uptake,
-    load_sbml_model, resolve_objective,
+    load_sbml_model, open_uptake, resolve_objective,
 )
 
 SCHEMA = "gspa.community_metabolism/1"
@@ -167,6 +167,9 @@ def build_organism(oid: str, model: Model, spec: dict[str, Any], pool_mets: dict
         scale = p.get("scale", 1.0)
         if not isinstance(scale, (int, float)) or not np.isfinite(scale) or scale <= 0:
             raise ManifestError(f"{oid}.{rid}: scale must be a finite number > 0")
+        rate = p.get("open_uptake")
+        if rate is not None and (not isinstance(rate, (int, float)) or not np.isfinite(rate) or rate <= 0):
+            raise ManifestError(f"{oid}.{rid}: open_uptake must be a finite number > 0")
         met = model.exchange_metabolite(rid)
         if p.get("metabolite") and p["metabolite"] != met:
             raise ManifestError(f"{oid}.{rid}: declared metabolite {p['metabolite']} but the exchange "
@@ -289,6 +292,13 @@ def build_lp(orgs: list[Organism], alphas: dict[str, float], supply: dict[str, f
             rid = m.rxn_ids[int(j)]
             if rid not in o.ext:
                 close_uptake(m, lb, ub, rid)
+        # A model's native exchange bounds describe its own medium (iML1515 closes uptake of every organic),
+        # so a port meant to receive a partner's product must be able to import it.  The pool balance
+        # (supply, partner secretion) limits the import, not this bound.  Applied before closures, so
+        # closed ports and uptake closures (the control) still win.
+        for rid, p in o.ports.items():
+            if p.get("open_uptake") is not None:
+                open_uptake(m, lb, ub, rid, float(p["open_uptake"]))
         for rid in o.closed | set(o.ports_closed_by_policy):
             lb[m.rxn_index[rid]] = ub[m.rxn_index[rid]] = 0.0
         for oid, rid, direction in closures:
