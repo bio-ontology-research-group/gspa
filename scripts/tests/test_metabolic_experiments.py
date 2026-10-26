@@ -480,6 +480,36 @@ class TestStrategies(Base):
 
 
 class TestBaselineFailure(Base):
+    def test_secondary_product_can_be_assessed_without_biomass_growth(self):
+        m = manifest(strategy="fixed", panel=["product:EX_sec_e"], product_requirement="maintenance_only")
+        # No nitrogen: biomass is zero, but carbon can support ATP maintenance
+        # and this carbon-only secondary product.
+        del m["baseline"]["medium"]["EX_nh4_e"]
+        out = ME.run_experiments(m, self.model)
+        by_id = self.by_id(out)
+        self.assertEqual(by_id["baseline"]["outcome"], "no_growth_feasible")
+        product = by_id["product:EX_sec_e"]["measurements"]["product"]
+        self.assertTrue(product["conditional_feasibility"])
+        self.assertEqual(product["growth_floor"], 0)
+        self.assertEqual(product["requirement"], "maintenance_only")
+        self.assertEqual(product["maintenance"]["lower_bound"], 1)
+        self.assertEqual(product["min_secretion_at_required_state"], 0)
+        self.assertNotIn("min_secretion_at_growth_floor", product)
+        self.assertEqual(out["solver"]["used"], 4)
+        self.assertEqual(by_id["product:EX_sec_e"]["conditional_evidence"]["promotion"], "none")
+        # An explicit growth requirement still gives a different, truthful result.
+        m["config"]["product_requirement"] = "growth_fraction"
+        constrained = ME.run_experiments(m, self.model)
+        self.assertEqual(self.by_id(constrained)["product:EX_sec_e"]["measurements"]["product"]["status"],
+                         "not_assessed_no_growth")
+
+    def test_invalid_product_requirement_cannot_silently_relax_growth(self):
+        with self.assertRaises(ME.ManifestError):
+            ME.run_experiments(manifest(product_requirement="anything"), self.model)
+        for fraction in (0, -1, 1.1, float("nan")):
+            with self.assertRaises(ME.ManifestError):
+                ME.run_experiments(manifest(growth_fraction=fraction), self.model)
+
     def carbon_starved(self):
         m = manifest(strategy="fixed", panel=["carbon_source:EX_ac_e"], max_experiments=1)
         del m["baseline"]["medium"]["EX_glc_e"]

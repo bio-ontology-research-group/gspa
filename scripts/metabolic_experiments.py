@@ -39,6 +39,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import random
 import re
@@ -66,6 +67,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "residual_tol": 1e-6,          # max |S v| accepted for a solution
     "relative_tol": 0.05,          # growth ratio band for "unchanged"
     "growth_fraction": 0.95,       # growth floor for FVA / product checks
+    "product_requirement": "growth_fraction",  # growth_fraction | maintenance_only
     "max_focus_reactions": 2,      # reactions given FVA + knockout checks
     "panel": None,                 # explicit experiment ids for strategy=fixed
     "qwen": {"model": "qwen3.8-27b", "api_base": None, "max_invalid": 2, "max_tokens": 300},
@@ -571,6 +573,11 @@ def resolve_objective(model: Model, manifest: dict[str, Any]) -> tuple[str, str]
 class Runner:
     def __init__(self, model: Model, manifest: dict[str, Any], cfg: dict[str, Any]):
         self.model, self.manifest, self.cfg = model, manifest, cfg
+        if cfg.get("product_requirement", "growth_fraction") not in ("growth_fraction", "maintenance_only"):
+            raise ManifestError("product_requirement must be growth_fraction or maintenance_only")
+        fraction = cfg["growth_fraction"]
+        if isinstance(fraction, bool) or not isinstance(fraction, (int, float)) or not math.isfinite(fraction) or not 0 < fraction <= 1:
+            raise ManifestError("growth_fraction must be finite and in (0, 1]")
         self.solver = BudgetedSolver(model, cfg["max_solver_calls"], cfg["residual_tol"])
         obj, self.objective_source = resolve_objective(model, manifest)
         self.bio = model.rxn_index[obj]
@@ -648,10 +655,11 @@ class Runner:
                     m["alternative_route_via"] = alt
             if growth >= cfg["growth_threshold"]:
                 self._focus_checks(rec, item, lb, ub, growth, reserve)
-                if product:
+            if product:
+                if growth >= cfg["growth_threshold"] or cfg.get("product_requirement") == "maintenance_only":
                     self._product_checks(rec, product, lb, ub, growth)
-            elif product:
-                rec["measurements"]["product"] = {"status": "not_assessed_no_growth"}
+                else:
+                    rec["measurements"]["product"] = {"status": "not_assessed_no_growth"}
         except BudgetExhausted as exc:
             rec.update(status="inconclusive", outcome="budget_exhausted_mid_experiment", note=str(exc))
         return self._finish(rec, first)
@@ -729,18 +737,23 @@ class Runner:
     def _product_checks(self, rec, ex: str, lb, ub, growth) -> None:
         cfg, model = self.cfg, self.model
         col, sec = model.exchange(ex)[0], model.secretion_sign(ex)
-        floor_lb = self._fixed_growth_lb(lb, growth)
+        requirement = cfg.get("product_requirement", "growth_fraction")
+        floor_lb = self._fixed_growth_lb(lb, growth) if requirement == "growth_fraction" else lb.copy()
         hi = self.solver.optimize(self._unit(col, -sec), floor_lb, ub, f"{rec['experiment_id']}:product_max")
         lo = self.solver.optimize(self._unit(col, sec), floor_lb, ub, f"{rec['experiment_id']}:product_min")
-        info: dict[str, Any] = {"exchange": ex, "growth_floor": cfg["growth_fraction"] * growth}
+        info: dict[str, Any] = {"exchange": ex, "growth_floor": float(floor_lb[self.bio]),
+                                "requirement": requirement, "maintenance": self.manifest["objectives"]["maintenance"]}
         if hi.status == lo.status == "optimal":
             # the two LPs minimise -secretion and +secretion respectively
             pmax, pmin = max(0.0, -hi.objective), max(0.0, lo.objective)
-            info.update(max_secretion=pmax, min_secretion_at_growth_floor=pmin)
+            info.update(max_secretion=pmax, min_secretion_at_required_state=pmin)
+            if requirement == "growth_fraction":
+                info["min_secretion_at_growth_floor"] = pmin
             tol = cfg["flux_tol"]
             info["conditional_feasibility"] = pmax > tol
             info["secretion_unavoidable_in_model"] = pmin > tol
-            info["class"] = ("no_secretion_possible_in_model_at_growth_floor" if pmax <= tol
+            info["class"] = (("no_secretion_possible_in_model_at_growth_floor" if requirement == "growth_fraction"
+                              else "no_secretion_possible_in_model_at_maintenance") if pmax <= tol
                              else "secretion_unavoidable_in_model" if pmin > tol
                              else "secretion_feasible_not_unavoidable")
         else:
@@ -909,6 +922,8 @@ def assumptions(model: Model, manifest: dict[str, Any], cfg: dict[str, Any], run
         f"maintenance constraint: {manifest['objectives']['maintenance']}",
         f"biomass objective {model.rxn_ids[runner.bio]} (source: {runner.objective_source}); maximised, "
         "growth counted above growth_threshold",
+        f"product checks require {cfg.get('product_requirement', 'growth_fraction')}; "
+        "maintenance-only checks retain all original model bounds but impose no additional biomass floor",
         f"{model.n_infinite_bounds} infinite SBML bounds replaced by +-{cfg['default_bound']}; finite bounds unchanged",
         "all outcomes are model-conditional and not observations of growth, expression or production",
     ]

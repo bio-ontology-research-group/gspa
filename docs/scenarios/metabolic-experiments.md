@@ -41,6 +41,13 @@ either, nor any scoring.
   undefined (`null`). A failed reference solve is unknown, not zero growth:
   successful conditions report `growth_without_baseline` in that case. Neither
   recovery nor lack of recovery alone establishes a candidate protein function.
+- `config.product_requirement` explicitly selects `growth_fraction` (default)
+  or `maintenance_only`. The latter tests product secretion even when biomass
+  growth is zero, retaining the declared ATP maintenance and model bounds without
+  an added biomass floor. Results record the requirement, actual biomass lower
+  bound, and `min_secretion_at_required_state`. It can reveal feasible secondary
+  metabolism in non-growing cells; it does not establish expression or observed
+  production. The growth-based legacy field is omitted in maintenance-only mode.
 
 Exchange signs are read from stoichiometry, so both `M_e ->` (v < 0 uptake) and
 the refiner's reversed `-> M_e` (v > 0 uptake) are handled. Boundary species are
