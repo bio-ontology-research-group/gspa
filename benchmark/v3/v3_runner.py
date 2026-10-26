@@ -631,8 +631,10 @@ def evaluate(man: dict, runs: Mapping[str, dict], onto: Optional[M.Ontology] = N
             "Evaluation universe per genome = true pairs + every pair emitted by any executed arm, on labelled proteins only; "
             "the universe (and hence ECE/Brier) depends on which arms are compared and is identical for all arms of a genome.",
             "A pair in the universe that an arm did not emit has score 0 (omission is not rewarded).",
-            "Closed world: a universe pair without a label is counted false, although labels are incomplete; "
-            "precision is therefore a lower bound and is biased equally across arms.",
+            "Closed world: a universe pair without a label is counted false, although labels are incomplete, so precision "
+            "is a lower bound. This is a convention, not a guarantee of equal bias: arms that call more specific, novel or "
+            "less-studied functions are penalised more than arms that call well-annotated ones, and correct but "
+            "unlabelled calls are invisible. Compare arms with different specificity profiles conditionally on label completeness.",
             "Proteins without any label of the scored kind are not evaluated; global Fmax picks its threshold on the evaluated labels.",
         ],
         "eval_failures": {},
