@@ -203,11 +203,13 @@ class IntegrateCommand implements Runnable {
     boolean gapseqPinPromotions = true
 
     @Option(names = ['--gapseq-target'],
-            description = 'Gapseq search target: genome (default) | proteome | reps (requires clustering).')
+            description = 'Unsupported in claims-only integration (only the default "genome" is accepted): gapseq runs ' +
+                          'outside this command, so a proteome/reps search target cannot be applied here.')
     String gapseqTarget = 'genome'
 
     @Option(names = ['--intragenome-cluster'],
-            description = 'Intragenome protein clustering: off (default), 0.9, 0.95, or 1.0.')
+            description = 'Unsupported in claims-only integration (only "off" is accepted): clustering needs ' +
+                          'sequences. Use gspa annotate --intragenome-cluster before inference.')
     String intragenomeCluster = 'off'
 
     @Option(names = ['--promotion-strategy'],
@@ -367,6 +369,11 @@ class IntegrateCommand implements Runnable {
                           'Unknown keys are rejected.')
     File workflowConfigFile
 
+    @Option(names = ['--workflow-overlay'],
+            description = 'JSON of behavior-only workflow settings applied over everything else (used by the Nextflow ' +
+                          'route). Keys naming files/directories or the per-genome binding genomeId, and unknown keys, are rejected.')
+    File workflowOverlayFile
+
     @Override
     void run() {
         applyPreset()
@@ -378,8 +385,17 @@ class IntegrateCommand implements Runnable {
             return
         }
         if (preset.name) println "Preset: ${gspa.config.WorkflowPresets.canonicalName(preset.name)}"
+        if (intragenomeCluster != 'off') {
+            throw new IllegalArgumentException("--intragenome-cluster ${intragenomeCluster} is not supported by claims-only integration " +
+                "(clustering needs the proteome sequences); cluster during gspa annotate with --intragenome-cluster, before inference.")
+        }
+        if (gapseqTarget != 'genome') {
+            throw new IllegalArgumentException("--gapseq-target ${gapseqTarget} is not supported by claims-only integration " +
+                "(gapseq runs outside this command); only the default 'genome' is accepted.")
+        }
+        // Validation belongs to the workflow's reference_preparation stage so that a failure
+        // is recorded in the genome's ledger.
         IntegrationWorkflowConfig config = toWorkflowConfig()
-        config.validate()
         if (batchManifestFile != null) {
             runBatchManifest(config)
             return
@@ -413,6 +429,9 @@ class IntegrateCommand implements Runnable {
             field.accessible = true
             def value = field.get(this)
             config[field.name] = value instanceof List ? new ArrayList(value) : value
+        }
+        if (workflowOverlayFile != null) {
+            config.applyOverlay(new ObjectMapper().readValue(workflowOverlayFile, Map))
         }
         config
     }
@@ -467,10 +486,38 @@ class IntegrateCommand implements Runnable {
      *  14: fba_medium (optional)
      *  15: fba_gram (optional)
      */
+    /** One genome's configuration: the batch settings, its manifest row, and artifact paths of its own. */
+    private static IntegrationWorkflowConfig workerConfig(IntegrationWorkflowConfig base, String[] row) {
+        IntegrationWorkflowConfig worker = base.copy()
+        worker.genomeId = row[0].trim()
+        worker.claimsFile = new File(row[1].trim())
+        worker.outFile = new File(row[2].trim())
+        Map<Integer, String> overrides = [3: 'organismTaxon', 4: 'essentialProfile',
+            5: 'operonsFile', 6: 'gapsFile', 8: 'enforceStage2',
+            9: 'enforceConsistencyMode', 10: 'enabledPriors', 11: 'genomeLayoutFile',
+            12: 'orthogroupsFile', 13: 'clusterConsensusFile', 14: 'fbaMedium', 15: 'fbaGram']
+        overrides.each { int column, String property ->
+            if (row.length > column && row[column].trim() && row[column].trim() != '-') {
+                String value = row[column].trim()
+                if (property.endsWith('File')) worker[property] = new File(value)
+                else if (property == 'enforceStage2') {
+                    if (!(value in ['true', 'false'])) throw new IllegalArgumentException("Invalid enforce_stage2: ${value}")
+                    worker[property] = Boolean.parseBoolean(value)
+                } else worker[property] = value
+            }
+        }
+        if (row.length > 7 && row[7].trim() && row[7].trim() != '-') worker.maxIter = Integer.parseInt(row[7].trim())
+        // Every worker gets separate files, even when outputs share a directory.
+        [provenanceFile: '.provenance.json', suggestionsOut: '.suggestions.tsv',
+         featuresOut: '.features.tsv', enforcementActionsOut: '.enforcement.tsv',
+         anomaliesOut: '.anomalies.jsonl', agentResolutionsOut: '.agent_resolutions.jsonl'].each { property, suffix ->
+            if (worker[property] != null) worker[property] = new File(worker.outFile.absolutePath + suffix)
+        }
+        worker
+    }
+
     private void runBatchManifest(IntegrationWorkflowConfig base) {
         println "GSPA integrate --batch-manifest ${batchManifestFile} (threads=${batchThreads})"
-
-        IntegrationState sharedState = IntegrationWorkflow.loadSharedReferences(base) { String m -> println m }
 
         List<String[]> rows = []
         Set<String> genomeIds = new HashSet<>()
@@ -489,39 +536,23 @@ class IntegrateCommand implements Runnable {
             rows << parts
         }
         println "  Loaded ${rows.size()} batch tasks from ${batchManifestFile}"
+        IntegrationState sharedState
+        try {
+            sharedState = IntegrationWorkflow.loadSharedReferences(base) { String m -> println m }
+        } catch (Exception e) {
+            // No genome can run without the shared references: give each its own failed ledger
+            // (reference_preparation failed, requested stages not run) and fail the batch once.
+            rows.each { String[] row ->
+                IntegrationWorkflow.recordPreparationFailure(workerConfig(base, row), e)
+            }
+            throw new IllegalStateException("Batch not run: shared reference loading failed (${e.message}); " +
+                "${rows.size()} genome ledgers record the failure", e)
+        }
         def pool = java.util.concurrent.Executors.newFixedThreadPool(Math.max(1, batchThreads))
         List<Map> stats = []
         try {
             List<java.util.concurrent.Future<Map>> futures = rows.collect { String[] row ->
-                pool.submit({ ->
-                    IntegrationWorkflowConfig worker = base.copy()
-                    worker.genomeId = row[0].trim()
-                    worker.claimsFile = new File(row[1].trim())
-                    worker.outFile = new File(row[2].trim())
-                    Map<Integer, String> overrides = [3: 'organismTaxon', 4: 'essentialProfile',
-                        5: 'operonsFile', 6: 'gapsFile', 8: 'enforceStage2',
-                        9: 'enforceConsistencyMode', 10: 'enabledPriors', 11: 'genomeLayoutFile',
-                        12: 'orthogroupsFile', 13: 'clusterConsensusFile', 14: 'fbaMedium', 15: 'fbaGram']
-                    overrides.each { int column, String property ->
-                        if (row.length > column && row[column].trim() && row[column].trim() != '-') {
-                            String value = row[column].trim()
-                            if (property.endsWith('File')) worker[property] = new File(value)
-                            else if (property == 'enforceStage2') {
-                                if (!(value in ['true', 'false'])) throw new IllegalArgumentException("Invalid enforce_stage2: ${value}")
-                                worker[property] = Boolean.parseBoolean(value)
-                            } else worker[property] = value
-                        }
-                    }
-                    if (row.length > 7 && row[7].trim() && row[7].trim() != '-') worker.maxIter = Integer.parseInt(row[7].trim())
-                    // Every worker gets separate files, even when outputs share a directory.
-                    [provenanceFile: '.provenance.json', suggestionsOut: '.suggestions.tsv',
-                     featuresOut: '.features.tsv', enforcementActionsOut: '.enforcement.tsv',
-                     anomaliesOut: '.anomalies.jsonl', agentResolutionsOut: '.agent_resolutions.jsonl'].each { property, suffix ->
-                        if (worker[property] != null) worker[property] = new File(worker.outFile.absolutePath + suffix)
-                    }
-                    worker.validate()
-                    runGenome(worker, sharedState)
-                } as java.util.concurrent.Callable<Map>)
+                pool.submit({ -> runGenome(workerConfig(base, row), sharedState) } as java.util.concurrent.Callable<Map>)
             }
             futures.each { stats << it.get() }
         } finally {

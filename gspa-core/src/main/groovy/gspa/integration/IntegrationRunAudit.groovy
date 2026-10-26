@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
  * predictions, never biological correctness; accuracy needs independent labels.
  */
 class IntegrationRunAudit {
-    static final List<String> STAGES = ['evidence_integration', 'dark_matter',
+    static final List<String> STAGES = ['reference_preparation', 'evidence_integration', 'dark_matter',
         'reaction_context', 'cross_genome', 'symbolic_enforcement', 'metabolic_refinement',
         'agent_completion'].asImmutable()
 
@@ -49,10 +49,37 @@ class IntegrationRunAudit {
             return output
         } catch (Exception ex) {
             record.status = 'failed'
-            record.reason = "${ex.class.simpleName}: ${ex.message}"
+            record.reason = "${ex.class.simpleName}: ${ex.message}".toString()
             throw ex
         } finally {
             record.elapsed_seconds = (System.nanoTime() - start) / 1e9d
+        }
+    }
+
+    /**
+     * Run a stage that produces no annotation set (configuration validation, reference loading):
+     * recorded executed, or failed with the reason when it throws.
+     */
+    void runPreparation(String name, Closure operation) {
+        Map record = stages[name]
+        long start = System.nanoTime()
+        try {
+            operation.call()
+            record.status = 'executed'
+        } catch (Exception ex) {
+            record.status = 'failed'
+            record.reason = "${ex.class.simpleName}: ${ex.message}".toString()    // a GString would serialize as a bean
+            throw ex
+        } finally {
+            record.elapsed_seconds = (System.nanoTime() - start) / 1e9d
+        }
+    }
+
+    /** After an early failure, say why every requested stage that never started did not run. */
+    void abandon(Collection<String> requested, String reason) {
+        requested.each { String name ->
+            Map record = stages[name]
+            if (record != null && record.status == 'not_run') record.reason = reason
         }
     }
 

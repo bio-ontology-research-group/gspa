@@ -86,53 +86,71 @@ class IntegrationWorkflow {
      * Run all requested stages on {@code claims}. With a {@code genome}, state is
      * keyed to that genome and the final posteriors replace its annotations;
      * without one the result is returned for export only.
+     *
+     * <p>The ledger exists from the first step: configuration validation and reference
+     * loading are the {@code reference_preparation} stage, so a failure there leaves a
+     * readable ledger (failed, with the reason; every requested stage not run) next to
+     * the configured output and never a stale file from an earlier run.</p>
      */
     Result run(List<EvidenceClaim> claims, Genome genome = null) {
         long started = System.nanoTime()
-        c.validate()
-        if (genome == null && c.darkMatterMode != DarkMatterWriter.MODE_SEPARATE) {
-            throw new IllegalArgumentException(
-                "darkMatterMode '${c.darkMatterMode}' modifies a genome's proteins; run it through annotate (a claims-only run keeps suggestions on the separate channel)")
-        }
         String genomeId = genome?.id ?: c.genomeId
-        Map theta = c.resolveTheta()
-
-        // --- Build combiner with learned reliability ---
-        Map<EvidenceType, Double> reliability = EvidenceCombiner.defaultReliability()
-        if (theta.reliability instanceof Map) {
-            (theta.reliability as Map).each { k, v ->
-                try {
-                    reliability[EvidenceType.valueOf(k as String)] = (v as Number).doubleValue()
-                } catch (ignored) { /* unknown type */ }
-            }
-        }
-        def combiner = new EvidenceCombiner(reliability)
-        if (theta.second_opinion_bonus != null) {
-            combiner.secondOpinionBonus = (theta.second_opinion_bonus as Number).doubleValue()
-        }
-
-        // --- State with ontology, pathway, operon, gap and layout handles ---
-        def state = new IntegrationState(genome ?: new Genome(id: genomeId))
-        def loader = new IntegrationReferenceLoader(c)
-        loader.info = info
-        loader.wire(state, claims, sharedReferences)
-        if (state.genomeLayout == null && genome != null) state.genomeLayout = layoutFromGenome(genome)
-
-        // --- Prior engine and refiner ---
-        def engine = buildPriorEngine(theta, c.enabledPriorSet())
-        def refiner = new IterativeRefiner(combiner)
-        refiner.priorEngine = engine
-        if (theta.max_iter != null)  refiner.maxIter = (theta.max_iter as Number).intValue()
-        if (theta.epsilon != null)   refiner.epsilon = (theta.epsilon as Number).doubleValue()
-        if (theta.damping != null)   refiner.damping = (theta.damping as Number).doubleValue()
-
+        clearStaleArtifacts(c)
         def audit = new IntegrationRunAudit(genomeId)
         lastAudit = audit
+
+        Map theta = null
+        EvidenceCombiner combiner = null
+        IntegrationState state = null
+        IterativeRefiner refiner = null
+        try {
+            audit.runPreparation('reference_preparation') {
+                c.validate()
+                if (genome == null && c.darkMatterMode != DarkMatterWriter.MODE_SEPARATE) {
+                    throw new IllegalArgumentException(
+                        "darkMatterMode '${c.darkMatterMode}' modifies a genome's proteins; run it through annotate (a claims-only run keeps suggestions on the separate channel)")
+                }
+                theta = c.resolveTheta()
+
+                // --- Build combiner with learned reliability ---
+                Map<EvidenceType, Double> reliability = EvidenceCombiner.defaultReliability()
+                if (theta.reliability instanceof Map) {
+                    (theta.reliability as Map).each { k, v ->
+                        try {
+                            reliability[EvidenceType.valueOf(k as String)] = (v as Number).doubleValue()
+                        } catch (ignored) { /* unknown type */ }
+                    }
+                }
+                combiner = new EvidenceCombiner(reliability)
+                if (theta.second_opinion_bonus != null) {
+                    combiner.secondOpinionBonus = (theta.second_opinion_bonus as Number).doubleValue()
+                }
+
+                // --- State with ontology, pathway, operon, gap and layout handles ---
+                state = new IntegrationState(genome ?: new Genome(id: genomeId))
+                def loader = new IntegrationReferenceLoader(c)
+                loader.info = info
+                loader.wire(state, claims, sharedReferences)
+                if (state.genomeLayout == null && genome != null) state.genomeLayout = layoutFromGenome(genome)
+
+                // --- Prior engine and refiner ---
+                refiner = new IterativeRefiner(combiner)
+                refiner.priorEngine = buildPriorEngine(theta, c.enabledPriorSet())
+                if (theta.max_iter != null)  refiner.maxIter = (theta.max_iter as Number).intValue()
+                if (theta.epsilon != null)   refiner.epsilon = (theta.epsilon as Number).doubleValue()
+                if (theta.damping != null)   refiner.damping = (theta.damping as Number).doubleValue()
+            }
+        } catch (Exception ex) {
+            audit.abandon(requestedStages(c), 'not run: reference_preparation failed')
+            writeLedger(c, audit)
+            throw ex
+        }
+
         IntegratedAnnotationSet integrated
         try {
             integrated = runStages(audit, claims, state, refiner, theta)
         } finally {
-            if (c.outFile != null) audit.write(new File(c.outFile.absolutePath + '.stages.json'))
+            writeLedger(c, audit)
         }
 
         if (genome != null) {
@@ -146,6 +164,49 @@ class IntegrationWorkflow {
         new Result(genomeId: genomeId, integrated: integrated, state: state, audit: audit, claims: claims,
             maxIter: refiner.maxIter, elapsedNanos: System.nanoTime() - started)
     }
+
+    /**
+     * Ledger for a run that failed before it could start (batch-wide reference loading): every
+     * requested stage not run, preparation failed with the reason; same file name as a normal run.
+     */
+    static IntegrationRunAudit recordPreparationFailure(IntegrationWorkflowConfig config, Throwable cause) {
+        clearStaleArtifacts(config)
+        def audit = new IntegrationRunAudit(config.genomeId)
+        try {
+            audit.runPreparation('reference_preparation') { throw cause }
+        } catch (Throwable expected) { /* recorded in the ledger */ }
+        audit.abandon(requestedStages(config), 'not run: reference_preparation failed')
+        writeLedger(config, audit)
+        audit
+    }
+
+    /** Stage names this configuration asks for, in execution order. */
+    static List<String> requestedStages(IntegrationWorkflowConfig c) {
+        List<String> stages = ['evidence_integration']
+        if (c.darkMatter) stages << 'dark_matter'
+        if (c.rlcSuggester) stages << 'reaction_context'
+        if (c.rxnLocusCatalogFile != null) stages << 'cross_genome'
+        if (c.enforceStage2) stages << 'symbolic_enforcement'
+        if (c.enableFbaRefiner) stages << 'metabolic_refinement'
+        if (c.enableAgent) stages << 'agent_completion'
+        stages
+    }
+
+    private static void writeLedger(IntegrationWorkflowConfig c, IntegrationRunAudit audit) {
+        if (c.outFile != null) audit.write(new File(c.outFile.absolutePath + '.stages.json'))
+    }
+
+    /** Outputs of an earlier run at the configured paths must not survive a run that fails. */
+    private static void clearStaleArtifacts(IntegrationWorkflowConfig c) {
+        List<File> files = [c.provenanceFile, c.suggestionsOut, c.featuresOut, c.enforcementActionsOut,
+                            c.anomaliesOut, c.agentResolutionsOut]
+        if (c.outFile != null) {
+            files << c.outFile
+            ['.stages.json', '.rescues.tsv', '.modules.json'].each { files << new File(c.outFile.absolutePath + it) }
+        }
+        files.findAll { it != null }.each { it.delete() }
+    }
+
 
     /** Writes the configured per-genome artifacts of a finished run (no-op without paths). */
     void writeArtifacts(Result result) {

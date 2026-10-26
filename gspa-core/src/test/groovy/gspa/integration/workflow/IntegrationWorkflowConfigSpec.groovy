@@ -52,7 +52,6 @@ class IntegrationWorkflowConfigSpec extends Specification {
         'enforcement mode'       | [enforceConsistencyMode: 'delete']              | 'enforce-consistency-mode'
         'dark matter mode'       | [darkMatterMode: 'everywhere']                  | 'dark-matter mode'
         'outer loop w/o suggester' | [iterateGapseq: true]                         | '--iterate-gapseq requires --dark-matter'
-        'reps without clustering' | [gapseqTarget: 'reps']                         | 'requires --intragenome-cluster'
         'beam width'             | [beamWidth: 0]                                  | '--beam-width'
     }
 

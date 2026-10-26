@@ -123,6 +123,37 @@ class ClaimExtractor {
     }
 
     /**
+     * Write claims in the JSONL contract {@link #readClaimsJsonl} reads, without loss: protein id,
+     * type, function, source, explicit evidence type, GO aspect, raw score, calibrated probability
+     * (full precision) and metadata. Reading the file back gives the same claims, so any route can
+     * integrate exactly what the predictors produced, weak candidates included.
+     */
+    static int writeClaimsJsonl(Collection<EvidenceClaim> claims, File file) {
+        ObjectMapper mapper = new ObjectMapper()
+        file.parentFile?.mkdirs()
+        file.withWriter('UTF-8') { w ->
+            for (EvidenceClaim c : claims) {
+                Map<String, Object> rec = new LinkedHashMap<>()
+                rec.protein_id = c.proteinId
+                rec.function_type = c.functionType?.name()
+                rec.function_id = c.functionId
+                rec.source = c.source
+                rec.evidence_type = c.evidenceType?.name()
+                rec.go_aspect = c.goAspect
+                rec.raw_score = c.rawScore
+                rec.calibrated_prob = c.calibratedProb
+                Map<String, Object> meta = new LinkedHashMap<>()
+                (c.metadata ?: [:]).each { k, v ->
+                    meta[k as String] = (v == null || v instanceof Number || v instanceof String || v instanceof Boolean) ? v : v.toString()
+                }
+                rec.metadata = meta
+                w.writeLine(mapper.writeValueAsString(rec))
+            }
+        }
+        claims.size()
+    }
+
+    /**
      * Group claims by {@link EvidenceClaim#functionKey()}. This is the
      * grouping used by {@link EvidenceCombiner} to combine multiple claims
      * about the same (protein, function) assignment.

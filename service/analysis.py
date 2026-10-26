@@ -72,7 +72,8 @@ def run_full(folder):
     ann = [j.BIN, 'annotate', '--proteins' if supplied else '--genome', str(input_path),
            '-o', str(out), '-t', j.THREADS, '-c', str(folder / 'config.json'),
            '--base-predictor', 'light', '--neural-sidecar', '/app/benchmark/neural/run_neural_predictors.py',
-           '--deepgo-plusplus-light-assets', str(j.ASSETS), '--min-score', '0.5']
+           '--deepgo-plusplus-light-assets', str(j.ASSETS), '--min-score', '0.5',
+           '--claims-out', str(folder / 'claims.raw.jsonl')]
     if kind == 'gff3': ann += ['--gff3', str(folder / 'sample.gff3')]
     ann += ['-k', 'virus', '--mag'] if preset == 'virus' else ['--preset', preset]
     j.command(folder, 'Predicting GO, enzyme functions and homology names', ann)
@@ -189,16 +190,14 @@ def run_full(folder):
         rows.extend(psort_claims)
         done('localization', 'PSORTb 3; scores divided by 10 for integration. Tied best locations retained; unknown predictions remain in the raw results.', assigned=len({r['protein_id'] for r in psort_claims}), gram=mode)
 
-    seen = set()
-    with (folder / 'claims.jsonl').open('w') as fh:
-        for row in rows:
-            if row['type'] not in ('GO', 'EC') or row['source'] == 'operon': continue
-            key = row['protein_id'], row['type'], row['value'], row['source']
-            if key in seen: continue
-            seen.add(key); score = float(row['score'])
-            fh.write(json.dumps(dict(protein_id=key[0], function_type=key[1], function_id=key[2], source=key[3],
-                raw_score=score, calibrated_prob=min(1-1e-6,max(1e-6,score)),
-                go_aspect=aspects.get(key[2], row.get('aspect', ''))))+'\n')
+    # The claims are the predictors' own, exported by `gspa annotate --claims-out` before integration
+    # and before the display threshold: sources, evidence types, raw and calibrated scores and weak
+    # candidates are carried through. Only legitimately added claims (PSORTb) are appended, without a
+    # probability, so the integrator calibrates them like every other raw score.
+    seen = integration_options.build_claims(
+        folder/'claims.raw.jsonl', folder/'claims.jsonl',
+        exclude_sources=() if enabled['homology'] else ('diamond',),
+        extra_claims=psort_claims, aspects=aspects)
     want_fba = applicable('metabolism', preset == 'bacteria', 'The installed biomass templates cover bacteria. A validated organism-specific model is required for archaea, eukaryotes, viruses and mixed/unknown domains.')
     if want_fba and not any(key[1] == 'EC' for key in seen):
         # The shared workflow fails a requested model with no enzyme predictions; do not request it.

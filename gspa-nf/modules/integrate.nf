@@ -177,15 +177,19 @@ process INTEGRATE {
     path go_owl
     path ec2go
     path pathways
+    path theta_file
+    path overlay_file
 
     output:
     tuple val(sample_id), path("${sample_id}_integrated.tsv"),  emit: integrated
     tuple val(sample_id), path("${sample_id}_provenance.json"), emit: provenance, optional: true
+    tuple val(sample_id), path("${sample_id}_integrated.tsv.stages.json"), emit: ledger, optional: true
 
     script:
     // One canonical IntegrationWorkflowConfig (the same typed JSON the web portal writes and
-    // `gspa annotate --integration-config` reads); stages, priors and scoring live in the JVM
-    // workflow, never here. Keys are the Java property names; the CLI rejects unknown keys.
+    // `gspa annotate --integration-config` reads). It holds only this sample's bindings and files
+    // that Nextflow stages into the task; stages, priors and scoring live in the JVM workflow.
+    // Keys are the Java property names; the CLI rejects unknown keys.
     def settings = [
         genomeId        : sample_id,
         claimsFile      : claims.name,
@@ -199,20 +203,19 @@ process INTEGRATE {
         enabledPriors   : params.enable_priors ?: 'essentiality,coherence,gap_filling,genomic_context',
     ]
     if (operons_tsv.size() > 0) settings.operonsFile = operons_tsv.name
-    if (params.theta_file) settings.thetaFile = params.theta_file
-    // Any further workflow setting (enforcement, dark matter, reaction context, FBA, agent...)
-    // comes from one JSON file of the same schema, merged over the settings above.
-    if (params.integration_config) {
-        settings << new groovy.json.JsonSlurper().parse(new File(params.integration_config as String))
-    }
+    if (theta_file.name != 'NO_THETA') settings.thetaFile = theta_file.name
+    // Behavior-only overlay (enforcement, dark matter, ...): a staged input, so a changed overlay
+    // changes the task hash; the JVM rejects overlay keys that name files or bind a sample.
+    def overlay = overlay_file.name != 'NO_INTEGRATION_CONFIG' ? "--workflow-overlay ${overlay_file}" : ''
     def workflowJson = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(settings))
     """
     cat > integration.workflow.json <<'GSPA_WORKFLOW_JSON'
 ${workflowJson}
 GSPA_WORKFLOW_JSON
-    java -jar ${gspa_jar} integrate --workflow-config integration.workflow.json
+    java -jar ${gspa_jar} integrate --workflow-config integration.workflow.json ${overlay}
     """
 }
+
 
 /*
  * Self-contained HTML browser for the per-sample workspace. Runs the

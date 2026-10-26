@@ -245,8 +245,8 @@ or the iteration limit is reached. The promotion threshold \( q \) starts at
 | `--beam-width` | int | 5 | Beam width for `beam`. Must be at least 1. |
 | `--beam-candidates-per-gap` | int | 3 | Number of candidates per gap considered by `beam`. Must be at least 1. |
 | `--maxsat-coherence-bonus` | double | 0.0 | Weight of a pairwise bonus for committing candidates in the same pathway, used by `maxsat`. 0 disables it, in which case MaxSAT and greedy usually agree. |
-| `--gapseq-target` | string | `genome` | Search target for gap recomputation: `genome`, `proteome` or `reps`. `reps` requires `--intragenome-cluster` other than `off`. In the current release the value is validated but not otherwise used by `integrate`. |
-| `--intragenome-cluster` | string | `off` | Intra-genome protein clustering identity: `off`, `0.9`, `0.95` or `1.0`. Validated only; clustering itself is configured for `gspa annotate` through the `integration.intragenomeCluster` [configuration](configuration.md#integration-section-integration) block. |
+| `--gapseq-target` | string | `genome` | **Unsupported here**: only `genome` is accepted; `proteome` and `reps` fail the run. Claims-only integration has no sequences and does not run gapseq, so these targets cannot be applied (earlier releases accepted them and ignored them). |
+| `--intragenome-cluster` | string | `off` | **Unsupported here**: only `off` is accepted; any clustering identity fails the run, because clustering needs the proteome sequences. Cluster during `gspa annotate --intragenome-cluster 0.9`, before inference. |
 
 ## Reaction-local genomic context (RLGC) suggester
 
@@ -327,9 +327,11 @@ names is in `gspa-core/src/main/resources/workflow/integration-workflow-config.k
 A requested stage whose data or tool is unavailable fails the run and is recorded
 as `failed` in the stage ledger (statuses: `executed`, `skipped`, `failed`,
 `not_run`); it is never reported as a success. The metabolic-refinement record states the
-medium and biomass template (Gram) that were assumed. `--intragenome-cluster` and
-`--gapseq-target` are accepted for compatibility but are consumed by annotation-side
-clustering, not by integration.
+medium and biomass template (Gram) that were assumed. Configuration validation and
+reference loading are the first ledger stage, `reference_preparation`: if it fails, the
+ledger `<out>.stages.json` is still written (preparation `failed` with the reason, every
+requested stage `not_run`) and no output of an earlier run is left at the configured paths.
+In a batch, a shared-reference failure writes that ledger for every genome and fails the batch once.
 
 ## Standard options
 

@@ -439,7 +439,11 @@ workflow {
             file(params.gspa_jar),
             file(params.go_owl),
             file(params.ec2go),
-            file(params.pathways)
+            file(params.pathways),
+            // Staged into the task (host paths are not visible in the container, and a changed
+            // file changes the task hash); the JVM rejects overlay keys that name files.
+            params.theta_file ? file(params.theta_file) : empty_file('NO_THETA'),
+            params.integration_config ? file(params.integration_config) : empty_file('NO_INTEGRATION_CONFIG')
         )
 
         // Optional self-contained HTML browser (always emitted when

@@ -343,10 +343,19 @@ Optional flags: `--pfam2go`, `--theta_file`, `--essential_profile`
 `INTEGRATE` does not carry its own flag list: it writes one typed
 `IntegrationWorkflowConfig` JSON (`integration.workflow.json`, the same schema the web portal writes and
 `gspa integrate --workflow-config` reads) and runs `gspa-cli integrate --workflow-config`. Any further
-workflow setting — enforcement, dark matter, reaction context, FBA medium/Gram, agent — goes in a JSON
-file passed as `--integration_config`; it is merged over the settings above and the JVM rejects unknown
-keys, unknown prior names and missing files. Stage order, priors and scoring live in the JVM
-workflow only (`service/test_integration_options.py` checks the schema without running tools).
+behavior-only setting (e.g. `enforceStage2`, `enforceConsistencyMode`, dark matter) goes in a JSON file
+passed as `--integration_config`. It is staged into the task as an input (a changed overlay changes the
+task hash) and applied by the JVM as `--workflow-overlay`, which rejects unknown keys, keys that name
+files or directories (host paths are not visible in the container), and `genomeId`, so an overlay can
+neither point at unstaged files nor rebind one sample's inputs/outputs. `--theta_file` is staged the same
+way. Reference-heavy stages (reaction graph, FBA data, agent) therefore need their files staged by new
+pipeline parameters and are not available through the overlay; requesting them fails explicitly. The
+claims come from the Python parsers of the tool TSVs (`BUILD_CLAIMS`, `SIDECAR_CLAIMS`), which emit raw
+scores only, so the JVM calibrates them with the same table as every other route; they are not the JVM
+predictor adapters' claims. The JVM writes `<sample>_integrated.tsv.stages.json`, the stage ledger.
+Stage order, priors and scoring live in the JVM workflow only. `service/test_integration_options.py`
+checks the schema and these bindings by text; the pipeline has not been parsed or run by Nextflow in
+this environment.
 
 `--run_integrate` is opt-in. Without it, the pipeline behaves exactly
 as before — produces raw per-tool outputs + the merged TSV, leaving

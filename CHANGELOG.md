@@ -25,7 +25,20 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ### Added
 - `gspa annotate --integrate` / `--integration-config`, `gspa integrate --workflow-config`, the stage ledger
-  `<genome>_integration_stages.json`, and stage-level assumptions (FBA medium and Gram template) in the ledger.
+  `<genome>_integrated.tsv.stages.json`, and stage-level assumptions (FBA medium and Gram template) in the ledger.
+- `gspa annotate --claims-out` writes the predictors' claims losslessly (typed JSONL, before integration and
+  before `--min-score` pruning); the web portal integrates that file instead of reconstructing claims from display
+  rows (which had replaced calibrated probabilities with raw scores and dropped weak candidates, evidence types and
+  metadata). `gspa annotate --intragenome-cluster` configures pre-inference clustering.
+- Ledger stage `reference_preparation`: validation and reference loading failures leave a readable ledger
+  (requested stages `not_run`) and remove outputs of earlier runs; a failed batch-wide reference load is recorded
+  for every genome. `gspa integrate --workflow-overlay` for the Nextflow route.
+
+### Fixed
+- `gspa integrate --intragenome-cluster <x>` and `--gapseq-target proteome|reps` were accepted and ignored; they
+  now fail (claims-only integration has no sequences and does not run gapseq). Benchmark scripts that pass them
+  (`benchmark/phase10_slurm.sh`, `bench10_phase10.sh` configs C3-C5) never exercised clustering through this command.
+- Ledger `reason` fields were serialized as objects instead of text.
 
 ## [2.2.2] - 2026-10-25
 

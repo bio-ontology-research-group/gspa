@@ -105,10 +105,22 @@ class AnnotateCommand implements Runnable {
                     + 'or a kingdom name (bacteria/archaea/eukaryote/virus). For single-organism inputs.')
     String organismTaxon
 
+    @Option(names = ['--intragenome-cluster'],
+            description = 'Cluster the proteome at this identity (0.9, 0.95 or 1.0; coverage 0.8) before inference: '
+                    + 'predictors run on cluster representatives and their annotations are propagated to members. '
+                    + 'Default: off.')
+    String intragenomeCluster
+
+    @Option(names = ['--claims-out'],
+            description = 'Write the predictors\' evidence claims, exactly as produced (before integration and '
+                    + 'before --min-score pruning; source, evidence type, raw and calibrated scores, metadata), as '
+                    + 'JSONL that "gspa integrate --claims" reads.')
+    File claimsOut
+
     @Option(names = ['--integrate'],
             description = 'Run the shared evidence-integration workflow (priors, references, context stages, enforcement) '
                     + 'on the predictions, exactly as "gspa integrate" would, and write the stage ledger '
-                    + '<genome>_integration_stages.json. Default settings; see --integration-config.')
+                    + '<genome>_integrated.tsv with its .stages.json ledger. Default settings; see --integration-config.')
     boolean integrate
 
     @Option(names = ['--integration-config'],
@@ -301,6 +313,8 @@ class AnnotateCommand implements Runnable {
 
         // Build and configure annotation pipeline
         def pipeline = new AnnotationPipeline(config)
+        // Integration artifacts get the names `gspa integrate --out <genome>_integrated.tsv` would give them.
+        pipeline.integrationOutputDir = outputDir
         pipeline.configure()
         if (preset.name && !pipeline.registry.available.any {
             !(it instanceof gspa.predictor.GenomePredictor) &&
@@ -313,6 +327,10 @@ class AnnotateCommand implements Runnable {
         // Run annotation
         def genome = pipeline.annotate(primary)
         lap('prediction')
+        if (claimsOut != null) {
+            int n = gspa.integration.ClaimExtractor.writeClaimsJsonl(pipeline.rawClaims ?: [], claimsOut)
+            println "Wrote ${n} evidence claims: ${claimsOut}"
+        }
 
         // Optionally prune the low-confidence GO-DAG tail before anything else
         // touches it. DeepGO-style predictors propagate every prediction up the
@@ -334,9 +352,7 @@ class AnnotateCommand implements Runnable {
         // Write output
         pipeline.writeOutput(genome, outputDir)
         if (pipeline.lastIntegration != null) {
-            def ledger = new File(outputDir, "${genome.id}_integration_stages.json")
-            pipeline.lastIntegrationAudit.write(ledger)
-            println "Integration stage ledger: ${ledger}"
+            println "Integration artifacts: ${new File(outputDir, "${genome.id}_integrated.tsv")} (+ .stages.json ledger)"
         }
 
         // Persist enabled operon detection alongside the annotations so
@@ -586,6 +602,13 @@ class AnnotateCommand implements Runnable {
             config.integration.workflow = gspa.integration.workflow.IntegrationWorkflowConfig.fromJson(integrationConfig)
         }
         if (integrate || integrationConfig != null) config.integration.enabled = true
+        if (intragenomeCluster != null && intragenomeCluster != 'off') {
+            if (!(intragenomeCluster in ['0.9', '0.95', '1.0'])) {
+                throw new IllegalArgumentException("--intragenome-cluster must be one of: off, 0.9, 0.95, 1.0 (got '${intragenomeCluster}')")
+            }
+            config.integration.intragenomeCluster.enabled = true
+            config.integration.intragenomeCluster.identity = Double.parseDouble(intragenomeCluster)
+        }
 
         applyPredictorFlags(config)
 

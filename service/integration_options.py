@@ -49,6 +49,47 @@ def workflow_config(*, preset: str, resources: Path, claims: Path, browser: Path
     return config
 
 
+INTEGRATED_TYPES = ('GO', 'EC')
+
+
+def build_claims(raw: Path, out: Path, *, exclude_sources=(), extra_claims=(), aspects=None) -> set:
+    """Claims file for ``gspa integrate`` from the annotator's raw claims.
+
+    ``raw`` is the JSONL written by ``gspa annotate --claims-out`` (the typed EvidenceClaim contract:
+    protein id, function, source, evidence type, raw and calibrated scores, metadata). Lines are
+    carried verbatim; the only selection is the portal's scope (GO and EC claims, not operon context,
+    minus ``exclude_sources``) and the only edit is filling a missing GO aspect from the reference.
+    ``extra_claims`` (PSORTb rows: ``type``, ``value``, ``score``, ``aspect``) are appended with a raw
+    score and no probability, so the integrator calibrates them with the same table as the rest.
+    Returns the set of (protein, type, function, source) keys written.
+    """
+    aspects = aspects or {}
+    seen = set()
+    with out.open('w') as fh:
+        for line in raw.read_text().splitlines():
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            key = (rec['protein_id'], rec['function_type'], rec['function_id'], rec['source'])
+            if rec['function_type'] not in INTEGRATED_TYPES or rec['source'] == 'operon' \
+                    or rec['source'] in exclude_sources or key in seen:
+                continue
+            if rec['function_type'] == 'GO' and not rec.get('go_aspect') and aspects.get(rec['function_id']):
+                rec['go_aspect'] = aspects[rec['function_id']]
+                line = json.dumps(rec)
+            seen.add(key)
+            fh.write(line + '\n')
+        for row in extra_claims:
+            key = (row['protein_id'], row['type'], row['value'], row['source'])
+            if key in seen:
+                continue
+            seen.add(key)
+            fh.write(json.dumps(dict(protein_id=row['protein_id'], function_type=row['type'],
+                                     function_id=row['value'], source=row['source'], raw_score=float(row['score']),
+                                     go_aspect=aspects.get(row['value'], row.get('aspect', '')))) + '\n')
+    return seen
+
+
 def integrate_command(binary, preset: str, config_file: Path) -> list[str]:
     """The ``gspa integrate`` argv for a job: all settings travel in ``config_file``."""
     command = [str(binary), 'integrate', '--workflow-config', str(config_file)]

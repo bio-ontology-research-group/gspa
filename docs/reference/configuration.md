@@ -280,8 +280,9 @@ context, FBA, agent) as the typed `IntegrationWorkflowConfig` described in
 keys below and `darkMatter`/`outerLoop` fill whatever `workflow` leaves unset, and the GO OWL file,
 taxon and essential profile default to the run's `quality` settings. With the default `workflow`
 block, integration enables the same default priors as `gspa integrate`; priors whose reference data
-is absent contribute nothing. `gspa annotate` writes the stage ledger as
-`<genome>_integration_stages.json`. Raw `EvidenceClaim` lists can be integrated directly with
+is absent contribute nothing. `gspa annotate` writes the integration artifacts named as
+`gspa integrate --out <genome>_integrated.tsv` names them, including the `.stages.json` ledger; clustering
+before inference is `integration.intragenomeCluster` (`gspa annotate --intragenome-cluster`). Raw `EvidenceClaim` lists can be integrated directly with
 `AnnotationPipeline.integrate(genome, claims)`.
 
 Sub-configs within `integration`:

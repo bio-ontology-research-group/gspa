@@ -80,8 +80,6 @@ class IntegrationWorkflowConfig {
     double gapseqQStep = 0.05d
     double gapseqQCap = 0.75d
     boolean gapseqPinPromotions = true
-    String gapseqTarget = 'genome'
-    String intragenomeCluster = 'off'
     String promotionStrategy = 'default'
     int beamWidth = 5
     int beamCandidatesPerGap = 3
@@ -152,19 +150,6 @@ class IntegrationWorkflowConfig {
      * requested stage to a silent no-op.
      */
     void validate() {
-        if (gapseqTarget != 'genome' && gapseqTarget != 'proteome' && gapseqTarget != 'reps') {
-            throw new IllegalArgumentException(
-                "--gapseq-target must be one of: genome, proteome, reps (got '${gapseqTarget}')")
-        }
-        if (gapseqTarget == 'reps' && (intragenomeCluster == null || intragenomeCluster == 'off')) {
-            throw new IllegalArgumentException(
-                "--gapseq-target=reps requires --intragenome-cluster to be enabled (0.9 | 0.95 | 1.0)")
-        }
-        if (intragenomeCluster != 'off' && intragenomeCluster != '0.9' &&
-                intragenomeCluster != '0.95' && intragenomeCluster != '1.0') {
-            throw new IllegalArgumentException(
-                "--intragenome-cluster must be one of: off, 0.9, 0.95, 1.0 (got '${intragenomeCluster}')")
-        }
         if (iterateGapseq && !darkMatter) {
             throw new IllegalArgumentException(
                 "--iterate-gapseq requires --dark-matter (the outer loop consumes suggester output)")
@@ -249,6 +234,29 @@ class IntegrationWorkflowConfig {
             if (profile in ['bacteria', 'archaea', 'eukaryote', 'virus']) w.essentialProfile = profile
         }
         w
+    }
+
+    /**
+     * Apply a settings overlay (the Nextflow route's {@code --integration_config}). Overlays carry
+     * behavior only: a key that names a file or directory (those must be staged by the caller
+     * into the task) or a per-genome binding ({@code genomeId}), and any unknown key, is rejected,
+     * so an overlay can neither point at host paths the task cannot see nor redirect one sample's
+     * inputs or outputs.
+     */
+    void applyOverlay(Map<String, Object> overlay) {
+        (overlay ?: [:]).each { String key, Object value ->
+            java.lang.reflect.Field property = IntegrationWorkflowConfig.declaredFields.find {
+                it.name == key && !it.synthetic && !java.lang.reflect.Modifier.isStatic(it.modifiers)
+            }
+            if (property == null) throw new IllegalArgumentException("Unknown integration workflow setting '${key}'")
+            if (File.isAssignableFrom(property.type) || key == 'moduleFiles' || key == 'genomeId') {
+                throw new IllegalArgumentException(
+                    "Overlay setting '${key}' names a file or per-genome binding; stage reference files into the task " +
+                    "through the pipeline's own parameters instead of the overlay")
+            }
+            Object converted = MAPPER.convertValue(value, property.type)
+            this[key] = key == 'theta' ? (((theta ?: [:]) as Map) + (converted as Map)) : converted
+        }
     }
 
     IntegrationWorkflowConfig copy() {

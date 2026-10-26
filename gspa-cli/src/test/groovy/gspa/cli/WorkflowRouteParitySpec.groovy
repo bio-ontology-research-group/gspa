@@ -361,17 +361,222 @@ open(os.path.join(os.path.dirname(ns.output_json), 'args.txt'), 'w').write(ns.gr
         config.fbaMedium == 'LB'
     }
 
-    def 'a requested reference that does not exist fails before any output is written'() {
+    def 'a missing reference leaves a readable failed ledger and no output from an earlier run'() {
         given:
         File out = new File(dir, 'missing.tsv')
+        out.text = 'stale output of an earlier run'
+        new File(out.path + '.stages.json').text = '{"stale": true}'
+        File suggestions = new File(dir, 'missing.suggestions.tsv')
+        suggestions.text = 'stale'
         def errors = new StringWriter()
 
         when:
-        int code = execute(['--claims', claims.path, '--out', out.path, '--lite', '--go-owl', new File(dir, 'absent.owl').path], errors)
+        int code = execute(['--claims', claims.path, '--out', out.path, '--lite', '--go-owl', new File(dir, 'absent.owl').path,
+            '--dark-matter', '--enforce-stage2', '--suggestions-out', suggestions.path], errors)
+        def ledger = new ObjectMapper().readValue(new File(out.path + '.stages.json'), Map)
+        def byName = ledger.stages.collectEntries { [it.name, it] }
 
         then:
         code != 0
         errors.toString().contains('goOwlFile does not exist')
         !out.exists()
+        !suggestions.exists()
+        ledger.stale == null
+        byName.reference_preparation.status == 'failed'
+        byName.reference_preparation.reason.contains('goOwlFile does not exist')
+        byName.evidence_integration.status == 'not_run'
+        byName.evidence_integration.reason.contains('reference_preparation failed')
+        byName.dark_matter.reason.contains('reference_preparation failed')
+        byName.symbolic_enforcement.reason.contains('reference_preparation failed')
+        byName.metabolic_refinement.reason == null           // never requested
+    }
+
+    def 'a reference that exists but cannot be loaded is a failed preparation, on the pipeline route too'() {
+        given:
+        File broken = file('broken.owl', 'this is not an ontology')
+        def config = new GspaConfig()
+        config.integration.enabled = true
+        config.integration.workflow = new IntegrationWorkflowConfig(lite: true, enabledPriors: 'none', goOwlFile: broken,
+            outFile: new File(dir, 'broken.tsv'))
+        def pipeline = new AnnotationPipeline(config)
+
+        when:
+        pipeline.integrate(genome('broken'), readClaims())
+
+        then:
+        thrown(IllegalStateException)
+        def stages = pipeline.lastIntegrationAudit.report().stages.collectEntries { [it.name, it.status] }
+        stages.reference_preparation == 'failed'
+        stages.evidence_integration == 'not_run'
+        new ObjectMapper().readValue(new File(dir, 'broken.tsv.stages.json'), Map).stages.find { it.name == 'reference_preparation' }.status == 'failed'
+        !new File(dir, 'broken.tsv').exists()
+    }
+
+    def 'a shared reference failure in a batch fails once and records every genome as not run'() {
+        given:
+        File outA = new File(dir, 'bA.tsv')
+        File outB = new File(dir, 'bB.tsv')
+        outA.text = 'stale'
+        File manifest = file('fail-manifest.tsv', "a\t${claims}\t${outA}\nb\t${claims}\t${outB}\n")
+        File broken = file('broken2.owl', 'not an ontology')
+        def errors = new StringWriter()
+
+        when:
+        int code = execute(['--batch-manifest', manifest.path, '--lite', '--enable-priors', 'none', '--go-owl', broken.path], errors)
+
+        then:
+        code != 0
+        errors.toString().contains('Batch not run: shared reference loading failed')
+        !outA.exists() && !outB.exists()
+        [outA, outB].every { out ->
+            def stages = new ObjectMapper().readValue(new File(out.path + '.stages.json'), Map).stages.collectEntries { [it.name, it] }
+            stages.reference_preparation.status == 'failed' && stages.evidence_integration.status == 'not_run' &&
+                stages.evidence_integration.reason.contains('reference_preparation failed')
+        }
+    }
+
+    def 'claims-only integration refuses clustering and gapseq targets it cannot compute'() {
+        given:
+        File out = new File(dir, 'unsupported.tsv')
+        def errors = new StringWriter()
+
+        expect:
+        execute(['--claims', claims.path, '--out', out.path, '--lite'] + flags, errors) != 0
+        errors.toString().contains(message)
+        !out.exists()
+
+        where:
+        flags                                                               | message
+        ['--intragenome-cluster', '0.9']                                    | 'needs the proteome sequences'
+        ['--gapseq-target', 'proteome']                                     | 'gapseq runs outside this command'
+        ['--dark-matter', '--iterate-gapseq', '--intragenome-cluster', '0.9', '--gapseq-target', 'reps'] | 'not supported by claims-only integration'
+    }
+
+    def 'the defaults for the inert options still run, and annotate maps clustering onto its own configuration'() {
+        given:
+        File out = new File(dir, 'defaults.tsv')
+        def annotate = new AnnotateCommand()
+        new CommandLine(annotate).parseArgs('--proteins', claims.path, '--intragenome-cluster', '0.95')
+
+        expect:
+        execute(['--claims', claims.path, '--out', out.path, '--lite', '--intragenome-cluster', 'off', '--gapseq-target', 'genome']) == 0
+        out.exists()
+        def resolved = annotate.resolveConfiguration()
+        resolved.integration.intragenomeCluster.enabled
+        resolved.integration.intragenomeCluster.identity == 0.95d
+        !resolved.integration.enabled
+    }
+
+    def 'an overlay changes behavior but cannot name files or rebind a sample'() {
+        given:
+        def config = new IntegrationWorkflowConfig(genomeId: 'sample-1', claimsFile: new File('c.jsonl'), outFile: new File('o.tsv'))
+
+        when:
+        config.applyOverlay([enforceStage2: true, enforceConsistencyMode: 'remove', theta: [max_iter: 2]])
+
+        then:
+        config.enforceStage2
+        config.enforceConsistencyMode == 'remove'
+        config.resolveTheta().max_iter == 2
+        config.genomeId == 'sample-1' && config.outFile.name == 'o.tsv'
+
+        when:
+        config.applyOverlay([(key): value])
+
+        then:
+        def e = thrown(IllegalArgumentException)
+        e.message.contains(message)
+        config.genomeId == 'sample-1' && config.claimsFile.name == 'c.jsonl' && config.outFile.name == 'o.tsv'
+
+        where:
+        key              | value           | message
+        'genomeId'       | 'other-sample'  | 'per-genome binding'
+        'claimsFile'     | '/host/c.jsonl' | 'names a file'
+        'outFile'        | '/host/o.tsv'   | 'names a file'
+        'goOwlFile'      | '/host/go.owl'  | 'names a file'
+        'fbaDataDir'     | '/host/fba'     | 'names a file'
+        'moduleFiles'    | ['/host/m.tsv'] | 'names a file'
+        'enablePriors'   | 'x'             | 'Unknown integration workflow setting'
+    }
+
+    def 'the overlay option reaches the command and rejects a file-valued key before any output'() {
+        given:
+        File good = file('good-overlay.json', '{"enforceStage2": true}')
+        File bad = file('bad-overlay.json', '{"goOwlFile": "/host/go.owl"}')
+        File out = new File(dir, 'overlay.tsv')
+        def errors = new StringWriter()
+        def command = new IntegrateCommand()
+        new CommandLine(command).parseArgs('--claims', claims.path, '--out', out.path, '--workflow-overlay', good.path)
+
+        expect:
+        command.toWorkflowConfig().enforceStage2
+        execute(['--claims', claims.path, '--out', out.path, '--workflow-overlay', bad.path], errors) != 0
+        errors.toString().contains('names a file')
+        !out.exists()
+    }
+
+    def 'predictor claims exported by the pipeline integrate to the same result as integrating the annotated genome directly'() {
+        given: 'a toy genome whose annotations are predictor output, including weak and unusual-source claims'
+        Genome g = genome('toy')
+        def add = { String pid, String type, String id, String source, double score, evidence = null ->
+            g.findProtein(pid).annotations.add(new gspa.model.Annotation(type: gspa.model.AnnotationType.valueOf(type), value: id,
+                score: score, source: source, goAspect: type == 'GO' ? 'MF' : null, evidenceType: evidence,
+                metadata: [target: "ref-${pid}".toString()]))
+        }
+        add('upstream', 'GO', 'GO:0004340', 'diamond', 0.95d)
+        add('downstream', 'GO', 'GO:0004618', 'deepgo-plusplus-light', 0.95d)
+        add('candidate', 'GO', 'GO:0004332', 'diamond', 0.15d)                               // weak: below a 0.5 display floor
+        add('distant', 'GO', 'GO:0004332', 'custom-lm', 0.15d, gspa.integration.EvidenceType.PROTEIN_LM_EMBEDDING)
+
+        def config = new GspaConfig()
+        config.integration.enabled = true
+        config.integration.workflow = baseConfig()
+        config.integration.workflow.outFile = new File(dir, 'annotate-route.tsv')
+        def pipeline = new AnnotationPipeline(config)
+        File exported = new File(dir, 'exported.jsonl')
+
+        when: 'the pipeline snapshots its claims, writes the typed file, and the CLI integrates that file'
+        def captured = pipeline.captureRawClaims(g)
+        ClaimExtractor.writeClaimsJsonl(captured, exported)
+        File viaCli = new File(dir, 'exported-route.tsv')
+        assert execute(['--lite', '--enable-priors', 'none', '--pathways', pathway.path, '--ec2go', ec2go.path,
+            '--reaction-graph', reactions.path, '--rlc-currency-pct', '100', '--rlc-suggester', '--dark-matter',
+            '--operons', operons.path, '--gaps', gaps.path, '--genome-layout', layout.path,
+            '--claims', exported.path, '--out', viaCli.path]) == 0
+        pipeline.integrate(g, pipeline.rawClaims)
+        Map<String, Double> direct = g.proteins.collectMany { p ->
+            p.annotations.annotations.collect { a -> ["${p.id}|${a.type}|${a.value}".toString(), a.score] }
+        }.collectEntries()
+        def reread = readClaims(exported)
+
+        then: 'the file is lossless: every claim comes back with its source, type, scores and metadata'
+        reread.size() == captured.size()
+        reread.every { r -> captured.any { c -> c.functionKey() == r.functionKey() && c.source == r.source &&
+            c.evidenceType == r.evidenceType && c.rawScore == r.rawScore && c.calibratedProb == r.calibratedProb &&
+            c.metadata == r.metadata } }
+        reread.find { it.proteinId == 'distant' }.evidenceType == gspa.integration.EvidenceType.PROTEIN_LM_EMBEDDING
+        reread.find { it.proteinId == 'candidate' }.rawScore == 0.15d
+
+        and: 'integrating the exported file equals integrating the annotated genome with the same configuration'
+        posteriorsFromTsv(viaCli) == direct
+        direct.size() >= 4
+        stageRecords(new ObjectMapper().readValue(new File(viaCli.path + '.stages.json'), Map).stages) ==
+            stageRecords(pipeline.lastIntegrationAudit.report().stages)
+    }
+
+    def 'annotate-route artifacts carry the names gspa integrate gives them'() {
+        given:
+        def config = new GspaConfig()
+        config.integration.enabled = true
+        config.integration.workflow = baseConfig()
+        def pipeline = new AnnotationPipeline(config)
+        pipeline.integrationOutputDir = new File(dir, 'annotate-out')
+
+        when:
+        pipeline.integrate(genome('named'), readClaims())
+
+        then:
+        new File(dir, 'annotate-out/named_integrated.tsv').isFile()
+        new File(dir, 'annotate-out/named_integrated.tsv.stages.json').isFile()
     }
 }

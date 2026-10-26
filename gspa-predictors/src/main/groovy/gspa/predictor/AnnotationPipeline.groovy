@@ -55,6 +55,12 @@ class AnnotationPipeline {
      */
     final List<PredictorRunStatus> runStatuses = Collections.synchronizedList([])
 
+    /** Directory for integration artifacts when the workflow config names no output file (null: none written). */
+    File integrationOutputDir
+
+    /** Claims of the last {@link #annotate} call, captured before integration or filtering. */
+    List<EvidenceClaim> rawClaims
+
     /** Outcome of the last {@link #integrate} call (null when integration is off or failed). */
     IntegrationWorkflow.Result lastIntegration
 
@@ -584,6 +590,10 @@ class AnnotationPipeline {
             }
         }
 
+        // The predictors' claims, exactly as produced: before integration replaces annotations
+        // and before any display threshold prunes weak candidates.
+        captureRawClaims(genome)
+
         // 5. Evidence integration (Phase 7+), gated by config.
         if (config.integration?.enabled) {
             runIntegration(genome)
@@ -643,6 +653,9 @@ class AnnotationPipeline {
 
         IntegrationWorkflowConfig workflowConfig = IntegrationWorkflowConfig.fromGspa(config)
         workflowConfig.genomeId = genome.id
+        if (workflowConfig.outFile == null && integrationOutputDir != null) {
+            workflowConfig.outFile = new File(integrationOutputDir, "${genome.id}_integrated.tsv")
+        }
         def workflow = new IntegrationWorkflow(workflowConfig)
         workflow.sharedReferences = sharedIntegrationReferences
         workflow.info = { String m -> log.info(m) } as Closure<Void>
@@ -661,7 +674,17 @@ class AnnotationPipeline {
     }
 
     private void runIntegration(Genome genome) {
-        integrate(genome)
+        integrate(genome, rawClaims)
+    }
+
+    /**
+     * Snapshot the claims carried by the genome's current annotations (source, evidence type, raw and
+     * calibrated scores, metadata). Export them with {@link ClaimExtractor#writeClaimsJsonl} to run any
+     * other route (web, Nextflow, {@code gspa integrate}) on identical evidence.
+     */
+    List<EvidenceClaim> captureRawClaims(Genome genome) {
+        rawClaims = new ClaimExtractor().fromGenome(genome)
+        rawClaims
     }
 
     /**
