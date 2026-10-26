@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SHA = 'a' * 64
 OTHER_SHA = 'b' * 64
 RUN_ORDER = ['reference_preparation', 'cohort_context', 'evidence_integration', 'dark_matter', 'reaction_context', 'cross_genome',
-             'symbolic_enforcement', 'metabolic_refinement', 'agent_completion', 'metabolic_experiments', 'learned_integration',
+             'symbolic_enforcement', 'metabolic_refinement', 'agent_completion', 'metabolic_experiments', 'community_metabolism', 'learned_integration',
              'feature_export']
 
 

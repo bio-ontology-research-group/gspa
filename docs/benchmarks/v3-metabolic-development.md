@@ -81,6 +81,23 @@ sets were derived at oxygen 15 and default ATPM, then applied by the authors at
 oxygen 20 / ATPM 8.39. This is a documented protocol comparison, not reproduction
 of every original analysis or an independent test of the authors' model fitting.
 
+## Independent solver replay
+
+COBRApy 0.32.1 with GLPK independently replayed the same model, medium, GPR
+deletions and registered closures (job 9738). All 61 cases agreed in each of
+the three protocols: 183 matched wild-type/deletion comparisons, or 366 LPs.
+The checker uses COBRApy's own GPR knockout operation and a different LP solver;
+it does not call the production LP builder. Each oracle report binds the model,
+case manifest, checker script and production report by SHA-256. Production report
+hashes were checked against the committed artifacts before publication.
+
+Full replays: [legacy](../../benchmark/v3/results/development-e8bcc07/oracle-legacy.json),
+[manuscript unregulated](../../benchmark/v3/results/development-e8bcc07/oracle-manuscript_unregulated.json),
+[manuscript regulatory](../../benchmark/v3/results/development-e8bcc07/oracle-manuscript_regulatory.json).
+Agreement establishes implementation consistency for these configurations.
+It does not improve the measured phenotype agreement above or validate gene
+function assignments.
+
 ## Reproduction
 
 ```bash

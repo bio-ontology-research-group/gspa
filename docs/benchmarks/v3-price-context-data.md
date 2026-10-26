@@ -8,9 +8,14 @@ neighbors. All 132 full-proteome predictor matrices (six predictors, 22 assembli
 
 Slurm job 9740 verified every destination's size and SHA-256 against the original
 retrieval manifest. [The full verification report](../../benchmark/v3/results/development-3c75a38/price-source-verification.json)
-retains all paths and digests. This establishes transfer integrity only. Matrix
-schema probing could not import pandas in that environment; protein/EC axes and
-protein-to-coordinate joins still require validation before inference.
+retains all paths and digests. This establishes transfer integrity only.
+After installing the required pandas dependency, job 9742 successfully probed one
+matrix per predictor. All six are protein-by-EC DataFrames, and every protein ID
+in each probed matrix matched its assembly's acquired FASTA exactly. The
+[six schema probes](../../benchmark/v3/results/development-3c75a38/price-schema-probes.json)
+record shapes, sample axes and overlap counts. This is not yet validation of all
+132 matrices, sequence identity to the original predictor inputs, or genomic
+coordinate joins; those checks remain required before context inference.
 
 For every exact assembly accession/version, NCBI Datasets supplied protein FASTA,
 GFF3, and assembly/annotation metadata. The returned accession matched the request,
@@ -40,3 +45,28 @@ inputs. Verify sequence identity when joining predictor protein IDs to the
 acquired annotations. Missing or ambiguous mappings stay explicit. Family
 clustering, phylogenetic metadata, reaction mappings and the full context benchmark
 remain pending; acquiring these files is not evidence of improved prediction.
+
+
+## Coordinate preparation
+
+`benchmark/v3/prepare_price_layout.py` now prepares all 22 exact-version packages:
+115,542 protein sequences, of which 115,263 have one unambiguous CDS locus.
+The remaining 279 retain their sequences but have unavailable local coordinates
+(missing, split or multiple loci); they are not silently assigned a merged locus.
+The [layout report](../../benchmark/v3/results/development-3c75a38/price-layout-report.json)
+records each unavailable protein, source hashes and output digests. FASTA headers
+in the combined sequence file contain only assembly and protein IDs. GFF product
+names and functional annotations never enter layouts, sequences or metadata.
+
+The output includes production-format layout TSVs, per-protein sequence digests,
+assembly/contig metadata and a namespaced combined FASTA for family clustering.
+Family-search completeness and phylogenetic independence are deliberately absent
+until measured. These sequences describe the acquired NCBI package; the original
+predictor FASTAs have not been supplied for direct sequence comparison.
+
+`audit_price_matrices.py` checks all 132 matrix hashes again before loading them,
+validates score ranges and unique EC/protein axes, and audits exact or uniquely
+versionless accession joins. An explicit different protein version is never
+silently joined. Its counts of nonzero and threshold-retained candidates are
+resource-planning diagnostics; they are not benchmark results or a chosen pruning
+policy. Slurm job 9743 runs this complete audit.

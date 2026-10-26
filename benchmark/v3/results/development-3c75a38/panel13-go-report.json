@@ -1,0 +1,1449 @@
+{
+  "dataset_status": "real",
+  "engine": {
+    "args_style": "plain",
+    "command": [
+      "/data/hohndor/envs/jdk-21.0.10+7/bin/java",
+      "-Xmx12g",
+      "-jar",
+      "/data/hohndor/gspa-v3/panel13-3c75a38/gspa-development-3c75a38.jar"
+    ],
+    "jar": {
+      "bytes": 45842018,
+      "path": "/data/hohndor/gspa-v3/panel13-3c75a38/gspa-development-3c75a38.jar",
+      "sha256": "65fe3068a17e3b1c50a157335097432633dba6dfff7e9b2dd80abc37a06c028f",
+      "status": "ok"
+    },
+    "java_version": [
+      "openjdk version \"21.0.10\" 2026-01-20 LTS",
+      "OpenJDK Runtime Environment Temurin-21.0.10+7 (build 21.0.10+7-LTS)",
+      "OpenJDK 64-Bit Server VM Temurin-21.0.10+7 (build 21.0.10+7-LTS, mixed mode, sharing)"
+    ],
+    "launcher": {
+      "bytes": 12328,
+      "path": "/data/hohndor/envs/jdk-21.0.10+7/bin/java",
+      "resolved": "/data/hohndor/envs/jdk-21.0.10+7/bin/java",
+      "sha256": "cb255f2795b07ec5db97aa7694753c37342851f0867a5979b20e74ff2151ccb3",
+      "status": "ok"
+    },
+    "source_dirty": null,
+    "source_revision": null
+  },
+  "evaluation": {
+    "assumptions": [
+      "Evaluation universe per genome = true pairs + every pair emitted by any executed arm, on labelled proteins only; the universe (and hence ECE/Brier) depends on which arms are compared and is identical for all arms of a genome.",
+      "A pair in the universe that an arm did not emit has score 0 (omission is not rewarded).",
+      "Closed world: a universe pair without a label is counted false, although labels are incomplete, so precision is a lower bound. This is a convention, not a guarantee of equal bias: arms that call more specific, novel or less-studied functions are penalised more than arms that call well-annotated ones, and correct but unlabelled calls are invisible. Compare arms with different specificity profiles conditionally on label completeness.",
+      "Proteins without any label of the scored kind are not evaluated; global Fmax picks its threshold on the evaluated labels."
+    ],
+    "bootstrap": 2000,
+    "eval_failures": {},
+    "kinds": {
+      "go": {
+        "arms": {
+          "stage0": {
+            "calibration": {
+              "brier": 0.287956838718385,
+              "brier_ci": {
+                "ci_high": 0.33327951354032204,
+                "ci_low": 0.24096685097677967,
+                "estimate": 0.28795683871838507,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "ece": 0.36033731643158623,
+              "ece_ci": {
+                "ci_high": 0.4413875792197392,
+                "ci_low": 0.2827790837408307,
+                "estimate": 0.3603373164315862,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "n_pairs": 14225.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 1.0,
+                  "mean_score": 0.0,
+                  "n": 932.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.05958702064896755,
+                  "mean_score": 0.17560159667441497,
+                  "n": 1695.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.03644646924829157,
+                  "mean_score": 0.242968863062007,
+                  "n": 2634.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.07721518987341772,
+                  "mean_score": 0.34970384096546464,
+                  "n": 1580.0
+                },
+                {
+                  "bin": 4,
+                  "frac_true": 0.18970588235294117,
+                  "mean_score": 0.4523519640061656,
+                  "n": 680.0
+                },
+                {
+                  "bin": 5,
+                  "frac_true": 0.17972350230414746,
+                  "mean_score": 0.5521283500305831,
+                  "n": 651.0
+                },
+                {
+                  "bin": 6,
+                  "frac_true": 0.22264150943396227,
+                  "mean_score": 0.6686794269213409,
+                  "n": 3180.0
+                },
+                {
+                  "bin": 7,
+                  "frac_true": 0.2923773059519666,
+                  "mean_score": 0.7042137475953546,
+                  "n": 2873.0
+                }
+              ]
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.47948132321520665,
+                "ci_low": 0.2153434800493624,
+                "estimate": 0.34157349471740694,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "precision": {
+                "ci_high": 0.3818391245920522,
+                "ci_low": 0.14172986267677803,
+                "estimate": 0.24835918854415273,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "recall": {
+                "ci_high": 0.6453598484848485,
+                "ci_low": 0.41602728047740833,
+                "estimate": 0.5467980295566502,
+                "n_boot": 2000,
+                "n_genomes": 12
+              }
+            },
+            "genomes": [
+              "ccrescentus",
+              "dradiodurans",
+              "hpylori",
+              "mgenitalium",
+              "mjannaschii",
+              "pfuriosus",
+              "saureus",
+              "scoelicolor",
+              "spneumoniae",
+              "tpallidum",
+              "tthermophilus",
+              "vcholerae"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.4882097717411809,
+                "ci_low": 0.22242369295859776,
+                "estimate": 0.34638340920586747,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "fmax": 0.34638340920586747,
+              "precision": 0.25029239766081873,
+              "recall": 0.5622331691297209,
+              "threshold": 0.48,
+              "threshold_on_test": true
+            }
+          },
+          "stage1": {
+            "calibration": {
+              "brier": 0.28204751635115527,
+              "brier_ci": {
+                "ci_high": 0.32945504177405704,
+                "ci_low": 0.23319801715487645,
+                "estimate": 0.2820475163511552,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "ece": 0.3435293079463804,
+              "ece_ci": {
+                "ci_high": 0.42974945737363085,
+                "ci_low": 0.26192813746587834,
+                "estimate": 0.34352930794638037,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "n_pairs": 14225.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 0.6950037285607755,
+                  "mean_score": 0.02336240936434559,
+                  "n": 1341.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.04640151515151515,
+                  "mean_score": 0.16176091485555702,
+                  "n": 2112.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.04452690166975881,
+                  "mean_score": 0.24354304557335843,
+                  "n": 2156.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.10324039186134137,
+                  "mean_score": 0.34971703985548264,
+                  "n": 1327.0
+                },
+                {
+                  "bin": 4,
+                  "frac_true": 0.15682967959527824,
+                  "mean_score": 0.45782255187922155,
+                  "n": 593.0
+                },
+                {
+                  "bin": 5,
+                  "frac_true": 0.2002840909090909,
+                  "mean_score": 0.549786683353468,
+                  "n": 704.0
+                },
+                {
+                  "bin": 6,
+                  "frac_true": 0.22576530612244897,
+                  "mean_score": 0.669156507591347,
+                  "n": 3136.0
+                },
+                {
+                  "bin": 7,
+                  "frac_true": 0.29411764705882354,
+                  "mean_score": 0.7042113515489644,
+                  "n": 2856.0
+                }
+              ]
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.48444503031900865,
+                "ci_low": 0.21769951978047106,
+                "estimate": 0.34678164459501076,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "precision": {
+                "ci_high": 0.3871479571598572,
+                "ci_low": 0.14336577260859246,
+                "estimate": 0.2522401433691756,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "recall": {
+                "ci_high": 0.6508112913980885,
+                "ci_low": 0.42290748898678415,
+                "estimate": 0.554679802955665,
+                "n_boot": 2000,
+                "n_genomes": 12
+              }
+            },
+            "genomes": [
+              "ccrescentus",
+              "dradiodurans",
+              "hpylori",
+              "mgenitalium",
+              "mjannaschii",
+              "pfuriosus",
+              "saureus",
+              "scoelicolor",
+              "spneumoniae",
+              "tpallidum",
+              "tthermophilus",
+              "vcholerae"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.4908106016637647,
+                "ci_low": 0.22396548342812314,
+                "estimate": 0.3502118216663304,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "fmax": 0.3502118216663304,
+              "precision": 0.2527296549716116,
+              "recall": 0.5701149425287356,
+              "threshold": 0.48,
+              "threshold_on_test": true
+            }
+          },
+          "stage1_stage2a_relax": {
+            "calibration": {
+              "brier": 0.28028014074098534,
+              "brier_ci": {
+                "ci_high": 0.32914775859780593,
+                "ci_low": 0.23002330254698614,
+                "estimate": 0.28028014074098534,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "ece": 0.3347024556512213,
+              "ece_ci": {
+                "ci_high": 0.42300792649386654,
+                "ci_low": 0.2507411860646646,
+                "estimate": 0.33470245565122136,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "n_pairs": 14225.0,
+              "reliability": [
+                {
+                  "bin": 0,
+                  "frac_true": 0.38480594549958713,
+                  "mean_score": 0.0,
+                  "n": 2422.0
+                },
+                {
+                  "bin": 1,
+                  "frac_true": 0.07765451664025357,
+                  "mean_score": 0.17581073932274094,
+                  "n": 1262.0
+                },
+                {
+                  "bin": 2,
+                  "frac_true": 0.05028810895756941,
+                  "mean_score": 0.24319372384654753,
+                  "n": 1909.0
+                },
+                {
+                  "bin": 3,
+                  "frac_true": 0.10059612518628912,
+                  "mean_score": 0.35281396112423763,
+                  "n": 1342.0
+                },
+                {
+                  "bin": 4,
+                  "frac_true": 0.1781115879828326,
+                  "mean_score": 0.4601292058470048,
+                  "n": 466.0
+                },
+                {
+                  "bin": 5,
+                  "frac_true": 0.17496962332928312,
+                  "mean_score": 0.5458053768625675,
+                  "n": 823.0
+                },
+                {
+                  "bin": 6,
+                  "frac_true": 0.23121573685907773,
+                  "mean_score": 0.669169304520351,
+                  "n": 3101.0
+                },
+                {
+                  "bin": 7,
+                  "frac_true": 0.2896551724137931,
+                  "mean_score": 0.7047669226073562,
+                  "n": 2900.0
+                }
+              ]
+            },
+            "fixed_threshold": {
+              "f1": {
+                "ci_high": 0.4800773278917409,
+                "ci_low": 0.21584116140051238,
+                "estimate": 0.3447157766744351,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "precision": {
+                "ci_high": 0.3831932773109244,
+                "ci_low": 0.14128654970760235,
+                "estimate": 0.2492672919109027,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "recall": {
+                "ci_high": 0.652611301369863,
+                "ci_low": 0.4291814946619217,
+                "estimate": 0.5586206896551724,
+                "n_boot": 2000,
+                "n_genomes": 12
+              }
+            },
+            "genomes": [
+              "ccrescentus",
+              "dradiodurans",
+              "hpylori",
+              "mgenitalium",
+              "mjannaschii",
+              "pfuriosus",
+              "saureus",
+              "scoelicolor",
+              "spneumoniae",
+              "tpallidum",
+              "tthermophilus",
+              "vcholerae"
+            ],
+            "global_fmax": {
+              "ci": {
+                "ci_high": 0.49217238346525954,
+                "ci_low": 0.2250740375123396,
+                "estimate": 0.35058330840562374,
+                "n_boot": 2000,
+                "n_genomes": 12
+              },
+              "fmax": 0.35058330840562374,
+              "precision": 0.25171821305841924,
+              "recall": 0.5773399014778325,
+              "threshold": 0.48,
+              "threshold_on_test": true
+            }
+          }
+        },
+        "universe": {
+          "ccrescentus": {
+            "labelled_proteins": 16,
+            "pairs": 578,
+            "true_pairs": 106
+          },
+          "dradiodurans": {
+            "labelled_proteins": 27,
+            "pairs": 1516,
+            "true_pairs": 333
+          },
+          "hpylori": {
+            "labelled_proteins": 114,
+            "pairs": 3914,
+            "true_pairs": 594
+          },
+          "mgenitalium": {
+            "labelled_proteins": 5,
+            "pairs": 475,
+            "true_pairs": 39
+          },
+          "mjannaschii": {
+            "labelled_proteins": 77,
+            "pairs": 4575,
+            "true_pairs": 1156
+          },
+          "pfuriosus": {
+            "labelled_proteins": 4,
+            "pairs": 191,
+            "true_pairs": 61
+          },
+          "saureus": {
+            "labelled_proteins": 8,
+            "pairs": 433,
+            "true_pairs": 108
+          },
+          "scoelicolor": {
+            "labelled_proteins": 11,
+            "pairs": 352,
+            "true_pairs": 106
+          },
+          "spneumoniae": {
+            "labelled_proteins": 40,
+            "pairs": 1133,
+            "true_pairs": 211
+          },
+          "tpallidum": {
+            "labelled_proteins": 1,
+            "pairs": 3,
+            "true_pairs": 3
+          },
+          "tthermophilus": {
+            "labelled_proteins": 19,
+            "pairs": 978,
+            "true_pairs": 326
+          },
+          "vcholerae": {
+            "labelled_proteins": 1,
+            "pairs": 77,
+            "true_pairs": 2
+          }
+        },
+        "vs_baseline": {
+          "stage1": {
+            "delta_ece": {
+              "ci_high": -0.009674715242267928,
+              "ci_low": -0.02258094778140257,
+              "estimate": -0.016808008485205805,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "delta_f1_at_threshold": {
+              "ci_high": 0.016674838439543427,
+              "ci_low": -7.674550441649775e-05,
+              "estimate": 0.005208149877603818,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "delta_global_fmax": {
+              "ci_high": 0.008439612448961797,
+              "ci_low": 0.0,
+              "estimate": 0.003828412460462949,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "delta_precision_at_threshold": {
+              "ci_high": 0.014130294680574196,
+              "ci_low": -0.0001409403886760141,
+              "estimate": 0.0038809548250228754,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "delta_recall_at_threshold": {
+              "ci_high": 0.02289048473967681,
+              "ci_low": 0.0,
+              "estimate": 0.007881773399014746,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "matched_genomes": [
+              "ccrescentus",
+              "dradiodurans",
+              "hpylori",
+              "mgenitalium",
+              "mjannaschii",
+              "pfuriosus",
+              "saureus",
+              "scoelicolor",
+              "spneumoniae",
+              "tpallidum",
+              "tthermophilus",
+              "vcholerae"
+            ],
+            "pair_correction": {
+              "corrected": 78.0,
+              "harmed": 22.0,
+              "mcnemar_p": 1.590532847378614e-08,
+              "net": 56.0,
+              "net_ci": {
+                "ci_high": 165.0,
+                "ci_low": -11.0,
+                "estimate": 56.0,
+                "n_boot": 2000,
+                "n_genomes": 12
+              }
+            }
+          },
+          "stage1_stage2a_relax": {
+            "delta_ece": {
+              "ci_high": -0.013504192614203325,
+              "ci_low": -0.03622068456451244,
+              "estimate": -0.02563486078036481,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "delta_f1_at_threshold": {
+              "ci_high": 0.019996982517474615,
+              "ci_low": -0.003558859437913342,
+              "estimate": 0.003142281957028148,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "delta_global_fmax": {
+              "ci_high": 0.016449523894491336,
+              "ci_low": -0.001383332725433284,
+              "estimate": 0.004199899199756274,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "delta_precision_at_threshold": {
+              "ci_high": 0.014935444436788126,
+              "ci_low": -0.005624877983918142,
+              "estimate": 0.0009081033667499572,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "delta_recall_at_threshold": {
+              "ci_high": 0.03607127335940896,
+              "ci_low": 0.0,
+              "estimate": 0.011822660098522175,
+              "n_boot": 2000,
+              "n_genomes": 12
+            },
+            "matched_genomes": [
+              "ccrescentus",
+              "dradiodurans",
+              "hpylori",
+              "mgenitalium",
+              "mjannaschii",
+              "pfuriosus",
+              "saureus",
+              "scoelicolor",
+              "spneumoniae",
+              "tpallidum",
+              "tthermophilus",
+              "vcholerae"
+            ],
+            "pair_correction": {
+              "corrected": 106.0,
+              "harmed": 154.0,
+              "mcnemar_p": 0.003479016164811821,
+              "net": -48.0,
+              "net_ci": {
+                "ci_high": 111.0,
+                "ci_low": -198.0,
+                "estimate": -48.0,
+                "n_boot": 2000,
+                "n_genomes": 12
+              }
+            }
+          }
+        }
+      }
+    },
+    "seed": 13,
+    "threshold": 0.5
+  },
+  "execution_status": {
+    "stage0": {
+      "ccrescentus": "executed",
+      "dradiodurans": "executed",
+      "hpylori": "executed",
+      "mgenitalium": "executed",
+      "mjannaschii": "executed",
+      "pfuriosus": "executed",
+      "rprowazekii": "executed",
+      "saureus": "executed",
+      "scoelicolor": "executed",
+      "spneumoniae": "executed",
+      "tpallidum": "executed",
+      "tthermophilus": "executed",
+      "vcholerae": "executed"
+    },
+    "stage1": {
+      "ccrescentus": "executed",
+      "dradiodurans": "executed",
+      "hpylori": "executed",
+      "mgenitalium": "executed",
+      "mjannaschii": "executed",
+      "pfuriosus": "executed",
+      "rprowazekii": "executed",
+      "saureus": "executed",
+      "scoelicolor": "executed",
+      "spneumoniae": "executed",
+      "tpallidum": "executed",
+      "tthermophilus": "executed",
+      "vcholerae": "executed"
+    },
+    "stage1_stage2a_relax": {
+      "ccrescentus": "executed",
+      "dradiodurans": "executed",
+      "hpylori": "executed",
+      "mgenitalium": "executed",
+      "mjannaschii": "executed",
+      "pfuriosus": "executed",
+      "rprowazekii": "executed",
+      "saureus": "executed",
+      "scoelicolor": "executed",
+      "spneumoniae": "executed",
+      "tpallidum": "executed",
+      "tthermophilus": "executed",
+      "vcholerae": "executed"
+    }
+  },
+  "experiment_id": "development-3c75a38-panel13-regression",
+  "go_propagation": true,
+  "leakage_controls": {
+    "cluster_disjoint": "not_declared",
+    "declared:evaluation_role": "declared_unverified: Previously inspected development regression panel; not a final holdout. Predictor-training independence is not reverified.",
+    "genome_id_disjoint": "verified",
+    "homology_clusters": "not_declared",
+    "label_separation": "verified",
+    "pretrained_model_leakage": "not_assessed",
+    "protein_id_disjoint": "not_assessed: no train/calibration proteins declared",
+    "species_disjoint": "verified"
+  },
+  "leakage_problems": [],
+  "n_not_executed": 0,
+  "provenance": {
+    "code": {
+      "v3_metrics.py": "c98b70bf9760b9605413f0b034e4712ccaa2a586d0ed7c671d952982e1504532",
+      "v3_runner.py": "302cfc635ae521603d803d300d96610b325f366e2be81072c50fd7caab4785aa"
+    },
+    "git_commit": null,
+    "gspa_binary": {
+      "bytes": 45842018,
+      "path": "/data/hohndor/gspa-v3/panel13-3c75a38/gspa-development-3c75a38.jar",
+      "sha256": "65fe3068a17e3b1c50a157335097432633dba6dfff7e9b2dd80abc37a06c028f",
+      "status": "ok"
+    },
+    "inputs": {
+      "ccrescentus": {
+        "aux": {
+          "gaps": {
+            "bytes": 42650,
+            "path": "/data/hohndor/gspa/proteomes/bench10/gaps/ccrescentus_real.jsonl",
+            "sha256": "a60885afe3ed5b38f24c53359e28eafb46c294c11101207f564316f1d6a6d5be",
+            "status": "ok"
+          },
+          "operons": {
+            "bytes": 34399,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/ccrescentus_operons_up.tsv",
+            "sha256": "00db809d15286edcfa5e907ddd6c8a3c6dc442d3fb709d8f1eecd879d86172f1",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 24725182,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0003.jsonl",
+          "sha256": "f8db957db24c54edf92dbc8421a522d245fe3bf8351b9aa0002b6e20fd30092f",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 814,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/ccrescentus_truth_exp.tsv",
+            "sha256": "d2a5b7b532de064560a7e18e73023d784a20bcbda6b4e41a0ed53ca9d54f3343",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "dradiodurans": {
+        "aux": {
+          "gaps": {
+            "bytes": 42374,
+            "path": "/data/hohndor/gspa/proteomes/bench10/gaps/dradiodurans_real.jsonl",
+            "sha256": "be4d43668e3d510ca5f9544a56445610ea0ca0489ff48fa37918b33d9c4f7c60",
+            "status": "ok"
+          },
+          "operons": {
+            "bytes": 16242,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/dradiodurans_operons_up.tsv",
+            "sha256": "14ca6dce2ef824047535da876ba92202d2f42a3bf71708f662bb40f5d52d1e1e",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 17598814,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0007.jsonl",
+          "sha256": "9d50e4d175bdc8c2c6881c99fb63c6ad888e1c72cf989de7cb191436a826c1ae",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 1117,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/dradiodurans_truth_exp.tsv",
+            "sha256": "5640114646f828ac6110e664551c91e21e7453629fe837eccd28e3575e37a158",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "hpylori": {
+        "aux": {
+          "gaps": {
+            "bytes": 26932,
+            "path": "/data/hohndor/gspa/proteomes/bench9/gapseq/hpylori_gaps.jsonl",
+            "sha256": "9f48d34fbc4b3c8a1d640181146545c8520f080efd5a313b261f9ee59c1720d9",
+            "status": "ok"
+          },
+          "operons": {
+            "bytes": 10799,
+            "path": "/data/hohndor/gspa/proteomes/operons/hpylori_operons.tsv",
+            "sha256": "f8e19653696f9244f46778b4828220cda99879700789a257dbcbc8841ccab28c",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 28282458,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0010.jsonl",
+          "sha256": "bbe07cf6663172599251955d568e11b177187cfea459c42236fc66b1b4aba6a5",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 5821,
+            "path": "/data/hohndor/gspa/proteomes/truth_dual/hpylori_truth_exp.tsv",
+            "sha256": "a13cdeeb1359c1e343e249c3b0a8c366e825e429227221e8e7621cbb38c111f9",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "mgenitalium": {
+        "aux": {
+          "gaps": {
+            "bytes": 4217,
+            "path": "/data/hohndor/gspa/proteomes/bench9/gapseq/mgenitalium_gaps.jsonl",
+            "sha256": "8caf08999aec14ccb7fad9c42d3323ff4ad60e7355bfbf3f198a443e8acb9d42",
+            "status": "ok"
+          },
+          "operons": {
+            "bytes": 3628,
+            "path": "/data/hohndor/gspa/proteomes/operons/mgenitalium_operons.tsv",
+            "sha256": "376826adf1705731fb83ed93f671dffcb587bc90f0b4ee89e47cc35b4b9af1a9",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 13904394,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0011.jsonl",
+          "sha256": "98b0f917980d1315214ecd7820e20a99112e272aa4c388994b63d668ef7bfaa7",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 277,
+            "path": "/data/hohndor/gspa/proteomes/truth_dual/mgenitalium_truth_exp.tsv",
+            "sha256": "4059554e73dc0b85a0734ef41044317889ba437c8389f4392a22dfb001e20e3d",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "mjannaschii": {
+        "aux": {
+          "gaps": {
+            "bytes": 18326,
+            "path": "/data/hohndor/gspa/proteomes/bench9/gapseq/mjannaschii_gaps.jsonl",
+            "sha256": "1b512cd2b6ba32debcade894617873b025d83b42e0c170c195a826415d61f93f",
+            "status": "ok"
+          },
+          "operons": {
+            "bytes": 15264,
+            "path": "/data/hohndor/gspa/proteomes/operons/mjannaschii_operons.tsv",
+            "sha256": "fd619e91a2417c39f079f0db80302a4a74a9d3033296bb41f0b59ee87da1fa23",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 24758490,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0012.jsonl",
+          "sha256": "7249b57076eae1087dff2d89aa5b03ed9b887a8fc50d1ded1a7a26e44fb52088",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 3826,
+            "path": "/data/hohndor/gspa/proteomes/truth_dual/mjannaschii_truth_exp.tsv",
+            "sha256": "e21681a20278babd2a6f21d7730c4621cb763c6f25642c3d3a1841df77f39dc8",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "pfuriosus": {
+        "aux": {
+          "operons": {
+            "bytes": 17677,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/pfuriosus_operons_up.tsv",
+            "sha256": "205042483c548a2963c5501c03f1920154853069242db689724228811a9435e9",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 13492817,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0009.jsonl",
+          "sha256": "c73a0f191b8dc95635c70e44f5b71b142f40ad5d25a049bd69bcbfbf180c4322",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 214,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/pfuriosus_truth_exp.tsv",
+            "sha256": "85417c29dee0ce9bf6c59bcbd0e055b0de8ab955ad25f20cbb4c21d86a84c284",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "rprowazekii": {
+        "aux": {
+          "gaps": {
+            "bytes": 18499,
+            "path": "/data/hohndor/gspa/proteomes/bench10/gaps/rprowazekii_real.jsonl",
+            "sha256": "2122684f934a297b888eec4300ca89d78e1bd746908526bd9c8eeb70661f4489",
+            "status": "ok"
+          },
+          "operons": {
+            "bytes": 4624,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/rprowazekii_operons_up.tsv",
+            "sha256": "f13dee03185c839e3ad49ec17804193a12d25e13f3f968689fcfdbb365025ecf",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 8343796,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0004.jsonl",
+          "sha256": "ff4c1c8b8cb19f650f2cf7974514d28b52e890508a12e6fa9077b7eb2d21fdb3",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 25,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/rprowazekii_truth_exp.tsv",
+            "sha256": "279d454b9b3045c9e774da0a78d784c470afdd015775fb6306a7f092f0799441",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "saureus": {
+        "aux": {
+          "operons": {
+            "bytes": 23580,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/saureus_operons_up.tsv",
+            "sha256": "2ce2383ff7f891e885336429e7cd1403f3b533a2228ae1e0cc3892ef404be1f5",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 19774584,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0001.jsonl",
+          "sha256": "30653e1ddd6adac0c2c7d0d01a46fb62fa073390567218bb5cd231c99a1f1f1e",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 1125,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/saureus_truth_exp.tsv",
+            "sha256": "698e6c73a8d05afab51fd8af66a66c129ecdced85f39fcfef998582773705792",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "scoelicolor": {
+        "aux": {
+          "operons": {
+            "bytes": 55245,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/scoelicolor_operons_up.tsv",
+            "sha256": "a19671272935cd3799959364981573a984c23a1be9d05c8bf4808a81ce3fd995",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 39544128,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0008.jsonl",
+          "sha256": "e8fd4b45889ccf5b4e32cffd223cb1e0eb364dbf2c3425f50087d801ab7917ea",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 739,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/scoelicolor_truth_exp.tsv",
+            "sha256": "54dba3c19e62de84674175931526cf36dfecfe8062ef9a282178fad1c8536764",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "spneumoniae": {
+        "aux": {
+          "operons": {
+            "bytes": 18840,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/spneumoniae_operons_up.tsv",
+            "sha256": "fb7f0bb85cb5712a747d505f4f0a74a3d0643119a41d7f972b08d11a47954c8c",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 15026587,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0002.jsonl",
+          "sha256": "a8a0a7fcbc3ae0df6b120d317e948b554138d092f3f1942a90c2a11eaddfe71d",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 1631,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/spneumoniae_truth_exp.tsv",
+            "sha256": "a2a596bbcb53418b2f7b3eb2526375ce1b1430c735271700011e094712e92e76",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "tpallidum": {
+        "aux": {
+          "operons": {
+            "bytes": 8944,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/tpallidum_operons_up.tsv",
+            "sha256": "90d7300737db37234eccf41a7a9a71f5a834af8a5de4aa4a4683f813dac8507c",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 8110282,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0005.jsonl",
+          "sha256": "6cfb8afb8e2d6e974a9eccbb2656355792bbe7427669fc300927f0ddc8a22b0b",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 46,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/tpallidum_truth_exp.tsv",
+            "sha256": "6cf16f32f5f3f8e9ee84c8046473b8aff2305318969a346333d79168575b3486",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "tthermophilus": {
+        "aux": {
+          "gaps": {
+            "bytes": 38093,
+            "path": "/data/hohndor/gspa/proteomes/bench10/gaps/tthermophilus_real.jsonl",
+            "sha256": "972ab814944cdf0df5e82db08d93098821e48a4362a51d7cd42e97c4a503da3b",
+            "status": "ok"
+          },
+          "operons": {
+            "bytes": 15310,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/tthermophilus_operons_up.tsv",
+            "sha256": "4edb7c8a0ec228d92edcb30faa877478286023dda39942ad575de74e7dc9e2f8",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 15610117,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0006.jsonl",
+          "sha256": "a9e952fbdd3a9b0ebd7d7b140980c2e7bf2b970bf065d7b3f94efc2c855ec08c",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 1117,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/tthermophilus_truth_exp.tsv",
+            "sha256": "dfed9a8af58b99b611a9fab988e1d9045b3c9f6e614f7a94e5a2b71a59660f7f",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      },
+      "vcholerae": {
+        "aux": {
+          "operons": {
+            "bytes": 31597,
+            "path": "/data/hohndor/gspa/proteomes/bench10/ops/vcholerae_operons_up.tsv",
+            "sha256": "80df3de56659150594bc320a1675601d0a656bc9a6b5704f8e1ba4eb6b460604",
+            "status": "ok"
+          }
+        },
+        "claims": {
+          "bytes": 28330235,
+          "path": "/data/hohndor/gspa-v3/panel13-dedup-6e446bb/inputs/claims-0000.jsonl",
+          "sha256": "00acecf8f4dd7adfdcd3d6d7d2d219924a90e57beeb34096cfbbbcca699deb2c",
+          "status": "ok"
+        },
+        "labels": {
+          "go": {
+            "bytes": 46,
+            "path": "/data/hohndor/gspa/proteomes/bench10/truth/vcholerae_truth_exp.tsv",
+            "sha256": "62cd899799d20ee20ab9859b8ce36edd618cce63b2ab00c0a1428325caf9b644",
+            "status": "ok"
+          }
+        },
+        "split": "test"
+      }
+    },
+    "manifest": {
+      "bytes": 9027,
+      "path": "manifest.json",
+      "sha256": "5797d05bc240c3bd664ca908973b31fad0f792df04a1e593337f306bda3672ae",
+      "status": "ok"
+    },
+    "reference": {
+      "ec2go.txt": {
+        "bytes": 354789,
+        "path": "/data/hohndor/gspa/reference/ec2go.txt",
+        "sha256": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+        "status": "ok"
+      },
+      "go_obo": {
+        "bytes": 32126692,
+        "path": "/data/hohndor/gspa/reference/go.obo",
+        "sha256": "a77e356737dab39a4f620dce35fc4d6eb531c4b6153af6cacaaa322b49b804bd",
+        "status": "ok"
+      },
+      "go_owl": {
+        "bytes": 129706298,
+        "path": "/data/hohndor/gspa/reference/go.owl",
+        "sha256": "5ba93c63deb800c4c23d2e3917e44df6de9cce45d2de75d1549701ddbdfe4420",
+        "status": "ok"
+      },
+      "kegg_modules.tsv": {
+        "bytes": 318864,
+        "path": "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "sha256": "27184381b2625a5c6a0a7a9677e88d76417bd94db2454d09522f78943fdd38ea",
+        "status": "ok"
+      },
+      "kegg_pathways.tsv": {
+        "bytes": 399471,
+        "path": "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "sha256": "f112964cd19c0f8cb47db54926550961cf28d5f88a6c2de15ed48ccad3aed82d",
+        "status": "ok"
+      }
+    }
+  },
+  "runs": {
+    "stage0": {
+      "arm": "stage0",
+      "batch_manifest": {
+        "bytes": 4213,
+        "path": "results/arms/stage0/batch_manifest.tsv",
+        "sha256": "9217870ff17176bd2a8ca63f51343a3510fe9a7339fb9601c33d1cf5bb1430fa",
+        "status": "ok"
+      },
+      "command": [
+        "/data/hohndor/envs/jdk-21.0.10+7/bin/java",
+        "-Xmx12g",
+        "-jar",
+        "/data/hohndor/gspa-v3/panel13-3c75a38/gspa-development-3c75a38.jar",
+        "integrate",
+        "--batch-manifest",
+        "results/arms/stage0/batch_manifest.tsv",
+        "--batch-stats-out",
+        "results/arms/stage0/batch_stats.tsv",
+        "--go-owl",
+        "/data/hohndor/gspa/reference/go.owl",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8",
+        "--reasoner-cache",
+        "/data/hohndor/gspa-v3/panel13-3c75a38/reasoner-cache",
+        "--enable-priors",
+        "none"
+      ],
+      "failed": {},
+      "genomes": {
+        "ccrescentus": {
+          "bytes": 2117606,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/ccrescentus.integrated.tsv",
+          "sha256": "e8515e517735f6f0973b476bae5b4c89fa63d4288a9e9a5b28b51c286dd1cadf",
+          "status": "ok"
+        },
+        "dradiodurans": {
+          "bytes": 1370972,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/dradiodurans.integrated.tsv",
+          "sha256": "9c4aff5adbf69921c8d604767114974d0d918ee1b4b0f5d1a73f6146ca95d087",
+          "status": "ok"
+        },
+        "hpylori": {
+          "bytes": 792497,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/hpylori.integrated.tsv",
+          "sha256": "ce913d86144302a47500a8721960ee7fcc9ed7a80626b0e55d7be4f2adc60c2c",
+          "status": "ok"
+        },
+        "mgenitalium": {
+          "bytes": 310395,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/mgenitalium.integrated.tsv",
+          "sha256": "247cb43e9093f7a6d11d136ca5803253563cae131a2cac7e9118f13164e8d001",
+          "status": "ok"
+        },
+        "mjannaschii": {
+          "bytes": 917391,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/mjannaschii.integrated.tsv",
+          "sha256": "1d25b6ad719ece506df4795d901456aee611e4719c374ff0f59d42acacc6bfcd",
+          "status": "ok"
+        },
+        "pfuriosus": {
+          "bytes": 1079290,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/pfuriosus.integrated.tsv",
+          "sha256": "8261ae2a70ce7c969b9d2101d94a97789847b158f7247035b1cd699cfb648d39",
+          "status": "ok"
+        },
+        "rprowazekii": {
+          "bytes": 494874,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/rprowazekii.integrated.tsv",
+          "sha256": "c21e23e70cab4829a9ae5016b706af3073f24499e1c0e376258ec4562e62d47f",
+          "status": "ok"
+        },
+        "saureus": {
+          "bytes": 1292142,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/saureus.integrated.tsv",
+          "sha256": "9db165c74ae3bb50257a8d9a2ab09ba3c401e1b92b1d87de27a688cd2b1e9b81",
+          "status": "ok"
+        },
+        "scoelicolor": {
+          "bytes": 3560463,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/scoelicolor.integrated.tsv",
+          "sha256": "758b99ee7e8b792ab2746122fe7dedd10c5ca76725ce9477203bcd899aca1795",
+          "status": "ok"
+        },
+        "spneumoniae": {
+          "bytes": 996222,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/spneumoniae.integrated.tsv",
+          "sha256": "bd25e75a58b7b304369eedb010f0af3b9385ecdda37d1f54da42d38ca4ec1ecf",
+          "status": "ok"
+        },
+        "tpallidum": {
+          "bytes": 526606,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/tpallidum.integrated.tsv",
+          "sha256": "f13667031c873c6fa83552386929d9f99967a32cbac579a2d131b1966fc184e4",
+          "status": "ok"
+        },
+        "tthermophilus": {
+          "bytes": 1164224,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/tthermophilus.integrated.tsv",
+          "sha256": "c4639a2174f487355f65215310acf46942a4d40b41f59efbe5ce8eb479a19f89",
+          "status": "ok"
+        },
+        "vcholerae": {
+          "bytes": 2020895,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage0/vcholerae.integrated.tsv",
+          "sha256": "9b4aa6946c926abb715e3d2c2499130eb7df5ac6fa9910cba924ebc9ff4cc12f",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 63.032,
+      "skipped": {},
+      "status": "executed"
+    },
+    "stage1": {
+      "arm": "stage1",
+      "batch_manifest": {
+        "bytes": 4213,
+        "path": "results/arms/stage1/batch_manifest.tsv",
+        "sha256": "52b984ac70bac64e9ab76682c532a74d051bd49ad35b22c986f2ded50b436fe7",
+        "status": "ok"
+      },
+      "command": [
+        "/data/hohndor/envs/jdk-21.0.10+7/bin/java",
+        "-Xmx12g",
+        "-jar",
+        "/data/hohndor/gspa-v3/panel13-3c75a38/gspa-development-3c75a38.jar",
+        "integrate",
+        "--batch-manifest",
+        "results/arms/stage1/batch_manifest.tsv",
+        "--batch-stats-out",
+        "results/arms/stage1/batch_stats.tsv",
+        "--go-owl",
+        "/data/hohndor/gspa/reference/go.owl",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8",
+        "--reasoner-cache",
+        "/data/hohndor/gspa-v3/panel13-3c75a38/reasoner-cache"
+      ],
+      "failed": {},
+      "genomes": {
+        "ccrescentus": {
+          "bytes": 2174366,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/ccrescentus.integrated.tsv",
+          "sha256": "c8430b1384d11c07d49b694e9de906db83d9fe5887cb751c4ea8811d81fc7cc1",
+          "status": "ok"
+        },
+        "dradiodurans": {
+          "bytes": 1404834,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/dradiodurans.integrated.tsv",
+          "sha256": "c09acb62119ec25d6955e622830320b5e926788d7cbd960d81608e1ce31e98e5",
+          "status": "ok"
+        },
+        "hpylori": {
+          "bytes": 810949,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/hpylori.integrated.tsv",
+          "sha256": "baaca5c768ab0a076c29c56830e417c123020e3bc874312e0d569f34e611a59e",
+          "status": "ok"
+        },
+        "mgenitalium": {
+          "bytes": 317399,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/mgenitalium.integrated.tsv",
+          "sha256": "d519bdf4b58e6aa72bca9cbc545dbea395f77b9a6ae10375030baa05b0e5d7d7",
+          "status": "ok"
+        },
+        "mjannaschii": {
+          "bytes": 947489,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/mjannaschii.integrated.tsv",
+          "sha256": "b45898492e94b005924cd0d7288cc943a6aeecdff2a55164e61d440107eef66d",
+          "status": "ok"
+        },
+        "pfuriosus": {
+          "bytes": 1104106,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/pfuriosus.integrated.tsv",
+          "sha256": "0a667161ab7224d369e2ce976a1f53c2439456a4290d799592955a03406484eb",
+          "status": "ok"
+        },
+        "rprowazekii": {
+          "bytes": 506900,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/rprowazekii.integrated.tsv",
+          "sha256": "a06c3bf87a2aaa0f9027ec621256cacbb340dfc4f68db6b6f50557c67449b453",
+          "status": "ok"
+        },
+        "saureus": {
+          "bytes": 1309422,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/saureus.integrated.tsv",
+          "sha256": "159bb490011a849b108f3effeae75924d63894c959be6c93cf299e088448e406",
+          "status": "ok"
+        },
+        "scoelicolor": {
+          "bytes": 3643312,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/scoelicolor.integrated.tsv",
+          "sha256": "1bd0710c4a3226ada455e139d4ef75d2af60f0beed425fd8ce23794e139de6db",
+          "status": "ok"
+        },
+        "spneumoniae": {
+          "bytes": 1008512,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/spneumoniae.integrated.tsv",
+          "sha256": "a6426ea8c50b680ebfed6be9ad51d4f7a9b2f16970d6aaa51e703dc777859e9c",
+          "status": "ok"
+        },
+        "tpallidum": {
+          "bytes": 540606,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/tpallidum.integrated.tsv",
+          "sha256": "6d535750702be53faaf34aaa2a7024de3cf8a8a54c2f42bbc43f043082770103",
+          "status": "ok"
+        },
+        "tthermophilus": {
+          "bytes": 1191009,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/tthermophilus.integrated.tsv",
+          "sha256": "55015d92a473d24a4208e19e02e7aa415078dbb9c327ab8f5180731c189425c6",
+          "status": "ok"
+        },
+        "vcholerae": {
+          "bytes": 2059741,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1/vcholerae.integrated.tsv",
+          "sha256": "f19dde8307440db8d825f33c443b11c7d8a9417819ce762eb5d2fc4cbe0af528",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 896.348,
+      "skipped": {},
+      "status": "executed"
+    },
+    "stage1_stage2a_relax": {
+      "arm": "stage1_stage2a_relax",
+      "batch_manifest": {
+        "bytes": 4395,
+        "path": "results/arms/stage1_stage2a_relax/batch_manifest.tsv",
+        "sha256": "6043641a241de1595026e10efcca8f41b0f1deba42da6e39c7006e050e9d29b8",
+        "status": "ok"
+      },
+      "command": [
+        "/data/hohndor/envs/jdk-21.0.10+7/bin/java",
+        "-Xmx12g",
+        "-jar",
+        "/data/hohndor/gspa-v3/panel13-3c75a38/gspa-development-3c75a38.jar",
+        "integrate",
+        "--batch-manifest",
+        "results/arms/stage1_stage2a_relax/batch_manifest.tsv",
+        "--batch-stats-out",
+        "results/arms/stage1_stage2a_relax/batch_stats.tsv",
+        "--go-owl",
+        "/data/hohndor/gspa/reference/go.owl",
+        "--ec2go",
+        "/data/hohndor/gspa/reference/ec2go.txt",
+        "--pathways",
+        "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+        "--modules",
+        "/data/hohndor/gspa/reference/kegg_modules.tsv",
+        "--batch-threads",
+        "8",
+        "--reasoner-cache",
+        "/data/hohndor/gspa-v3/panel13-3c75a38/reasoner-cache",
+        "--enforce-stage2",
+        "--enforce-consistency-mode",
+        "relax"
+      ],
+      "failed": {},
+      "genomes": {
+        "ccrescentus": {
+          "bytes": 1918225,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/ccrescentus.integrated.tsv",
+          "sha256": "43d60dd995878993be4d27ad4bb0e3b2b4e0906bd9541cef1cda420bee3ab06e",
+          "status": "ok"
+        },
+        "dradiodurans": {
+          "bytes": 1263150,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/dradiodurans.integrated.tsv",
+          "sha256": "23f9af1b59f1589bbb190d65747dc899676d4e125c3d5f9ac155d42f14c22022",
+          "status": "ok"
+        },
+        "hpylori": {
+          "bytes": 725365,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/hpylori.integrated.tsv",
+          "sha256": "a76eb12db0956f1e3c6d6f2b6458dada95e2c03618c9231c3ed52fa8014b384f",
+          "status": "ok"
+        },
+        "mgenitalium": {
+          "bytes": 287239,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/mgenitalium.integrated.tsv",
+          "sha256": "908703ad235b760c05ae4a651134c95268f8dd5d908b2dbabe369b363e48beac",
+          "status": "ok"
+        },
+        "mjannaschii": {
+          "bytes": 820711,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/mjannaschii.integrated.tsv",
+          "sha256": "c87a171ea6e2be6cb8cc9d6064fa71ddf1765a3cdadb9b5019bc0bc9e9d91380",
+          "status": "ok"
+        },
+        "pfuriosus": {
+          "bytes": 990995,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/pfuriosus.integrated.tsv",
+          "sha256": "f408896255b68d5f3efe695ae65b5ef831e02aa68eb2cdefc02b8fdc5b50e3c2",
+          "status": "ok"
+        },
+        "rprowazekii": {
+          "bytes": 459551,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/rprowazekii.integrated.tsv",
+          "sha256": "a33ceb288424c5975056d8e6208ccf2cac4c3705b8039c1e1887409c9f5e7c52",
+          "status": "ok"
+        },
+        "saureus": {
+          "bytes": 1230739,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/saureus.integrated.tsv",
+          "sha256": "0e67b42157acc29c1d7cfb22918812cfce2f3a72ac373f656653dd4398501ca1",
+          "status": "ok"
+        },
+        "scoelicolor": {
+          "bytes": 3268053,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/scoelicolor.integrated.tsv",
+          "sha256": "6ac2ef02cf383da11aac6c1640d7b74b343e0b32ae5460985b88726a7acb7674",
+          "status": "ok"
+        },
+        "spneumoniae": {
+          "bytes": 958381,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/spneumoniae.integrated.tsv",
+          "sha256": "e24c9c126a2cfae6c6dfcd4442e5ff618115b6ffe80b8af15bfdb2f7237d6752",
+          "status": "ok"
+        },
+        "tpallidum": {
+          "bytes": 476012,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/tpallidum.integrated.tsv",
+          "sha256": "fc7a2fe2b29098e68d0cb56c31af10004b0490fe96820cfadd22574292a9ef1b",
+          "status": "ok"
+        },
+        "tthermophilus": {
+          "bytes": 1075743,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/tthermophilus.integrated.tsv",
+          "sha256": "7326c5416aa2b13f82b6198c5517433682e98c6e84a603855a80f3d1dae642c2",
+          "status": "ok"
+        },
+        "vcholerae": {
+          "bytes": 1887515,
+          "path": "/data/hohndor/gspa-v3/panel13-3c75a38/results/arms/stage1_stage2a_relax/vcholerae.integrated.tsv",
+          "sha256": "f29a9d13df4758d256218a7d9b579bfc13c5f1553a5b1bcf10a42ea50bd996e1",
+          "status": "ok"
+        }
+      },
+      "returncode": 0,
+      "runtime_sec": 271.726,
+      "skipped": {},
+      "status": "executed"
+    }
+  },
+  "schema_version": 1,
+  "status": "evaluated"
+}

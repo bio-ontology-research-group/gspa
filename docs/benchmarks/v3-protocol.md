@@ -1,6 +1,14 @@
 # GSPA v3 production-benchmark protocol
 
-Status: foundation (runner, metrics, manifest schema, one real manifest). No large dataset has been executed with it yet. Nothing here modifies the v2 tables in `results/` or `paper/`.
+Status: development evaluation in progress. Production results now exist for
+[Price-148](v3-price-development.md), the [13-genome GO panel](v3-panel13-development.md),
+and [61 measured auxotroph cases under three protocols](v3-metabolic-development.md).
+These do not establish the full v3 benchmark matrix or release readiness.
+Nothing here modifies the historical v2 tables in `results/` or `paper/`.
+The inventory and foundation-gap tables below record the initial audit; consult
+the linked result documents and `tasks/v3-implementation.md` for current execution
+status. In particular, community and knockout datasets have since been acquired,
+and the original CAFA temporal-independence claims still require a source audit.
 
 ## Principles
 
