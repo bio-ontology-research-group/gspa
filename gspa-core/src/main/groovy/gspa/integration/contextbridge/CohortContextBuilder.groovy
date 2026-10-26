@@ -102,7 +102,7 @@ class CohortContextBuilder {
             if (meta?.genomes?.get(m.genomeId)?.plausibleReactions != null) {
                 input.setOrganismReactions(m.genomeId, meta.genomes.get(m.genomeId).plausibleReactions)
             }
-            requireProteinsInLayout(m)
+            requireProteinsInLayout(m, (meta?.genomes?.get(m.genomeId)?.unplacedProteins ?: []) as Set<String>)
             m.families.each { CohortInput.FamilyAssignment a -> input.assign(m.genomeId, a) }
 
             List<CohortInput.EcCall> calls = m.baseline.calls
@@ -144,15 +144,36 @@ class CohortContextBuilder {
         out
     }
 
-    private static void requireProteinsInLayout(Member m) {
+    /**
+     * Every claimed / family protein must be in the layout or explicitly declared unplaced in the metadata
+     * (a genuine protein with no usable coordinate). Anything else is a probable id mismatch and fails loudly.
+     */
+    private static void requireProteinsInLayout(Member m, Set<String> declaredUnplaced) {
         if (m.layout == null) return
+        Set<String> inLayout = declaredUnplaced.findAll { m.layout.get(it) != null } as Set<String>
+        if (!inLayout.isEmpty()) {
+            throw new IllegalArgumentException("genome ${m.genomeId}: ${inLayout.size()} protein id(s) declared in unplacedProteins have a coordinate in the layout " +
+                "(e.g. ${inLayout.sort().take(3).join(', ')}); a protein is either placed or unplaced")
+        }
         Set<String> missing = new TreeSet<>()
-        m.baseline.calls.each { if (m.layout.get(it.proteinId) == null) missing << it.proteinId }
-        m.families.each { if (m.layout.get(it.proteinId) == null) missing << it.proteinId }
+        m.baseline.calls.each { if (m.layout.get(it.proteinId) == null && !declaredUnplaced.contains(it.proteinId)) missing << it.proteinId }
+        m.families.each { if (m.layout.get(it.proteinId) == null && !declaredUnplaced.contains(it.proteinId)) missing << it.proteinId }
         if (!missing.isEmpty()) {
             throw new IllegalArgumentException("genome ${m.genomeId}: ${missing.size()} protein id(s) with EC claims or family assignments are not in its layout " +
-                "(e.g. ${missing.take(3).join(', ')}); claims, orthogroups and layout must all use the FAA sequence ids")
+                "(e.g. ${missing.take(3).join(', ')}); claims, orthogroups and layout must all use the FAA sequence ids " +
+                "(proteins that really have no coordinate must be declared in the metadata's unplacedProteins)")
         }
+    }
+
+    /** Unplaced accounting for the report: what was declared, and how much of the claimed/family material it touches. */
+    private static Map<String, Object> unplacedReport(Member m, Set<String> declared) {
+        Set<String> ecProteins = m.baseline.calls.collect { it.proteinId } as Set<String>
+        Set<String> famProteins = m.families.collect { it.proteinId } as Set<String>
+        [declared                    : declared.size(),
+         with_ec_calls               : declared.count { ecProteins.contains(it) },
+         in_families                 : declared.count { famProteins.contains(it) },
+         note                        : 'Declared unplaced proteins are real proteins without a usable coordinate: family PRESENT, local context UNKNOWN (no window, no anchor, no coordinate invented). ' +
+                                       'Family-search completeness (familySearchComplete) is independent of location completeness.'] as Map<String, Object>
     }
 
     // ------------------------------------------------------------------ bridge
@@ -223,6 +244,7 @@ class CohortContextBuilder {
             no_peers                 : bridged == 0 && noPeers > 0,
             reaction_ambiguity       : ambiguities,
             orthogroup_input         : m.orthogroupNotes,
+            unplaced_proteins        : unplacedReport(m, (meta?.genomes?.get(m.genomeId)?.unplacedProteins ?: []) as Set<String>),
             interpretation           : 'Features for the learned stage, not evidence that a function is correct. A genome without peers has no cohort features (unavailable, not negative). Complementary-unannotated is an unsupported label, never evidence of loss.',
         ] as Map<String, Object>)
     }

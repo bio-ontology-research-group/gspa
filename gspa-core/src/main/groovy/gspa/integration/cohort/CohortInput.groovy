@@ -49,6 +49,15 @@ class CohortInput {
         Boolean familySearchComplete
         /** Optional fraction of proteins searched; must be 1.0 when familySearchComplete is true. */
         Double familySearchCoverage
+        /**
+         * Proteins explicitly declared as known but without a usable coordinate in {@link #layout} (absent from the
+         * layout, split across contigs, multi-locus). They are real proteins of the genome: a family member or EC
+         * claim on one is accepted, counts as family PRESENT, and its local context is UNKNOWN (no window, no
+         * anchor). No coordinate is invented for them. An id that is neither in the layout nor declared here is
+         * still rejected as a probable typo; an id in both is a contradiction and rejected too. Whether the family
+         * search covered these proteins is {@link #familySearchComplete}, not this set.
+         */
+        Set<String> unplacedProteins = new LinkedHashSet<>()
     }
 
     /** Soft membership of a protein in an orthogroup (optionally a subfamily). */
@@ -172,8 +181,8 @@ class CohortInput {
     private static boolean finite(double d) { !Double.isNaN(d) && !Double.isInfinite(d) }
 
     private boolean knownProtein(String genomeId, String proteinId) {
-        GenomeLayout layout = genomes.get(genomeId)?.layout
-        layout == null || layout.get(proteinId) != null
+        GenomeEntry e = genomes.get(genomeId)
+        e?.layout == null || e.layout.get(proteinId) != null || e.unplacedProteins.contains(proteinId)
     }
 
     /** Rejects inconsistent or malformed input before any computation. */
@@ -189,6 +198,12 @@ class CohortInput {
                 }
                 g.layout.byProtein.each { String p, gspa.model.ProteinLocus l ->
                     if (l.genomeId && l.genomeId != id) throw new IllegalArgumentException("Locus ${p} of ${id} carries genomeId ${l.genomeId}")
+                }
+            }
+            g.unplacedProteins.each { String p ->
+                if (!p?.trim()) throw new IllegalArgumentException("Genome ${id}: blank id in unplacedProteins")
+                if (g.layout?.get(p) != null) {
+                    throw new IllegalArgumentException("Genome ${id}: protein ${p} is declared unplaced but has a coordinate in the layout")
                 }
             }
             if (g.familySearchComplete == Boolean.TRUE && g.familySearchCoverage != null && g.familySearchCoverage < 1.0d) {
@@ -212,7 +227,7 @@ class CohortInput {
                 throw new IllegalArgumentException("Claim refers to unknown genome ${c.genomeId}")
             }
             if (!knownProtein(c.genomeId, c.proteinId)) {
-                throw new IllegalArgumentException("Claim protein ${c.proteinId} is not in the layout of ${c.genomeId}")
+                throw new IllegalArgumentException("Claim protein ${c.proteinId} is not in the layout of ${c.genomeId} and not declared unplaced")
             }
             if (!seen.add(c.genomeId + '\t' + c.proteinId + '\t' + c.reactionId)) {
                 throw new IllegalArgumentException("Duplicate claim ${c.genomeId}/${c.proteinId}/${c.reactionId}")
@@ -221,7 +236,7 @@ class CohortInput {
         membership.each { String g, Map<String, List<FamilyAssignment>> m ->
             if (!genomes.containsKey(g)) throw new IllegalArgumentException("Membership refers to unknown genome ${g}")
             m.each { String p, List<FamilyAssignment> l ->
-                if (!knownProtein(g, p)) throw new IllegalArgumentException("Membership protein ${p} is not in the layout of ${g}")
+                if (!knownProtein(g, p)) throw new IllegalArgumentException("Membership protein ${p} is not in the layout of ${g} and not declared unplaced")
                 double total = 0d
                 Set<String> keys = new HashSet<>()
                 for (FamilyAssignment a : l) {
@@ -240,7 +255,7 @@ class CohortInput {
         roleEvidence.each { String k, RoleEvidence r ->
             if (!genomes.containsKey(r.genomeId)) throw new IllegalArgumentException("Role evidence refers to unknown genome ${r.genomeId}")
             if (!knownProtein(r.genomeId, r.proteinId)) {
-                throw new IllegalArgumentException("Role evidence protein ${r.proteinId} is not in the layout of ${r.genomeId}")
+                throw new IllegalArgumentException("Role evidence protein ${r.proteinId} is not in the layout of ${r.genomeId} and not declared unplaced")
             }
             r.scores.each { Role role, Double v ->
                 if (v == null || !finite(v.doubleValue()) || v < 0d || v > 1d) {

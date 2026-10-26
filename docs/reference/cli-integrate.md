@@ -225,7 +225,7 @@ Wired into the shared workflow; behaviour, ledger and remaining gaps are in
 | `--external-context` | file | none | Strict JSON of typed `ExternalContext`. |
 | `--cohort` | flag | off | Cohort recurrence context; two-pass in a batch. Needs `--reaction-graph` and `--reaction-ec-aliases`. Implied by any other `--cohort-*` input. |
 | `--cohort-manifest` | file | none | Reference genomes that are peers only (`genome_id`, `claims_path`[, `layout_path`[, `orthogroups_path`]]). |
-| `--cohort-metadata` | file | none | Clade, strain cluster, assembly, `familySearchComplete`, contigs, tree. Absent facts are unknown, never independent. |
+| `--cohort-metadata` | file | none | Clade, strain cluster, assembly, `familySearchComplete`, contigs, `unplacedProteins` (known proteins without a coordinate), tree. Absent facts are unknown, never independent. |
 | `--cohort-orthogroups` | file | none | `genome_id, protein_id, orthogroup_id[, subfamily_id, weight]`; otherwise each genome's `--orthogroups` file. |
 | `--cohort-role-evidence`, `--cohort-interaction-edges`, `--cohort-reaction-directions` | file | none | Optional independent TSV inputs. |
 | `--cohort-holdout`, `--cohort-half-width-bp`, `--cohort-permutations`, `--cohort-seed`, `--cohort-tree-cut-distance` | | `STRAIN_CLUSTER`, 5000, 200, 20261026, 0.05 | Cohort engine settings. `NONE` is rejected. |

@@ -532,9 +532,12 @@ class CohortInference {
         for (Member m : members) pAll = Math.max(pAll, m.weight)
         o.singleCopy = members.size() == 1 && certified
         o.multiCopy = members.size() > 1
+        // A copy whose context cannot be read (no coordinate, or a window that is not fully observed) is unresolved:
+        // it may be the supported copy, so it forbids calling the genome NEGATIVE. It is still family PRESENT.
+        boolean unresolved = false
         for (Member m : members) {
             ProteinLocus l = layout?.get(m.protein)
-            if (l == null) continue
+            if (l == null) { unresolved = true; continue }
             List<String> w = windowProteins(h, m.protein)
             Map<String, Double> an = anchors(h, w, m.protein, r, links, familyKey)
             o.anchorUnion.addAll(an.keySet())
@@ -542,6 +545,7 @@ class CohortInference {
             WState ws = windowState(h, l)
             if (positive) pPos = Math.max(pPos, m.weight)
             else if (ws == WState.FULL) pNeg = Math.max(pNeg, m.weight)
+            else unresolved = true
             if (links.isEmpty() || (!positive && ws != WState.FULL)) continue
             boolean[] mt = matched(h, r, links, familyKey, w.size(), ws, closedKey(h, l))
             if (mt.length == 0) continue
@@ -556,7 +560,7 @@ class CohortInference {
             o.state = 'SUPPORTED'
             o.presence = pAll
             o.supportedShare = Math.min(1d, pPos / pAll)
-        } else if (pNeg > 0d) {
+        } else if (pNeg > 0d && !unresolved) {
             o.state = 'NEGATIVE'
             o.presence = pNeg
             o.supportedShare = 0d

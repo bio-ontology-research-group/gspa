@@ -310,6 +310,94 @@ class CohortWorkflowSpec extends Specification {
         e.message.contains('FAA sequence ids')
     }
 
+    /** g2 loses the layout row of its candidate p3 (a real protein with no usable coordinate). */
+    private Map<String, Map<String, File>> withUnplacedCandidate(List<String> ids, String genome = 'g2') {
+        def files = genomes(ids)
+        files[genome].layout.text = files[genome].layout.readLines().findAll { !it.startsWith('p3\t') }.join('\n') + '\n'
+        files
+    }
+
+    def 'a declared unplaced protein is accepted: family present, context unknown, no coordinate invented, other genomes unaffected'() {
+        given:
+        def ids = ['g1', 'g2', 'g3']
+        def files = withUnplacedCandidate(ids)
+        def meta = cladesFor(ids) + [g2: [clade: 'clade_g2', strainCluster: 'strain_g2', unplacedProteins: ['p3']]]
+        def base = fx.config(cohortInference: true, cohortMetadataFile: fx.metadata(meta))
+
+        when:
+        def r = cohortOf(ids, files, base)
+
+        then: 'the unplaced genome still gets a context; its own local context is unavailable, not zero'
+        def own = weighted(r, 'g2')
+        own != null
+        !own.layoutAvailable
+        own.localAnchorCount == null
+        own.familyKnown
+        and: 'the raw candidate and its family are retained'
+        r.contexts.g2.cohort[KEY] != null
+        r.reports.g2.orthogroup_input.proteins_with_family == 3
+        and: 'the unplaced accounting is reported, not silent'
+        r.reports.g2.unplaced_proteins.declared == 1
+        r.reports.g2.unplaced_proteins.with_ec_calls == 1
+        r.reports.g2.unplaced_proteins.in_families == 1
+        r.reports.g1.unplaced_proteins.declared == 0
+        and: 'as a peer of g1 the unplaced member is present with unknown context: one of two peers'
+        def peer = weighted(r, 'g1')
+        peer.layoutAvailable
+        peer.fracUnknownContext > 0d
+        peer.fracTrueAbsent == 0d
+        peer.fracNegative == 0d
+    }
+
+    def 'an unplaced family member in a complete, certified assembly is present with unknown context, never true absence'() {
+        given:
+        def ids = ['g1', 'g2', 'g3']
+        def meta = { boolean unplaced ->
+            def g3 = [clade: 'clade_g3', strainCluster: 'strain_g3', assemblyStatus: 'COMPLETE', familySearchComplete: true,
+                      contigs: [c1: [length: 9000, closed: true]]]
+            if (unplaced) g3.unplacedProteins = ['p3']
+            fx.metadata(cladesFor(ids) + [g3: g3], "m-${unplaced}.json")
+        }
+
+        when: 'g3 truly lacks the candidate'
+        def absent = weighted(cohortOf(ids, genomes(ids, [g3: [candidate: false, withNeighbours: false]]),
+            fx.config(cohortInference: true, cohortMetadataFile: meta(false))), 'g1')
+        and: 'g3 has the candidate but no coordinate for it'
+        def unobserved = weighted(cohortOf(ids, withUnplacedCandidate(ids, 'g3'),
+            fx.config(cohortInference: true, cohortMetadataFile: meta(true))), 'g1')
+
+        then: 'complete assembly + certified search: genuine absence only in the first case'
+        absent.fracTrueAbsent > 0d
+        absent.fracUnknownContext == 0d
+        unobserved.fracTrueAbsent == 0d
+        unobserved.fracUnobservedAbsent == 0d
+        unobserved.fracUnknownContext > 0d
+    }
+
+    def 'without the declaration the same genome is still rejected, and typos in the declaration are rejected'() {
+        given:
+        def ids = ['g1', 'g2']
+        def files = withUnplacedCandidate(ids)
+        File bad = new File(dir, 'unplaced.json')
+        bad.text = text
+
+        when:
+        cohortOf(ids, files, fx.config(cohortInference: true, cohortMetadataFile: bad))
+
+        then:
+        def e = thrown(IllegalArgumentException)
+        e.message.contains(fragment)
+
+        where:
+        text                                                                    | fragment
+        '{"genomes":{"g2":{"clade":"x"}}}'                                      | 'not in its layout'
+        '{"genomes":{"g2":{"unplacedProteins":["p9"]}}}'                        | 'not in its layout'
+        '{"genomes":{"g2":{"unplacedProteins":["p3","p2"]}}}'                   | 'have a coordinate in the layout'
+        '{"genomes":{"g2":{"unplacedProteins":["p3","p3"]}}}'                   | 'twice'
+        '{"genomes":{"g2":{"unplacedProteins":["p3",""]}}}'                     | 'blank'
+        '{"genomes":{"g2":{"unplacedProteins":["p3"],"unplaced":["p3"]}}}'      | 'not valid'
+    }
+
     def 'the workflow records the cohort stage, its baseline label and the legacy scoring mode'() {
         given:
         def ids = ['g1', 'g2', 'g3']

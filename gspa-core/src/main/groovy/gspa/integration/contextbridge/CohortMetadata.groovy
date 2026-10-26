@@ -26,7 +26,9 @@ import gspa.integration.cohort.CohortInput
  *       "familySearchComplete": true,               // orthogroup search ran over EVERY protein, not only candidates
  *       "familySearchCoverage": 1.0,                // optional; < 1 contradicts familySearchComplete
  *       "contigs": {"c1": {"length": 4200000, "closed": true}},   // closed = complete replicon, false = known fragment
- *       "plausibleReactions": ["rxn00001"]          // optional organism-specific reaction set; absent = unknown, [] = known empty
+ *       "plausibleReactions": ["rxn00001"],         // optional organism-specific reaction set; absent = unknown, [] = known empty
+ *       "unplacedProteins": ["contig_77"]           // optional FAA ids of real proteins with no usable coordinate (missing, split, multi-locus);
+ *                                                   // accepted in claims/orthogroups, family PRESENT, local context UNKNOWN; ids in the layout are rejected
  *     }
  *   }
  * }
@@ -48,6 +50,8 @@ class CohortMetadata {
         Double familySearchCoverage
         Map<String, Contig> contigs
         List<String> plausibleReactions
+        /** Known proteins without a usable coordinate (missing, split, multi-locus); see {@link CohortInput.GenomeEntry#unplacedProteins}. */
+        List<String> unplacedProteins
     }
 
     String tree
@@ -95,6 +99,12 @@ class CohortMetadata {
             if (g.familySearchComplete == Boolean.TRUE && g.familySearchCoverage != null && g.familySearchCoverage < 1d) {
                 throw new IllegalArgumentException("genome '${id}': familySearchComplete=true contradicts familySearchCoverage=${g.familySearchCoverage}")
             }
+            Set<String> unplaced = new HashSet<>()
+            (g.unplacedProteins ?: []).each { String p ->
+                if (!p?.trim()) throw new IllegalArgumentException("genome '${id}': blank id in unplacedProteins")
+                if (p != p.trim()) throw new IllegalArgumentException("genome '${id}': unplacedProteins id '${p}' has surrounding whitespace")
+                if (!unplaced.add(p)) throw new IllegalArgumentException("genome '${id}': unplacedProteins lists '${p}' twice")
+            }
             (g.contigs ?: [:]).each { String cid, Contig c ->
                 if (!cid?.trim() || c == null) throw new IllegalArgumentException("genome '${id}': empty contig entry")
                 if (c.length != null && c.length < 1) throw new IllegalArgumentException("genome '${id}', contig '${cid}': length must be positive")
@@ -124,6 +134,7 @@ class CohortMetadata {
         entry.strainClusterId = g.strainCluster?.trim()
         entry.familySearchComplete = g.familySearchComplete
         entry.familySearchCoverage = g.familySearchCoverage
+        entry.unplacedProteins.addAll(g.unplacedProteins ?: [])
         if (g.assemblyStatus != null || g.contigs || g.completenessFraction != null) {
             def a = new CohortInput.AssemblyInfo(status: g.assemblyStatus == null ? AssemblyStatus.UNKNOWN : AssemblyStatus.valueOf(g.assemblyStatus),
                 completenessFraction: g.completenessFraction)

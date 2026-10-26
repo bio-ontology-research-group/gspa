@@ -73,7 +73,9 @@ genomes; candidates are namespaced by genome in memory); a mismatch fails loudly
 
 **Metadata** (`--cohort-metadata`, strict JSON; see `CohortMetadata`): per genome `clade`, `strainCluster`,
 `assemblyStatus` (`COMPLETE | DRAFT | UNKNOWN`), `completenessFraction`, `familySearchComplete`/`familySearchCoverage`,
-`contigs` with `length` and `closed`, `plausibleReactions`, and a `tree` or `treeFile`. Unknown keys, an unknown
+`contigs` with `length` and `closed`, `plausibleReactions`, `unplacedProteins` (FAA ids of real proteins with no usable
+coordinate; accepted in claims/orthogroups, family present, local context unknown, reported per genome as
+`unplaced_proteins`), and a `tree` or `treeFile`. Unknown keys, an unknown
 status, a complete assembly with a fragment contig, or `familySearchComplete` with coverage below one are errors.
 Absent facts stay absent: a genome without metadata joins one **unresolved block** with one clade's weight, never an
 independent peer; adjusted intervals and permutation p are then withheld. With no metadata at all every genome shares

@@ -37,12 +37,14 @@ The input has no label fields. Features are computed from sequence/evidence cand
 |---|---|
 | `SUPPORTED` | a family member sits in a context-positive window |
 | `NEGATIVE` | family members present, all fully observed windows lack the signature |
-| `UNKNOWN_CONTEXT` | family present but the window is cut by a contig end or its extent is unknown |
+| `UNKNOWN_CONTEXT` | family present but the window is cut by a contig end, its extent is unknown, or a member has no coordinate (declared unplaced) |
 | `TRUE_ABSENT` | no family member in an assembly marked `COMPLETE` **and** with `familySearchComplete = true` |
 | `PATHWAY_WITHOUT_FAMILY` | as above, but the signature reactions are present elsewhere in the genome |
 | `UNOBSERVED_ABSENT` | no family member, but the assembly is `DRAFT`/unknown or the family search is not certified over all proteins: unknown, not absence |
 
 A complete assembly alone does not prove homolog absence, because the orthogroup assignment may cover only the input candidates. `familySearchComplete` is the per-genome certification that the search ran over every protein (a `familySearchCoverage` below 1 contradicts it and is rejected). Without certification all missing members are unknown, and copy number is unknown too, so such genomes are left out of the multi-copy and single-copy features.
+
+**Proteins without a coordinate.** A real protein can lack a usable coordinate (absent from the layout, split across contigs, multi-locus). Declare it in `GenomeEntry.unplacedProteins` (metadata `unplacedProteins`) instead of inventing a locus: claims and family assignments on it are accepted, the family counts as **present** with `UNKNOWN_CONTEXT` (never `TRUE_ABSENT`/`UNOBSERVED_ABSENT`/`NEGATIVE`), and its own local features report `local_layout_missing = 1` with no window and no anchor. A genome with one placed copy lacking the signature plus an unresolved copy (unplaced, or in a window that is not fully observed) is `UNKNOWN_CONTEXT`, not `NEGATIVE`, because the unresolved copy may be the supported one; a supported placed copy still makes the genome `SUPPORTED`. Ids that are neither in the layout nor declared remain errors (probable id mismatch), as does declaring an id that has a coordinate. `familySearchComplete` certifies the family search over all proteins and is independent of location completeness, so a complete assembly may hold unplaced proteins without being marked a fragment.
 
 Window state is `FULL`, `TRUNCATED` (known fragment end) or `UNKNOWN`. Missing contig length or closure gives `UNKNOWN`; completeness is never invented. Support is reported with and without the unknown windows (`cohort_support_fraction_unknown_as_negative` / `_as_support`) so a reader can see how much rests on unobservable windows.
 

@@ -66,12 +66,12 @@ class CohortStage {
         List<CohortContextBuilder.Member> members = []
         targets.each { Target t ->
             members << member(t.genomeId, t.claims.call(), t.layout ?: loadLayout(t.layoutFile, t.genomeId), t.orthogroupsFile,
-                cohortRows, true)
+                cohortRows, true, settings.metadata)
         }
         references.each { Map r ->
             List<EvidenceClaim> claims = new ClaimExtractor(new CalibrationTable()).readClaimsJsonl(r.claims as File)
             members << member(r.genomeId as String, claims, loadLayout(r.layout as File, r.genomeId as String),
-                r.orthogroups as File, cohortRows, false)
+                r.orthogroups as File, cohortRows, false, settings.metadata)
         }
         info.call("  Cohort: ${members.size()} genomes (${targets.size()} targets, ${references.size()} reference); baseline = stage-0 raw scores".toString())
         CohortContextBuilder.Result result = new CohortContextBuilder().build(members, settings)
@@ -84,7 +84,8 @@ class CohortStage {
     }
 
     private static CohortContextBuilder.Member member(String genomeId, List<EvidenceClaim> claims, GenomeLayout layout,
-                                                       File perGenomeOrthogroups, CohortOrthogroupReader.Rows cohortRows, boolean target) {
+                                                       File perGenomeOrthogroups, CohortOrthogroupReader.Rows cohortRows, boolean target,
+                                                       CohortMetadata metadata) {
         def baseline = RawBaselineSnapshot.forGenome(genomeId, claims)
         def m = new CohortContextBuilder.Member(genomeId: genomeId, baseline: baseline, layout: layout, target: target)
         if (cohortRows != null) {
@@ -95,6 +96,8 @@ class CohortStage {
                                  proteins_with_family: m.families*.proteinId.toSet().size()]
         } else if (perGenomeOrthogroups != null) {
             Set<String> known = layout != null ? (layout.byProtein.keySet() as Set<String>) : (baseline.calls*.proteinId as Set<String>)
+            // Declared unplaced proteins belong to the genome too; dropping their rows would turn a present family member into an absent one.
+            if (layout != null) known = known + ((metadata?.genomes?.get(genomeId)?.unplacedProteins ?: []) as Set<String>)
             def rows = CohortOrthogroupReader.readPerGenomeFile(perGenomeOrthogroups, genomeId, known)
             m.families = rows.byGenome.get(genomeId) ?: []
             m.orthogroupNotes = [source: 'per_genome_orthogroups_file', rows_in_file: rows.rows,

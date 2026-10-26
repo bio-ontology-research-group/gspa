@@ -37,13 +37,17 @@ class CohortFixtures {
      * all-protein family search; defaults to true for COMPLETE), closed, famIdx,
      * family (null = absent), anchors (reactions placed next to the family
      * gene), anchorAt (index -> reaction), everywhere (anchor reactions on
-     * every second gene), candidate (T claim on the family gene), candConf.
+     * every second gene), candidate (T claim on the family gene), candConf,
+     * unplaced (gene indices left out of the layout and declared unplaced; they keep their claims),
+     * paralogs (extra gene indices that join the family).
      */
     static CohortInput addGenome(CohortInput input, Map o) {
         String id = o.id
         int n = (o.nGenes ?: 40) as int
         def layout = new GenomeLayout(id)
+        Set<Integer> unplaced = ((o.unplaced ?: []) as List).collect { it as int } as Set<Integer>
         n.times { int i ->
+            if (unplaced.contains(i)) return
             layout.add(new ProteinLocus(genomeId: id, proteinId: "${id}_${i}", contig: 'c1',
                     start: i * 1000 + 1, end: i * 1000 + 900, strand: Strand.PLUS))
         }
@@ -55,6 +59,7 @@ class CohortFixtures {
             a.contigs.put('c1', new CohortInput.ContigInfo(length: n * 1000, closed: o.closed as Boolean))
             entry.assembly = a
         }
+        unplaced.each { entry.unplacedProteins.add("${id}_${it}".toString()) }
         input.addGenome(entry)
 
         int famIdx = (o.famIdx ?: 20) as int
@@ -77,6 +82,10 @@ class CohortFixtures {
         }
         if (o.family != null) {
             input.assign(id, new CohortInput.FamilyAssignment(proteinId: "${id}_${famIdx}", orthogroupId: o.family as String,
+                    weight: (o.weight ?: 1.0d) as double))
+        }
+        (o.paralogs ?: []).each { int i ->
+            input.assign(id, new CohortInput.FamilyAssignment(proteinId: "${id}_${i}", orthogroupId: o.family as String,
                     weight: (o.weight ?: 1.0d) as double))
         }
         if (o.candidate) {
