@@ -185,12 +185,14 @@ promotion" checks; a result that fails any of them fails the stage and is remove
   (`context_source: user_manifest`) and makes no claim of evidence guidance. A hypothesis that names its
   `function_key` can become a candidate feature; others only appear in the raw record.
 * **`evidence_guided` mode** treats the file as a template (the medium, biomass objective and explicit maintenance are
-  its assumptions) and adds hypotheses and evidence from the run's candidates: an EC candidate is added only if its
-  protein is a gene of the model and, for the refiner's export (`<out>.metabolism/metabolic_model.xml` with
-  `reactions.tsv`), a model reaction lists both that EC and that gene. Evidence is added where the run measured it (a raw
-  claim, a context-positive window of the candidate's genome, a supporting cohort peer) or where
-  `--experiment-evidence` supplies it (transport substrates, BGC products, by `function_key`); neither is derived
-  automatically from annotations. With nothing admissible the ledger records `no_admissible_experiment` and no solver
+  its assumptions) and adds hypotheses and evidence from the run's candidates: an EC claim (retained or
+  not) becomes a reaction-level hypothesis only through a validated EC to model-reaction mapping (refiner `reactions.tsv`,
+  the model's EC annotation, or a reaction-graph id that is a model reaction id). A protein missing from the model's gene
+  rules is still tested, as a reaction and never as a gene knockout; a gene label alone is not a mapping. Evidence is
+  added where the run measured it (a raw claim, a context-positive window, a supporting cohort peer), where claim
+  metadata names an exact model exchange id, or where `--experiment-evidence` supplies it; nothing is inferred from
+  metabolite names. Features come from the per-reaction checks of a condition; a whole-gene knockout is never a flux class
+  or a feature. With nothing admissible the ledger records `no_admissible_experiment` and no solver
   runs.
 * **Mapping to `ExternalContext.FbaConditional`**: conditions assessed, share with required flux, share with optional
   flux, mean relative growth change on knockout. A product-formation experiment, and a reaction the refiner added to

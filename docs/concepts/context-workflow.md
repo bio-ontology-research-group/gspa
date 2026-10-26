@@ -103,25 +103,33 @@ supply for the same candidate is an error; neither silently overrides the other.
 See the scenario pages for the models. Production wiring (`--experiment-manifest`, `--community-manifest`):
 
 * Both sidecars run as bounded subprocesses: a hard solver-call budget passed on the command line and re-checked in the
-  result, a wall-clock limit, a fresh output (any earlier file is deleted first), exit status, schema, **model SHA-256**
-  and "no probability, no promotion, no independent proof" checked on every record. A non-zero exit, timeout, missing,
-  stale, malformed or mismatching result fails the stage and removes the file. Output goes to `<out>.experiments/` and
-  `<out>.community/` (`manifest.json`, `result.json`, `sidecar.log`).
+  result, a wall-clock limit (on expiry the process **and its children** are killed), exit status, schema, **model
+  SHA-256** and "no probability, no promotion, no independent proof" checked on every record. The sidecar writes to a
+  **private fresh directory**; only a result that passed every check is moved to `<out>.experiments/result.json`
+  (`<out>.community/` likewise), and an earlier file that cannot be removed stops the run. Failures leave no result.
 * `--experiment-mode manifest` runs a user-supplied manifest as written; the ledger says `context_source: user_manifest`
   and that this is **not** an evidence-guided workflow. Only hypotheses that name `function_key` can become features.
 * `--experiment-mode evidence_guided` treats the manifest as a **template** (medium, biomass, explicit maintenance are
-  its assumptions, copied and recorded) and adds a hypothesis for an EC candidate only if its protein is a gene of the
-  model and, when the model is the refiner's export (`<out>.metabolism/metabolic_model.xml` plus `reactions.tsv`), a model
-  reaction lists both that EC and that gene. Evidence records come from what the run measured (a raw claim; a
-  context-positive window; at least one supporting cohort peer) plus explicit `--experiment-evidence` records
-  (transport substrates, BGC products). With nothing admissible the ledger says `no_admissible_experiment` and no
-  solver starts. Transport substrates and BGC products are **not** derived automatically (no metabolite map to model
-  exchanges).
-* Results map to `ExternalContext.FbaConditional`: conditions assessed, share with **required** flux, share with
-  **optional** flux, mean relative growth change on knockout. A product objective, or a reaction the refiner added to make
-  growth feasible (`flux-certified repair`), cannot confirm the candidate: those conditions are flagged and excluded, and
-  if nothing else remains the candidate gets `objectiveRequiresCandidate = true` (the extractor then reports the
-  suppression instead of values). Skipped, infeasible and inconclusive runs count in neither direction.
+  its assumptions, copied and recorded). A candidate is an EC claim of this run, **retained or not** (weak claims the
+  integration dropped are included). It becomes a **reaction-level** hypothesis only through a validated EC to
+  model-reaction mapping (the refiner's `reactions.tsv`, the model's own EC annotation, or a reaction-graph id that is a
+  model reaction id). The gene is not required: a protein missing from the model's gene rules, the typical missing
+  annotation, is tested as a reaction with `gene_in_model: false` and never as a gene knockout. A gene label without an EC
+  mapping makes the candidate unavailable. Above `--experiment-max-hypotheses` candidates are ranked from measurements
+  (more distinct evidence types, then probability closest to 0.5, exact ties by key; no fitted weights, not a
+  probability) and the ranking and cut-off are in the ledger. Evidence: what the run measured (raw claim, context-positive
+  window, a supporting cohort peer), claim metadata naming an **exact model exchange id** (`substrate_exchange` with
+  `substrate_role`, `product_exchange`; others are listed as unmapped), plus explicit `--experiment-evidence` records.
+  Nothing is inferred from metabolite names. With nothing admissible the ledger says `no_admissible_experiment` and no
+  solver starts.
+* Results map to `ExternalContext.FbaConditional` from the **per-reaction checks** of each condition: share with
+  **required** flux, share with **optional** flux, and the reaction knockout's growth relative to the same condition (only
+  when one reaction was assessed). A whole-gene knockout is compared with the baseline medium only: it is kept in the ledger
+  (`own_knockouts_not_used_as_features`) and is never a flux class, a deletion effect of a different medium, or proof that each
+  reaction of a multi-reaction gene is required; a candidate with only a gene knockout has no conditional feature. A product
+  objective, or a reaction the refiner added to make growth feasible (`flux-certified repair`), cannot confirm the candidate:
+  those conditions are flagged and excluded, and if nothing else remains the candidate gets `objectiveRequiresCandidate =
+  true`. Skipped, infeasible and inconclusive runs count in neither direction.
 * Community results stay **organism-specific**. Cross-feeding that restores growth explains a missing route without
   assigning an enzyme or gene and is not used as evidence for any candidate; no community feature is defined, so none is
   fabricated and nothing is read as negative evidence. The raw conditional records are exported verbatim. A batch runs

@@ -5,22 +5,30 @@ import gspa.integration.learned.ExternalContext
 /**
  * Maps the conditional records of a metabolic-experiment run onto {@link ExternalContext.FbaConditional}.
  *
- * <p>Every number is a property of the supplied model, medium and bounds, not an observation of the
- * organism. Per candidate the mapper counts the CONDITIONS (experiments) in which its model reaction(s)
- * were assessed and keeps three things apart: the share in which the reaction carried REQUIRED flux, the
- * share in which its flux was merely OPTIONAL (the rest carried none), and the mean relative growth change
- * when the reaction (or the candidate gene) was knocked out. A condition counts once however many model
- * reactions the candidate has (the strongest class of its reactions is used); alternatives are never
- * summed. Only completed experiments count; skipped, infeasible and inconclusive runs are not function
- * evidence in either direction.</p>
+ * <p>Every number is a property of the supplied model, medium and bounds, not an observation of the organism.
+ * A candidate is described by the CONDITIONS (experiments) in which its model reaction(s) were assessed by the
+ * per-reaction checks (FVA at the growth floor plus a reaction knockout re-solved in the SAME condition):</p>
+ * <ul>
+ *   <li><b>flux class</b> comes only from those per-reaction checks: required, optional, or no flux. It is never
+ *       inferred from a gene knockout. A condition counts once however many reactions the candidate has (the
+ *       strongest class), so alternatives are not summed.</li>
+ *   <li><b>knockout effect</b> is the reaction knockout's growth relative to the same condition without it, so a
+ *       medium that merely grows the wild type less is not a deletion effect. It is reported only for a condition
+ *       in which exactly one reaction was assessed; with several, which one the deletion belongs to is ambiguous
+ *       and the effect is unavailable (null).</li>
+ *   <li>A whole-GENE knockout experiment is compared by the sidecar with the baseline medium only. It is kept in
+ *       the ledger ({@code own_knockout}), marked matched only when it carries no other condition, and is never used
+ *       as a flux class (an unchanged knockout may mean the reaction is inactive) nor as evidence that each EC reaction
+ *       of a multi-reaction gene is required. With only a gene knockout the candidate has NO conditional feature
+ *       (unavailable, not negative).</li>
+ * </ul>
  *
- * <p><b>The objective must not confirm the candidate.</b> A condition is flagged
- * {@code objectiveRequiresCandidate}, and kept out of the evidence features, when
- * (a) it is a product-formation experiment (the product objective needs the pathway containing the
- * candidate's reaction), or (b) the candidate's reaction was added by the refiner to make growth feasible
- * ({@code flux-certified repair}), so growth requires it by construction. If only such conditions exist the
- * candidate still gets an entry, with {@code objectiveRequiresCandidate = true}, so the learned model sees
- * that FBA was tested only under a self-confirming objective.</p>
+ * <p>Only completed experiments count; skipped, infeasible and inconclusive runs say nothing in either direction.
+ * <b>The objective must not confirm the candidate.</b> A condition is flagged {@code objectiveRequiresCandidate},
+ * and kept out of the evidence features, when it is a product-formation experiment (the product objective needs the
+ * pathway containing the candidate's reaction) or when the refiner added the reaction to make growth feasible
+ * ({@code flux-certified repair}). If only such conditions exist the candidate still gets an entry with
+ * {@code objectiveRequiresCandidate = true}.</p>
  */
 class ExperimentContextMapper {
 
@@ -31,16 +39,12 @@ class ExperimentContextMapper {
         final Map<String, ExternalContext.FbaConditional> features = new LinkedHashMap<>()
         /** Per function key: every counted or flagged condition, for the ledger. */
         final Map<String, List<Map>> conditions = new LinkedHashMap<>()
+        /** Per function key: whole-gene knockout results, never used as features. */
+        final Map<String, List<Map>> ownKnockouts = new LinkedHashMap<>()
         int skippedExperiments
         int inconclusiveExperiments
     }
 
-    /**
-     * @param result the parsed sidecar output
-     * @param bindings candidate hypotheses (function key, reactions); a binding without reactions takes the
-     *        candidate reactions of its own knockout experiment
-     * @param basisByReaction refiner construction basis per reaction (empty if the model has no table)
-     */
     static Mapped map(Map result, List<ExperimentManifestBuilder.Binding> bindings, Map<String, String> basisByReaction) {
         Mapped out = new Mapped()
         List<Map> experiments = ((result.experiments ?: []) as List<Map>).findAll { it.experiment_id != 'baseline' }
@@ -57,35 +61,36 @@ class ExperimentContextMapper {
             List<Map> conditions = []
             experiments.findAll { it.status == 'completed' && (it.hypothesis_ids ?: []).contains(b.hypothesisId) }.each { Map e ->
                 Map m = (e.measurements ?: [:]) as Map
-                boolean product = e.kind == 'product'
                 if (e.kind == 'knockout' && e.hypothesis_ids == [b.hypothesisId]) {
-                    String cls = ['growth_lost': 'required', 'growth_reduced': 'required', 'growth_unchanged': 'optional'][e.outcome as String]
-                    if (cls == null) return              // growth_increased / no result: not a statement about the candidate
-                    boolean repaired = reactions.any { basisByReaction[it] == REPAIR_BASIS }
-                    conditions << [experiment_id: e.experiment_id, kind: e.kind, flux_class: cls, source: 'own_knockout',
-                                   growth_ratio: m.growth_ratio, requires_candidate: repaired,
-                                   reason: repaired ? 'growth requires this reaction by construction (flux-certified repair)' : null]
+                    boolean matched = ((e.mods ?: []) as List<Map>).every { it.op == 'knockout' }
+                    out.ownKnockouts.computeIfAbsent(b.functionKey) { [] } << [experiment_id: e.experiment_id, outcome: e.outcome,
+                        growth_ratio: m.growth_ratio, control_matched: matched, used_in_features: false,
+                        note: 'whole-gene knockout versus the baseline medium: not a flux class and not a per-reaction requirement']
                     return
                 }
+                boolean product = e.kind == 'product'
                 List<Map> checks = ((m.focus_checks ?: []) as List<Map>).findAll { reactions.contains(it.reaction as String) }
-                if (checks.isEmpty()) return
                 String cls = null
-                Double ratio = null
+                List<Double> ratios = []
                 boolean repaired = false
+                int assessed = 0
                 checks.each { Map fc ->
                     String c = [required_flux: 'required', optional_flux: 'optional', carries_no_flux_at_growth_floor: 'none'][fc.flux_class as String]
                     if (c == null) return                 // inconclusive LP
+                    assessed++
                     if (cls == null || RANK.indexOf(c) > RANK.indexOf(cls)) cls = c
-                    if (fc.knockout_growth_ratio != null && (ratio == null || (fc.knockout_growth_ratio as double) < ratio)) {
-                        ratio = fc.knockout_growth_ratio as Double
-                    }
+                    if (fc.knockout_growth_ratio != null) ratios << (fc.knockout_growth_ratio as double)
                     if (basisByReaction[fc.reaction as String] == REPAIR_BASIS) repaired = true
                 }
                 if (cls == null) return
                 String why = product ? 'a product objective needs the pathway containing this reaction' :
                     (repaired ? 'growth requires this reaction by construction (flux-certified repair)' : null)
+                // One assessed reaction: its knockout re-solved in this same condition is a matched deletion effect.
+                Double ratio = (assessed == 1 && ratios.size() == 1) ? ratios[0] : null
                 conditions << [experiment_id: e.experiment_id, kind: e.kind, flux_class: cls, source: 'focus_check',
-                               growth_ratio: ratio, requires_candidate: product || repaired, reason: why]
+                               n_reactions_assessed: assessed, growth_ratio: ratio,
+                               knockout_effect_note: ratio == null && assessed > 1 ? 'several reactions assessed: the deletion effect cannot be attributed to one' : null,
+                               requires_candidate: product || repaired, reason: why]
             }
             if (conditions.isEmpty()) return
             out.conditions.put(b.functionKey, conditions)

@@ -464,7 +464,8 @@ class IntegrationWorkflow {
             def stage = new ExperimentStage()
             stage.info = info
             ExperimentStage.Outcome outcome = stage.run(c, new File(c.outFile.absolutePath + '.experiments'),
-                refinerModel != null && refinerModel.isFile() ? refinerModel : null, integrated, claims, outputs.context)
+                refinerModel != null && refinerModel.isFile() ? refinerModel : null, integrated, claims, outputs.context,
+                { String ec -> (state.reactionGraph?.reactionsForEc(ec) ?: []) as Collection<String> })
             if (!outcome.fba.isEmpty()) {
                 outputs.context = ExternalContextSupport.merge(outputs.context, new ExternalContext(fba: outcome.fba), 'metabolic experiments')
             }

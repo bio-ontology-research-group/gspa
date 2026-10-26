@@ -62,7 +62,10 @@ class ExperimentWorkflowSpec extends Specification {
 
     private File evidence() {
         File f = new File(dir, 'evidence.json')
-        f.text = mapper.writeValueAsString([[id: 'bgc1', type: 'bgc', function_key: 'pF|EC|EC:4.4.4.4', product_exchange: 'EX_sec_e']])
+        f.text = mapper.writeValueAsString([
+            [id: 'bgc1', type: 'bgc', function_key: 'pF|EC|EC:4.4.4.4', product_exchange: 'EX_sec_e'],
+            [id: 'tr_ac', type: 'transport', function_key: 'pC|EC|EC:6.2.1.1', substrate_exchange: 'EX_ac_e', role: 'carbon'],
+            [id: 'no_o2', type: 'recurrence', function_key: 'pE|EC|EC:2.3.3.3', condition_hint: 'oxygen_removal']])
         f
     }
 
@@ -78,15 +81,17 @@ class ExperimentWorkflowSpec extends Specification {
         s.context_source == 'evidence_guided_from_run_candidates'
         s.context.hypotheses_added == 6
         s.context.candidates_rejected*.function_key == ['pZ|EC|EC:9.9.9.9']
-        s.context.candidates_rejected[0].reason.contains('not a gene of the model')
-        s.context.mapping_basis == 'ec_reaction_gene_table'
-        s.context.not_derived.contains('transport substrates')
+        s.context.candidates_rejected[0].reason.contains('no validated EC to model-reaction mapping')
+        s.context.mapping_note.contains('never as a gene knockout')
+        s.context.not_derived.contains('metabolite names')
         and: 'the competing paralogs share a group, every hypothesis names its function key'
         manifest.context.hypotheses.findAll { it.group == 'EC:1.1.1.1' }.size() == 2
         manifest.context.hypotheses.every { it.function_key && it.id.startsWith('auto:') }
         and: 'evidence this run measured, plus the explicit BGC record resolved to the candidate'
         manifest.context.evidence.findAll { it.type == 'sequence' }.size() == 6
         manifest.context.evidence.find { it.id == 'bgc1' }.hypothesis_id == 'auto:pF|EC|EC:4.4.4.4'
+        and: 'hypotheses are reaction-level (validated EC mapping), the gene is recorded, not relied on'
+        manifest.context.hypotheses.every { it.perturbation == 'reaction' && it.reactions && it.mapping_sources }
         and: 'the budget and the strategy are the requested ones, and nothing is promoted'
         s.solver_calls_max == 60
         s.solver_calls_used <= 60
@@ -110,37 +115,41 @@ class ExperimentWorkflowSpec extends Specification {
         then:
         typesOf('pC|EC|EC:6.2.1.1') == ['neighborhood', 'recurrence', 'sequence']
         typesOf('pD|EC|EC:1.9.3.1') == ['sequence']
-        stage(r, 'metabolic_experiments').context.evidence_derived_from_this_run == [sequence: 6, neighborhood: 1, recurrence: 1]
+        stage(r, 'metabolic_experiments').context.evidence_derived_from_this_run == [sequence: 6, neighborhood: 1, recurrence: 1, transport: 0, bgc: 0]
     }
 
     def 'results become conditional features; an objective that requires the candidate is flagged and kept out of the evidence'() {
         when:
-        def r = run(config(experimentEvidenceFile: evidence(), featureExportDir: new File(dir, 'export')))
+        def r = run(config(experimentEvidenceFile: evidence(), featureExportDir: new File(dir, 'export'),
+            experimentMaxExperiments: 12, experimentMaxSolverCalls: 120))
         def fba = r.context.fba
         def s = stage(r, 'metabolic_experiments')
         def rows = new File(dir, 'export/candidate_features.jsonl').readLines().collect { mapper.readValue(it, Map) }
         def row = { String key -> rows.find { it.function_key == key }.features }
 
-        then: 'a dispensable candidate: optional flux, knockout without growth effect, no flag'
+        then: 'acetate catabolism is required in the acetate condition; the deletion effect is that condition\'s own matched knockout'
         def c = fba['pC|EC|EC:6.2.1.1']
-        c.nConditions >= 1
+        c.nConditions == 1
         !c.objectiveRequiresCandidate
-        c.optionalFraction == 1.0d
-        c.requiredFraction == 0.0d
-        c.knockoutGrowthEffect == 0.0d
+        c.requiredFraction == 1.0d
+        c.optionalFraction == 0.0d
+        c.knockoutGrowthEffect == null      // growth is abolished: the sidecar reports the knockout as infeasible, so no ratio is invented
 
         and: 'a reaction that growth needs only because the refiner added it is flagged, not counted as confirmation'
         fba['pE|EC|EC:2.3.3.3'].objectiveRequiresCandidate
         s.conditions_by_candidate['pE|EC|EC:2.3.3.3'].every { it.requires_candidate }
         s.conditions_by_candidate['pE|EC|EC:2.3.3.3'][0].reason.contains('flux-certified repair')
 
-        and: 'a product objective is listed but excluded; the candidate keeps its independent knockout condition'
+        and: 'a product objective is listed but excluded, so a candidate with only that condition is flagged'
         def conds = s.conditions_by_candidate['pF|EC|EC:4.4.4.4']
         conds.find { it.kind == 'product' }.requires_candidate
         conds.find { it.kind == 'product' }.reason.contains('product objective')
-        !conds.find { it.kind == 'knockout' }.requires_candidate
-        !fba['pF|EC|EC:4.4.4.4'].objectiveRequiresCandidate
-        fba['pF|EC|EC:4.4.4.4'].nConditions == 1
+        fba['pF|EC|EC:4.4.4.4'].objectiveRequiresCandidate
+
+        and: 'whole-gene knockouts are kept in the ledger but are never a feature or a flux class'
+        s.own_knockouts_not_used_as_features['pC|EC|EC:6.2.1.1'].every { !it.used_in_features }
+        !fba.containsKey('pD|EC|EC:1.9.3.1')        // only its own knockout ran: unavailable, not "optional"
+        row('pD|EC|EC:1.9.3.1')['fba.available'] == 0.0d
 
         and: 'the feature rows carry the conditional block, with the flag where it applies'
         row('pC|EC|EC:6.2.1.1')['fba.available'] == 1.0d
@@ -211,8 +220,9 @@ class ExperimentWorkflowSpec extends Specification {
         s.mode == 'manifest'
         s.context_source == 'user_manifest'
         s.context.note.contains('not an evidence-guided workflow')
-        and: 'only the hypothesis that names its function can become a feature'
-        r.context.fba.keySet() == ['pC|EC|EC:6.2.1.1'] as Set
+        and: 'a user manifest with only a whole-gene knockout gives no feature (a gene knockout is not a flux class)'
+        r.context == null || r.context.fba.isEmpty()
+        s.own_knockouts_not_used_as_features['pC|EC|EC:6.2.1.1'].every { !it.used_in_features }
     }
 
     def 'a result for another model, or one that claims a probability, is refused and removed'() {

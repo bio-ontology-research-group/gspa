@@ -52,13 +52,8 @@ class CommunityStage {
         List<String> cmd = [c.communityPythonBin, c.communitySidecar.absolutePath, '--manifest', manifestFile.absolutePath,
             '--out', result.absolutePath, '--max-solver-calls', c.communityMaxSolverCalls.toString()]
         info.call("  Community metabolism (${modelHashes.size()} organisms, <= ${c.communityMaxSolverCalls} solver calls)".toString())
-        SidecarRun.Result run = SidecarRun.run(cmd, result, new File(workDir, 'sidecar.log'), c.communityTimeoutSeconds, SCHEMA)
-        try {
-            verify(run.parsed, modelHashes, c)
-        } catch (SidecarRun.SidecarFailure e) {
-            result.delete()
-            throw e
-        }
+        SidecarRun.Result run = SidecarRun.run(cmd, result, new File(workDir, 'sidecar.log'), c.communityTimeoutSeconds, SCHEMA,
+            { Map parsed -> verify(parsed, modelHashes, c) })
 
         List<Map> summary = (run.parsed.organism_summary ?: []) as List<Map>
         Map<String, Integer> byClass = [:]

@@ -66,6 +66,10 @@ class SbmlModelInfo {
             Set<String> genes = new LinkedHashSet<>()
             elements(rx, 'fbc:geneProductRef').each { org.w3c.dom.Element ref -> genes << ref.getAttribute('fbc:geneProduct') }
             info.reactionGenes.put(rid, genes)
+            elements(rx, 'rdf:li').each { org.w3c.dom.Element li ->
+                def m = (li.getAttribute('rdf:resource') =~ /(?:ec-code[\/:]|enzyme[\/:]|ec[\/:])(\d+\.\d+\.\d+\.\d+)$/)
+                if (m.find()) info.annotationEcs.computeIfAbsent(rid) { new LinkedHashSet<String>() } << m.group(1)
+            }
         }
         if (info.reactionIds.isEmpty()) throw new IllegalArgumentException("model ${model} has no reactions")
         File tsv = reactionsTsv ?: new File(model.absoluteFile.parentFile, 'reactions.tsv')
@@ -95,10 +99,23 @@ class SbmlModelInfo {
 
     boolean hasTable() { !table.isEmpty() }
 
-    /** Reactions that list {@code ec} AND the gene as a candidate and exist in the model; empty without a table. */
-    List<String> reactionsFor(String ec, String gene) {
-        table.values().findAll { it.ecs.contains(ec) && it.candidateGenes.contains(gene) && reactionIds.contains(it.reactionId) }
-            *.reactionId.sort()
+    /** reaction -> EC numbers named by the SBML annotation of the reaction (identifiers.org / ec-code URIs). */
+    final Map<String, Set<String>> annotationEcs = new LinkedHashMap<>()
+
+    /**
+     * Model reactions validated for an EC number, with the source of each validation: the refiner's table
+     * ({@code reactions_tsv}), the model's own annotation ({@code sbml_annotation}) or the reaction graph when
+     * its reaction id IS a reaction id of the model ({@code reaction_graph_id}). No gene is consulted: an EC call
+     * on a protein that is missing from the model's gene rules still maps to the reactions that EC names.
+     * Empty = no validated mapping (the candidate is unavailable for experiments, never guessed).
+     */
+    Map<String, Set<String>> reactionsForEc(String ec, Collection<String> graphReactions = []) {
+        Map<String, Set<String>> out = new TreeMap<>()
+        def add = { String rid, String source -> if (reactionIds.contains(rid)) out.computeIfAbsent(rid) { new TreeSet<String>() } << source }
+        table.values().each { if (it.ecs.contains(ec)) add(it.reactionId, 'reactions_tsv') }
+        annotationEcs.each { String rid, Set<String> ecs -> if (ecs.contains(ec)) add(rid, 'sbml_annotation') }
+        (graphReactions ?: []).each { add(it, 'reaction_graph_id') }
+        out
     }
 
     boolean hasGene(String label) { geneByLabel.containsKey(label) }

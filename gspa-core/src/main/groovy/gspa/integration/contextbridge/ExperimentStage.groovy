@@ -44,7 +44,7 @@ class ExperimentStage {
      * @param refinerModel the model exported by the metabolic_refinement stage of this run, or null
      */
     Outcome run(IntegrationWorkflowConfig c, File workDir, File refinerModel, IntegratedAnnotationSet integrated,
-                Collection<EvidenceClaim> claims, ExternalContext context) {
+                Collection<EvidenceClaim> claims, ExternalContext context, Closure<Collection<String>> graphEcToReactions = null) {
         File templateFile = c.experimentManifestFile
         Map template
         try {
@@ -65,7 +65,7 @@ class ExperimentStage {
         Map manifest
         if (guided) {
             List<Map> evidence = c.experimentEvidenceFile != null ? ExperimentManifestBuilder.readEvidenceFile(c.experimentEvidenceFile) : []
-            def built = new ExperimentManifestBuilder().build(template, modelInfo, integrated, claims, context, evidence, c.experimentMaxHypotheses)
+            def built = new ExperimentManifestBuilder().build(template, modelInfo, integrated, claims, context, evidence, c.experimentMaxHypotheses, graphEcToReactions)
             manifest = built.manifest
             report = built.report
             bindings = built.bindings
@@ -98,15 +98,10 @@ class ExperimentStage {
         }
         if (!c.experimentSidecar.isFile()) throw new IllegalArgumentException("experiment sidecar does not exist: ${c.experimentSidecar}")
         info.call("  Metabolic experiments (${c.experimentMode}, strategy ${c.experimentStrategy}, <= ${c.experimentMaxSolverCalls} solver calls)".toString())
-        SidecarRun.Result run = SidecarRun.run(cmd, result, new File(workDir, 'sidecar.log'), c.experimentTimeoutSeconds, SCHEMA)
+        SidecarRun.Result run = SidecarRun.run(cmd, result, new File(workDir, 'sidecar.log'), c.experimentTimeoutSeconds, SCHEMA,
+            { Map parsed -> verify(parsed, modelInfo, c) })
         out.solverRun = true
         out.resultFile = result
-        try {
-            verify(run.parsed, modelInfo, c)
-        } catch (SidecarRun.SidecarFailure e) {
-            result.delete()                                  // a result that failed its checks is never left to be picked up
-            throw e
-        }
 
         Map<String, String> basis = modelInfo.table.collectEntries { rid, row -> [rid, row.basis] }
         ExperimentContextMapper.Mapped mapped = ExperimentContextMapper.map(run.parsed, bindings, basis)
@@ -123,6 +118,7 @@ class ExperimentStage {
             candidates_with_conditional_features: mapped.features.size(),
             candidates_flagged_objective_requires_candidate: mapped.features.count { k, f -> f.objectiveRequiresCandidate },
             conditions_by_candidate: mapped.conditions,
+            own_knockouts_not_used_as_features: mapped.ownKnockouts,
             result_sha256: run.outputSha256,
             result_file: result.path,
             promotion: 'none',
@@ -162,7 +158,7 @@ class ExperimentStage {
     private static List<ExperimentManifestBuilder.Binding> bindingsFromManifest(Map manifest) {
         ((manifest.context ?: [:]).hypotheses ?: []).findAll { it.function_key }.collect { Map h ->
             new ExperimentManifestBuilder.Binding(hypothesisId: h.id as String, functionKey: h.function_key as String,
-                reactions: ((h.reactions ?: []) as List<String>), mappingBasis: 'user_manifest')
+                reactions: ((h.reactions ?: []) as List<String>))
         }
     }
 
