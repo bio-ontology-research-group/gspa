@@ -26,14 +26,26 @@ class CohortConfig {
     double cladeCap = 1.0d
     /** Effective weight needed for a context reaction to count as jointly covered. */
     double jointMinEffective = 0.5d
-    /** Pseudo-mass of the UNKNOWN role when resolving roles from evidence. */
-    double unknownRolePseudo = 0.5d
     /** Permutations for the matched-window null (0 disables). */
     int permutations = 200
     long seed = 20261026L
     HoldoutLevel holdout = HoldoutLevel.STRAIN_CLUSTER
     /** Cut height for clade extraction from a supplied tree (max leaf-to-leaf distance within a clade). */
     double treeCutDistance = 0.05d
+
+    void validate() {
+        if (halfWidthBp <= 0) throw new IllegalArgumentException('halfWidthBp must be positive')
+        if (!(anchorMinConfidence >= 0d && anchorMinConfidence <= 1d)) throw new IllegalArgumentException('anchorMinConfidence must be in [0,1]')
+        if (minAnchors < 1) throw new IllegalArgumentException('minAnchors must be >= 1')
+        if (maxHops < 1) throw new IllegalArgumentException('maxHops must be >= 1')
+        if (!(hopAlpha > 0d && hopAlpha <= 1d)) throw new IllegalArgumentException('hopAlpha must be in (0,1]')
+        if (densityTolerance < 0) throw new IllegalArgumentException('densityTolerance must be >= 0')
+        if (!(minMembershipWeight >= 0d && minMembershipWeight <= 1d)) throw new IllegalArgumentException('minMembershipWeight must be in [0,1]')
+        if (!(cladeCap > 0d) || Double.isInfinite(cladeCap)) throw new IllegalArgumentException('cladeCap must be positive and finite')
+        if (!(jointMinEffective >= 0d)) throw new IllegalArgumentException('jointMinEffective must be >= 0')
+        if (permutations < 0) throw new IllegalArgumentException('permutations must be >= 0')
+        if (!(treeCutDistance >= 0d)) throw new IllegalArgumentException('treeCutDistance must be >= 0')
+    }
 
     Map<String, Object> toMap() {
         Map<String, Object> m = new LinkedHashMap<>()
@@ -46,7 +58,6 @@ class CohortConfig {
         m.put('minMembershipWeight', minMembershipWeight)
         m.put('cladeCap', cladeCap)
         m.put('jointMinEffective', jointMinEffective)
-        m.put('unknownRolePseudo', unknownRolePseudo)
         m.put('permutations', permutations)
         m.put('seed', seed)
         m.put('holdout', holdout.name())

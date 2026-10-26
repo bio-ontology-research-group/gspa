@@ -21,6 +21,7 @@ class CohortFixtures {
         g.addReaction(new ReactionGraph.ReactionSpec('U1', null, ['u1'] as Set, ['u2'] as Set))
         g.addReaction(new ReactionGraph.ReactionSpec('U2', null, ['u3'] as Set, ['u4'] as Set))
         g.addReaction(new ReactionGraph.ReactionSpec('U3', null, ['u5'] as Set, ['u6'] as Set))
+        g.addReaction(new ReactionGraph.ReactionSpec('H2', null, ['y0'] as Set, ['x1'] as Set))
         g.addReaction(new ReactionGraph.ReactionSpec('LONE', null, ['l1'] as Set, ['l2'] as Set))
         g.build()
         g
@@ -32,7 +33,8 @@ class CohortFixtures {
 
     /**
      * Adds one genome: 40 genes 1 kb apart on contig c1. Options: id, clade,
-     * cluster, status (COMPLETE/DRAFT/null = no metadata), closed, famIdx,
+     * cluster, status (COMPLETE/DRAFT/null = no metadata), search (certified
+     * all-protein family search; defaults to true for COMPLETE), closed, famIdx,
      * family (null = absent), anchors (reactions placed next to the family
      * gene), anchorAt (index -> reaction), everywhere (anchor reactions on
      * every second gene), candidate (T claim on the family gene), candConf.
@@ -46,7 +48,8 @@ class CohortFixtures {
                     start: i * 1000 + 1, end: i * 1000 + 900, strand: Strand.PLUS))
         }
         layout.finishLoading()
-        def entry = new CohortInput.GenomeEntry(genomeId: id, layout: layout, cladeId: o.clade, strainClusterId: o.cluster)
+        def entry = new CohortInput.GenomeEntry(genomeId: id, layout: layout, cladeId: o.clade, strainClusterId: o.cluster,
+                familySearchComplete: o.containsKey('search') ? (o.search as Boolean) : (o.status == 'COMPLETE'))
         if (o.status != null) {
             def a = new CohortInput.AssemblyInfo(status: AssemblyStatus.valueOf(o.status as String))
             a.contigs.put('c1', new CohortInput.ContigInfo(length: n * 1000, closed: o.closed as Boolean))

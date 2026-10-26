@@ -20,13 +20,24 @@ import groovy.transform.CompileStatic
  * permutation null. Outputs are features; nothing here is a posterior,
  * threshold or "often" decision.</p>
  *
- * <p>Context never assigns catalysis: roles come from {@link RoleResolver}
- * on protein-intrinsic evidence only.</p>
+ * <p>Context never assigns catalysis, and no role probability is computed:
+ * raw protein-intrinsic role evidence is passed through
+ * ({@link RoleEvidenceSummary}) for the learned stage.</p>
+ *
+ * <p><b>Cost.</b> No candidate is capped or dropped. Per genome, window
+ * membership and confident-reaction sets are built once (O(genes x window
+ * claims)). Per (genome, reaction) one boolean per window is cached
+ * (O(genes) memory each). Matched backgrounds use density buckets and a
+ * per-(genome, family) contaminated-window set, so a lookup costs
+ * O(bucket size) rather than O(genes). Peer features are cached per
+ * (family, reaction, holdout key). Work still grows with
+ * distinct (family, reaction) pairs x peer genomes; for very dense EC
+ * candidate sets, shard by genome batch or reaction and merge records.</p>
  */
 @CompileStatic
 class CohortInference {
 
-    static final String VERSION = 'cohort-v1'
+    static final String VERSION = 'cohort-v2'
 
     private enum WState { FULL, TRUNCATED, UNKNOWN }
 
@@ -35,13 +46,20 @@ class CohortInference {
         double weight
     }
 
-    private static class PoolEntry {
+    private static class WindowInfo {
+        int idx
         String center
         List<String> proteins
         int count
         WState state
         String closedKey
-        boolean positive
+        /** Confident baseline reactions of the window's genes other than the centre gene. */
+        Set<String> reactions
+    }
+
+    private static class GenomeWindows {
+        final List<WindowInfo> all = new ArrayList<>()
+        final Map<String, List<WindowInfo>> buckets = new HashMap<>()
     }
 
     private static class PermMember {
@@ -56,6 +74,7 @@ class CohortInference {
         double presence
         /** Supported share of presence for informative genomes. */
         double supportedShare
+        /** Copy number is only known when the family search is certified. */
         boolean singleCopy
         boolean multiCopy
         Set<String> anchorUnion = new LinkedHashSet<>()
@@ -63,7 +82,6 @@ class CohortInference {
         int bgN
         double bgRateSum
         int bgGenomeN
-        boolean complete
 
         boolean informative() { state == 'SUPPORTED' || state == 'NEGATIVE' }
         boolean present() { informative() || state == 'UNKNOWN_CONTEXT' }
@@ -86,10 +104,13 @@ class CohortInference {
     private final Map<String, Map<String, List<Member>>> familyIndex = new LinkedHashMap<>()
     private final Map<String, Set<String>> confidentReactions = new LinkedHashMap<>()
     private final Map<String, Map<String, List<String>>> windowCache = new HashMap<>()
-    private final Map<String, List<PoolEntry>> poolCache = new HashMap<>()
+    private final Map<String, GenomeWindows> genomeWindows = new HashMap<>()
+    private final Map<String, boolean[]> positivityCache = new HashMap<>()
+    private final Map<String, Set<String>> contaminatedCache = new HashMap<>()
     private final Map<String, Map<String, Double>> peerCache = new HashMap<>()
 
     CohortInference(CohortInput input, ReactionGraph graph, CohortConfig config) {
+        config.validate()
         input.validate()
         this.input = input
         this.cfg = config
@@ -179,7 +200,7 @@ class CohortInference {
         List<String> peers = new ArrayList<>()
         for (String x : input.genomes.keySet()) if (!holdout.contains(x)) peers.add(x)
 
-        rec.features.putAll(signatureFeatures(r, links))
+        rec.features.putAll(signatureFeatures(g, r, links))
         rec.features.putAll(localFeatures(g, p, fKey, r, links))
         rec.features.put('baseline_confidence', claim.baselineConfidence)
         rec.features.put('membership_weight', rec.membershipWeight)
@@ -187,8 +208,8 @@ class CohortInference {
         if (claim.ecDirect) rec.features.put('ec_reaction_count', (double) claim.ecReactionCount)
         rec.features.put('family_known', fKey == null ? 0d : 1d)
         rec.features.put('n_family_alternatives', (double) Math.max(0, assigns.size() - 1))
-        int nOtherClaims = claimsBy.get(g)?.get(p)?.size() ?: 0
-        rec.features.put('n_reaction_alternatives', (double) Math.max(0, nOtherClaims - 1))
+        List<CohortInput.CandidateClaim> proteinClaims = claimsBy.get(g)?.get(p) ?: Collections.<CohortInput.CandidateClaim>emptyList()
+        rec.features.put('n_reaction_alternatives', (double) Math.max(0, proteinClaims.size() - 1))
         if (fKey != null) {
             rec.features.putAll(peerFeatures(fKey, r, hk, peers, seedFor(fKey, r, hk)))
         } else {
@@ -197,17 +218,15 @@ class CohortInference {
         rec.states.put('phylogeny_metadata', clades.metadata.get(g))
         rec.states.put('assembly_status', assemblyStatus(g).name())
 
-        CohortInput.RoleEvidence re = input.roleEvidence.get(g + '|' + p)
-        double ecConf = 0d
-        for (CohortInput.CandidateClaim c : claimsBy.get(g)?.get(p) ?: Collections.<CohortInput.CandidateClaim>emptyList()) {
-            if (c.ecDirect && c.baselineConfidence > ecConf) ecConf = c.baselineConfidence
+        // Raw role evidence only: no probabilities, no null distribution, no threshold.
+        RoleEvidenceSummary rs = RoleEvidenceSummary.summarize(input.roleEvidence.get(g + '|' + p), proteinClaims)
+        rec.roleEvidence.addAll(rs.items)
+        rec.roleEvidenceMissing = rs.missing
+        rec.roleAlternatives.addAll(rs.alternatives)
+        rec.features.put('role_evidence_missing', rs.missing ? 1d : 0d)
+        rs.maxByRole().each { Role role, Double v ->
+            rec.features.put('role_evidence_' + role.name().toLowerCase() + '_raw', v)
         }
-        RoleResolver.Resolution res = RoleResolver.resolve(re?.scores, ecConf, cfg.unknownRolePseudo)
-        rec.roleProbabilities.putAll(res.probabilities)
-        rec.resolvedRole = res.resolved
-        rec.features.put('role_catalytic_probability', res.probabilities.get(Role.CATALYTIC))
-        rec.features.put('role_unknown_probability', res.probabilities.get(Role.UNKNOWN))
-        rec.features.put('role_noncatalytic_mass', 1d - res.probabilities.get(Role.CATALYTIC))
 
         for (int i = 1; i < assigns.size(); i++) {
             CohortInput.FamilyAssignment a = assigns[i]
@@ -216,7 +235,7 @@ class CohortInference {
             alt.features.putAll(peerFeatures(a.familyKey(), r, hk, peers, seedFor(a.familyKey(), r, hk)))
             rec.alternatives.add(alt)
         }
-        for (CohortInput.CandidateClaim c : claimsBy.get(g)?.get(p) ?: Collections.<CohortInput.CandidateClaim>emptyList()) {
+        for (CohortInput.CandidateClaim c : proteinClaims) {
             if (c.reactionId == r) continue
             rec.alternatives.add(new CohortResult.Alternative(kind: 'reaction', reactionId: c.reactionId,
                     weight: c.baselineConfidence))
@@ -253,6 +272,11 @@ class CohortInference {
         e?.assembly == null ? AssemblyStatus.UNKNOWN : e.assembly.status
     }
 
+    /** A missing family member is true absence only for a COMPLETE assembly with a certified all-protein family search. */
+    private boolean absenceCertified(String g) {
+        assemblyStatus(g) == AssemblyStatus.COMPLETE && input.genomes.get(g).familySearchComplete == Boolean.TRUE
+    }
+
     private List<String> windowProteins(String g, String protein) {
         Map<String, List<String>> perGenome = windowCache.computeIfAbsent(g, { new HashMap<String, List<String>>() })
         List<String> hit = perGenome.get(protein)
@@ -282,6 +306,8 @@ class CohortInference {
         Boolean c = input.genomes.get(g)?.assembly?.contigs?.get(l.contig)?.closed
         c == null ? 'unk' : (c.booleanValue() ? 'closed' : 'open')
     }
+
+    private static String bucketKey(WState s, String closed, int count) { s.name() + '|' + closed + '|' + count }
 
     private boolean inFamily(String g, String protein, String familyKey) {
         if (familyKey == null) return false
@@ -318,55 +344,107 @@ class CohortInference {
         out
     }
 
-    private List<PoolEntry> pool(String g, String reactionId, Map<String, ReactionContext.Link> links) {
-        String key = g + '|' + reactionId
-        List<PoolEntry> hit = poolCache.get(key)
+    /** Per-genome window table (built once), with density buckets for matched-background lookup. */
+    private GenomeWindows windowsOf(String g) {
+        GenomeWindows hit = genomeWindows.get(g)
         if (hit != null) return hit
-        List<PoolEntry> out = new ArrayList<>()
+        GenomeWindows gw = new GenomeWindows()
         GenomeLayout layout = input.genomes.get(g)?.layout
+        Map<String, List<CohortInput.CandidateClaim>> byProtein = claimsBy.get(g)
         if (layout != null) {
             for (List<ProteinLocus> contig : layout.byContig.values()) {
                 for (ProteinLocus l : contig) {
                     List<String> w = windowProteins(g, l.proteinId)
-                    Map<String, Double> an = anchors(g, w, l.proteinId, reactionId, links, null)
-                    out.add(new PoolEntry(center: l.proteinId, proteins: w, count: w.size(), state: windowState(g, l),
-                            closedKey: closedKey(g, l), positive: an.size() >= cfg.minAnchors))
+                    Set<String> rx = new HashSet<>()
+                    if (byProtein != null) {
+                        for (String q : w) {
+                            if (q == l.proteinId) continue
+                            List<CohortInput.CandidateClaim> cs = byProtein.get(q)
+                            if (cs == null) continue
+                            for (CohortInput.CandidateClaim c : cs) if (c.baselineConfidence >= cfg.anchorMinConfidence) rx.add(c.reactionId)
+                        }
+                    }
+                    WindowInfo wi = new WindowInfo(idx: gw.all.size(), center: l.proteinId, proteins: w, count: w.size(),
+                            state: windowState(g, l), closedKey: closedKey(g, l), reactions: rx)
+                    gw.all.add(wi)
+                    gw.buckets.computeIfAbsent(bucketKey(wi.state, wi.closedKey, wi.count), { new ArrayList<WindowInfo>() }).add(wi)
                 }
             }
         }
-        poolCache.put(key, out)
+        genomeWindows.put(g, gw)
+        gw
+    }
+
+    /** Context-positivity of every window of genome g for reaction R (cached, one boolean per window). */
+    private boolean[] positivity(String g, String reactionId, Map<String, ReactionContext.Link> links) {
+        String key = g + '|' + reactionId
+        boolean[] hit = positivityCache.get(key)
+        if (hit != null) return hit
+        GenomeWindows gw = windowsOf(g)
+        boolean[] out = new boolean[gw.all.size()]
+        for (WindowInfo w : gw.all) {
+            int n = 0
+            if (w.reactions.size() <= links.size()) {
+                for (String x : w.reactions) if (links.containsKey(x)) n++
+            } else {
+                for (String x : links.keySet()) if (w.reactions.contains(x)) n++
+            }
+            out[w.idx] = n >= cfg.minAnchors
+        }
+        positivityCache.put(key, out)
         out
     }
 
-    /** Matched background windows: same genome, window size, density (within tolerance), assembly stratum; no family member inside. */
-    private List<PoolEntry> matched(String g, String reactionId, Map<String, ReactionContext.Link> links,
-                                    String familyKey, int count, WState state, String closedKey) {
-        List<PoolEntry> out = new ArrayList<>()
-        for (PoolEntry e : pool(g, reactionId, links)) {
-            if (e.state != state || e.closedKey != closedKey) continue
-            if (Math.abs(e.count - count) > cfg.densityTolerance) continue
-            boolean contains = false
-            for (String q : e.proteins) {
-                if (inFamily(g, q, familyKey)) { contains = true; break }
-            }
-            if (!contains) out.add(e)
+    /** Centres of windows that contain, or are centred on, a member of the family (symmetric window relation). */
+    private Set<String> contaminated(String g, String familyKey) {
+        if (familyKey == null) return Collections.<String>emptySet()
+        String key = g + '|' + familyKey
+        Set<String> hit = contaminatedCache.get(key)
+        if (hit != null) return hit
+        Set<String> out = new HashSet<>()
+        for (Member m : familyIndex.get(familyKey)?.get(g) ?: Collections.<Member>emptyList()) {
+            out.addAll(windowProteins(g, m.protein))
+            out.add(m.protein)
         }
+        contaminatedCache.put(key, out)
         out
+    }
+
+    /**
+     * Matched background windows: same genome, window size, density (within
+     * tolerance), contig-end state and closure; none centred on or containing
+     * a family member. Returns the context-positivity of each.
+     */
+    private boolean[] matched(String g, String reactionId, Map<String, ReactionContext.Link> links,
+                              String familyKey, int count, WState state, String closedKey) {
+        GenomeWindows gw = windowsOf(g)
+        boolean[] pos = positivity(g, reactionId, links)
+        Set<String> bad = contaminated(g, familyKey)
+        List<Boolean> out = new ArrayList<>()
+        for (int c = Math.max(0, count - cfg.densityTolerance); c <= count + cfg.densityTolerance; c++) {
+            List<WindowInfo> b = gw.buckets.get(bucketKey(state, closedKey, c))
+            if (b == null) continue
+            for (WindowInfo w : b) if (!bad.contains(w.center)) out.add(pos[w.idx])
+        }
+        boolean[] arr = new boolean[out.size()]
+        for (int i = 0; i < arr.length; i++) arr[i] = out.get(i).booleanValue()
+        arr
     }
 
     // ------------------------------------------------------------------ features
 
-    private Map<String, Double> signatureFeatures(String r, Map<String, ReactionContext.Link> links) {
+    private Map<String, Double> signatureFeatures(String g, String r, Map<String, ReactionContext.Link> links) {
         Map<String, Double> f = new LinkedHashMap<>()
         f.put('signature_size', (double) links.size())
         f.put('signature_empty', links.isEmpty() ? 1d : 0d)
-        int cur = 0, up = 0, down = 0, both = 0, org = 0, orgKnown = 0
+        Set<String> orgSet = input.organismSet(g)
+        int cur = 0, up = 0, down = 0, both = 0, org = 0
         for (ReactionContext.Link l : links.values()) {
             if (l.curated) cur++
             if (l.flow == ReactionContext.Flow.UPSTREAM) up++
             if (l.flow == ReactionContext.Flow.DOWNSTREAM) down++
             if (l.flow == ReactionContext.Flow.BOTH) both++
-            if (l.inOrganismSet != null) { orgKnown++; if (l.inOrganismSet.booleanValue()) org++ }
+            if (orgSet != null && orgSet.contains(l.reactionId)) org++
         }
         f.put('signature_curated_edges', (double) cur)
         f.put('signature_upstream', (double) up)
@@ -375,10 +453,11 @@ class CohortInference {
         ReactionDirection d = contextModel.directionOf(r)
         f.put('reaction_direction_known', d == ReactionDirection.UNKNOWN ? 0d : 1d)
         f.put('reaction_irreversible', (d == ReactionDirection.FORWARD || d == ReactionDirection.REVERSE) ? 1d : 0d)
-        if (input.organismReactions != null) {
-            f.put('reaction_in_organism_set', input.organismReactions.contains(r) ? 1d : 0d)
+        f.put('organism_set_known', orgSet == null ? 0d : 1d)
+        if (orgSet != null) {
+            f.put('reaction_in_organism_set', orgSet.contains(r) ? 1d : 0d)
+            if (!links.isEmpty()) f.put('signature_organism_fraction', org / (double) links.size())
         }
-        if (orgKnown > 0) f.put('signature_organism_fraction', org / (double) orgKnown)
         f
     }
 
@@ -395,12 +474,13 @@ class CohortInference {
         List<String> w = windowProteins(g, p)
         Map<String, Double> an = anchors(g, w, p, r, links, familyKey)
         WState ws = windowState(g, l)
+        Set<String> orgSet = input.organismSet(g)
         f.put('local_window_gene_count', (double) w.size())
         f.put('local_window_truncated', ws == WState.TRUNCATED ? 1d : 0d)
         f.put('local_window_unknown', ws == WState.UNKNOWN ? 1d : 0d)
         f.put('local_anchor_count', (double) an.size())
         double wt = 0d
-        int up = 0, down = 0, both = 0, cur = 0, org = 0, orgKnown = 0
+        int up = 0, down = 0, both = 0, cur = 0, org = 0
         for (String a : an.keySet()) {
             wt += an.get(a).doubleValue()
             ReactionContext.Link link = links.get(a)
@@ -408,23 +488,23 @@ class CohortInference {
             if (link.flow == ReactionContext.Flow.DOWNSTREAM) down++
             if (link.flow == ReactionContext.Flow.BOTH) both++
             if (link.curated) cur++
-            if (link.inOrganismSet != null) { orgKnown++; if (link.inOrganismSet.booleanValue()) org++ }
+            if (orgSet != null && orgSet.contains(a)) org++
         }
         f.put('local_anchor_weight', wt)
         f.put('local_anchor_upstream', (double) up)
         f.put('local_anchor_downstream', (double) down)
         f.put('local_anchor_bidirectional', (double) both)
         f.put('local_anchor_curated', (double) cur)
-        if (orgKnown > 0) f.put('local_anchor_organism_fraction', org / (double) orgKnown)
+        if (orgSet != null && !an.isEmpty()) f.put('local_anchor_organism_fraction', org / (double) an.size())
         boolean positive = an.size() >= cfg.minAnchors
         f.put('local_context_positive', positive ? 1d : 0d)
         if (!links.isEmpty()) {
-            List<PoolEntry> m = matched(g, r, links, familyKey, w.size(), ws, closedKey(g, l))
+            boolean[] m = matched(g, r, links, familyKey, w.size(), ws, closedKey(g, l))
             int pos = 0
-            for (PoolEntry e : m) if (e.positive) pos++
-            f.put('local_bg_n', (double) m.size())
-            if (!m.isEmpty()) {
-                double bg = CohortStats.jeffreys(pos, m.size())
+            for (boolean b : m) if (b) pos++
+            f.put('local_bg_n', (double) m.length)
+            if (m.length > 0) {
+                double bg = CohortStats.jeffreys(pos, m.length)
                 f.put('local_bg_rate', bg)
                 f.put('local_enrichment_log', Math.log((positive ? CohortStats.jeffreys(1, 1) : CohortStats.jeffreys(0, 1)) / bg))
             }
@@ -434,11 +514,10 @@ class CohortInference {
 
     private PeerObs observe(String h, String familyKey, String r, Map<String, ReactionContext.Link> links) {
         PeerObs o = new PeerObs(genomeId: h)
-        AssemblyStatus st = assemblyStatus(h)
-        o.complete = st == AssemblyStatus.COMPLETE
+        boolean certified = absenceCertified(h)
         List<Member> members = familyIndex.get(familyKey)?.get(h) ?: Collections.<Member>emptyList()
         if (members.isEmpty()) {
-            if (o.complete) {
+            if (certified) {
                 Set<String> have = confidentReactions.get(h) ?: Collections.<String>emptySet()
                 int n = 0
                 for (String x : links.keySet()) if (have.contains(x)) n++
@@ -449,11 +528,9 @@ class CohortInference {
             return o
         }
         GenomeLayout layout = input.genomes.get(h)?.layout
-        Set<String> familyProteins = new HashSet<>()
-        for (Member m : members) familyProteins.add(m.protein)
         double pAll = 0d, pPos = 0d, pNeg = 0d
         for (Member m : members) pAll = Math.max(pAll, m.weight)
-        o.singleCopy = members.size() == 1
+        o.singleCopy = members.size() == 1 && certified
         o.multiCopy = members.size() > 1
         for (Member m : members) {
             ProteinLocus l = layout?.get(m.protein)
@@ -466,18 +543,14 @@ class CohortInference {
             if (positive) pPos = Math.max(pPos, m.weight)
             else if (ws == WState.FULL) pNeg = Math.max(pNeg, m.weight)
             if (links.isEmpty() || (!positive && ws != WState.FULL)) continue
-            List<PoolEntry> mt = matched(h, r, links, familyKey, w.size(), ws, closedKey(h, l))
-            if (mt.isEmpty()) continue
+            boolean[] mt = matched(h, r, links, familyKey, w.size(), ws, closedKey(h, l))
+            if (mt.length == 0) continue
             int pos = 0
-            for (PoolEntry e : mt) if (e.positive) pos++
-            o.bgN += mt.size()
-            o.bgRateSum += CohortStats.jeffreys(pos, mt.size())
+            for (boolean b : mt) if (b) pos++
+            o.bgN += mt.length
+            o.bgRateSum += CohortStats.jeffreys(pos, mt.length)
             o.bgGenomeN++
-            if (ws == WState.FULL) {
-                boolean[] pl = new boolean[mt.size()]
-                for (int i = 0; i < pl.length; i++) pl[i] = mt[i].positive
-                o.perm.add(new PermMember(positive: positive, pool: pl))
-            }
+            if (ws == WState.FULL) o.perm.add(new PermMember(positive: positive, pool: mt))
         }
         if (pPos > 0d) {
             o.state = 'SUPPORTED'
@@ -526,6 +599,12 @@ class CohortInference {
         List<PeerObs> obs = new ArrayList<>()
         for (String h : peers) obs.add(observe(h, familyKey, r, links))
 
+        // Descriptive, unadjusted genome counts (not independent evidence).
+        Map<String, Integer> raw = new LinkedHashMap<>()
+        for (String s : ['SUPPORTED', 'NEGATIVE', 'UNKNOWN_CONTEXT', 'TRUE_ABSENT', 'UNOBSERVED_ABSENT', 'PATHWAY_WITHOUT_FAMILY']) raw.put(s, 0)
+        for (PeerObs o : obs) raw.put(o.state, raw.get(o.state) + 1)
+        raw.each { String s, Integer n -> f.put('cohort_raw_genomes_' + s.toLowerCase(), (double) n) }
+
         // Categorical composition over ALL peers (absence vs unobserved vs context).
         Set<String> peerClades = new LinkedHashSet<>()
         int known = 0
@@ -561,8 +640,28 @@ class CohortInference {
             f.put('cohort_frac_pathway_without_family', comp.get('PATHWAY_WITHOUT_FAMILY') / total)
         }
 
+        // Per-genome plausible reaction sets of the peers (unknown peers are skipped, not counted as "no").
+        Set<String> withSet = new LinkedHashSet<>()
+        for (String h : peers) if (input.organismSet(h) != null) withSet.add(h)
+        f.put('cohort_peer_organism_set_known_fraction', peers.isEmpty() ? 0d : withSet.size() / (double) peers.size())
+        if (!withSet.isEmpty()) {
+            double wsum = 0d, hits = 0d
+            for (CladeModel.Unit u : clades.units(withSet)) {
+                for (String g : u.genomes) {
+                    double w = u.weight / u.genomes.size()
+                    wsum += w
+                    if (input.organismSet(g).contains(r)) hits += w
+                }
+            }
+            f.put('cohort_peer_reaction_in_organism_fraction', hits / wsum)
+        }
+
         Agg agg = aggregate(obs)
         double effN = agg.informative()
+        boolean cladeResolved = false
+        for (PeerObs o : obs) if (o.informative() && clades.cladeKnown(o.genomeId)) cladeResolved = true
+        // Phylogeny-adjusted CI and permutation p need at least one informative genome with a resolved clade.
+        boolean adjusted = effN > 0d && cladeResolved
         f.put('cohort_informative_genomes', (double) agg.informativeGenomes)
         f.put('cohort_informative_clades', (double) agg.informativeClades.size())
         f.put('cohort_coverage', peerClades.isEmpty() ? 0d : agg.informativeClades.size() / (double) peerClades.size())
@@ -572,10 +671,13 @@ class CohortInference {
         f.put('cohort_unknown_eff', agg.unknown)
         f.put('cohort_singleton', agg.informativeGenomes == 1 ? 1d : 0d)
         f.put('cohort_insufficient_peers', effN <= 0d ? 1d : 0d)
+        f.put('cohort_adjusted_available', adjusted ? 1d : 0d)
         f.put('cohort_support_fraction', CohortStats.jeffreys(agg.supported, effN))
-        double[] ci = CohortStats.wilson(agg.supported, effN)
-        f.put('cohort_support_fraction_lo90', ci[0])
-        f.put('cohort_support_fraction_hi90', ci[1])
+        if (adjusted) {
+            double[] ci = CohortStats.wilson(agg.supported, effN)
+            f.put('cohort_support_fraction_lo90', ci[0])
+            f.put('cohort_support_fraction_hi90', ci[1])
+        }
         if (effN > 0d) f.put('cohort_support_fraction_raw', agg.supported / effN)
         double presence = effN + agg.unknown
         if (presence > 0d) {
@@ -584,13 +686,15 @@ class CohortInference {
             f.put('cohort_support_fraction_unknown_as_support', (agg.supported + agg.unknown) / presence)
         }
 
-        // Multi-copy / paralog ambiguity.
+        // Multi-copy / paralog ambiguity (copy number is unknown without a certified family search).
         List<PeerObs> single = new ArrayList<>()
+        Set<String> copyKnown = new LinkedHashSet<>()
         double mc = 0d, mcTotal = 0d
         for (PeerObs o : obs) {
             if (o.present() && o.singleCopy) single.add(o)
+            if (o.present() && (o.singleCopy || o.multiCopy)) copyKnown.add(o.genomeId)
         }
-        for (CladeModel.Unit u : clades.units(presentGenomes(obs))) {
+        for (CladeModel.Unit u : clades.units(copyKnown)) {
             for (String g : u.genomes) {
                 double w = u.weight / u.genomes.size()
                 mcTotal += w
@@ -606,16 +710,10 @@ class CohortInference {
         if (!links.isEmpty() && effN > 0d) {
             addBackground(f, obs, agg, effN)
             addJoint(f, obs, links)
-            addPermutation(f, obs, seed)
+            if (adjusted) addPermutation(f, obs, seed)
         }
         peerCache.put(cacheKey, f)
         f
-    }
-
-    private static Set<String> presentGenomes(List<PeerObs> obs) {
-        Set<String> s = new LinkedHashSet<>()
-        for (PeerObs o : obs) if (o.present()) s.add(o.genomeId)
-        s
     }
 
     private void addBackground(Map<String, Double> f, List<PeerObs> obs, Agg agg, double effN) {
@@ -679,23 +777,23 @@ class CohortInference {
         f.put('cohort_joint_coverage', joint)
         f.put('cohort_mean_single_coverage', meanSingle)
         f.put('cohort_complementarity', joint - meanSingle)
-        // Reactions of the signature that a complete peer genome lacks entirely but that
-        // other independent lineages carry next to the family.
-        double missing = 0d
+        // Signature reactions with no confident candidate in a peer genome although other
+        // lineages carry them next to the family. These are UNANNOTATED / unsupported in the
+        // baseline snapshot; this is NOT evidence that the reaction is genuinely absent
+        // from the organism (the gene may be missed, divergent or unassembled).
+        double unannotated = 0d
         for (int i = 0; i < units.size(); i++) {
             CladeModel.Unit u = units[i]
             double m = 0d
             for (String g : u.genomes) {
-                PeerObs o = byGenome.get(g)
-                if (!o.complete) continue
                 Set<String> have = confidentReactions.get(g) ?: Collections.<String>emptySet()
                 int c = 0
                 for (String x : covered) if (links.containsKey(x) && !have.contains(x)) c++
                 m += c / (double) size
             }
-            missing += unitW[i] * m / u.genomes.size()
+            unannotated += unitW[i] * m / u.genomes.size()
         }
-        f.put('cohort_complementary_missing', missing / wSum)
+        f.put('cohort_complementary_unannotated', unannotated / wSum)
     }
 
     private void addPermutation(Map<String, Double> f, List<PeerObs> obs, long seed) {
@@ -714,7 +812,7 @@ class CohortInference {
             double s = 0d
             for (String g : u.genomes) {
                 boolean any = false
-                for (PermMember m : byGenome.get(g).perm) if (m.positive) any = true
+                for (PermMember m : byGenome.get(g).perm) if (m.pool.length > 0 && m.positive) any = true
                 if (any) s += 1d
             }
             tObs += u.weight * s / u.genomes.size()

@@ -7,7 +7,9 @@ import groovy.transform.CompileStatic
  * per-(family, reaction) aggregates, with run provenance.
  *
  * <p>Feature maps omit unavailable values (missing, not zero); explicit
- * {@code *_available} / {@code *_unknown} flags are present as 0/1.</p>
+ * {@code *_available} / {@code *_unknown} flags are present as 0/1. No role
+ * posterior or null distribution is produced: raw role evidence is listed
+ * for the learned stage.</p>
  */
 @CompileStatic
 class CohortResult {
@@ -32,8 +34,11 @@ class CohortResult {
         double baselineConfidence
         Map<String, Double> features = new LinkedHashMap<>()
         Map<String, String> states = new LinkedHashMap<>()
-        Map<Role, Double> roleProbabilities = new LinkedHashMap<>()
-        Role resolvedRole = Role.UNKNOWN
+        /** Raw protein-intrinsic role evidence with sources; no probabilities. */
+        List<RoleEvidenceSummary.Item> roleEvidence = new ArrayList<>()
+        boolean roleEvidenceMissing = true
+        /** Roles that remain possible (those with evidence, plus UNKNOWN). */
+        List<Role> roleAlternatives = new ArrayList<>()
         List<Alternative> alternatives = new ArrayList<>()
         Map<String, Object> provenance = new LinkedHashMap<>()
     }
@@ -51,9 +56,14 @@ class CohortResult {
     final List<FeatureRecord> records = new ArrayList<>()
     final List<Aggregate> aggregates = new ArrayList<>()
     final Map<String, Object> provenance = new LinkedHashMap<>()
+    private Map<String, FeatureRecord> recordIndex
 
     FeatureRecord record(String genomeId, String proteinId, String reactionId) {
-        records.find { it.genomeId == genomeId && it.proteinId == proteinId && it.reactionId == reactionId }
+        if (recordIndex == null || recordIndex.size() != records.size()) {
+            recordIndex = new HashMap<>()
+            for (FeatureRecord r : records) recordIndex.put(r.genomeId + '\t' + r.proteinId + '\t' + r.reactionId, r)
+        }
+        recordIndex.get(genomeId + '\t' + proteinId + '\t' + reactionId)
     }
 
     Aggregate aggregate(String familyKey, String reactionId) {

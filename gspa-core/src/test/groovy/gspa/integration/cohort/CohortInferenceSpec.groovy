@@ -34,7 +34,8 @@ class CohortInferenceSpec extends Specification {
         comp.cohort_joint_coverage == 1.0d
         redundant.cohort_joint_coverage < 1.0d
         comp.cohort_complementarity > redundant.cohort_complementarity
-        comp.cohort_complementary_missing > redundant.cohort_complementary_missing
+        comp.cohort_complementary_unannotated > redundant.cohort_complementary_unannotated
+        !comp.containsKey('cohort_complementary_missing')
     }
 
     def "duplicated strains cannot boost the signal"() {
@@ -55,7 +56,8 @@ class CohortInferenceSpec extends Specification {
         // raw counts and the seeded permutation draw legitimately change; every weighted quantity must not
         def weighted = { Map<String, Double> m ->
             m.findAll { !it.key.startsWith('cohort_perm') && !it.key.contains('peer_genomes') &&
-                        !it.key.contains('informative_genomes') && it.key != 'cohort_bg_windows' }
+                        !it.key.contains('informative_genomes') && !it.key.startsWith('cohort_raw_genomes') &&
+                        it.key != 'cohort_bg_windows' }
         }
         weighted(a) == weighted(b)
     }
@@ -205,26 +207,30 @@ class CohortInferenceSpec extends Specification {
         in0.assign('G0', new CohortInput.FamilyAssignment(proteinId: 'G0_20', orthogroupId: 'OG2', weight: 0.5d))
         in0.addClaim(new CohortInput.CandidateClaim(genomeId: 'G0', proteinId: 'G0_20', reactionId: 'U2', baselineConfidence: 0.2d, provenance: 'seq@snap'))
         in0.addRoleEvidence(new CohortInput.RoleEvidence(genomeId: 'G0', proteinId: 'G0_20',
-                scores: [(Role.ACCESSORY): 0.8d] as Map))
+                source: 'domain-hmm@snap', scores: [(Role.ACCESSORY): 0.8d] as Map))
         addGenome(in0, [id: 'P0', clade: 'c0', cluster: 's0', status: 'COMPLETE', closed: true, family: 'OG1', anchors: ['N1', 'N2']])
 
         when:
         def res = new CohortInference(in0, graph(), new CohortConfig(permutations: 20)).run()
         def rec = res.record('G0', 'G0_20', 'T')
 
-        then: 'strong local and cohort context, yet the role stays accessory with catalysis improbable'
+        then: 'strong local and cohort context, yet the only role evidence is the supplied accessory score, passed through raw'
         rec.features.local_context_positive == 1d
         rec.features.cohort_support_eff > 0d
-        rec.resolvedRole == Role.ACCESSORY
-        rec.roleProbabilities[Role.CATALYTIC] == 0d
-        rec.features.role_noncatalytic_mass == 1d
+        rec.roleEvidence*.role == [Role.ACCESSORY]
+        rec.roleEvidence[0].value == 0.8d
+        rec.roleEvidence[0].source == 'domain-hmm@snap'
+        !rec.roleEvidenceMissing
+        rec.roleAlternatives == [Role.ACCESSORY, Role.UNKNOWN]
+        rec.features.role_evidence_accessory_raw == 0.8d
+        !rec.features.containsKey('role_evidence_catalytic_raw')
         and: 'competing family and reaction hypotheses are preserved, not collapsed'
         rec.alternatives.find { it.kind == 'family' && it.familyKey == 'OG2' }
         rec.alternatives.find { it.kind == 'reaction' && it.reactionId == 'U2' }
         rec.features.n_family_alternatives == 1d
     }
 
-    def "context alone cannot create a catalytic role"() {
+    def "context alone creates no role evidence, and no role probability or threshold is ever emitted"() {
         given:
         def in0 = target(newInput(), [anchors: ['N1', 'N2']])
         3.times { addGenome(in0, [id: "P${it}", clade: "c${it}", cluster: "s${it}", status: 'COMPLETE', closed: true, family: 'OG1', anchors: ['N1', 'N2']]) }
@@ -234,9 +240,13 @@ class CohortInferenceSpec extends Specification {
 
         then:
         rec.features.local_context_positive == 1d
-        rec.resolvedRole == Role.UNKNOWN
-        rec.roleProbabilities[Role.CATALYTIC] == 0d
-        rec.roleProbabilities[Role.UNKNOWN] == 1d
+        rec.roleEvidence.isEmpty()
+        rec.roleEvidenceMissing
+        rec.roleAlternatives == [Role.UNKNOWN]
+        rec.features.role_evidence_missing == 1d
+        !rec.features.keySet().any { it.contains('probab') || it.contains('catalytic') }
+        !rec.metaClass.hasProperty(rec, 'resolvedRole')
+        !rec.metaClass.hasProperty(rec, 'roleProbabilities')
     }
 
     def "direct EC-to-reaction context works without any GO annotation"() {
@@ -260,8 +270,13 @@ class CohortInferenceSpec extends Specification {
         rec.features.ec_direct == 1d
         rec.features.ec_reaction_count == 1d
         rec.features.cohort_support_eff == 1d
-        rec.roleProbabilities[Role.CATALYTIC] > 0.5d
-        rec.resolvedRole == Role.CATALYTIC
+        and: 'direct EC support is listed raw, as a possibility with its source, never as a role probability'
+        rec.roleEvidence.size() == 1
+        rec.roleEvidence[0].role == Role.CATALYTIC
+        rec.roleEvidence[0].value == 0.7d
+        rec.roleEvidence[0].source.startsWith('ec-direct:1.1.1.1')
+        rec.roleAlternatives == [Role.CATALYTIC, Role.UNKNOWN]
+        rec.features.role_evidence_catalytic_raw == 0.7d
     }
 
     def "curated interaction edges and reaction directions are context features"() {
@@ -277,6 +292,8 @@ class CohortInferenceSpec extends Specification {
 
         then:
         lone.signature_curated_edges == 1d
+        lone.signature_downstream == 1d     // directed LONE -> U1: U1 is downstream of LONE
+        lone.local_anchor_downstream == 1d
         lone.local_anchor_curated == 1d
         lone.signature_empty == 0d
         lone.cohort_support_eff == 1d
@@ -295,17 +312,76 @@ class CohortInferenceSpec extends Specification {
         t.local_anchor_downstream == 1d
     }
 
-    def "organism reaction set is an explicit, optional feature"() {
+    def "plausible reaction sets are per genome; unknown is distinct from empty"() {
+        given:
+        def in0 = cohort([['N1'], ['N1']])
+        def none = features(in0)
+
         when:
-        def in0 = cohort([['N1']])
-        def without = features(in0)
-        in0.organismReactions = ['T', 'N1'] as Set
-        def with = features(in0)
+        in0.setOrganismReactions('G0', ['T', 'N1'])
+        in0.setOrganismReactions('P0', ['N1', 'N2', 'N3'])   // P0 plausibly lacks T
+        in0.setOrganismReactions('P1', [])                    // known and empty
+        def f = features(in0)
+
+        then: 'G0 and P0 hold different sets for the same reaction'
+        !none.containsKey('reaction_in_organism_set')
+        none.organism_set_known == 0d
+        f.organism_set_known == 1d
+        f.reaction_in_organism_set == 1d
+        f.signature_organism_fraction == 1d / 3d
+        !in0.organismSet('P0').contains('T')
+        in0.organismSet('G0').contains('T')
+        and: 'peers: P0 has a set without T, P1 an empty set, G0 is held out'
+        f.cohort_peer_organism_set_known_fraction == 1d
+        f.cohort_peer_reaction_in_organism_fraction == 0d
+
+        when: 'the empty set becomes unknown'
+        in0.setOrganismReactions('P1', null)
+        def g = features(in0)
 
         then:
-        !without.containsKey('reaction_in_organism_set')
-        with.reaction_in_organism_set == 1d
-        with.signature_organism_fraction == 1d / 3d
+        g.cohort_peer_organism_set_known_fraction == 0.5d
+        in0.organismSet('P1') == null
+        in0.organismSet('P0') != null
+    }
+
+    def "a directed curated edge keeps its orientation from either side"() {
+        given:
+        def in0 = newInput()
+        addGenome(in0, [id: 'G0', status: 'COMPLETE', closed: true, family: 'OG1', candidate: 'LONE'])
+        in0.addEdge(new CohortInput.InteractionEdge(reactionA: 'LONE', reactionB: 'U1', source: 'db', directed: true))
+        in0.addEdge(new CohortInput.InteractionEdge(reactionA: 'U2', reactionB: 'U3', source: 'db', directed: false))
+        def ctx = new ReactionContext(graph(), in0, new CohortConfig())
+
+        expect:
+        ctx.links('LONE')['U1'].flow == ReactionContext.Flow.DOWNSTREAM
+        ctx.links('U1')['LONE'].flow == ReactionContext.Flow.UPSTREAM
+        ctx.links('U2')['U3'].flow == ReactionContext.Flow.CURATED
+        ctx.links('U3')['U2'].flow == ReactionContext.Flow.CURATED
+    }
+
+    def "hop counts are real graph distances, also when alpha is 1"() {
+        given:
+        def in0 = newInput()
+        addGenome(in0, [id: 'G0', status: 'COMPLETE', closed: true, family: 'OG1'])
+
+        when:
+        def one = new ReactionContext(graph(), in0, new CohortConfig(maxHops: 2, hopAlpha: 1.0d)).links('T')
+        def half = new ReactionContext(graph(), in0, new CohortConfig(maxHops: 2, hopAlpha: 0.5d)).links('T')
+
+        then:
+        one['N1'].distance == 1
+        one['H2'].distance == 2
+        one['H2'].weight == 1.0d
+        half['H2'].distance == 2
+        half['H2'].weight == 0.25d
+        half['N1'].weight == 0.5d
+
+        when:
+        new CohortConfig(hopAlpha: 0d).validate()
+
+        then:
+        thrown(IllegalArgumentException)
     }
 
     def "unrelated candidates do not change the focal features"() {
@@ -315,7 +391,7 @@ class CohortInferenceSpec extends Specification {
         // many unrelated candidates, other families, on existing genes
         ['G0', 'P0', 'P1'].each { g ->
             (0..39).each { i ->
-                if (i != 20) noisy.addClaim(new CohortInput.CandidateClaim(genomeId: g, proteinId: "${g}_${i}", reactionId: 'U3',
+                if (i != 20) noisy.addClaim(new CohortInput.CandidateClaim(genomeId: g, proteinId: "${g}_${i}", reactionId: 'LONE',
                         baselineConfidence: 0.95d, provenance: 'seq@snap'))
                 noisy.assign(g, new CohortInput.FamilyAssignment(proteinId: "${g}_${i}", orthogroupId: "OGX${i}", weight: 1d))
             }
