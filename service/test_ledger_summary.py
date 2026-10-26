@@ -77,7 +77,7 @@ class LearnedSummaryTest(LedgerSummaryTest):
             return ledger_summary.summarize(tmp)
 
     def report(self, sha=SHA):
-        return {'model': {'id': 'm1', 'sha256': sha}, 'candidates': [], 'outcomes': [], 'counts': {'candidates': 0}}
+        return {'schema': 'gspa.learned-stage-report/1', 'model': {'id': 'm1', 'sha256': sha}, 'candidates': [], 'outcomes': [], 'counts': {'candidates': 0}}
 
     def test_stage_order_labels_and_baseline_come_from_the_new_schema(self):
         out = self.summarize_with(learned_ledger(), self.report())
@@ -104,6 +104,45 @@ class LearnedSummaryTest(LedgerSummaryTest):
         self.assertEqual(self.summarize_with(learned_ledger('legacy_heuristic'), self.report())['learned']['status'], 'not_trusted')
         unverified = self.summarize_with(learned_ledger(sha=None), self.report())['learned']
         self.assertEqual((unverified['status'], unverified['hash_verified']), ('available', False))
+
+    def test_failed_or_missing_learned_stage_never_trusts_a_report(self):
+        failed = learned_ledger()
+        failed['stages'][2].update(status='failed', reason='boom')
+        out = self.summarize_with(failed, self.report())['learned']
+        self.assertEqual(out['status'], 'not_trusted')
+        self.assertNotIn('hash_verified', out)
+        gone = learned_ledger()
+        del gone['stages'][2]
+        self.assertEqual(self.summarize_with(gone, self.report())['learned']['status'], 'not_trusted')
+
+    def test_report_hash_absent_while_expected_present_is_not_trusted(self):
+        report = self.report()
+        del report['model']['sha256']
+        self.assertEqual(self.summarize_with(learned_ledger(), report)['learned']['status'], 'not_trusted')
+
+    def test_missing_hash_on_both_sides_is_unverified_never_verified(self):
+        report = self.report()
+        del report['model']['sha256']
+        out = self.summarize_with(learned_ledger(sha=None), report)['learned']
+        self.assertEqual((out['status'], out['hash_verified'], out['model_sha256']), ('available', False, None))
+
+    def test_malformed_or_wrong_contract_reports_do_not_crash(self):
+        bad_reports = ['[]', '3', 'null', json.dumps({**self.report(), 'schema': 'other/1'}), json.dumps({**self.report(), 'schema': None}),
+                       json.dumps({**self.report(), 'model': 'm1'}), json.dumps({**self.report(), 'model': None}),
+                       json.dumps({**self.report(), 'candidates': {}})]
+        for bad in bad_reports:
+            self.assertEqual(self.summarize_with(learned_ledger(), bad)['learned']['status'], 'unavailable', bad)
+        odd = {**self.report(), 'counts': 'many', 'model': {'id': 7, 'sha256': SHA}}
+        out = self.summarize_with(learned_ledger(), odd)['learned']
+        self.assertEqual((out['status'], out['model_id'], out['counts']), ('available', None, None))
+        for stage in ('x', ['y']):
+            ledger = learned_ledger()
+            ledger['stages'][2] = stage
+            self.assertEqual(self.summarize_with(ledger, self.report())['learned']['status'], 'not_trusted')
+        ledger = learned_ledger()
+        ledger['stages'][2]['model_sha256'] = 5     # not a hash: the ledger recorded none
+        out = self.summarize_with(ledger, self.report())['learned']
+        self.assertEqual((out['status'], out['hash_verified']), ('available', False))
 
 
 @unittest.skipUnless(shutil.which('node'), 'Node is required')
@@ -133,9 +172,10 @@ class PortalTextTest(unittest.TestCase):
             unavailable = self.text(ledger_summary.summarize(tmp))
             self.assertIn('Scoring: learned (frozen model)', unavailable)
             self.assertIn('Learned-stage report unavailable', unavailable)
-            (Path(tmp) / ledger_summary.LEARNED_NAME).write_text(json.dumps({'model': {'id': 'm1', 'sha256': SHA}, 'candidates': []}))
+            (Path(tmp) / ledger_summary.LEARNED_NAME).write_text(json.dumps({'schema': 'gspa.learned-stage-report/1', 'model': {'id': 'm1', 'sha256': SHA}, 'candidates': []}))
             text = self.text(ledger_summary.summarize(tmp))
         self.assertIn('Scoring: learned (frozen model m1, sha256 ' + SHA[:12] + ')', text)
+        self.assertNotIn('unverified', text)
         self.assertNotIn('accura', text.replace('not measurements of accuracy', ''))
         legacy = self.text({'available': True, 'baseline': 'X', 'status_counts': {}, 'net': {'functions': 0, 'proteins': 0, 'by_change': {'added': 0, 'removed': 0, 'increased': 0, 'decreased': 0}},
                             'scoring': {'mode': 'legacy_heuristic'}, 'learned': {'status': 'not_applicable'}})

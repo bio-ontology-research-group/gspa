@@ -53,10 +53,20 @@ The learned stage also writes `integrated.tsv.learned.json`. The tab reads it as
   (`rescored`, `added`, `retracted`, `removed_no_projection`, `scored_only`), every supporting source, and
   whether the role was projected into the final role-free annotation. A learned candidate that never reached
   the final EC table is still shown.
-- **Trust.** The report's model hash must equal the one in the stage ledger. A mismatch, or a report beside a
-  ledger that does not say the learned stage ran, is shown as **not trusted** and the scores are withheld. If
-  the ledger records no hash the report is shown as *unverified*. A missing or unreadable report is
-  **unavailable, not zero**.
+- **Trust.** Scores are shown only when the ledger says `learned`, its `learned_integration` stage is
+  `executed`, and the report's model hash equals the ledger's. A hash mismatch, a report with no hash while
+  the ledger records one, a failed or missing learned stage, or a report beside a ledger that does not say the
+  learned stage ran is **not trusted** and the scores are withheld. If the ledger records no hash the report
+  is shown labelled *model hash unverified* (never "verified"), and the portal's download link says so. A
+  missing report, or one that is not the writer's `gspa.learned-stage-report/1` object (wrong schema,
+  non-object `model`, non-list `candidates`/`outcomes`), is **unavailable, not zero**. Non-numeric scalar
+  fields inside an otherwise valid report are shown as unavailable rather than crashing the page.
+- **Writer-to-browser test.** `LearnedArtifactsWriterSpec` runs the shared workflow on the `ContextFixtures`
+  genome with a frozen, hand-set, TEST ONLY model (`intended_use = mechanism_test`) and writes the real
+  artifacts; `scripts/tests/test_visualize_learned_e2e.py` reads them through the browser builder and the
+  portal summary. It tests that writers and readers agree on the files. It is not a validation of a trained
+  model and says nothing about accuracy. The production loader refuses such a model, so it does not go
+  through `gspa integrate`.
 - The candidate table is filterable by role, projection and text, and paginated (100 per page).
 
 ## Stage status

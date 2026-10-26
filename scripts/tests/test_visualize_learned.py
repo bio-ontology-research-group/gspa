@@ -5,6 +5,7 @@ Fixtures have the artifact shape the JVM writers produce (`IntegrationRunAudit.r
 cannot drift from them. Probabilities here are synthetic: nothing asserts or implies accuracy.
 """
 import copy
+import json
 import re
 import unittest
 from pathlib import Path
@@ -186,12 +187,61 @@ class LearnedPayloadTest(base.LedgerTest):
         self.assertFalse(learned['hash_verified'])
         self.assertIn('could not be checked', learned['hash_note'])
 
+    def test_missing_stage_hash_is_explicitly_unverified(self):
+        ledger = v2_ledger()
+        next(s for s in ledger['stages'] if s['name'] == 'learned_integration').pop('model_sha256')
+        learned = self.learned_of(ledger=ledger)['learned']
+        self.assertIs(learned['hash_verified'], False)
+        self.assertIn('unverified', learned['hash_note'])
+        self.assertNotIn('equals', learned['hash_note'])
+
+    def test_failed_or_missing_learned_stage_withholds_scores_even_in_learned_mode(self):
+        failed = v2_ledger()
+        next(s for s in failed['stages'] if s['name'] == 'learned_integration').update(status='failed', reason='boom')
+        missing = v2_ledger()
+        missing['stages'][:] = [s for s in missing['stages'] if s['name'] != 'learned_integration']
+        for ledger in (failed, missing):
+            out = self.learned_of(ledger=ledger)
+            self.assertFalse(out['scoring']['learned_ran'])
+            self.assertEqual(out['learned']['status'], 'not_trusted')
+            self.assertIn('did not execute', out['learned']['reason'])
+            for withheld in ('candidates', 'outcomes', 'hash_verified'):
+                self.assertNotIn(withheld, out['learned'])
+
+    def test_report_hash_absent_while_the_ledger_expects_one_is_not_trusted(self):
+        report = learned_report()
+        del report['model']['sha256']
+        learned = self.learned_of(learned=report)['learned']
+        self.assertEqual(learned['status'], 'not_trusted')
+        self.assertIn('no hash', learned['reason'])
+        self.assertNotIn('candidates', learned)
+
+    def test_wrong_shaped_report_is_unavailable_and_bad_scalars_do_not_crash(self):
+        good = learned_report()
+        wrong = [[], 3, None, {**good, 'model': 'deepgo'}, {**good, 'model': None}, {**good, 'schema': 'other/1'}, {**good, 'schema': None},
+                 {**good, 'candidates': {}}, {**good, 'outcomes': 'x'}]
+        for bad in wrong:
+            learned = self.learned_of(learned=json.dumps(bad))['learned']
+            self.assertEqual(learned['status'], 'unavailable', bad)
+            self.assertNotIn('candidates', learned)
+        odd = learned_report()
+        odd['model'].update(id=7, kind=['x'])
+        odd.update(counts='many', contract=[], settings=3, interpretation=5)
+        odd['candidates'][0].update(probability='high', margin=float('nan'), locus_probability=True, supporting_sources='diamond', notes=3, role=4)
+        odd['candidates'].append('not a candidate')
+        odd['outcomes'][0].update(role_probabilities=[1], prior_probability='x', action=1)
+        learned = self.learned_of(learned=json.dumps(odd))['learned']
+        self.assertEqual(learned['status'], 'available')
+        first = next(c for c in learned['candidates'] if c['k'] == 'p_hexokinase|EC|EC:2.7.1.1' and c['ck'].endswith('#CATALYTIC'))
+        self.assertEqual((first['pr'], first['m'], first['lp'], first['src'], first['notes'], first['role']), (None, None, None, [], [], None))
+        self.assertEqual((learned['model']['id'], learned['counts'], learned['contract']), (None, None, None))
+
     def test_absent_unreadable_or_contradicted_report_is_unavailable_not_zero(self):
         absent = self.render(ledger=v2_ledger())['ledger']['learned']
         self.assertEqual(absent['status'], 'unavailable')
         self.assertIn('not zero', absent['reason'])
         self.assertNotIn('counts', absent)
-        for bad in ('{not json', '{"candidates": 3}'):
+        for bad in ('{not json', '{"candidates": 3}', '{"schema": "gspa.learned-stage-report/1", "candidates": 3}'):
             self.assertEqual(self.learned_of(learned=bad)['learned']['status'], 'unavailable', bad)
         stray = self.render(ledger=v2_ledger(mode='legacy_heuristic'), learned=learned_report())['ledger']['learned']
         self.assertEqual(stray['status'], 'not_trusted')

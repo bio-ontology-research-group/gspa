@@ -739,37 +739,63 @@ def canonical_function_key(key):
     return "|".join((parts[0].strip(), parts[1].strip().upper(), parts[2].strip()))
 
 
+LEARNED_SCHEMA = "gspa.learned-stage-report/1"
+
+
 def read_learned_report(path):
-    """`integrated.tsv.learned.json` as a dict; None when absent, an {"error": ...} dict when unreadable."""
+    """`integrated.tsv.learned.json` as a dict; None when absent, an {"error": ...} dict when unreadable or not the writer's contract."""
     path = Path(path)
     if not path.is_file(): return None
     try:
         raw = json.loads(path.read_text())
-        if not isinstance(raw, dict) or not isinstance(raw.get("candidates"), list) or not isinstance(raw.get("outcomes"), list):
+        if not isinstance(raw, dict): raise ValueError("not a JSON object")
+        if raw.get("schema") != LEARNED_SCHEMA: raise ValueError(f"schema is {raw.get('schema')!r}, expected {LEARNED_SCHEMA!r}")
+        if not isinstance(raw.get("model"), dict): raise ValueError("model is not an object")
+        if not isinstance(raw.get("candidates"), list) or not isinstance(raw.get("outcomes"), list):
             raise ValueError("no candidates/outcomes lists")
         return raw
-    except ValueError as exc:
+    except (ValueError, OSError) as exc:
         return {"error": str(exc)}
 
 
+def _prob(v):
+    """A finite number or None; the writer emits numbers or null, anything else is not a probability."""
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
+
+
+def _text(v):
+    return v if isinstance(v, str) and v else None
+
+
+def _strings(v):
+    return [x for x in v if isinstance(x, str)] if isinstance(v, list) else []
+
+
 def scoring_state(raw, learned_stage):
-    """Which scoring produced the scores, as the ledger itself says. Old schemas do not say: unknown."""
+    """Which scoring produced the scores, as the ledger itself says. Old schemas do not say: unknown.
+
+    `learned_ran` is the stage's own recorded status; a `learned` mode without it is inconsistent and
+    its scores are never trusted.
+    """
     mode = raw.get("scoring_mode")
     known = mode in SCORING_MODES
-    ran = bool(learned_stage and learned_stage.get("status") == "executed")
-    return {"mode": mode if known else "unknown", "reported": mode, "note": raw.get("scoring_mode_note"),
+    ran = bool(isinstance(learned_stage, dict) and learned_stage.get("status") == "executed")
+    return {"mode": mode if known else "unknown", "reported": mode if isinstance(mode, str) else None, "note": raw.get("scoring_mode_note"),
             "label": SCORING_MODES.get(mode, "Unknown: this ledger does not record which scoring produced the scores"),
-            "consistent": ((mode == "learned") == ran) if known else None,
+            "consistent": ((mode == "learned") == ran) if known else None, "learned_ran": ran,
             "claim": "Scores are not a measurement of accuracy."}
 
 
 def build_learned(report, scoring, learned_stage, proteins):
     """Browser payload for the learned stage's own audit file, checked against the stage ledger.
 
-    Marginals per (protein, function, role) stay separate from each other and from the conditional
-    locus probability; nothing here sums or normalises them. Absence is unavailable, not zero.
+    Scores are shown only when the ledger says `learned` mode, its learned_integration stage executed,
+    and the report's model hash equals the ledger's. A ledger without a hash gives an available but
+    explicitly unverified report. Marginals per (protein, function, role) stay separate from each other
+    and from the conditional locus probability; nothing here sums or normalises them. Absence is
+    unavailable, not zero.
     """
-    stage_sha = (learned_stage or {}).get("model_sha256")
+    stage_sha = _text(learned_stage.get("model_sha256")) if isinstance(learned_stage, dict) else None
     base = {"artifact": "integrated.tsv.learned.json"}
     if report is None:
         if scoring["mode"] == "learned":
@@ -781,15 +807,18 @@ def build_learned(report, scoring, learned_stage, proteins):
                                                                     else " The ledger does not say whether a learned stage ran.")}
     if "error" in report:
         return {**base, "status": "unavailable", "reason": f"The learned-stage report could not be read ({report['error']}). Per-candidate scores are unavailable."}
-    sha = (report.get("model") or {}).get("sha256")
-    if scoring["mode"] != "learned":
-        return {**base, "status": "not_trusted", "model": report.get("model"),
-                "reason": f"A learned-stage report exists but the stage ledger does not say the learned stage ran (scoring mode: {scoring['mode']}). "
-                          "Its scores are not trusted for this run."}
-    if stage_sha and sha and stage_sha != sha:
-        return {**base, "status": "not_trusted", "model": report.get("model"),
-                "reason": f"Model hash mismatch: the stage ledger records {stage_sha[:12]} but the learned-stage report records {sha[:12]}. "
-                          "The report does not belong to this run's scores; they are not trusted."}
+    model = report["model"]
+    sha = _text(model.get("sha256"))
+    ident = {"id": _text(model.get("id")), "sha256": sha}
+    if scoring["mode"] != "learned" or not scoring["learned_ran"]:
+        why = (f"the stage ledger does not say the learned stage ran (scoring mode: {scoring['mode']})" if scoring["mode"] != "learned"
+               else "the stage ledger's learned_integration stage did not execute")
+        return {**base, "status": "not_trusted", "model": ident,
+                "reason": f"A learned-stage report exists but {why}. Its scores are not trusted for this run."}
+    if stage_sha and sha != stage_sha:
+        return {**base, "status": "not_trusted", "model": ident,
+                "reason": f"Model hash mismatch: the stage ledger records {stage_sha[:12]} but the learned-stage report records "
+                          f"{sha[:12] if sha else 'no hash'}. The report does not belong to this run's scores; they are not trusted."}
     verified = bool(stage_sha and sha)
     known = set(proteins)
     cands, unjoined = [], {}
@@ -797,27 +826,31 @@ def build_learned(report, scoring, learned_stage, proteins):
         if not isinstance(c, dict): continue
         fk = canonical_function_key(c.get("function_key"))
         pid, ftype, fid = fk.rsplit("|", 2) if fk else (None, None, None)
-        rec = {"k": fk, "ck": c.get("candidate_key"), "p": pid, "t": ftype, "f": fid, "role": c.get("role"),
-               "pr": c.get("probability"), "m": c.get("margin"), "up": bool(c.get("above_display_threshold")),
-               "proj": bool(c.get("projected")), "lp": c.get("locus_probability"), "ln": c.get("locus_null_probability"),
-               "src": c.get("supporting_sources") or [], "notes": c.get("notes") or [], "dg": c.get("feature_digest"),
-               "joined": pid in known}
-        if fk is None: rec["bad_key"] = c.get("function_key")
+        rec = {"k": fk, "ck": _text(c.get("candidate_key")), "p": pid, "t": ftype, "f": fid, "role": _text(c.get("role")),
+               "pr": _prob(c.get("probability")), "m": _prob(c.get("margin")), "up": c.get("above_display_threshold") is True,
+               "proj": c.get("projected") is True, "lp": _prob(c.get("locus_probability")), "ln": _prob(c.get("locus_null_probability")),
+               "src": _strings(c.get("supporting_sources")), "notes": _strings(c.get("notes")),
+               "dg": _text(c.get("feature_digest")), "joined": pid in known}
+        if fk is None: rec["bad_key"] = _text(c.get("function_key"))
         elif pid not in known: unjoined[pid] = unjoined.get(pid, 0) + 1
         cands.append(rec)
     outcomes = {}
     for o in report["outcomes"]:
         if not isinstance(o, dict): continue
         fk = canonical_function_key(o.get("function_key"))
-        if fk: outcomes[fk] = {"action": o.get("action"), "reason": o.get("reason"), "role": o.get("projected_role"),
-                               "prior": o.get("prior_probability"), "learned": o.get("learned_probability"),
-                               "roles": o.get("role_probabilities") or {}}
+        roles = o.get("role_probabilities")
+        if fk: outcomes[fk] = {"action": _text(o.get("action")), "reason": _text(o.get("reason")), "role": _text(o.get("projected_role")),
+                               "prior": _prob(o.get("prior_probability")), "learned": _prob(o.get("learned_probability")),
+                               "roles": {str(k): _prob(v) for k, v in roles.items()} if isinstance(roles, dict) else {}}
+    counts, contract, settings = report.get("counts"), report.get("contract"), report.get("settings")
+    missing = "the stage ledger records no model hash" if not stage_sha else "the report records no model hash"
     return {**base, "status": "available", "hash_verified": verified,
             "hash_note": ("Model hash in the learned-stage report equals the one in the stage ledger." if verified
-                          else "The stage ledger records no model hash, so the report could not be checked against it."),
-            "model": report.get("model"), "contract": report.get("contract"), "settings": report.get("settings"),
-            "counts": report.get("counts"), "interpretation": report.get("interpretation"),
-            "locus_unavailable_reason": report.get("locus_layer_unavailable_reason"),
+                          else f"Model hash unverified: {missing}, so the report could not be checked against the ledger."),
+            "model": {**ident, "kind": _text(model.get("kind")), "intended_use": _text(model.get("intended_use"))},
+            "contract": contract if isinstance(contract, dict) else None, "settings": settings if isinstance(settings, dict) else None,
+            "counts": counts if isinstance(counts, dict) else None, "interpretation": _text(report.get("interpretation")),
+            "locus_unavailable_reason": _text(report.get("locus_layer_unavailable_reason")),
             "candidates": cands, "outcomes": outcomes,
             "unjoined_proteins": [{"p": p, "n": n} for p, n in sorted(unjoined.items())],
             "n_unjoined_candidates": sum(unjoined.values())}
@@ -3635,7 +3668,7 @@ function scoringBannerHtml() {
   const m = LEARNED.model || {};
   return '<p id="lg-scoring" role="status"><b>Scoring mode: ' + escapeHtml(LEARNED_MODE_LABEL[sc.mode] || sc.mode) + '.</b> ' + escapeHtml(sc.label) + '. ' + escapeHtml(sc.note || "") +
     (sc.consistent === false ? ' <b>The stage ledger is inconsistent: its scoring mode and its learned_integration stage status disagree.</b>' : '') +
-    (sc.mode === "learned" && LEARNED_OK ? ' Model ' + escapeHtml(m.id || "unrecorded") + ' (sha256 ' + escapeHtml((m.sha256 || "unrecorded").slice(0, 12)) + ').' : '') +
+    (sc.mode === "learned" && LEARNED_OK ? ' Model ' + escapeHtml(m.id || "unrecorded") + ' (sha256 ' + escapeHtml((m.sha256 || "unrecorded").slice(0, 12)) + ')' + (LEARNED.hash_verified ? '.' : '; model hash unverified.') : '') +
     ' ' + escapeHtml(sc.claim || "") + '</p>';
 }
 function ledgerSuggestionHtml(s, onlyProtein) {
