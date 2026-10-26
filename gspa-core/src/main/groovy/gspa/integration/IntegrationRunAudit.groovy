@@ -56,6 +56,12 @@ class IntegrationRunAudit {
         }
     }
 
+    /** Attach stage-specific facts (assumptions, inputs, counts) to a stage's record. */
+    void note(String name, Map<String, Object> details) {
+        if (!stages.containsKey(name)) throw new IllegalArgumentException("Unknown integration stage: ${name}")
+        stages[name].putAll(details)
+    }
+
     Map report() {
         [schema_version: 1, genome_id: genomeId,
          interpretation: 'Prediction changes are not measurements of accuracy.',

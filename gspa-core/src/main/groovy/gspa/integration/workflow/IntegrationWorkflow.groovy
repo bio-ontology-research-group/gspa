@@ -1,0 +1,414 @@
+package gspa.integration.workflow
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import gspa.integration.CalibrationTable
+import gspa.integration.EvidenceClaim
+import gspa.integration.EvidenceCombiner
+import gspa.integration.EvidenceType
+import gspa.integration.IntegratedAnnotationSet
+import gspa.integration.IntegrationRunAudit
+import gspa.integration.IntegrationState
+import gspa.integration.IntegrationWriter
+import gspa.integration.IterativeRefiner
+import gspa.integration.OuterIterativeRefiner
+import gspa.integration.PriorEngine
+import gspa.integration.crossgenome.CrossGenomeReScorer
+import gspa.integration.crossgenome.ReactionLocusCatalog
+import gspa.integration.prior.AnatomicalPrior
+import gspa.integration.prior.CoherencePrior
+import gspa.integration.prior.ConsistencyPrior
+import gspa.integration.prior.EssentialityPrior
+import gspa.integration.prior.GapFillingPrior
+import gspa.integration.prior.GenomicContextPrior
+import gspa.integration.promotion.AllAboveThresholdStrategy
+import gspa.integration.promotion.BeamSearchStrategy
+import gspa.integration.promotion.GreedyStrategy
+import gspa.integration.promotion.MaxSatStrategy
+import gspa.integration.promotion.PromotionStrategy
+import gspa.integration.suggester.DarkMatterSuggester
+import gspa.integration.suggester.DarkMatterWriter
+import gspa.integration.suggester.ReactionLocalContextSuggester
+import gspa.model.Genome
+import gspa.model.GenomeLayout
+import gspa.model.ProteinLocus
+
+/**
+ * The one authoritative execution of the inference workflow: evidence
+ * integration, dark-matter suggestion, reaction-local context, cross-genome
+ * rescoring, symbolic enforcement, metabolic refinement and agent completion,
+ * always in that order, always recorded in an {@link IntegrationRunAudit}
+ * (executed / skipped / failed / not_run).
+ *
+ * <p>Used by {@code gspa integrate} (single and batch) and by the annotation
+ * pipeline. Callers differ only in where claims come from and what they do with
+ * the result: the CLI exports TSV/JSON artifacts, the pipeline writes the
+ * integrated posteriors back to its {@link Genome}. Core depends on neither.</p>
+ *
+ * <p>For a batch, load heavyweight references once with
+ * {@link #loadSharedReferences} and pass them to every workflow; the per-genome
+ * state, taxon checker and artifacts stay private to each run.</p>
+ */
+class IntegrationWorkflow {
+
+    /** Everything one run produced. */
+    static class Result {
+        String genomeId
+        IntegratedAnnotationSet integrated
+        IntegrationState state
+        IntegrationRunAudit audit
+        List<EvidenceClaim> claims
+        int maxIter
+        long elapsedNanos
+    }
+
+    final IntegrationWorkflowConfig c
+    /** Heavyweight references loaded once for a batch (null: load them for this run). */
+    IntegrationState sharedReferences
+    /** Progress sink; the CLI prints, library callers log. */
+    Closure<Void> info = { String m -> }
+    /** Ledger of the most recent {@link #run}, available even when the run threw. */
+    IntegrationRunAudit lastAudit
+
+    IntegrationWorkflow(IntegrationWorkflowConfig config) {
+        this.c = config
+    }
+
+    def propertyMissing(String name) { c.getProperty(name) }
+
+    private void println(Object message) { info.call(String.valueOf(message)) }
+
+    static IntegrationState loadSharedReferences(IntegrationWorkflowConfig config, Closure<Void> info = { String m -> }) {
+        config.validate()
+        new IntegrationReferenceLoader(config).with { it.info = info; it.loadShared() }
+    }
+
+    /**
+     * Run all requested stages on {@code claims}. With a {@code genome}, state is
+     * keyed to that genome and the final posteriors replace its annotations;
+     * without one the result is returned for export only.
+     */
+    Result run(List<EvidenceClaim> claims, Genome genome = null) {
+        long started = System.nanoTime()
+        c.validate()
+        if (genome == null && c.darkMatterMode != DarkMatterWriter.MODE_SEPARATE) {
+            throw new IllegalArgumentException(
+                "darkMatterMode '${c.darkMatterMode}' modifies a genome's proteins; run it through annotate (a claims-only run keeps suggestions on the separate channel)")
+        }
+        String genomeId = genome?.id ?: c.genomeId
+        Map theta = c.resolveTheta()
+
+        // --- Build combiner with learned reliability ---
+        Map<EvidenceType, Double> reliability = EvidenceCombiner.defaultReliability()
+        if (theta.reliability instanceof Map) {
+            (theta.reliability as Map).each { k, v ->
+                try {
+                    reliability[EvidenceType.valueOf(k as String)] = (v as Number).doubleValue()
+                } catch (ignored) { /* unknown type */ }
+            }
+        }
+        def combiner = new EvidenceCombiner(reliability)
+        if (theta.second_opinion_bonus != null) {
+            combiner.secondOpinionBonus = (theta.second_opinion_bonus as Number).doubleValue()
+        }
+
+        // --- State with ontology, pathway, operon, gap and layout handles ---
+        def state = new IntegrationState(genome ?: new Genome(id: genomeId))
+        def loader = new IntegrationReferenceLoader(c)
+        loader.info = info
+        loader.wire(state, claims, sharedReferences)
+        if (state.genomeLayout == null && genome != null) state.genomeLayout = layoutFromGenome(genome)
+
+        // --- Prior engine and refiner ---
+        def engine = buildPriorEngine(theta, c.enabledPriorSet())
+        def refiner = new IterativeRefiner(combiner)
+        refiner.priorEngine = engine
+        if (theta.max_iter != null)  refiner.maxIter = (theta.max_iter as Number).intValue()
+        if (theta.epsilon != null)   refiner.epsilon = (theta.epsilon as Number).doubleValue()
+        if (theta.damping != null)   refiner.damping = (theta.damping as Number).doubleValue()
+
+        def audit = new IntegrationRunAudit(genomeId)
+        lastAudit = audit
+        IntegratedAnnotationSet integrated
+        try {
+            integrated = runStages(audit, claims, state, refiner, theta)
+        } finally {
+            if (c.outFile != null) audit.write(new File(c.outFile.absolutePath + '.stages.json'))
+        }
+
+        if (genome != null) {
+            IntegrationWriter.applyIntegratedAnnotations(genome, integrated)
+            // Only dark-matter suggestions follow the dark-matter mode; other sources stay on the channel.
+            if (c.darkMatter) {
+                int touched = DarkMatterWriter.apply(genome, integrated, c.darkMatterMode, ['dark_matter'] as Set)
+                println "  Dark-matter mode ${c.darkMatterMode}: ${touched} proteins updated"
+            }
+        }
+        new Result(genomeId: genomeId, integrated: integrated, state: state, audit: audit, claims: claims,
+            maxIter: refiner.maxIter, elapsedNanos: System.nanoTime() - started)
+    }
+
+    /** Writes the configured per-genome artifacts of a finished run (no-op without paths). */
+    void writeArtifacts(Result result) {
+        if (c.outFile == null) return
+        IntegrationArtifacts.writeIntegratedOutputTsv(result.integrated, c.outFile)
+        println "  Wrote: ${c.outFile}"
+        [IntegrationArtifacts.writeRescueLog(result.state, c.outFile),
+         IntegrationArtifacts.writeModuleReport(result.state, result.integrated, c.outFile)].each {
+            if (it != null) println it
+        }
+        if (c.provenanceFile != null) {
+            IntegrationArtifacts.writeProvenanceJson(result.integrated, c.provenanceFile)
+            println "  Provenance: ${c.provenanceFile}"
+        }
+    }
+
+    private IntegratedAnnotationSet runStages(IntegrationRunAudit audit, List<EvidenceClaim> claims,
+                                              IntegrationState state, IterativeRefiner refiner, Map theta) {
+        IntegratedAnnotationSet integrated
+
+        // --- Refine ---
+        integrated = audit.runStage('evidence_integration', true, null, null, state) {
+            refiner.refine(claims, state)
+        }
+        println "  Produced ${integrated.annotations.size()} integrated annotations"
+
+        // --- Phase 8: optional dark-matter suggester ---
+        integrated = audit.runStage('dark_matter', c.darkMatter, null, integrated, state) {
+            def suggester = buildSuggester(theta)
+            suggester.useRefinedBayesFactor = c.refinedBf
+
+            if (c.iterateGapseq) {
+                // Phase 10 outer fixed-point loop over (refine → suggest → promote → pin).
+                println "  Running Phase 10 outer loop (maxIter=${c.maxGapseqIter}, qBase=${c.gapseqQBase}, qStep=${c.gapseqQStep}, pin=${c.gapseqPinPromotions}, strategy=${c.promotionStrategy}, refinedBf=${c.refinedBf})"
+                def outer = new OuterIterativeRefiner(refiner)
+                outer.suggester = suggester
+                outer.maxIter = c.maxGapseqIter
+                outer.qBase = c.gapseqQBase
+                outer.qStep = c.gapseqQStep
+                outer.qCap = c.gapseqQCap
+                outer.pinPromotions = c.gapseqPinPromotions
+                outer.promotionStrategy = buildPromotionStrategy()
+                def gs = new OuterIterativeRefiner.CoverageGapSource(tauCover: c.gapseqTauCover, pathwayDb: state.pathwayDatabase)
+                outer.gapSource = gs
+                def outerResult = outer.refine(claims, state)
+                integrated = outerResult.integrated
+                println "  Outer loop: iter=${outerResult.outerIterationsRun}, fixedPoint=${outerResult.fixedPointReached}, cascade=${outerResult.cascadeRolledBack}, promoted_per_iter=${outerResult.promotedPerIter}, gaps_per_iter=${outerResult.gapsPerIter}"
+            } else {
+                suggester.suggest(state, integrated)
+                println "  Dark-matter suggester emitted ${integrated.suggestions.size()} suggestions"
+            }
+
+            return integrated
+        }
+
+        // --- Phase 12: optional Reaction-Local Context suggester (M1) ---
+        integrated = audit.runStage('reaction_context', c.rlcSuggester,
+            state.reactionGraph == null ? 'reaction graph is required' :
+                (state.genomeLayout == null ? 'genome layout is required' : null), integrated, state) {
+            def rlc = new ReactionLocalContextSuggester()
+            rlc.radiusK = c.rlcRadiusK
+            rlc.alpha = c.rlcAlpha
+            rlc.kernelBandwidth = c.rlcKernelBandwidth
+            rlc.anchorPosteriorThreshold = c.rlcAnchorThreshold
+            if (c.featuresOut != null) rlc.featuresOut = c.featuresOut
+            rlc.suggest(state, integrated)
+            println "  RLGC suggester emitted ${integrated.suggestions.size()} suggestions"
+
+            return integrated
+        }
+        integrated = audit.runStage('cross_genome', c.rxnLocusCatalogFile != null,
+            c.rxnLocusCatalogFile != null && !c.rxnLocusCatalogFile.isFile() ? 'catalog file does not exist' :
+                (!c.rlcSuggester && !c.darkMatter ? 'enable a context suggester to rescore candidates' : null), integrated, state) {
+            def catalog = ReactionLocusCatalog.readFrom(c.rxnLocusCatalogFile)
+            def cgr = new CrossGenomeReScorer(lambda: c.cgLambda, minSupport: c.cgMinSupport,
+                requireCredible: c.cgRequireCredible)
+            cgr.rescore(state, integrated, catalog)
+            return integrated
+        }
+
+        if (c.suggestionsOut != null && (c.rlcSuggester || c.darkMatter)) {
+            c.suggestionsOut.parentFile?.mkdirs()
+            IntegrationArtifacts.writeSuggestionsTsv(integrated.suggestions, c.suggestionsOut)
+        }
+
+        // --- Optional Stage 2A: Symbolic Constraint & Coherence Enforcement ---
+        integrated = audit.runStage('symbolic_enforcement', c.enforceStage2,
+            state.satConsistencyChecker == null ? 'taxon consistency checker is unavailable' : null, integrated, state) {
+            def stage = new SymbolicEnforcementStage(c)
+            stage.info = info
+            stage.run(state, integrated)
+            return integrated
+        }
+
+        // --- Optional Stage 2B: StoichiometricLocusRefiner ---
+        integrated = audit.runStage('metabolic_refinement', c.enableFbaRefiner,
+            c.fbaDataDir == null || !c.fbaDataDir.isDirectory() ? 'FBA reference data directory is required' :
+                (c.outFile == null ? 'an output path is required for model artifacts' :
+                    (!hasEcCandidates(integrated) ? 'no EC predictions to reconstruct a metabolic model from' : null)),
+            integrated, state) {
+            def fbaRefiner = new gspa.integration.fba.StoichiometricLocusRefiner(
+                fbaDataDir: c.fbaDataDir,
+                sidecarScript: c.fbaSidecar,
+                pythonBin: c.fbaPythonBin,
+                gram: c.fbaGram,
+                medium: c.fbaMedium
+            )
+            def fbaSum = fbaRefiner.refine(state, integrated, new File(c.outFile.absolutePath + ".metabolism"))
+            // The medium and biomass template are assumptions of the model, not observations.
+            audit.note('metabolic_refinement', [medium: c.fbaMedium, gram: c.fbaGram,
+                core_reactions: fbaSum.nCoreRxns, repaired_reactions: fbaSum.nRepairedRxns,
+                uncertified_additions: fbaSum.nUncertifiedAdditions, updated_loci: fbaSum.nUpdatedLoci])
+            println "  Stage 2B StoichiometricLocusRefiner (gram=${c.fbaGram}, medium=${c.fbaMedium}): coreRxns=${fbaSum.nCoreRxns}, repairedRxns=${fbaSum.nRepairedRxns}, uncertified=${fbaSum.nUncertifiedAdditions}, updatedLoci=${fbaSum.nUpdatedLoci} (${String.format(Locale.ROOT, '%.2f', fbaSum.solveTimeSec)}s)"
+            return integrated
+        }
+
+        // --- Optional Stage 3: Neuro-Symbolic Agentic Completion (gspa-agent) ---
+        if (c.anomaliesOut != null && !c.enableAgent) {
+            def extractorAnom = new gspa.agent.AnomalyExtractor()
+            def anomalies = extractorAnom.extract(state, integrated)
+            gspa.agent.AnomalyExtractor.writeJsonl(anomalies, c.anomaliesOut)
+            println "  Extracted ${anomalies.size()} anomalies to ${c.anomaliesOut}"
+        }
+        integrated = audit.runStage('agent_completion', c.enableAgent,
+            c.outFile == null && (c.anomaliesOut == null || c.agentResolutionsOut == null) ?
+                'an output path (or explicit anomaly and resolution paths) is required' : null, integrated, state) {
+            File anomFile = c.anomaliesOut ?: new File(c.outFile.parentFile ?: new File('.'), "${c.outFile.name}.anomalies.jsonl")
+            File resFile = c.agentResolutionsOut ?: new File(c.outFile.parentFile ?: new File('.'), "${c.outFile.name}.agent_resolutions.jsonl")
+            def runner = new gspa.agent.AgentCompletionRunner(
+                sidecarScript: c.agentSidecar,
+                agentModel: c.agentModel,
+                pythonBin: c.agentPythonBin,
+                apiBaseUrl: c.agentApiBase,
+                guardrail: !c.agentNoGuardrail
+            )
+            def sum = runner.run(state, integrated, anomFile, resFile)
+            println "  Stage 3 Agent (${c.agentModel}, guardrail=${!c.agentNoGuardrail}): anomalies=${sum.anomaliesExtracted}, proposed=${sum.resolutionsProposed}, promoted=${sum.promoted}, relaxed=${sum.relaxed}, demoted=${sum.demoted}, abstained=${sum.abstained}, rejected_by_guardrail=${sum.rejectedByGuardrail} (${String.format(Locale.ROOT, '%.2f', sum.elapsedSeconds)}s)"
+            return integrated
+        }
+        integrated
+    }
+
+    private static boolean hasEcCandidates(IntegratedAnnotationSet integrated) {
+        integrated.provenance.keySet().any { String key ->
+            String[] parts = IntegrationState.splitFunctionKey(key)
+            parts != null && parts[1] == 'EC'
+        }
+    }
+
+    /** Protein loci from an in-memory genome, for genomes that carry CDS coordinates. */
+    static GenomeLayout layoutFromGenome(Genome genome) {
+        GenomeLayout layout = new GenomeLayout(genome.id)
+        genome.proteins.each { p ->
+            if (p.sourceFeature == null || p.contig == null || p.end < p.start || p.end == 0) return
+            layout.add(new ProteinLocus(genomeId: genome.id, proteinId: p.id, contig: p.contig.id,
+                start: p.start, end: p.end, strand: p.strand))
+        }
+        if (layout.size() == 0) return null
+        layout.finishLoading()
+        layout
+    }
+
+    private PromotionStrategy buildPromotionStrategy() {
+        switch (promotionStrategy) {
+            case 'default':
+            case null:
+            case '':
+                return new AllAboveThresholdStrategy()
+            case 'greedy':
+                return new GreedyStrategy()
+            case 'maxsat':
+                return new MaxSatStrategy(coherenceBonusWeight: maxsatCoherenceBonus)
+            case 'beam':
+                return new BeamSearchStrategy(beamWidth: beamWidth, candidatesPerGap: beamCandidatesPerGap)
+            default:
+                throw new IllegalArgumentException(
+                    "Unknown --promotion-strategy: '${promotionStrategy}' (expected default|greedy|maxsat|beam)")
+        }
+    }
+
+    private DarkMatterSuggester buildSuggester(Map theta) {
+        def suggester = new DarkMatterSuggester()
+        if (theta.dark_matter instanceof Map) {
+            def dm = theta.dark_matter as Map
+            if (dm.bf_min != null)
+                suggester.bfMin = (dm.bf_min as Number).doubleValue()
+            if (dm.gamma_in_p != null)
+                suggester.gammaInP = (dm.gamma_in_p as Number).doubleValue()
+            if (dm.coverage_threshold != null)
+                suggester.coverageThreshold = (dm.coverage_threshold as Number).doubleValue()
+        }
+        suggester
+    }
+
+    private PriorEngine buildPriorEngine(Map theta, Set<String> enabled) {
+        def engine = new PriorEngine()
+        Map priorWeights = (theta.prior_weights ?: [:]) as Map
+
+        if ('essentiality' in enabled) {
+            def p = new EssentialityPrior()
+            if (theta.alpha_ess != null) p.alphaEss = (theta.alpha_ess as Number).doubleValue()
+            if (theta.ess_rescue_mode != null) p.rescueMode = theta.ess_rescue_mode as String
+            if (theta.ess_rescue_target != null) p.rescueTarget = (theta.ess_rescue_target as Number).doubleValue()
+            if (theta.ess_min_candidate != null) p.minCandidate = (theta.ess_min_candidate as Number).doubleValue()
+            if (theta.ess_max_rescue != null) p.maxRescuePerCategory = (theta.ess_max_rescue as Number).intValue()
+            if (theta.ess_w_support != null) p.wSupport = (theta.ess_w_support as Number).doubleValue()
+            if (theta.ess_w_free != null) p.wFree = (theta.ess_w_free as Number).doubleValue()
+            if (theta.ess_w_competing != null) p.wCompeting = (theta.ess_w_competing as Number).doubleValue()
+            if (theta.ess_w_context != null) p.wContext = (theta.ess_w_context as Number).doubleValue()
+            engine.register(p, (priorWeights.essentiality ?: 1.0) as double)
+        }
+        if ('coherence' in enabled) {
+            def p = new CoherencePrior()
+            if (theta.alpha_coh != null) p.alphaCoh = (theta.alpha_coh as Number).doubleValue()
+            if (theta.alpha_complex_boost != null) p.complexPartnerWeight = (theta.alpha_complex_boost as Number).doubleValue()
+            if (theta.alpha_complex_penalty != null) p.complexSingletonPenaltyWeight = (theta.alpha_complex_penalty as Number).doubleValue()
+            if (theta.coh_pathway_mode != null) p.pathwayMode = theta.coh_pathway_mode as String
+            if (theta.coh_rescue_target != null) p.rescueTarget = (theta.coh_rescue_target as Number).doubleValue()
+            if (theta.coh_refine_min_completeness != null) p.refineMinCompleteness = (theta.coh_refine_min_completeness as Number).doubleValue()
+            if (theta.coh_max_rescue_per_module != null) p.maxRescuePerModule = (theta.coh_max_rescue_per_module as Number).intValue()
+            if (theta.coh_min_candidate != null) p.minCandidate = (theta.coh_min_candidate as Number).doubleValue()
+            if (theta.coh_min_score != null) p.minScore = (theta.coh_min_score as Number).doubleValue()
+            if (theta.coh_w_support != null) p.wSupport = (theta.coh_w_support as Number).doubleValue()
+            if (theta.coh_w_free != null) p.wFree = (theta.coh_w_free as Number).doubleValue()
+            if (theta.coh_w_competing != null) p.wCompeting = (theta.coh_w_competing as Number).doubleValue()
+            if (theta.coh_w_operon != null) p.wOperon = (theta.coh_w_operon as Number).doubleValue()
+            if (theta.coh_w_module != null) p.wModule = (theta.coh_w_module as Number).doubleValue()
+            engine.register(p, (priorWeights.coherence ?: 1.0) as double)
+        }
+        if ('consistency' in enabled) {
+            def p = new ConsistencyPrior()
+            if (theta.alpha_cons != null) p.alphaCons = (theta.alpha_cons as Number).doubleValue()
+            if (theta.consistency_hard_filter != null) {
+                p.hardFilter = theta.consistency_hard_filter as boolean
+            }
+            engine.register(p, (priorWeights.consistency ?: 1.0) as double)
+        }
+        if ('anatomical' in enabled) {
+            def p = new AnatomicalPrior()
+            if (theta.alpha_anat_penalty != null) p.alphaAnatPenalty = (theta.alpha_anat_penalty as Number).doubleValue()
+            if (theta.alpha_anat_boost != null) p.alphaAnatBoost = (theta.alpha_anat_boost as Number).doubleValue()
+            if (theta.anatomical_hard_filter != null) p.hardFilter = theta.anatomical_hard_filter as boolean
+            engine.register(p, (priorWeights.anatomical ?: 1.0) as double)
+        }
+        if ('gap_filling' in enabled) {
+            def p = new GapFillingPrior()
+            if (theta.alpha_gap != null) p.alphaGap = (theta.alpha_gap as Number).doubleValue()
+            engine.register(p, (priorWeights.gap_filling ?: 1.0) as double)
+        }
+        if ('genomic_context' in enabled) {
+            def p = new GenomicContextPrior()
+            if (theta.alpha_ctx != null) p.alphaCtx = (theta.alpha_ctx as Number).doubleValue()
+            if (theta.alpha_gap_ctx != null) p.alphaGapCtx = (theta.alpha_gap_ctx as Number).doubleValue()
+            engine.register(p, (priorWeights.genomic_context ?: 1.0) as double)
+        }
+        if ('homology_transfer' in enabled) {
+            def p = new gspa.integration.prior.HomologyTransferPrior()
+            if (theta.alpha_homology != null) p.alpha = (theta.alpha_homology as Number).doubleValue()
+            if (theta.homology_min_consensus != null) p.minConsensus = (theta.homology_min_consensus as Number).doubleValue()
+            if (theta.homology_min_delta != null) p.minDelta = (theta.homology_min_delta as Number).doubleValue()
+            if (theta.homology_max_boost != null) p.maxBoost = (theta.homology_max_boost as Number).doubleValue()
+            engine.register(p, (priorWeights.homology_transfer ?: 1.0) as double)
+        }
+        engine
+    }
+}

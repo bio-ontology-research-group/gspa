@@ -183,22 +183,34 @@ process INTEGRATE {
     tuple val(sample_id), path("${sample_id}_provenance.json"), emit: provenance, optional: true
 
     script:
-    def kingdom = params.essential_profile ?: 'bacteria'
-    def priors  = params.enable_priors ?: 'essentiality,coherence,gap_filling,genomic_context'
-    def theta   = params.theta_file ? "--theta ${params.theta_file}" : ''
-    def operons = (operons_tsv.size() > 0) ? "--operons ${operons_tsv}" : ''
+    // One canonical IntegrationWorkflowConfig (the same typed JSON the web portal writes and
+    // `gspa annotate --integration-config` reads); stages, priors and scoring live in the JVM
+    // workflow, never here. Keys are the Java property names; the CLI rejects unknown keys.
+    def settings = [
+        genomeId        : sample_id,
+        claimsFile      : claims.name,
+        outFile         : "${sample_id}_integrated.tsv".toString(),
+        provenanceFile  : "${sample_id}_provenance.json".toString(),
+        goOwlFile       : go_owl.name,
+        ec2goFile       : ec2go.name,
+        pathwaysFile    : pathways.name,
+        lite            : true,
+        essentialProfile: params.essential_profile ?: 'bacteria',
+        enabledPriors   : params.enable_priors ?: 'essentiality,coherence,gap_filling,genomic_context',
+    ]
+    if (operons_tsv.size() > 0) settings.operonsFile = operons_tsv.name
+    if (params.theta_file) settings.thetaFile = params.theta_file
+    // Any further workflow setting (enforcement, dark matter, reaction context, FBA, agent...)
+    // comes from one JSON file of the same schema, merged over the settings above.
+    if (params.integration_config) {
+        settings << new groovy.json.JsonSlurper().parse(new File(params.integration_config as String))
+    }
+    def workflowJson = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(settings))
     """
-    java -jar ${gspa_jar} integrate \\
-        --claims ${claims} \\
-        --out ${sample_id}_integrated.tsv \\
-        --provenance ${sample_id}_provenance.json \\
-        --go-owl ${go_owl} --lite \\
-        --essential-profile ${kingdom} \\
-        --pathways ${pathways} \\
-        --ec2go ${ec2go} \\
-        --enable-priors ${priors} \\
-        ${operons} \\
-        ${theta}
+    cat > integration.workflow.json <<'GSPA_WORKFLOW_JSON'
+${workflowJson}
+GSPA_WORKFLOW_JSON
+    java -jar ${gspa_jar} integrate --workflow-config integration.workflow.json
     """
 }
 

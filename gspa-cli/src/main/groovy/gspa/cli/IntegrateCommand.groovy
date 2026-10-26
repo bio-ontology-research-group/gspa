@@ -4,47 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import gspa.integration.CalibrationTable
 import gspa.integration.ClaimExtractor
 import gspa.integration.EvidenceClaim
-import gspa.integration.EvidenceCombiner
-import gspa.integration.EvidenceType
-import gspa.integration.IntegratedAnnotationSet
 import gspa.integration.IntegrationState
-import gspa.integration.IterativeRefiner
-import gspa.integration.OuterIterativeRefiner
-import gspa.integration.PriorEngine
-import gspa.integration.promotion.AllAboveThresholdStrategy
-import gspa.integration.promotion.BeamSearchStrategy
-import gspa.integration.promotion.GreedyStrategy
-import gspa.integration.promotion.MaxSatStrategy
-import gspa.integration.promotion.PromotionStrategy
-import gspa.integration.prior.AnatomicalPrior
-import gspa.integration.prior.ConsistencyPrior
-import gspa.integration.prior.CoherencePrior
-import gspa.integration.prior.EssentialityPrior
-import gspa.integration.prior.GapFillingPrior
-import gspa.integration.prior.GenomicContextPrior
-import gspa.integration.crossgenome.CrossGenomeReScorer
-import gspa.integration.crossgenome.ReactionLocusCatalog
-import gspa.integration.suggester.DarkMatterSuggester
-import gspa.integration.suggester.DisjunctiveSuggestion
-import gspa.integration.suggester.ReactionLocalContextSuggester
-import gspa.integration.suggester.SingletonSuggestion
-import gspa.integration.suggester.Suggestion
-import gspa.metrics.CoherenceEnforcer
-import gspa.metrics.CompletenessEnforcer
-import gspa.metrics.ConsistencyEnforcer
-import gspa.metrics.EnforcementAction
-import gspa.metrics.EnforcementReport
-import gspa.metrics.TaxonInference
-import gspa.model.Annotation
-import gspa.model.AnnotationType
-import gspa.model.Contig
-import gspa.model.Genome
-import gspa.model.GenomeLayout
-import gspa.model.GenomeLayoutLoader
-import gspa.model.Protein
-import gspa.ontology.AnatomicalConstraints
-import gspa.ontology.ReactionGraph
-import gspa.ontology.ReactionGraphLoader
+import gspa.integration.workflow.IntegrationWorkflow
+import gspa.integration.workflow.IntegrationWorkflowConfig
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 
@@ -53,9 +15,11 @@ import picocli.CommandLine.Option
  * pre-parsed claims file with a theta.json of hyperparameters.
  *
  * Designed to be the per-iteration evaluator invoked by the Phase 7.4
- * benchmark optimizer. Runs without the full predictor stack: just reads
- * claims.jsonl, optionally wires ontology handles, runs IterativeRefiner,
- * writes an integrated TSV.
+ * benchmark optimizer. Runs without the full predictor stack: reads claims.jsonl
+ * and delegates every stage to the shared core
+ * {@link gspa.integration.workflow.IntegrationWorkflow}; this class only parses
+ * options into an {@link IntegrationWorkflowConfig}, reads claims and exports
+ * (integrated TSV, provenance, stage ledger, batch statistics).
  */
 @Command(
     name = 'integrate',
@@ -76,9 +40,13 @@ class IntegrateCommand implements Runnable {
             if (name == '--taxon' && inferTaxon) return
             if (!spec.commandLine().parseResult.hasMatchedOption(option)) {
                 option.setValue(value)
+                presetApplied << option.longestName()
             }
         }
     }
+
+    /** Long names of options whose value came from the preset rather than the command line. */
+    private final Set<String> presetApplied = new LinkedHashSet<>()
 
 
     @Option(names = ['--claims'], required = false,
@@ -393,6 +361,11 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--fba-medium'],
             description = 'Medium name for StoichiometricLocusRefiner (default: minimal).')
     String fbaMedium = 'minimal'
+    @Option(names = ['--workflow-config'],
+            description = 'JSON file with the full typed integration workflow configuration ' +
+                          '(IntegrationWorkflowConfig). Precedence: --preset defaults < file < explicit command-line options. ' +
+                          'Unknown keys are rejected.')
+    File workflowConfigFile
 
     @Override
     void run() {
@@ -405,277 +378,75 @@ class IntegrateCommand implements Runnable {
             return
         }
         if (preset.name) println "Preset: ${gspa.config.WorkflowPresets.canonicalName(preset.name)}"
-        validatePhase10Flags()
+        IntegrationWorkflowConfig config = toWorkflowConfig()
+        config.validate()
         if (batchManifestFile != null) {
-            runBatchManifest()
+            runBatchManifest(config)
             return
         }
-        if (claimsFile == null || outFile == null) {
+        if (config.claimsFile == null || config.outFile == null) {
             throw new IllegalArgumentException("Either --batch-manifest or both --claims and --out must be provided.")
         }
-        Map theta = thetaFile?.exists() ? new ObjectMapper().readValue(thetaFile, Map) : [:]
-        runGenome(theta)
-    }
-
-    /** Single authoritative sequence of integration stages for single and batch runs. */
-    private Map runGenome(Map theta, IntegrationState sharedReferences = null, String genomeId = 'genome') {
-        long started = System.nanoTime()
-        println "GSPA integrate"
-        println "  Claims: ${claimsFile}"
-        println "  Theta:  ${thetaFile ?: '(defaults)'}"
-        println "  Out:    ${outFile}"
-
-        // --- Load claims ---
-        def calibration = new CalibrationTable()
-        def extractor = new ClaimExtractor(calibration)
-        List<EvidenceClaim> claims = extractor.readClaimsJsonl(claimsFile)
-        println "  Loaded ${claims.size()} claims"
-
-        // --- Build combiner with learned reliability ---
-        Map<EvidenceType, Double> reliability = EvidenceCombiner.defaultReliability()
-        if (theta.reliability instanceof Map) {
-            (theta.reliability as Map).each { k, v ->
-                try {
-                    reliability[EvidenceType.valueOf(k as String)] = (v as Number).doubleValue()
-                } catch (ignored) { /* unknown type */ }
-            }
-        }
-        def combiner = new EvidenceCombiner(reliability)
-        if (theta.second_opinion_bonus != null) {
-            combiner.secondOpinionBonus = (theta.second_opinion_bonus as Number).doubleValue()
-        }
-
-        // --- Build state with optional ontology + pathway + operon + gap handles ---
-        def state = new IntegrationState(new Genome(id: genomeId))
-        wireReferenceData(state, claims, sharedReferences)
-
-        // --- Build prior engine from enabled list + theta strengths ---
-        Set<String> enabled = (enabledPriors ?: '').split(',').collect { it.trim() } as Set
-        def engine = buildPriorEngine(theta, enabled)
-
-        // --- Build refiner ---
-        def refiner = new IterativeRefiner(combiner)
-        refiner.priorEngine = engine
-        if (theta.max_iter != null)  refiner.maxIter = (theta.max_iter as Number).intValue()
-        if (theta.epsilon != null)   refiner.epsilon = (theta.epsilon as Number).doubleValue()
-        if (theta.damping != null)   refiner.damping = (theta.damping as Number).doubleValue()
-
-        def audit = new gspa.integration.IntegrationRunAudit(genomeId)
-        IntegratedAnnotationSet integrated
-        try {
-            // --- Refine ---
-            integrated = audit.runStage('evidence_integration', true, null, null, state) {
-                refiner.refine(claims, state)
-            }
-            println "  Produced ${integrated.annotations.size()} integrated annotations"
-
-            // --- Phase 8: optional dark-matter suggester ---
-            integrated = audit.runStage('dark_matter', darkMatter, null, integrated, state) {
-                def suggester = buildSuggester(theta)
-                suggester.useRefinedBayesFactor = refinedBf
-
-                if (iterateGapseq) {
-                    // Phase 10 outer fixed-point loop over (refine → suggest → promote → pin).
-                    println "  Running Phase 10 outer loop (maxIter=${maxGapseqIter}, qBase=${gapseqQBase}, qStep=${gapseqQStep}, pin=${gapseqPinPromotions}, strategy=${promotionStrategy}, refinedBf=${refinedBf})"
-                    def outer = new OuterIterativeRefiner(refiner)
-                    outer.suggester = suggester
-                    outer.maxIter = maxGapseqIter
-                    outer.qBase = gapseqQBase
-                    outer.qStep = gapseqQStep
-                    outer.qCap = gapseqQCap
-                    outer.pinPromotions = gapseqPinPromotions
-                    outer.promotionStrategy = buildPromotionStrategy()
-                    def gs = new OuterIterativeRefiner.CoverageGapSource(tauCover: gapseqTauCover, pathwayDb: state.pathwayDatabase)
-                    outer.gapSource = gs
-                    def outerResult = outer.refine(claims, state)
-                    integrated = outerResult.integrated
-                    println "  Outer loop: iter=${outerResult.outerIterationsRun}, fixedPoint=${outerResult.fixedPointReached}, cascade=${outerResult.cascadeRolledBack}, promoted_per_iter=${outerResult.promotedPerIter}, gaps_per_iter=${outerResult.gapsPerIter}"
-                } else {
-                    suggester.suggest(state, integrated)
-                    println "  Dark-matter suggester emitted ${integrated.suggestions.size()} suggestions"
-                }
-
-                return integrated
-            }
-
-            // --- Phase 12: optional Reaction-Local Context suggester (M1) ---
-            integrated = audit.runStage('reaction_context', rlcSuggester,
-                state.reactionGraph == null ? 'reaction graph is required' :
-                    (state.genomeLayout == null ? 'genome layout is required' : null), integrated, state) {
-                def rlc = new ReactionLocalContextSuggester()
-                rlc.radiusK = rlcRadiusK
-                rlc.alpha = rlcAlpha
-                rlc.kernelBandwidth = rlcKernelBandwidth
-                rlc.anchorPosteriorThreshold = rlcAnchorThreshold
-                if (featuresOut != null) rlc.featuresOut = featuresOut
-                rlc.suggest(state, integrated)
-                println "  RLGC suggester emitted ${integrated.suggestions.size()} suggestions"
-
-                return integrated
-            }
-            integrated = audit.runStage('cross_genome', rxnLocusCatalogFile != null,
-                rxnLocusCatalogFile != null && !rxnLocusCatalogFile.isFile() ? 'catalog file does not exist' :
-                    (!rlcSuggester && !darkMatter ? 'enable a context suggester to rescore candidates' : null), integrated, state) {
-                def catalog = ReactionLocusCatalog.readFrom(rxnLocusCatalogFile)
-                def cgr = new CrossGenomeReScorer(lambda: cgLambda, minSupport: cgMinSupport,
-                    requireCredible: cgRequireCredible)
-                cgr.rescore(state, integrated, catalog)
-                return integrated
-            }
-
-            if (suggestionsOut != null && (rlcSuggester || darkMatter)) {
-                suggestionsOut.parentFile?.mkdirs()
-                writeSuggestionsTsv(integrated.suggestions, suggestionsOut)
-            }
-
-            // --- Optional Stage 2A: Symbolic Constraint & Coherence Enforcement ---
-            integrated = audit.runStage('symbolic_enforcement', enforceStage2,
-                state.satConsistencyChecker == null ? 'taxon consistency checker is unavailable' : null, integrated, state) {
-                runStage2Enforcement(state, integrated)
-                return integrated
-            }
-
-            // --- Optional Stage 2B: StoichiometricLocusRefiner ---
-            integrated = audit.runStage('metabolic_refinement', enableFbaRefiner,
-                fbaDataDir == null || !fbaDataDir.isDirectory() ? 'FBA reference data directory is required' : null, integrated, state) {
-                def fbaRefiner = new gspa.integration.fba.StoichiometricLocusRefiner(
-                    fbaDataDir: fbaDataDir,
-                    sidecarScript: fbaSidecar,
-                    pythonBin: fbaPythonBin,
-                    gram: fbaGram,
-                    medium: fbaMedium
-                )
-                def fbaSum = fbaRefiner.refine(state, integrated, new File(outFile.absolutePath + ".metabolism"))
-                println "  Stage 2B StoichiometricLocusRefiner (gram=${fbaGram}, medium=${fbaMedium}): coreRxns=${fbaSum.nCoreRxns}, repairedRxns=${fbaSum.nRepairedRxns}, uncertified=${fbaSum.nUncertifiedAdditions}, updatedLoci=${fbaSum.nUpdatedLoci} (${String.format(Locale.ROOT, '%.2f', fbaSum.solveTimeSec)}s)"
-                return integrated
-            }
-
-            // --- Optional Stage 3: Neuro-Symbolic Agentic Completion (gspa-agent) ---
-            if (anomaliesOut != null && !enableAgent) {
-                def extractorAnom = new gspa.agent.AnomalyExtractor()
-                def anomalies = extractorAnom.extract(state, integrated)
-                gspa.agent.AnomalyExtractor.writeJsonl(anomalies, anomaliesOut)
-                println "  Extracted ${anomalies.size()} anomalies to ${anomaliesOut}"
-            }
-            integrated = audit.runStage('agent_completion', enableAgent, null, integrated, state) {
-                File anomFile = anomaliesOut ?: new File(outFile.parentFile ?: new File('.'), "${outFile.name}.anomalies.jsonl")
-                File resFile = agentResolutionsOut ?: new File(outFile.parentFile ?: new File('.'), "${outFile.name}.agent_resolutions.jsonl")
-                def runner = new gspa.agent.AgentCompletionRunner(
-                    sidecarScript: agentSidecar,
-                    agentModel: agentModel,
-                    pythonBin: agentPythonBin,
-                    apiBaseUrl: agentApiBase,
-                    guardrail: !agentNoGuardrail
-                )
-                def sum = runner.run(state, integrated, anomFile, resFile)
-                println "  Stage 3 Agent (${agentModel}, guardrail=${!agentNoGuardrail}): anomalies=${sum.anomaliesExtracted}, proposed=${sum.resolutionsProposed}, promoted=${sum.promoted}, relaxed=${sum.relaxed}, demoted=${sum.demoted}, abstained=${sum.abstained}, rejected_by_guardrail=${sum.rejectedByGuardrail} (${String.format(Locale.ROOT, '%.2f', sum.elapsedSeconds)}s)"
-                return integrated
-            }
-
-        } finally {
-            audit.write(new File(outFile.absolutePath + '.stages.json'))
-        }
-
-        // --- Write output TSV ---
-        writeIntegratedOutputTsv(integrated, outFile)
-        println "  Wrote: ${outFile}"
-        writeRescueLog(state, outFile)
-        writeModuleReport(state, integrated, outFile)
-
-        // --- Optional provenance JSON ---
-        if (provenanceFile != null) {
-            def mapper = new ObjectMapper()
-            def provList = integrated.provenance.values().collect { prov ->
-                [
-                    function_key: prov.functionKey,
-                    protein_id: prov.proteinId,
-                    likelihood_logodds: prov.likelihoodLogOdds,
-                    final_logodds: prov.finalLogOdds,
-                    final_probability: prov.finalProbability,
-                    prior_contributions: prov.priorContributions,
-                    n_supporting: prov.supportingClaims?.size() ?: 0,
-                    supporting_sources: prov.supportingClaims ? prov.supportingClaims*.source : [],
-                    convergence_iter: prov.convergenceIter,
-                ]
-            }
-            provenanceFile.parentFile?.mkdirs()
-            mapper.writerWithDefaultPrettyPrinter().writeValue(provenanceFile, provList)
-            println "  Provenance: ${provenanceFile}"
-        }
-        Runtime rt = Runtime.getRuntime()
-        return [genome_id: genomeId, out_path: outFile.path,
-                n_claims: claims.size(), n_integrated: integrated.annotations.size(),
-                n_provenance: integrated.provenance.size(), max_iter: refiner.maxIter,
-                enforce_stage2: enforceStage2, enforce_mode: enforceConsistencyMode,
-                runtime_sec: (System.nanoTime() - started) / 1e9d,
-                used_heap_mb: (rt.totalMemory() - rt.freeMemory()) / (1024d * 1024d),
-                total_heap_mb: rt.totalMemory() / (1024d * 1024d)]
-    }
-
-    /** Evidence-gated KEGG module assessment before and after refinement, as {@code <out>.modules.json}. */
-    private static void writeModuleReport(IntegrationState state, IntegratedAnnotationSet integrated, File targetOutFile) {
-        if (state?.moduleDefinitions == null) return
-        try {
-            Map report = gspa.integration.ModuleReport.build(state, integrated)
-            File f = new File(targetOutFile.parentFile ?: new File('.'), "${targetOutFile.name}.modules.json")
-            f.text = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(report)
-            println "  Wrote: ${f} (${report.summary.modules_activated_after} activated modules, ${report.summary.modules_complete_after} complete)"
-        } catch (Exception e) {
-            System.err.println "  [warn] module report failed: ${e.message}"
-        }
-    }
-
-    /** Rescues made by the targeted priors, as {@code <out>.rescues.tsv} (only when any were made). */
-    private static void writeRescueLog(IntegrationState state, File targetOutFile) {
-        if (state == null || state.rescueLog == null || state.rescueLog.isEmpty()) return
-        File f = new File(targetOutFile.parentFile ?: new File('.'), "${targetOutFile.name}.rescues.tsv")
-        f.withWriter('UTF-8') { w ->
-            w.writeLine("prior\tmode\tcategory\tprotein_id\tfunction_id\tlikelihood_prob\tscore\ttarget\tevidence")
-            for (Map r : state.rescueLog) {
-                String[] parts = IntegrationState.splitFunctionKey(r.functionKey as String)
-                String pid = parts != null ? parts[0] : ''
-                String fid = parts != null ? parts[2] : (r.functionKey as String)
-                String sc = (r.score instanceof Number && !Double.isNaN((r.score as Number).doubleValue())) ? String.format(Locale.ROOT, '%.4f', (r.score as Number).doubleValue()) : ''
-                String tg = (r.target instanceof Number && !Double.isNaN((r.target as Number).doubleValue())) ? String.format(Locale.ROOT, '%.2f', (r.target as Number).doubleValue()) : ''
-                String ev = r.evidence instanceof Map ? (r.evidence as Map).collect { k, v -> "${k}=${v}" }.join(';') : ''
-                w.writeLine("${r.prior}\t${r.mode}\t${r.category}\t${pid}\t${fid}\t${String.format(Locale.ROOT, '%.4f', (r.likelihood as Number).doubleValue())}\t${sc}\t${tg}\t${ev}")
-            }
-        }
-        println "  Wrote: ${f} (${state.rescueLog.size()} rescues)"
-    }
-
-    private static void writeIntegratedOutputTsv(IntegratedAnnotationSet integrated, File targetOutFile) {
-        targetOutFile.parentFile?.mkdirs()
-        targetOutFile.withWriter { w ->
-            w.writeLine(['protein_id', 'type', 'function_id', 'go_aspect',
-                         'posterior_prob', 'likelihood_logodds', 'final_logodds',
-                         'n_supporting', 'priors_fired', 'convergence_iter'].join('\t'))
-            integrated.provenance.values().each { prov ->
-                def fkey = IntegrationState.splitFunctionKey(prov.functionKey)
-                if (fkey == null) return
-                def fired = prov.priorContributions.collect { k, v ->
-                    "${k}:${String.format(Locale.ROOT, '%.3f', v)}"
-                }.join(',')
-                def firstClaim = prov.supportingClaims ? prov.supportingClaims.first() : null
-                w.writeLine([
-                    fkey[0],
-                    fkey[1],
-                    fkey[2],
-                    firstClaim?.goAspect ?: '',
-                    Double.toString(prov.finalProbability),
-                    Double.toString(prov.likelihoodLogOdds),
-                    Double.toString(prov.finalLogOdds),
-                    (prov.supportingClaims?.size() ?: 0).toString(),
-                    fired,
-                    prov.convergenceIter.toString(),
-                ].join('\t'))
-            }
-        }
+        runGenome(config, null)
     }
 
     /**
-     * Batch execution uses the same runGenome method and stage order as a single
-     * run. Immutable ontology/pathway/reaction references are shared; taxon
+     * The typed workflow configuration this invocation describes. Every option
+     * whose name matches a {@link IntegrationWorkflowConfig} property maps onto it;
+     * with {@code --workflow-config} the file is the base and only options given
+     * explicitly on the command line override it.
+     */
+    IntegrationWorkflowConfig toWorkflowConfig() {
+        IntegrationWorkflowConfig config = workflowConfigFile != null ?
+            IntegrationWorkflowConfig.fromJson(workflowConfigFile) : new IntegrationWorkflowConfig()
+        // Precedence with a file: preset defaults < file < explicit command-line options.
+        Set<String> fileKeys = workflowConfigFile == null ? null :
+            new ObjectMapper().readValue(workflowConfigFile, Map).keySet() as Set<String>
+        IntegrateCommand.declaredFields.findAll { it.getAnnotation(Option) != null }.each { field ->
+            if (!IntegrationWorkflowConfig.metaClass.hasProperty(config, field.name)) return
+            if (fileKeys != null) {
+                String[] names = field.getAnnotation(Option).names()
+                boolean explicit = names.any { spec.commandLine().parseResult.hasMatchedOption(it) }
+                boolean fromPreset = names.any { presetApplied.contains(it) } && !fileKeys.contains(field.name)
+                if (!explicit && !fromPreset) return
+            }
+            field.accessible = true
+            def value = field.get(this)
+            config[field.name] = value instanceof List ? new ArrayList(value) : value
+        }
+        config
+    }
+
+    /** Runs the shared workflow for one genome and exports its artifacts. */
+    private Map runGenome(IntegrationWorkflowConfig config, IntegrationState sharedReferences) {
+        println "GSPA integrate"
+        println "  Claims: ${config.claimsFile}"
+        println "  Theta:  ${config.thetaFile ?: '(defaults)'}"
+        println "  Out:    ${config.outFile}"
+
+        def extractor = new ClaimExtractor(new CalibrationTable())
+        List<EvidenceClaim> claims = extractor.readClaimsJsonl(config.claimsFile)
+        println "  Loaded ${claims.size()} claims"
+
+        def workflow = new IntegrationWorkflow(config)
+        workflow.sharedReferences = sharedReferences
+        workflow.info = { String m -> println m } as Closure<Void>
+        IntegrationWorkflow.Result result = workflow.run(claims)
+        workflow.writeArtifacts(result)
+
+        Runtime rt = Runtime.getRuntime()
+        [genome_id: result.genomeId, out_path: config.outFile.path,
+         n_claims: claims.size(), n_integrated: result.integrated.annotations.size(),
+         n_provenance: result.integrated.provenance.size(), max_iter: result.maxIter,
+         enforce_stage2: config.enforceStage2, enforce_mode: config.enforceConsistencyMode,
+         runtime_sec: result.elapsedNanos / 1e9d,
+         used_heap_mb: (rt.totalMemory() - rt.freeMemory()) / (1024d * 1024d),
+         total_heap_mb: rt.totalMemory() / (1024d * 1024d)]
+    }
+
+    /**
+     * Batch execution runs the same workflow as a single genome. Immutable
+     * ontology/pathway/reaction references are loaded once and shared; taxon
      * checkers, genome evidence, options and artifact paths belong to each worker.
      *
      * Manifest TSV columns (tab-separated, '-' or empty uses CLI default):
@@ -696,12 +467,10 @@ class IntegrateCommand implements Runnable {
      *  14: fba_medium (optional)
      *  15: fba_gram (optional)
      */
-    private void runBatchManifest() {
+    private void runBatchManifest(IntegrationWorkflowConfig base) {
         println "GSPA integrate --batch-manifest ${batchManifestFile} (threads=${batchThreads})"
 
-        Map theta = thetaFile?.exists() ? new ObjectMapper().readValue(thetaFile, Map) : [:]
-        def sharedState = new IntegrationState(new Genome(id: 'shared_reference'))
-        wireReferenceData(sharedState, [])
+        IntegrationState sharedState = IntegrationWorkflow.loadSharedReferences(base) { String m -> println m }
 
         List<String[]> rows = []
         Set<String> genomeIds = new HashSet<>()
@@ -725,8 +494,8 @@ class IntegrateCommand implements Runnable {
         try {
             List<java.util.concurrent.Future<Map>> futures = rows.collect { String[] row ->
                 pool.submit({ ->
-                    IntegrateCommand worker = copyOptions()
-                    worker.batchManifestFile = null
+                    IntegrationWorkflowConfig worker = base.copy()
+                    worker.genomeId = row[0].trim()
                     worker.claimsFile = new File(row[1].trim())
                     worker.outFile = new File(row[2].trim())
                     Map<Integer, String> overrides = [3: 'organismTaxon', 4: 'essentialProfile',
@@ -743,16 +512,15 @@ class IntegrateCommand implements Runnable {
                             } else worker[property] = value
                         }
                     }
-                    Map rowTheta = new LinkedHashMap(theta)
-                    if (row.length > 7 && row[7].trim() && row[7].trim() != '-') rowTheta.max_iter = Integer.parseInt(row[7].trim())
+                    if (row.length > 7 && row[7].trim() && row[7].trim() != '-') worker.maxIter = Integer.parseInt(row[7].trim())
                     // Every worker gets separate files, even when outputs share a directory.
                     [provenanceFile: '.provenance.json', suggestionsOut: '.suggestions.tsv',
                      featuresOut: '.features.tsv', enforcementActionsOut: '.enforcement.tsv',
                      anomaliesOut: '.anomalies.jsonl', agentResolutionsOut: '.agent_resolutions.jsonl'].each { property, suffix ->
                         if (worker[property] != null) worker[property] = new File(worker.outFile.absolutePath + suffix)
                     }
-                    worker.validatePhase10Flags()
-                    worker.runGenome(rowTheta, sharedState, row[0].trim())
+                    worker.validate()
+                    runGenome(worker, sharedState)
                 } as java.util.concurrent.Callable<Map>)
             }
             futures.each { stats << it.get() }
@@ -784,760 +552,5 @@ class IntegrateCommand implements Runnable {
             }
             println "  Wrote batch runtime/memory stats: ${batchStatsOut}"
         }
-    }
-
-    private IntegrateCommand copyOptions() {
-        def copy = new IntegrateCommand()
-        IntegrateCommand.declaredFields.findAll { it.getAnnotation(Option) != null }.each { field ->
-            field.accessible = true
-            def value = field.get(this)
-            field.set(copy, value instanceof List ? new ArrayList(value) : value)
-        }
-        copy
-    }
-
-    /**
-     * Wire optional reference data into the IntegrationState. Each piece is
-     * independent: if a file isn't provided, the corresponding prior
-     * no-ops.
-     */
-    private void wireReferenceData(IntegrationState state, List<EvidenceClaim> claims = [], IntegrationState shared = null) {
-        if (shared != null) {
-            state.goOntology = shared.goOntology
-            state.goReasoner = shared.goReasoner
-            state.anatomicalConstraints = shared.anatomicalConstraints
-            state.complexClassification = new LinkedHashMap(shared.complexClassification)
-            state.pathwayDatabase = shared.pathwayDatabase
-            state.moduleDefinitions = shared.moduleDefinitions
-            state.reactionGraph = shared.reactionGraph
-        }
-        if (shared == null) {
-            // GO ontology + ELK reasoner
-            if (goOwlFile != null) {
-                try {
-                    def goOntology = new gspa.ontology.GoOntology()
-                    goOntology.loadOwl(goOwlFile)
-                    state.goOntology = goOntology
-                    if (!lite) {
-                        def reasoner = new gspa.ontology.GoReasoner(goOntology)
-                        if (reasonerCacheDir != null) {
-                            reasoner.cacheDir = reasonerCacheDir
-                        }
-                        reasoner.initialize()
-                        state.goReasoner = reasoner
-                    }
-                    println "  Loaded GO ontology from ${goOwlFile}"
-                } catch (Exception e) {
-                    System.err.println "  [warn] Failed to load GO ontology: ${e.message}"
-                }
-            }
-
-            // Bundled anatomical constraints & complex terms
-            try {
-                state.anatomicalConstraints = AnatomicalConstraints.loadBundled()
-                println "  Anatomical constraints: ${state.anatomicalConstraints.constrainedGoTermCount()} GO terms, ${state.anatomicalConstraints.constrainedAnatomyCount()} anatomical structures"
-            } catch (Exception e) {
-                System.err.println "  [warn] Failed to load bundled anatomical constraints: ${e.message}"
-            }
-
-            try {
-                if (complexTermsFile != null && complexTermsFile.exists()) {
-                    complexTermsFile.eachLine { line ->
-                        if (line.startsWith('GO_term') || line.startsWith('#') || line.trim().isEmpty()) return
-                        String[] f = line.split('\t')
-                        if (f.length >= 2) state.complexClassification[f[0].trim()] = f[1].trim()
-                    }
-                } else {
-                    state.loadBundledComplexTerms()
-                }
-                println "  Complex classification: ${state.complexClassification.size()} GO complex terms"
-            } catch (Exception e) {
-                System.err.println "  [warn] Failed to load complex classification: ${e.message}"
-            }
-
-        }
-
-        // Essential functions
-        if (essentialFunctionsFile != null) {
-            try {
-                state.essentialFunctions = gspa.config.EssentialFunctions
-                    .loadFromTsv(essentialFunctionsFile, essentialProfile)
-                println "  Essential functions: ${state.essentialFunctions.goTerms.size()} GO terms"
-            } catch (Exception e) {
-                System.err.println "  [warn] Failed to load essential functions: ${e.message}"
-            }
-        } else if (essentialProfile != null) {
-            try {
-                state.essentialFunctions = gspa.config.EssentialFunctions.loadPreset(essentialProfile)
-                println "  Essential functions (preset=${essentialProfile}): ${state.essentialFunctions.goTerms.size()} GO terms"
-            } catch (Exception e) {
-                System.err.println "  [warn] Failed to load essential preset '${essentialProfile}': ${e.message}"
-            }
-        }
-
-        if (shared == null) {
-            // Pathway database — supports stacking multiple sources (KEGG main +
-            // KEGG Modules + MetaCyc + BioCyc) so a bacterial genome's operons
-            // get reasonable enrichment hits at each granularity.
-            if ((pathwaysFile != null && ec2goFile != null) || (moduleFiles != null && !moduleFiles.isEmpty())) {
-                try {
-                    if (pathwaysFile != null && ec2goFile != null) {
-                        state.pathwayDatabase = gspa.ontology.PathwayLoader.loadPathways(
-                            pathwaysFile,
-                            gspa.ontology.PathwayLoader.loadEc2Go(ec2goFile),
-                        )
-                        println "  Pathways: ${state.pathwayDatabase.pathways.size()} loaded from ${pathwaysFile.name}"
-                    } else {
-                        state.pathwayDatabase = new gspa.ontology.PathwayDatabase()
-                    }
-                    for (File mod : (moduleFiles ?: [])) {
-                        if (mod != null && mod.exists()) {
-                            gspa.ontology.PathwayLoader.loadPathwaysInto(state.pathwayDatabase, mod)
-                            println "  Pathways: now ${state.pathwayDatabase.pathways.size()} (added ${mod.name})"
-                        }
-                    }
-                } catch (Exception e) {
-                    System.err.println "  [warn] Failed to load pathway database: ${e.message}"
-                }
-            }
-            if (moduleDefsFile != null && moduleDefsFile.exists()) {
-                try {
-                    Map<String, String> ec2goMap = state.pathwayDatabase?.ec2go ?: (ec2goFile != null ? gspa.ontology.PathwayLoader.loadEc2Go(ec2goFile) : [:])
-                    state.moduleDefinitions = gspa.ontology.ModuleDefinitions.load(moduleDefsFile, ec2goMap)
-                    state.moduleDefinitions.excludeOrganisms.addAll(moduleExcludeOrganisms ?: [])
-                    println "  Modules: ${state.moduleDefinitions.modules.size()} KEGG module definitions from ${moduleDefsFile.name}"
-                } catch (Exception e) {
-                    System.err.println "  [warn] Failed to load module definitions: ${e.message}"
-                }
-            }
-
-        }
-
-        // SAT consistency checker: wire when --taxonomy, --taxon, --infer-taxon, or --enforce-stage2 is given.
-        boolean wantSat = (taxonomyFile != null) || (organismTaxon != null && !organismTaxon.trim().isEmpty()) || inferTaxon || enforceStage2
-        if (wantSat) {
-            try {
-                def taxonConstraints = new gspa.ontology.TaxonConstraints()
-                if (taxonConstraintsFile != null && taxonConstraintsFile.exists()) {
-                    if (taxonConstraintsFile.name.toLowerCase().endsWith('.obo')) {
-                        taxonConstraints.loadFromObo(taxonConstraintsFile)
-                    } else {
-                        taxonConstraints.loadFromTsv(taxonConstraintsFile)
-                    }
-                } else {
-                    File bundledTc = classpathToTempFile('/taxon-constraints/go-taxon-constraints.tsv', 'go-taxon-constraints', '.tsv')
-                    if (bundledTc != null && bundledTc.exists()) {
-                        taxonConstraints.loadFromTsv(bundledTc)
-                    } else if (state.goOntology != null) {
-                        taxonConstraints.loadFromGoOntology(state.goOntology)
-                    }
-                }
-                boolean wantAnat = enabledPriors == null || enabledPriors.trim().toLowerCase() == 'all' ||
-                    enabledPriors.split(',').collect { it.trim().toLowerCase() }.contains('anatomical')
-                if (state.anatomicalConstraints != null && wantAnat) {
-                    state.anatomicalConstraints.augmentTaxonConstraints(taxonConstraints)
-                }
-                if (taxonConstraints.constrainedTermCount() > 0) {
-                    def checker = new gspa.ontology.SatConsistencyChecker(taxonConstraints)
-                    if (taxonomyFile != null && taxonomyFile.exists()) {
-                        // Detect 3-column TSV (Term, Relationship, Other) vs 2-column legacy
-                        String firstData = taxonomyFile.readLines().find { !it.trim().isEmpty() && !it.startsWith('#') } ?: ''
-                        if (firstData.split('\t').length >= 3) {
-                            checker.loadTaxonomyTsv(taxonomyFile)
-                        } else {
-                            checker.loadTaxonomyHierarchy(taxonomyFile)
-                        }
-                    } else {
-                        File bundledHier = classpathToTempFile('/taxon-constraints/ncbi-taxon-hierarchy.tsv', 'ncbi-taxon-hierarchy', '.tsv')
-                        if (bundledHier != null && bundledHier.exists()) {
-                            checker.loadTaxonomyTsv(bundledHier)
-                        }
-                    }
-                    String resolvedTax = resolveOrganismTaxon(organismTaxon)
-                    if (resolvedTax) {
-                        checker.organismTaxon = resolvedTax
-                        println "  Asserted organism taxon: ${resolvedTax}"
-                    } else if (inferTaxon && claims) {
-                        Map<String, Double> termScore = [:].withDefault { 0.0d }
-                        for (EvidenceClaim c : claims) {
-                            if (c.functionType == 'GO' && c.calibratedProb > termScore[c.functionId]) {
-                                termScore[c.functionId] = c.calibratedProb
-                            }
-                        }
-                        def inf = new TaxonInference(checker: checker, goOntology: state.goOntology, minScore: 0.5d).infer(termScore)
-                        if (inf?.taxon) {
-                            checker.organismTaxon = inf.taxon
-                            println "  Inferred organism taxon: ${inf.taxon} (${inf.label})"
-                        }
-                    }
-                    state.satConsistencyChecker = checker
-                    println "  SAT checker: ${taxonConstraints.onlyInTaxon.size()} only_in + ${taxonConstraints.neverInTaxon.size()} never_in (organismTaxon=${checker.organismTaxon ?: 'none'})"
-                }
-            } catch (Exception e) {
-                System.err.println "  [warn] Failed to wire SAT consistency checker: ${e.message}"
-            }
-        } else {
-            println "  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)"
-        }
-
-        // Operons TSV: one line per operon, tab-separated protein IDs.
-        if (operonsFile != null && operonsFile.exists()) {
-            List<List<String>> operons = []
-            operonsFile.eachLine { line ->
-                line = line.trim()
-                if (line.isEmpty() || line.startsWith('#')) return
-                operons << (line.split('\t') as List)
-            }
-            state.operons = operons
-            println "  Operons: ${operons.size()}"
-        }
-
-        // Metabolic gaps JSONL
-        if (gapsFile != null && gapsFile.exists()) {
-            def mapper = new ObjectMapper()
-            List gaps = []
-            gapsFile.eachLine { line ->
-                line = line.trim()
-                if (line.isEmpty() || line.startsWith('#')) return
-                Map rec = mapper.readValue(line, Map)
-                gaps << new gspa.integration.MetabolicGap(
-                    pathwayId: rec.pathway_id as String,
-                    reactionId: rec.reaction_id as String,
-                    ecNumber: rec.ec_number as String,
-                    goTerm: rec.go_term as String,
-                    gapseqGuessed: (rec.gapseq_guessed ?: false) as boolean,
-                )
-            }
-            state.metabolicGaps = gaps
-            println "  Metabolic gaps: ${gaps.size()}"
-        }
-
-        // Phase 11 cross-genome: orthogroup membership + consensus.
-        if (orthogroupsFile != null && orthogroupsFile.exists()) {
-            Map<String, String> orthogroups = new LinkedHashMap<>()
-            orthogroupsFile.eachLine { line ->
-                line = line.trim()
-                if (line.isEmpty() || line.startsWith('#')) return
-                String[] parts = line.split('\t')
-                if (parts.length >= 2) {
-                    // Strip optional "namespace:" prefix from the rep so the
-                    // orthogroup ID matches the bare-accession format used by
-                    // build_catalog.py and ReactionLocusCatalog.
-                    String rep = parts[1]
-                    int colon = rep.indexOf(':')
-                    if (colon >= 0) rep = rep.substring(colon + 1)
-                    orthogroups[parts[0]] = rep
-                }
-            }
-            state.orthogroupMap = orthogroups
-            println "  Orthogroups: ${orthogroups.size()} protein assignments"
-        }
-        if (clusterConsensusFile != null && clusterConsensusFile.exists()) {
-            Map<String, Double> consensus = new LinkedHashMap<>()
-            clusterConsensusFile.eachLine { line ->
-                line = line.trim()
-                if (line.isEmpty() || line.startsWith('#')) return
-                String[] parts = line.split('\t')
-                if (parts.length >= 4) {
-                    String key = "${parts[0]}|${parts[1]}|${parts[2]}".toString()
-                    try {
-                        consensus[key] = Double.parseDouble(parts[3])
-                    } catch (NumberFormatException ignored) {}
-                }
-            }
-            state.orthogroupConsensus = consensus
-            println "  Cluster consensus entries: ${consensus.size()}"
-        }
-
-        // Phase 12 RLGC: reaction graph + genome layout.
-        if (shared == null && reactionGraphFile != null && reactionGraphFile.exists()) {
-            try {
-                state.reactionGraph = ReactionGraphLoader.load(
-                    reactionGraphFile, diffusionMetsFile, rlcCurrencyPercentile,
-                    reactionEcAliasesFile)
-                println "  Reaction graph: ${state.reactionGraph.reactions.size()} reactions, ${state.reactionGraph.currencyMetabolites.size()} currency metabolites, ${state.reactionGraph.ecToReactions.size()} ECs"
-            } catch (Exception e) {
-                System.err.println "  [warn] Failed to load reaction graph: ${e.message}"
-            }
-        }
-        if (genomeLayoutFile != null && genomeLayoutFile.exists()) {
-            try {
-                state.genomeLayout = GenomeLayoutLoader.load(genomeLayoutFile)
-                println "  Genome layout: ${state.genomeLayout.size()} loci across ${state.genomeLayout.byContig.size()} contig(s)"
-            } catch (Exception e) {
-                System.err.println "  [warn] Failed to load genome layout: ${e.message}"
-            }
-        }
-    }
-
-    /**
-     * Run Stage 2 Symbolic Constraint & Coherence Enforcement on the Stage 1
-     * IntegratedAnnotationSet, updating both {@code integrated.annotations} and
-     * {@code integrated.provenance} so downstream CAFA and GAEF evaluators
-     * observe the enforced/relaxed/imputed annotations.
-     */
-    private void runStage2Enforcement(IntegrationState state, IntegratedAnnotationSet integrated,
-                                      String modeOverride = null, File actionsOutOverride = null,
-                                      boolean verbose = true) {
-        if (state.satConsistencyChecker == null) {
-            if (verbose) println "  [warn] Stage 2 enforcement skipped: no SAT consistency checker available"
-            return
-        }
-        String effMode = modeOverride ?: (enforceConsistencyMode ?: 'relax')
-        File effActionsOut = actionsOutOverride != null ? actionsOutOverride : (verbose ? enforcementActionsOut : null)
-        Genome genome = new Genome(id: 'stage2')
-        Contig contig = new Contig(id: 'contig_1', genome: genome)
-        genome.contigs << contig
-        Map<String, Protein> byProtein = new LinkedHashMap<>()
-
-        // Populate genome with all GO claims in integrated.provenance
-        integrated.provenance.values().each { prov ->
-            String[] fkey = IntegrationState.splitFunctionKey(prov.functionKey)
-            if (fkey == null || fkey[1] != 'GO') return
-            String pid = fkey[0]
-            String goId = fkey[2]
-            Protein p = byProtein.computeIfAbsent(pid) {
-                def np = new Protein(id: pid, contig: contig)
-                contig.proteins << np
-                np
-            }
-            def firstClaim = prov.supportingClaims ? prov.supportingClaims.first() : null
-            p.annotations.add(new Annotation(
-                type: AnnotationType.GO,
-                value: goId,
-                score: prov.finalProbability,
-                source: firstClaim?.source ?: 'integrator',
-                evidence: 'IEA',
-                goAspect: firstClaim?.goAspect
-            ))
-        }
-
-        Set<String> enabledStage2Set = (enabledPriors ?: '').split(',').collect { it.trim() }.findAll { it && it != 'none' } as Set
-        boolean useAnatomicalInStage2 = enabledStage2Set.isEmpty() || enabledStage2Set.contains('all') || enabledStage2Set.contains('anatomical')
-        def report = new EnforcementReport(provenance: true)
-        def consEnf = new ConsistencyEnforcer(
-            goOntology: state.goOntology,
-            satChecker: state.satConsistencyChecker,
-            anatomicalConstraints: useAnatomicalInStage2 ? state.anatomicalConstraints : null,
-            mode: effMode,
-            report: report
-        )
-        def consRes = consEnf.enforce(genome)
-        if (verbose) println "  Stage 2 Consistency (${effMode}): ${consRes}"
-
-        // Rebuild GO entries in integrated.provenance directly from the enforced genome proteins
-        // so removals, downranks, and ancestor relaxations are 100% reflected.
-        int relaxedAdded = 0
-        Set<String> goKeysToRemove = integrated.provenance.keySet().findAll { k ->
-            String[] fkey = IntegrationState.splitFunctionKey(k)
-            fkey != null && fkey[1] == 'GO'
-        } as Set
-        Map<String, gspa.integration.ClaimProvenance> oldGoProv = [:]
-        for (String k : goKeysToRemove) {
-            oldGoProv[k] = integrated.provenance.remove(k)
-        }
-        integrated.annotations.annotations.removeAll { it.type == AnnotationType.GO }
-
-        String orgTax = state.satConsistencyChecker?.organismTaxon
-        boolean isProkaryote = orgTax != null && (
-            orgTax in ['NCBITaxon_2', 'NCBITaxon_2157'] ||
-            state.satConsistencyChecker.ancestorsWithSelf(orgTax).any { it in ['NCBITaxon_2', 'NCBITaxon_2157'] }
-        )
-
-        for (Protein p : contig.proteins) {
-            for (Annotation a : p.annotations.goAnnotations()) {
-                String fkey = IntegrationState.splitFunctionKey(IntegrationState.functionKey(p.id, 'GO', a.value)) ? IntegrationState.functionKey(p.id, 'GO', a.value) : "${p.id}|GO|${a.value}"
-                gspa.integration.ClaimProvenance origProv = null
-                double bestUnpenalizedProb = -1.0d
-                double maxOrigFinalProb = -1.0d
-                int maxOrigNsup = 0
-                boolean isRelaxed = a.evidence?.contains('relaxed-from:')
-                if (isRelaxed) {
-                    def m = (a.evidence =~ /relaxed-from:(GO:\d+)/)
-                    while (m.find()) {
-                        String fromGo = m.group(1)
-                        def candProv = oldGoProv[IntegrationState.functionKey(p.id, 'GO', fromGo)]
-                        if (candProv != null) {
-                            if (candProv.finalProbability > maxOrigFinalProb) {
-                                maxOrigFinalProb = candProv.finalProbability
-                            }
-                            int nsup = candProv.supportingClaims?.size() ?: 0
-                            if (nsup > maxOrigNsup) maxOrigNsup = nsup
-                            double validPriorSum = (candProv.priorContributions?.findAll { k, v ->
-                                !(k in ['consistency', 'anatomical']) || (v != null && v > 0.0d)
-                            }?.values()?.sum() ?: 0.0d) as double
-                            double unpenalizedLo = candProv.likelihoodLogOdds + validPriorSum
-                            double unpenalizedProb = CalibrationTable.logOddsToProb(unpenalizedLo) * consEnf.relaxFactor
-                            if (unpenalizedProb > bestUnpenalizedProb) {
-                                bestUnpenalizedProb = unpenalizedProb
-                                origProv = candProv
-                            }
-                        }
-                    }
-                }
-                def existing = oldGoProv[fkey]
-                if (existing != null) {
-                    if (isRelaxed) {
-                        if (isProkaryote) {
-                            int exNsup = existing.supportingClaims?.size() ?: 0
-                            if (exNsup >= 2 && maxOrigNsup >= 2) {
-                                existing.finalLogOdds = Math.min(8.0d, existing.finalLogOdds + 0.28d)
-                                existing.finalProbability = CalibrationTable.logOddsToProb(existing.finalLogOdds)
-                            } else if (maxOrigFinalProb >= 0.50d) {
-                                existing.finalProbability = Math.max(existing.finalProbability, Math.max(0.51d, maxOrigFinalProb * consEnf.relaxFactor))
-                                existing.finalLogOdds = CalibrationTable.probToLogOdds(existing.finalProbability)
-                            }
-                        } else {
-                            if (bestUnpenalizedProb > a.score) a.score = bestUnpenalizedProb
-                            existing.finalProbability = Math.max(existing.finalProbability, a.score)
-                            existing.finalLogOdds = CalibrationTable.probToLogOdds(existing.finalProbability)
-                        }
-                        a.score = existing.finalProbability
-                        existing.priorContributions['stage2_relax'] = 1.0d
-                    } else {
-                        existing.finalProbability = a.score
-                        existing.finalLogOdds = CalibrationTable.probToLogOdds(existing.finalProbability)
-                    }
-                    integrated.provenance[fkey] = existing
-                } else {
-                    if (isProkaryote) {
-                        if (maxOrigFinalProb < 0.50d) {
-                            continue
-                        }
-                        a.score = Math.max(0.51d, maxOrigFinalProb * consEnf.relaxFactor)
-                    } else if (bestUnpenalizedProb > a.score) {
-                        a.score = bestUnpenalizedProb
-                    }
-                    def dummyClaim = new EvidenceClaim(
-                        proteinId: p.id,
-                        functionId: a.value,
-                        functionType: AnnotationType.GO,
-                        goAspect: a.goAspect ?: (origProv?.supportingClaims ? origProv.supportingClaims.first().goAspect : (state.goOntology?.getAspect(a.value) ?: '')),
-                        source: a.source ?: 'stage2_relax',
-                        evidenceType: EvidenceType.SEQUENCE_SIMILARITY,
-                        rawScore: a.score,
-                        calibratedProb: a.score
-                    )
-                    double lo = CalibrationTable.probToLogOdds(a.score)
-                    Map<String, Double> priors = [:]
-                    if (origProv?.priorContributions) {
-                        origProv.priorContributions.each { k, v ->
-                            if (!(k in ['consistency', 'anatomical']) || (v != null && v > 0.0d)) {
-                                priors[k] = v
-                            }
-                        }
-                    }
-                    priors['stage2_relax'] = 1.0d
-                    integrated.provenance[fkey] = new gspa.integration.ClaimProvenance(
-                        functionKey: fkey,
-                        proteinId: p.id,
-                        supportingClaims: origProv?.supportingClaims ?: [dummyClaim],
-                        likelihoodLogOdds: origProv ? origProv.likelihoodLogOdds : lo,
-                        priorContributions: priors,
-                        finalLogOdds: lo,
-                        finalProbability: a.score,
-                        convergenceIter: origProv ? origProv.convergenceIter : 1
-                    )
-                    relaxedAdded++
-                }
-                if (a.score >= 0.5d) {
-                    integrated.annotations.add(a)
-                }
-            }
-        }
-        if (effMode?.toLowerCase() == 'relax') {
-            Map<String, List<gspa.integration.ClaimProvenance>> byProtAspect = [:].withDefault { [] }
-            for (def prov : integrated.provenance.values()) {
-                String[] fkey = IntegrationState.splitFunctionKey(prov.functionKey)
-                if (fkey == null || fkey[1] != 'GO') continue
-                String aspect = (prov.supportingClaims && prov.supportingClaims.first().goAspect)
-                    ? prov.supportingClaims.first().goAspect
-                    : (state.goOntology != null ? (state.goOntology.getAspect(fkey[2]) ?: 'U') : 'U')
-                byProtAspect["${fkey[0]}|${aspect}"] << prov
-            }
-            for (List<gspa.integration.ClaimProvenance> list : byProtAspect.values()) {
-                if (list.isEmpty()) continue
-                double maxProb = 0.0d
-                int maxNsup = 0
-                gspa.integration.ClaimProvenance topProv = null
-                for (def pr : list) {
-                    int nsup = pr.supportingClaims != null ? pr.supportingClaims.size() : 1
-                    if (pr.finalProbability > maxProb) {
-                        maxProb = pr.finalProbability
-                        maxNsup = nsup
-                        topProv = pr
-                    }
-                }
-                if (topProv != null && maxProb >= 0.25d && maxProb < 0.48d && maxNsup >= 2) {
-                    double newLo = topProv.finalLogOdds + 0.32d
-                    double newProb = Math.min(0.54d, CalibrationTable.logOddsToProb(newLo))
-                    topProv.finalProbability = newProb
-                    topProv.finalLogOdds = CalibrationTable.probToLogOdds(newProb)
-                }
-            }
-        }
-        // Obligate heteromeric complex singleton pruning: if an obligate heteromer ('n') has only a single
-        // active protein (>= 0.50) and no partner candidate (>= 0.08) across the proteome, attenuate it to 0.45.
-        if (state.complexClassification != null && !state.complexClassification.isEmpty()) {
-            Map<String, List<String>> activeHeteromerByTerm = [:].withDefault { [] }
-            Map<String, List<String>> candHeteromerByTerm = [:].withDefault { [] }
-            for (def prov : integrated.provenance.values()) {
-                String[] fkey = IntegrationState.splitFunctionKey(prov.functionKey)
-                if (fkey == null || fkey[1] != 'GO') continue
-                String goId = fkey[2]
-                if (state.complexClassification[goId] != 'n') continue
-                if (prov.finalProbability >= 0.5d) {
-                    activeHeteromerByTerm[goId] << prov.functionKey
-                } else if (prov.finalProbability >= 0.08d) {
-                    candHeteromerByTerm[goId] << prov.functionKey
-                }
-            }
-            for (def entry : activeHeteromerByTerm.entrySet()) {
-                String goId = entry.key
-                List<String> activeKeys = entry.value
-                List<String> candKeys = candHeteromerByTerm[goId] ?: []
-                if (activeKeys.size() == 1 && candKeys.isEmpty()) {
-                    def singleProv = integrated.provenance[activeKeys[0]]
-                    if (singleProv != null && singleProv.finalProbability > 0.45d) {
-                        double beforeProb = singleProv.finalProbability
-                        singleProv.finalProbability = 0.45d
-                        singleProv.finalLogOdds = CalibrationTable.probToLogOdds(0.45d)
-                        singleProv.priorContributions['stage2_singleton_prune'] = -0.5d
-                        report.record(new EnforcementAction(
-                            dimension: 'coherence',
-                            action: 'PRUNED_SINGLETON',
-                            contigId: 'contig_1',
-                            proteinId: singleProv.proteinId,
-                            term: goId,
-                            reason: 'obligate heteromer singleton without partner candidate (>=0.08)',
-                            basis: 'complexClassification=n',
-                            scoreBefore: beforeProb,
-                            scoreAfter: 0.45d
-                        ))
-                        integrated.annotations.annotations.removeAll {
-                            it.type == AnnotationType.GO && it.value == goId && singleProv.proteinId == (it.metaClass.respondsTo(it, 'getProteinId') ? it.proteinId : singleProv.proteinId)
-                        }
-                    }
-                }
-            }
-        }
-        integrated.synchronize(state)
-        if (verbose) println "  Stage 2 synced to integrated output (relaxed_new=${relaxedAdded})"
-
-        if (effActionsOut != null && report.count() > 0) {
-            if (state.goOntology != null) {
-                report.actions.each { it.termLabel = state.goOntology.getLabel(it.term) }
-            }
-            effActionsOut.parentFile?.mkdirs()
-            report.writeTsv(effActionsOut)
-            if (verbose) println "  Stage 2 enforcement actions: ${effActionsOut}"
-        }
-    }
-
-    private static String resolveOrganismTaxon(String raw) {
-        if (!raw) return null
-        raw = raw.trim()
-        switch (raw.toLowerCase()) {
-            case ['bacteria', 'bacterium', 'bacterial']: return 'NCBITaxon_2'
-            case ['archaea', 'archaeal']:                return 'NCBITaxon_2157'
-            case ['eukaryote', 'eukaryota', 'eukaryotic']: return 'NCBITaxon_2759'
-            case ['virus', 'viruses', 'viral']:          return 'NCBITaxon_10239'
-        }
-        if (raw.startsWith('NCBITaxon')) return raw.replace(':', '_')
-        if (raw ==~ /\d+/) return "NCBITaxon_${raw}"
-        return raw
-    }
-
-    private File classpathToTempFile(String resourcePath, String prefix, String suffix) {
-        def stream = getClass().getResourceAsStream(resourcePath)
-        if (stream == null) return null
-        try {
-            File tmp = File.createTempFile(prefix, suffix)
-            tmp.deleteOnExit()
-            tmp.withOutputStream { out -> stream.transferTo(out) }
-            return tmp
-        } finally {
-            stream.close()
-        }
-    }
-
-    /**
-     * Write suggestions to TSV. Columns:
-     *   kind, pathway_id, reaction_id, function_id, go_aspect, operon_id,
-     *   bayes_factor, suggestion_score, protein_ids, q_values, provenance
-     */
-    private static void writeSuggestionsTsv(List<Suggestion> suggestions, File out) {
-        out.withWriter { w ->
-            w.writeLine([
-                'kind', 'pathway_id', 'reaction_id', 'function_id', 'go_aspect',
-                'operon_id', 'bayes_factor', 'suggestion_score',
-                'protein_ids', 'q_values', 'provenance', 'source', 'unassigned_probability', 'candidate_probabilities'
-            ].join('\t'))
-            for (Suggestion s : suggestions) {
-                String proteinList
-                String qList
-                if (s instanceof SingletonSuggestion) {
-                    proteinList = s.proteinId
-                    qList = String.format(Locale.ROOT, '%.4f', s.q)
-                } else if (s instanceof DisjunctiveSuggestion) {
-                    proteinList = s.proteinIds.join(',')
-                    qList = s.qValues.collect {
-                        String.format(Locale.ROOT, '%.4f', it)
-                    }.join(',')
-                } else {
-                    proteinList = ''
-                    qList = ''
-                }
-                w.writeLine([
-                    s.kind(),
-                    s.pathwayId ?: '',
-                    s.reactionId ?: '',
-                    s.functionId ?: '',
-                    s.goAspect ?: '',
-                    s.operonId ?: '',
-                    String.format(Locale.ROOT, '%.2f', s.bayesFactor),
-                    String.format(Locale.ROOT, '%.4f', s.suggestionScore),
-                    proteinList,
-                    qList,
-                    s.provenance ?: '',
-                    s.source ?: '',
-                    s.unassignedProbability != null ? String.format(Locale.ROOT, '%.6f', s.unassignedProbability) : '',
-                    new ObjectMapper().writeValueAsString(s.candidateProbabilities ?: [:]),
-                ].join('\t'))
-            }
-        }
-    }
-
-    /** Validate cross-flag constraints for Phase 10 options. */
-    private void validatePhase10Flags() {
-        if (gapseqTarget != 'genome' && gapseqTarget != 'proteome' && gapseqTarget != 'reps') {
-            throw new IllegalArgumentException(
-                "--gapseq-target must be one of: genome, proteome, reps (got '${gapseqTarget}')")
-        }
-        if (gapseqTarget == 'reps' && (intragenomeCluster == null || intragenomeCluster == 'off')) {
-            throw new IllegalArgumentException(
-                "--gapseq-target=reps requires --intragenome-cluster to be enabled (0.9 | 0.95 | 1.0)")
-        }
-        if (intragenomeCluster != 'off' && intragenomeCluster != '0.9' &&
-                intragenomeCluster != '0.95' && intragenomeCluster != '1.0') {
-            throw new IllegalArgumentException(
-                "--intragenome-cluster must be one of: off, 0.9, 0.95, 1.0 (got '${intragenomeCluster}')")
-        }
-        if (iterateGapseq && !darkMatter) {
-            throw new IllegalArgumentException(
-                "--iterate-gapseq requires --dark-matter (the outer loop consumes suggester output)")
-        }
-        if (promotionStrategy != null && promotionStrategy != 'default' &&
-                promotionStrategy != 'greedy' && promotionStrategy != 'maxsat' &&
-                promotionStrategy != 'beam' && promotionStrategy != '') {
-            throw new IllegalArgumentException(
-                "--promotion-strategy must be one of: default, greedy, maxsat, beam (got '${promotionStrategy}')")
-        }
-        if (beamWidth < 1) throw new IllegalArgumentException("--beam-width must be ≥ 1")
-        if (beamCandidatesPerGap < 1) throw new IllegalArgumentException("--beam-candidates-per-gap must be ≥ 1")
-    }
-
-    private PromotionStrategy buildPromotionStrategy() {
-        switch (promotionStrategy) {
-            case 'default':
-            case null:
-            case '':
-                return new AllAboveThresholdStrategy()
-            case 'greedy':
-                return new GreedyStrategy()
-            case 'maxsat':
-                return new MaxSatStrategy(coherenceBonusWeight: maxsatCoherenceBonus)
-            case 'beam':
-                return new BeamSearchStrategy(beamWidth: beamWidth, candidatesPerGap: beamCandidatesPerGap)
-            default:
-                throw new IllegalArgumentException(
-                    "Unknown --promotion-strategy: '${promotionStrategy}' (expected default|greedy|maxsat|beam)")
-        }
-    }
-
-    private DarkMatterSuggester buildSuggester(Map theta) {
-        def suggester = new DarkMatterSuggester()
-        if (theta.dark_matter instanceof Map) {
-            def dm = theta.dark_matter as Map
-            if (dm.bf_min != null)
-                suggester.bfMin = (dm.bf_min as Number).doubleValue()
-            if (dm.gamma_in_p != null)
-                suggester.gammaInP = (dm.gamma_in_p as Number).doubleValue()
-            if (dm.coverage_threshold != null)
-                suggester.coverageThreshold = (dm.coverage_threshold as Number).doubleValue()
-        }
-        suggester
-    }
-
-    private PriorEngine buildPriorEngine(Map theta, Set<String> enabled) {
-        def engine = new PriorEngine()
-        Map priorWeights = (theta.prior_weights ?: [:]) as Map
-
-        if ('essentiality' in enabled) {
-            def p = new EssentialityPrior()
-            if (theta.alpha_ess != null) p.alphaEss = (theta.alpha_ess as Number).doubleValue()
-            if (theta.ess_rescue_mode != null) p.rescueMode = theta.ess_rescue_mode as String
-            if (theta.ess_rescue_target != null) p.rescueTarget = (theta.ess_rescue_target as Number).doubleValue()
-            if (theta.ess_min_candidate != null) p.minCandidate = (theta.ess_min_candidate as Number).doubleValue()
-            if (theta.ess_max_rescue != null) p.maxRescuePerCategory = (theta.ess_max_rescue as Number).intValue()
-            if (theta.ess_w_support != null) p.wSupport = (theta.ess_w_support as Number).doubleValue()
-            if (theta.ess_w_free != null) p.wFree = (theta.ess_w_free as Number).doubleValue()
-            if (theta.ess_w_competing != null) p.wCompeting = (theta.ess_w_competing as Number).doubleValue()
-            if (theta.ess_w_context != null) p.wContext = (theta.ess_w_context as Number).doubleValue()
-            engine.register(p, (priorWeights.essentiality ?: 1.0) as double)
-        }
-        if ('coherence' in enabled) {
-            def p = new CoherencePrior()
-            if (theta.alpha_coh != null) p.alphaCoh = (theta.alpha_coh as Number).doubleValue()
-            if (theta.alpha_complex_boost != null) p.complexPartnerWeight = (theta.alpha_complex_boost as Number).doubleValue()
-            if (theta.alpha_complex_penalty != null) p.complexSingletonPenaltyWeight = (theta.alpha_complex_penalty as Number).doubleValue()
-            if (theta.coh_pathway_mode != null) p.pathwayMode = theta.coh_pathway_mode as String
-            if (theta.coh_rescue_target != null) p.rescueTarget = (theta.coh_rescue_target as Number).doubleValue()
-            if (theta.coh_refine_min_completeness != null) p.refineMinCompleteness = (theta.coh_refine_min_completeness as Number).doubleValue()
-            if (theta.coh_max_rescue_per_module != null) p.maxRescuePerModule = (theta.coh_max_rescue_per_module as Number).intValue()
-            if (theta.coh_min_candidate != null) p.minCandidate = (theta.coh_min_candidate as Number).doubleValue()
-            if (theta.coh_min_score != null) p.minScore = (theta.coh_min_score as Number).doubleValue()
-            if (theta.coh_w_support != null) p.wSupport = (theta.coh_w_support as Number).doubleValue()
-            if (theta.coh_w_free != null) p.wFree = (theta.coh_w_free as Number).doubleValue()
-            if (theta.coh_w_competing != null) p.wCompeting = (theta.coh_w_competing as Number).doubleValue()
-            if (theta.coh_w_operon != null) p.wOperon = (theta.coh_w_operon as Number).doubleValue()
-            if (theta.coh_w_module != null) p.wModule = (theta.coh_w_module as Number).doubleValue()
-            engine.register(p, (priorWeights.coherence ?: 1.0) as double)
-        }
-        if ('consistency' in enabled) {
-            def p = new ConsistencyPrior()
-            if (theta.alpha_cons != null) p.alphaCons = (theta.alpha_cons as Number).doubleValue()
-            if (theta.consistency_hard_filter != null) {
-                p.hardFilter = theta.consistency_hard_filter as boolean
-            }
-            engine.register(p, (priorWeights.consistency ?: 1.0) as double)
-        }
-        if ('anatomical' in enabled) {
-            def p = new AnatomicalPrior()
-            if (theta.alpha_anat_penalty != null) p.alphaAnatPenalty = (theta.alpha_anat_penalty as Number).doubleValue()
-            if (theta.alpha_anat_boost != null) p.alphaAnatBoost = (theta.alpha_anat_boost as Number).doubleValue()
-            if (theta.anatomical_hard_filter != null) p.hardFilter = theta.anatomical_hard_filter as boolean
-            engine.register(p, (priorWeights.anatomical ?: 1.0) as double)
-        }
-        if ('gap_filling' in enabled) {
-            def p = new GapFillingPrior()
-            if (theta.alpha_gap != null) p.alphaGap = (theta.alpha_gap as Number).doubleValue()
-            engine.register(p, (priorWeights.gap_filling ?: 1.0) as double)
-        }
-        if ('genomic_context' in enabled) {
-            def p = new GenomicContextPrior()
-            if (theta.alpha_ctx != null) p.alphaCtx = (theta.alpha_ctx as Number).doubleValue()
-            if (theta.alpha_gap_ctx != null) p.alphaGapCtx = (theta.alpha_gap_ctx as Number).doubleValue()
-            engine.register(p, (priorWeights.genomic_context ?: 1.0) as double)
-        }
-        if ('homology_transfer' in enabled) {
-            def p = new gspa.integration.prior.HomologyTransferPrior()
-            if (theta.alpha_homology != null) p.alpha = (theta.alpha_homology as Number).doubleValue()
-            if (theta.homology_min_consensus != null) p.minConsensus = (theta.homology_min_consensus as Number).doubleValue()
-            if (theta.homology_min_delta != null) p.minDelta = (theta.homology_min_delta as Number).doubleValue()
-            if (theta.homology_max_boost != null) p.maxBoost = (theta.homology_max_boost as Number).doubleValue()
-            engine.register(p, (priorWeights.homology_transfer ?: 1.0) as double)
-        }
-        engine
     }
 }

@@ -607,6 +607,13 @@ class GspaConfig {
 
         /** Phase 10 outer iterative gapseq+DarkMatter fixed-point loop. */
         OuterLoopConfig outerLoop = new OuterLoopConfig()
+
+        /**
+         * Full shared-workflow settings (priors, references, stages, enforcement), the same
+         * typed block {@code gspa integrate --workflow-config} reads. The scalar settings above
+         * fill whatever it leaves unset; unknown keys are rejected.
+         */
+        gspa.integration.workflow.IntegrationWorkflowConfig workflow = new gspa.integration.workflow.IntegrationWorkflowConfig()
     }
 
     /** Phase 10 intra-genome clustering config. Disabled by default. */

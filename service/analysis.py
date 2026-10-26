@@ -13,6 +13,7 @@ import time
 import urllib.request
 import zipfile
 from urllib.parse import unquote
+from service import integration_options
 from service import jobs as j
 
 
@@ -198,20 +199,19 @@ def run_full(folder):
             fh.write(json.dumps(dict(protein_id=key[0], function_type=key[1], function_id=key[2], source=key[3],
                 raw_score=score, calibrated_prob=min(1-1e-6,max(1e-6,score)),
                 go_aspect=aspects.get(key[2], row.get('aspect', ''))))+'\n')
-    integrate = [j.BIN, 'integrate', '--claims', str(folder/'claims.jsonl'), '--out', str(browser/'integrated.tsv'),
-        '--provenance', str(browser/'provenance.json'), '--enforcement-actions-out', str(browser/'actions.tsv'),
-        '--go-owl', str(resources/'go/go.owl'), '--ec2go', str(resources/'ec2go/ec2go')]
-    integrate += ['--lite', '--enable-priors', '', '--no-enforce-stage2'] if preset == 'virus' else ['--preset', preset]
-    pathway_args = ['--pathways', str(resources/'kegg_pathways.tsv'), '--modules', str(resources/'kegg_modules.tsv')]
-    # KEGG module definitions with step logic: evidence-gated module completeness, module-based refinement,
-    # and the per-module report (integrated.tsv.modules.json) the results page shows.
-    if (resources/'kegg_module_defs.json').exists(): pathway_args += ['--module-defs', str(resources/'kegg_module_defs.json')]
-    if enabled['pathways']: integrate += pathway_args
-    if want_operons and (out/'operons_for_integrate.tsv').exists(): integrate += ['--operons', str(out/'operons_for_integrate.tsv')]
     want_fba = applicable('metabolism', preset == 'bacteria', 'The installed biomass templates cover bacteria. A validated organism-specific model is required for archaea, eukaryotes, viruses and mixed/unknown domains.')
-    if want_fba:
-        integrate += ['--enable-fba-refiner', '--fba-data-dir', str(resources/'fba_data'),
-            '--fba-sidecar', '/app/scripts/stoichiometric_locus_refiner.py', '--fba-python-bin', '/opt/fba/bin/python', '--fba-gram', info.get('gram','neg'), '--fba-medium', 'minimal']
+    if want_fba and not any(key[1] == 'EC' for key in seen):
+        # The shared workflow fails a requested model with no enzyme predictions; do not request it.
+        want_fba = False
+        record('metabolism', 'insufficient_evidence', 'No enzyme evidence was available to reconstruct a model.')
+    # The portal only describes the job; stages, priors and enforcement come from the shared workflow.
+    workflow = integration_options.workflow_config(
+        preset=preset, resources=resources, claims=folder/'claims.jsonl', browser=browser,
+        pathways=enabled['pathways'],
+        operons=out/'operons_for_integrate.tsv' if want_operons and (out/'operons_for_integrate.tsv').exists() else None,
+        fba_gram=info.get('gram', 'neg') if want_fba else None)
+    integrate = integration_options.integrate_command(
+        j.BIN, preset, integration_options.write_workflow_config(folder, workflow))
     if seen:
         j.command(folder, 'Integrating evidence and reconstructing the metabolic model' if want_fba else 'Integrating functional evidence', integrate)
     else:

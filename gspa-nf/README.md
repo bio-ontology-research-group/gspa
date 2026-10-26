@@ -340,6 +340,14 @@ Optional flags: `--pfam2go`, `--theta_file`, `--essential_profile`
 `essentiality,coherence,gap_filling,genomic_context`),
 `--run_visualize` (default off).
 
+`INTEGRATE` does not carry its own flag list: it writes one typed
+`IntegrationWorkflowConfig` JSON (`integration.workflow.json`, the same schema the web portal writes and
+`gspa integrate --workflow-config` reads) and runs `gspa-cli integrate --workflow-config`. Any further
+workflow setting — enforcement, dark matter, reaction context, FBA medium/Gram, agent — goes in a JSON
+file passed as `--integration_config`; it is merged over the settings above and the JVM rejects unknown
+keys, unknown prior names and missing files. Stage order, priors and scoring live in the JVM
+workflow only (`service/test_integration_options.py` checks the schema without running tools).
+
 `--run_integrate` is opt-in. Without it, the pipeline behaves exactly
 as before — produces raw per-tool outputs + the merged TSV, leaving
 integration to a manual `gspa-cli integrate` invocation.

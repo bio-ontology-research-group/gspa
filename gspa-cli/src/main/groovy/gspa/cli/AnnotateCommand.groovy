@@ -105,6 +105,17 @@ class AnnotateCommand implements Runnable {
                     + 'or a kingdom name (bacteria/archaea/eukaryote/virus). For single-organism inputs.')
     String organismTaxon
 
+    @Option(names = ['--integrate'],
+            description = 'Run the shared evidence-integration workflow (priors, references, context stages, enforcement) '
+                    + 'on the predictions, exactly as "gspa integrate" would, and write the stage ledger '
+                    + '<genome>_integration_stages.json. Default settings; see --integration-config.')
+    boolean integrate
+
+    @Option(names = ['--integration-config'],
+            description = 'JSON file with the full typed integration workflow configuration (the same file '
+                    + '"gspa integrate --workflow-config" reads). Implies --integrate; unknown keys are rejected.')
+    File integrationConfig
+
     @Option(names = ['--infer-taxon'],
             description = 'Infer the organism domain taxon from the predicted functions via the GO taxon constraints '
                     + '(Asaad-style) and use it for consistency enforcement, instead of assuming one. Writes '
@@ -322,6 +333,11 @@ class AnnotateCommand implements Runnable {
 
         // Write output
         pipeline.writeOutput(genome, outputDir)
+        if (pipeline.lastIntegration != null) {
+            def ledger = new File(outputDir, "${genome.id}_integration_stages.json")
+            pipeline.lastIntegrationAudit.write(ledger)
+            println "Integration stage ledger: ${ledger}"
+        }
 
         // Persist enabled operon detection alongside the annotations so
         // downstream `gspa integrate --operons` and `gspa visualize` find it
@@ -566,6 +582,10 @@ class AnnotateCommand implements Runnable {
         if (enforceCompleteness != null) config.quality.completeness.enforce = enforceCompleteness
         if (enforceCoherence != null) config.quality.coherence.enforce = enforceCoherence
         if (noProvenance) config.quality.provenance = false
+        if (integrationConfig != null) {
+            config.integration.workflow = gspa.integration.workflow.IntegrationWorkflowConfig.fromJson(integrationConfig)
+        }
+        if (integrate || integrationConfig != null) config.integration.enabled = true
 
         applyPredictorFlags(config)
 

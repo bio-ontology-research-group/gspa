@@ -272,6 +272,18 @@ Controls the Bayesian evidence integration and iterative coordinate ascent engin
 | `thetaFile` | string | `null` | Path to a learned hyperparameters JSON file (`theta.json`). |
 | `defaultsFile` | string | `null` | Path to a YAML defaults override file. |
 
+Annotation runs execute the same workflow as `gspa integrate`: `gspa annotate --integrate`
+(or `--integration-config FILE`) sets `enabled`. The `integration.workflow` block holds every other
+workflow setting (priors, GO/pathway/reaction references, per-genome inputs, enforcement, reaction
+context, FBA, agent) as the typed `IntegrationWorkflowConfig` described in
+[cli-integrate](cli-integrate.md#shared-workflow-configuration); unknown keys are errors. The scalar
+keys below and `darkMatter`/`outerLoop` fill whatever `workflow` leaves unset, and the GO OWL file,
+taxon and essential profile default to the run's `quality` settings. With the default `workflow`
+block, integration enables the same default priors as `gspa integrate`; priors whose reference data
+is absent contribute nothing. `gspa annotate` writes the stage ledger as
+`<genome>_integration_stages.json`. Raw `EvidenceClaim` lists can be integrated directly with
+`AnnotationPipeline.integrate(genome, claims)`.
+
 Sub-configs within `integration`:
 
 - `darkMatter`:

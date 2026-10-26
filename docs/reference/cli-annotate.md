@@ -147,6 +147,8 @@ annotation was predicted. Concepts are described in
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `--taxon` | string | none | Assert the organism taxon (`NCBITaxon_2`, `NCBITaxon:2`, `2`, or `bacteria`, `archaea`, `eukaryote`, `virus` and their variants). Terms that cannot occur in the lineage are then flagged individually. Unrecognised strings are ignored with a warning. For single-organism inputs. |
+| `--integrate` | flag | off | Run the shared evidence-integration workflow (the implementation behind `gspa integrate`) on the predictions and write the stage ledger `<genome>_integration_stages.json`. A requested stage without its data fails the run. |
+| `--integration-config` | file | none | JSON `IntegrationWorkflowConfig` (see [cli-integrate](cli-integrate.md#shared-workflow-configuration)); implies `--integrate`. Unknown keys are errors. |
 | `--infer-taxon` | flag | off | Infer the organism taxon from the predictions through the GO taxon constraints and use it for consistency enforcement. Writes `<genome>_taxon_inference.tsv`. Ignored if `--taxon` is given. |
 | `--infer-taxon-min-score` | double in [0, 1] | 0.9 (from configuration) | Only predictions scoring at least this value inform taxon inference. The help text prints `Default null`; the effective default is `quality.consistency.inferTaxonMinScore` = 0.9. |
 | `--taxon-constraints` | path | bundled `go-taxon-constraints.tsv` | Taxon constraints as OBO (`.obo`, e.g. `go-computed-taxon-constraints.obo`) or TSV ([format](file-formats.md#taxon-constraint-tsv-and-obo)). A missing file falls back to the bundled constraints with a warning. |

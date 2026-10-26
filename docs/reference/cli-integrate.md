@@ -304,11 +304,32 @@ is logged as a warning; any resolutions file that exists is still applied.
 | `--batch-threads` | int | 8 | Number of worker threads. Values below 1 are treated as 1. |
 | `--batch-stats-out` | file | none | Per-genome runtime and heap usage TSV ([format](file-formats.md#batch-stats-tsv)). |
 
-In batch mode each genome runs Stage 1 and, if requested in the manifest or by
-`--enforce-stage2`, Stage 2A. The suggesters, Stage 2B, Stage 3, `--provenance`
-and `--enforcement-actions-out` are not applied. Per-genome manifest columns
-override `--taxon`, `--essential-profile`, `--operons`, `--gaps`, `max_iter`,
-`--enforce-stage2`, `--enforce-consistency-mode` and `--enable-priors`.
+Each batch genome runs the same workflow as a single genome (same stage order,
+same stage ledger `<out>.stages.json`, same per-genome artifacts next to its own
+`out_path`); only the heavyweight references are shared, and every genome gets its own taxon
+checker and state. Per-genome manifest columns override `--taxon`,
+`--essential-profile`, `--operons`, `--gaps`, `max_iter`, `--enforce-stage2`,
+`--enforce-consistency-mode`, `--enable-priors`, `--genome-layout`, orthogroups,
+cluster consensus, `--fba-medium` and `--fba-gram`.
+
+## Shared workflow configuration
+
+`gspa integrate`, batch runs, `gspa annotate --integrate`, the web portal and the
+Nextflow pipeline all execute one implementation
+(`gspa.integration.workflow.IntegrationWorkflow`) driven by one typed configuration
+(`IntegrationWorkflowConfig`). Every option above is a property of it; the full list of
+names is in `gspa-core/src/main/resources/workflow/integration-workflow-config.keys.json`.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--workflow-config` | file | none | JSON of `IntegrationWorkflowConfig` (property names, camelCase, e.g. `{"enabledPriors": "essentiality", "fbaMedium": "LB"}`). Precedence: `--preset` defaults < file < explicit command-line options. Unknown keys, unknown prior names, unknown enforcement modes and referenced files that do not exist are errors. |
+
+A requested stage whose data or tool is unavailable fails the run and is recorded
+as `failed` in the stage ledger (statuses: `executed`, `skipped`, `failed`,
+`not_run`); it is never reported as a success. The metabolic-refinement record states the
+medium and biomass template (Gram) that were assumed. `--intragenome-cluster` and
+`--gapseq-target` are accepted for compatibility but are consumed by annotation-side
+clustering, not by integration.
 
 ## Standard options
 

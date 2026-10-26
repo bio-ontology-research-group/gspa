@@ -10,6 +10,23 @@ user-visible deltas; for measured impact, follow the cross-references.
 
 ## [Unreleased]
 
+### Changed
+- **One inference workflow for every route.** `gspa.integration.workflow.IntegrationWorkflow` (core) now holds
+  the stage order, reference loading, stage-2 enforcement, exports and stage ledger that were private to
+  `IntegrateCommand`. `gspa integrate` (single and batch), `AnnotationPipeline.integrate`, the web portal and the
+  Nextflow `INTEGRATE` process run it from one typed `IntegrationWorkflowConfig` (`--workflow-config`,
+  `integration.workflow`, `--integration_config`). The annotation pipeline previously ran a bare combiner without
+  references, priors or context stages.
+- Requested references that cannot be loaded (GO, pathways, modules, reaction graph, layout, essential
+  functions, taxon checker), missing named files, unknown prior names and enforcement modes, and a metabolic model
+  requested without EC predictions now fail instead of being skipped with a warning.
+- Dark-matter `top-q`/`distributed` modes apply only dark-matter suggestions; reaction-context suggestions stay on
+  the suggestion channel instead of being written as dark-matter annotations.
+
+### Added
+- `gspa annotate --integrate` / `--integration-config`, `gspa integrate --workflow-config`, the stage ledger
+  `<genome>_integration_stages.json`, and stage-level assumptions (FBA medium and Gram template) in the ledger.
+
 ## [2.2.2] - 2026-10-25
 
 ### Changed

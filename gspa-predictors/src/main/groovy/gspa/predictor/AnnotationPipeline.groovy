@@ -3,13 +3,10 @@ package gspa.predictor
 import gspa.config.GspaConfig
 import gspa.integration.ClaimExtractor
 import gspa.integration.EvidenceClaim
-import gspa.integration.EvidenceCombiner
-import gspa.integration.IntegratedAnnotationSet
+import gspa.integration.IntegrationRunAudit
 import gspa.integration.IntegrationState
-import gspa.integration.IntegrationWriter
-import gspa.integration.IterativeRefiner
-import gspa.integration.suggester.DarkMatterSuggester
-import gspa.integration.suggester.DarkMatterWriter
+import gspa.integration.workflow.IntegrationWorkflow
+import gspa.integration.workflow.IntegrationWorkflowConfig
 import gspa.io.CdsTranslator
 import gspa.io.FastaReader
 import gspa.io.GffReader
@@ -57,6 +54,18 @@ class AnnotationPipeline {
      * appears exactly once, plus {@code gene-caller:<name>} when genes were called.
      */
     final List<PredictorRunStatus> runStatuses = Collections.synchronizedList([])
+
+    /** Outcome of the last {@link #integrate} call (null when integration is off or failed). */
+    IntegrationWorkflow.Result lastIntegration
+
+    /** Stage ledger of the last integration attempt, kept even when a requested stage failed. */
+    IntegrationRunAudit lastIntegrationAudit
+
+    /**
+     * Heavyweight integration references (ontologies, pathways, reaction graph) loaded once by
+     * {@link IntegrationWorkflow#loadSharedReferences} and reused across genomes; null loads per run.
+     */
+    IntegrationState sharedIntegrationReferences
 
     /** Explicit Pfam-A HMM file for {@code domains.tool: hmmer}; set before {@link #configure}. */
     String hmmerDatabase
@@ -619,45 +628,40 @@ class AnnotationPipeline {
     }
 
     /**
-     * Run the Phase 7 evidence integration layer. Collects raw claims from
-     * every protein's AnnotationSet, runs the iterative refiner, and
-     * replaces each protein's annotations with the integrated posteriors.
-     * Optionally follows with Phase 8's DarkMatterSuggester.
+     * Run the shared inference workflow ({@link IntegrationWorkflow}) on a genome:
+     * the same priors, references, context stages, enforcement and stage ledger as
+     * {@code gspa integrate}. Claims default to the predictions on the genome's
+     * proteins; raw {@link EvidenceClaim}s supplied by the caller are used directly
+     * instead. State is keyed to the genome itself, and the final posteriors replace
+     * its annotations. A requested stage whose data or tool is unavailable fails the
+     * call; the outcome of every stage is in {@code lastIntegration.audit}.
      */
+    IntegrationWorkflow.Result integrate(Genome genome, List<EvidenceClaim> claims = null) {
+        log.info("=== Evidence integration (shared workflow) ===")
+        List<EvidenceClaim> input = claims != null ? claims : new ClaimExtractor().fromGenome(genome)
+        log.info("  ${input.size()} claims from ${genome.proteinCount} proteins")
+
+        IntegrationWorkflowConfig workflowConfig = IntegrationWorkflowConfig.fromGspa(config)
+        workflowConfig.genomeId = genome.id
+        def workflow = new IntegrationWorkflow(workflowConfig)
+        workflow.sharedReferences = sharedIntegrationReferences
+        workflow.info = { String m -> log.info(m) } as Closure<Void>
+        lastIntegration = null
+        lastIntegrationAudit = null
+        IntegrationWorkflow.Result result
+        try {
+            result = workflow.run(input, genome)
+        } finally {
+            lastIntegrationAudit = workflow.lastAudit    // present even when a stage failed
+        }
+        workflow.writeArtifacts(result)
+        lastIntegration = result
+        log.info("  ${result.integrated}")
+        result
+    }
+
     private void runIntegration(Genome genome) {
-        log.info("=== Evidence integration (Phase 7) ===")
-        def extractor = new ClaimExtractor()
-        List<EvidenceClaim> claims = extractor.fromGenome(genome)
-        log.info("  extracted ${claims.size()} claims from ${genome.proteinCount} proteins")
-
-        if (claims.isEmpty()) {
-            log.info("  no claims to integrate; skipping")
-            return
-        }
-
-        def combiner = new EvidenceCombiner()
-        def refiner = new IterativeRefiner(combiner)
-        refiner.maxIter = config.integration.maxIter
-        refiner.epsilon = config.integration.epsilon
-        refiner.damping = config.integration.damping
-
-        def state = new IntegrationState(genome)
-        IntegratedAnnotationSet integrated = refiner.refine(claims, state)
-        log.info("  ${integrated}")
-
-        IntegrationWriter.applyIntegratedAnnotations(genome, integrated)
-
-        // Phase 8: dark-matter / contextual gap suggester.
-        if (config.integration.darkMatter?.enabled) {
-            log.info("=== Dark-matter suggester (Phase 8) ===")
-            def suggester = new DarkMatterSuggester()
-            suggester.bfMin             = config.integration.darkMatter.bfMin
-            suggester.gammaInP          = config.integration.darkMatter.gammaInP
-            suggester.coverageThreshold = config.integration.darkMatter.coverageThreshold
-            suggester.suggest(state, integrated)
-            int touched = DarkMatterWriter.apply(genome, integrated, config.integration.darkMatter.mode)
-            log.info("  ${integrated.suggestions.size()} suggestions emitted; ${touched} proteins updated")
-        }
+        integrate(genome)
     }
 
     /**

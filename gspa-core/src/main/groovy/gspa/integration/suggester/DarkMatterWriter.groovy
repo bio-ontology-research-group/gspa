@@ -45,17 +45,20 @@ class DarkMatterWriter {
      * Returns the number of proteins that were modified (0 in
      * {@code separate} mode).
      */
-    static int apply(Genome genome, IntegratedAnnotationSet integrated, String mode) {
+    static int apply(Genome genome, IntegratedAnnotationSet integrated, String mode, Set<String> sources = null) {
         if (integrated.suggestions == null || integrated.suggestions.isEmpty()) return 0
+        // Only the named sources follow the mode; every other source stays untouched on the channel.
+        List<Suggestion> selected = sources == null ? integrated.suggestions :
+            integrated.suggestions.findAll { it.source in sources }
         String m = (mode ?: MODE_SEPARATE).toLowerCase(Locale.ROOT)
         switch (m) {
             case MODE_SEPARATE:
                 log.info("DarkMatterWriter: ${integrated.suggestions.size()} suggestions kept on separate channel")
                 return 0
             case MODE_TOP_Q:
-                return applyTopQ(genome, integrated.suggestions)
+                return applyTopQ(genome, selected)
             case MODE_DISTRIBUTED:
-                return applyDistributed(genome, integrated.suggestions)
+                return applyDistributed(genome, selected)
             default:
                 log.warn("DarkMatterWriter: unknown mode '${mode}', falling back to separate")
                 return 0
