@@ -27,8 +27,7 @@ declared in the medium. These settings follow the acquired repository medium
 and model defaults. They are **not the paper's complete configuration**: Methods
 2.1–2.3 specify oxygen uptake 20, ATP maintenance 8.39, and substrate-dependent
 regulatory reaction closures. The paper/repository discrepancy was identified
-after this run; the published configuration needs a separate registered run,
-including the regulatory closures. The current result must not be called a
+after this run; the separate protocol comparisons below now include those closures. The current result must not be called a
 reproduction of the paper or a comparison with its full method.
 
 ## Results
@@ -52,11 +51,35 @@ observations agreed; 24 of 40 predicted auxotrophs were confirmed. The full repo
 also gives the subset with optimal knockout solutions only.
 
 The present model is insufficient to justify reliable function recovery from
-feasibility alone. Before final evaluation, compare manuscript versus repository
-conditions, apply the published regulatory constraints as a distinct comparator,
-and assess generalization on other organisms. These are protocol corrections
-and specified comparisons, not permission to tune conditions against these
-61 test labels.
+feasibility alone. Other organisms and independent function-masking experiments
+remain necessary; no conditions are tuned against these 61 labels.
+
+## Registered protocol comparison
+
+Slurm job 9736 ran all three frozen protocols through the production engine at
+`e8bcc07`. Every protocol executed all 61 cases, all matched wild types grew,
+and no prediction was unassessed. The original legacy predictions reproduced
+exactly. Every saved simulation file was checked against its report SHA-256.
+
+| Protocol | Binary agreement (44 cases) | Confirmed / predicted no-growth | Full report |
+| --- | ---: | ---: | --- |
+| Repository defaults, unregulated | 25/44 (56.8%) | 24/43 | [All cases](../../benchmark/v3/results/development-e8bcc07/auxotroph61-legacy-report.json) |
+| Manuscript oxygen 20 and ATPM 8.39, unregulated | 25/44 (56.8%) | 24/43 | [All cases](../../benchmark/v3/results/development-e8bcc07/auxotroph61-manuscript_unregulated-report.json) |
+| Manuscript conditions plus S2 regulatory closures | 26/44 (59.1%) | 25/44 | [All cases](../../benchmark/v3/results/development-e8bcc07/auxotroph61-manuscript_regulatory-report.json) |
+
+The sole binary change was `bglX` on alpha-D-lactose: predicted growth became
+predicted no growth, agreeing with the measured label. The 17 partial-growth cases
+remain separate and unchanged (5 predicted growth, 12 predicted no growth).
+The regulatory result still misses 11 measured no-growth cases and incorrectly
+predicts no growth for 7 of the 8 measured growth cases. It does not support a
+large improvement claim or reliable gene attribution.
+
+Closures apply when their registered substrate has uptake enabled, to both
+wild type and mutant; they remain separate from deleted-gene reactions and cannot
+erase maintenance requirements. The raw source discrepancy remains: the S2 closure
+sets were derived at oxygen 15 and default ATPM, then applied by the authors at
+oxygen 20 / ATPM 8.39. This is a documented protocol comparison, not reproduction
+of every original analysis or an independent test of the authors' model fitting.
 
 ## Reproduction
 
