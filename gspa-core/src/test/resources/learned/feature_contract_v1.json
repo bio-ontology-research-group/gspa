@@ -1,0 +1,486 @@
+{
+    "id": "gspa.context-features/1",
+    "fingerprint": "bbc90107266f08ca2be2f8603f61a012349b9d3ab85988b026ba5a8e6a0fc3ae",
+    "features": [
+        {
+            "name": "fn.type_ec",
+            "group": "FUNCTION_IDENTITY",
+            "description": "1 if the function is an EC number"
+        },
+        {
+            "name": "fn.type_go",
+            "group": "FUNCTION_IDENTITY",
+            "description": "1 if the function is a GO term"
+        },
+        {
+            "name": "fn.type_other",
+            "group": "FUNCTION_IDENTITY",
+            "description": "1 for any other function namespace (KEGG, COG, AMR, ...)"
+        },
+        {
+            "name": "fn.go_aspect_mf",
+            "group": "FUNCTION_IDENTITY",
+            "description": "1 if a GO claim is explicitly labelled MF"
+        },
+        {
+            "name": "fn.go_aspect_bp",
+            "group": "FUNCTION_IDENTITY",
+            "description": "1 if a GO claim is explicitly labelled BP"
+        },
+        {
+            "name": "fn.go_aspect_cc",
+            "group": "FUNCTION_IDENTITY",
+            "description": "1 if a GO claim is explicitly labelled CC"
+        },
+        {
+            "name": "fn.go_aspect_unknown",
+            "group": "FUNCTION_IDENTITY",
+            "description": "1 for GO claims with no aspect label (never assumed BP)"
+        },
+        {
+            "name": "fn.in_complex_term",
+            "group": "FUNCTION_IDENTITY",
+            "description": "1 if the GO term is a protein-complex term in state.complexClassification"
+        },
+        {
+            "name": "fn.complex_heteromeric",
+            "group": "FUNCTION_IDENTITY",
+            "description": "1 if that complex term is classified heteromeric (n)"
+        },
+        {
+            "name": "role.catalytic",
+            "group": "ROLE",
+            "description": "1 if the candidate role is CATALYTIC; roles are distinct candidates"
+        },
+        {
+            "name": "role.accessory",
+            "group": "ROLE",
+            "description": "1 if the candidate role is ACCESSORY; roles are distinct candidates"
+        },
+        {
+            "name": "role.transporter",
+            "group": "ROLE",
+            "description": "1 if the candidate role is TRANSPORTER; roles are distinct candidates"
+        },
+        {
+            "name": "role.regulator",
+            "group": "ROLE",
+            "description": "1 if the candidate role is REGULATOR; roles are distinct candidates"
+        },
+        {
+            "name": "role.complex_subunit",
+            "group": "ROLE",
+            "description": "1 if the candidate role is COMPLEX_SUBUNIT; roles are distinct candidates"
+        },
+        {
+            "name": "role.unspecified",
+            "group": "ROLE",
+            "description": "1 if the candidate role is UNSPECIFIED; roles are distinct candidates"
+        },
+        {
+            "name": "seq.group.homology.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw predictor score in evidence group 'homology' (0 if none reported)"
+        },
+        {
+            "name": "seq.group.homology.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if any predictor in group 'homology' reported this function for this protein"
+        },
+        {
+            "name": "seq.group.ml_protein_seq.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw predictor score in evidence group 'ml_protein_seq' (0 if none reported)"
+        },
+        {
+            "name": "seq.group.ml_protein_seq.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if any predictor in group 'ml_protein_seq' reported this function for this protein"
+        },
+        {
+            "name": "seq.group.structure.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw predictor score in evidence group 'structure' (0 if none reported)"
+        },
+        {
+            "name": "seq.group.structure.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if any predictor in group 'structure' reported this function for this protein"
+        },
+        {
+            "name": "seq.group.motif.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw predictor score in evidence group 'motif' (0 if none reported)"
+        },
+        {
+            "name": "seq.group.motif.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if any predictor in group 'motif' reported this function for this protein"
+        },
+        {
+            "name": "seq.group.domain_specific.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw predictor score in evidence group 'domain_specific' (0 if none reported)"
+        },
+        {
+            "name": "seq.group.domain_specific.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if any predictor in group 'domain_specific' reported this function for this protein"
+        },
+        {
+            "name": "seq.src.diamond.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'diamond' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.diamond.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'diamond' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.mmseqs2.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'mmseqs2' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.mmseqs2.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'mmseqs2' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.interproscan.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'interproscan' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.interproscan.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'interproscan' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.hmmer.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'hmmer' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.hmmer.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'hmmer' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.eggnog-mapper.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'eggnog-mapper' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.eggnog-mapper.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'eggnog-mapper' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.foldseek.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'foldseek' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.foldseek.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'foldseek' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.deepgo-plusplus.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'deepgo-plusplus' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.deepgo-plusplus.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'deepgo-plusplus' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.deepgo-plusplus-light.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'deepgo-plusplus-light' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.deepgo-plusplus-light.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'deepgo-plusplus-light' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.proteinfer.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'proteinfer' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.proteinfer.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'proteinfer' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.clean.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'clean' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.clean.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'clean' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.deepfri.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'deepfri' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.deepfri.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'deepfri' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.esm2-go.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'esm2-go' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.esm2-go.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'esm2-go' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.src.other.max_raw",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score reported by source 'other' for this function (0 if it reported none)"
+        },
+        {
+            "name": "seq.src.other.reported",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if source 'other' reported this function; 0 does NOT mean the source ran (see seq.cov.*)"
+        },
+        {
+            "name": "seq.n_sources_reporting",
+            "group": "BASELINE_SEQUENCE",
+            "description": "number of distinct sources reporting this function (not number of hits)"
+        },
+        {
+            "name": "seq.n_groups_reporting",
+            "group": "BASELINE_SEQUENCE",
+            "description": "number of distinct evidence groups reporting this function"
+        },
+        {
+            "name": "seq.max_raw_any",
+            "group": "BASELINE_SEQUENCE",
+            "description": "strongest raw score over all baseline sequence claims"
+        },
+        {
+            "name": "seq.best_pident_available",
+            "group": "BASELINE_SEQUENCE",
+            "description": "1 if any claim carries a percent-identity metadata value"
+        },
+        {
+            "name": "seq.best_pident",
+            "group": "BASELINE_SEQUENCE",
+            "description": "best percent identity / 100 over claims carrying it (0 if unavailable)"
+        },
+        {
+            "name": "seq.cov.status_available",
+            "group": "RUN_COVERAGE",
+            "description": "1 if predictor completion statuses were supplied"
+        },
+        {
+            "name": "seq.cov.n_sources_not_fully_run",
+            "group": "RUN_COVERAGE",
+            "description": "number of predictors with outcome FAILED, UNAVAILABLE or PARTIAL (absence from them is uninformative); 0 if statuses not supplied"
+        },
+        {
+            "name": "seq.cov.n_sources_ran_clean",
+            "group": "RUN_COVERAGE",
+            "description": "number of predictors with outcome SUCCESS or SUCCESS_ZERO; 0 if statuses not supplied"
+        },
+        {
+            "name": "ctx.operon.available",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "1 if operon calls were supplied (state.operons non-empty)"
+        },
+        {
+            "name": "ctx.operon.member",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "1 if the protein is in a called operon"
+        },
+        {
+            "name": "ctx.operon.log_size",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "log(1 + number of genes in the protein's operon); 0 if not a member"
+        },
+        {
+            "name": "ctx.operon.n_members_with_seq_support",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "other operon members with any baseline sequence claim of any function"
+        },
+        {
+            "name": "ctx.operon.n_members_dark",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "other operon members with no claim at all"
+        },
+        {
+            "name": "ctx.layout.available",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "1 if gene coordinates (state.genomeLayout) are available"
+        },
+        {
+            "name": "ctx.layout.n_neighbors_10kb",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "other genes within +-10 kb (midpoint) on the same contig"
+        },
+        {
+            "name": "ctx.layout.same_strand_fraction",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "fraction of those neighbours on the candidate's strand (0 if none)"
+        },
+        {
+            "name": "ctx.competitor.max_raw",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "strongest raw baseline score for the SAME function on another local protein (same operon or +-10 kb); paralog/decoy signal"
+        },
+        {
+            "name": "ctx.competitor.n_with_claim",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "number of other local proteins with any claim for the same function"
+        },
+        {
+            "name": "ctx.gap.available",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "1 if metabolic gaps were supplied (state.metabolicGaps non-empty)"
+        },
+        {
+            "name": "ctx.gap.function_listed",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "1 if an open (not already closed) metabolic gap lists this EC/GO function; a listing indicator, NOT a Bayes factor"
+        },
+        {
+            "name": "ctx.gap.gapseq_guessed_listed",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "1 if such a gap was one for which gapseq itself proposed a gene (a different, weaker kind of listing)"
+        },
+        {
+            "name": "ctx.nbr.available",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "1 if structured neighbourhood features were supplied for this candidate"
+        },
+        {
+            "name": "ctx.nbr.support_max",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "supplied: strongest raw baseline support among neighbours for functions in the candidate's reaction/pathway neighbourhood"
+        },
+        {
+            "name": "ctx.nbr.n_supporting",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "supplied: number of neighbours with such support"
+        },
+        {
+            "name": "ctx.nbr.conflict_max",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "supplied: strongest raw support among neighbours for a function incompatible with the candidate (unfavourable context)"
+        },
+        {
+            "name": "ctx.nbr.reaction_distance_available",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "1 if a reaction-graph distance was supplied"
+        },
+        {
+            "name": "ctx.nbr.reaction_distance",
+            "group": "CONTEXT_NEIGHBORHOOD",
+            "description": "supplied: reaction-graph distance to the nearest supported neighbour reaction (0 if unavailable)"
+        },
+        {
+            "name": "cohort.available",
+            "group": "CONTEXT_COHORT",
+            "description": "1 if cohort recurrence was supplied for this candidate"
+        },
+        {
+            "name": "cohort.log_n_genomes",
+            "group": "CONTEXT_COHORT",
+            "description": "log(1 + genomes in the cohort); a count, never normalised to certainty"
+        },
+        {
+            "name": "cohort.frac_with_orthogroup",
+            "group": "CONTEXT_COHORT",
+            "description": "fraction of cohort genomes with the candidate's orthogroup (0 if unavailable)"
+        },
+        {
+            "name": "cohort.frac_with_function_seq",
+            "group": "CONTEXT_COHORT",
+            "description": "fraction of those with baseline sequence support for the function (not posteriors)"
+        },
+        {
+            "name": "cohort.frac_with_context",
+            "group": "CONTEXT_COHORT",
+            "description": "fraction of those where the function is also supported by neighbourhood context"
+        },
+        {
+            "name": "cohort.n_genomes_incomplete",
+            "group": "CONTEXT_COHORT",
+            "description": "supplied count of cohort genomes with incomplete assembly (absence uninformative)"
+        },
+        {
+            "name": "asm.available",
+            "group": "ASSEMBLY",
+            "description": "1 if the genome, the protein's contig sequence and valid CDS coordinates are available; the four asm.* values below are 0 otherwise"
+        },
+        {
+            "name": "asm.log_contig_length",
+            "group": "ASSEMBLY",
+            "description": "log(1 + length) of the protein's contig"
+        },
+        {
+            "name": "asm.log_distance_to_contig_end",
+            "group": "ASSEMBLY",
+            "description": "log(1 + bp from the CDS to the nearest contig end); small = truncation risk"
+        },
+        {
+            "name": "asm.n_contigs",
+            "group": "ASSEMBLY",
+            "description": "log(1 + number of contigs): fragmentation"
+        },
+        {
+            "name": "asm.log_n50",
+            "group": "ASSEMBLY",
+            "description": "log(1 + N50) of the assembly"
+        },
+        {
+            "name": "asm.completeness_available",
+            "group": "ASSEMBLY",
+            "description": "1 if an external completeness estimate (e.g. CheckM2) was supplied"
+        },
+        {
+            "name": "asm.completeness",
+            "group": "ASSEMBLY",
+            "description": "supplied completeness / 100 (0 if unavailable)"
+        },
+        {
+            "name": "fba.available",
+            "group": "FBA_CONDITIONAL",
+            "description": "1 if conditional FBA features were supplied and usable for this candidate"
+        },
+        {
+            "name": "fba.suppressed_objective_forced",
+            "group": "FBA_CONDITIONAL",
+            "description": "1 if the tested objective itself required the candidate, so its FBA values were NOT used as evidence"
+        },
+        {
+            "name": "fba.n_conditions",
+            "group": "FBA_CONDITIONAL",
+            "description": "log(1 + number of media/objective conditions tested)"
+        },
+        {
+            "name": "fba.required_fraction",
+            "group": "FBA_CONDITIONAL",
+            "description": "fraction of tested conditions in which the candidate's reaction carried flux (conditional on those conditions)"
+        },
+        {
+            "name": "fba.knockout_growth_effect",
+            "group": "FBA_CONDITIONAL",
+            "description": "supplied relative growth change on knockout (conditional; sign preserved)"
+        }
+    ]
+}
