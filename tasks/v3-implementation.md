@@ -37,14 +37,20 @@ execution must use production inference, not parallel scoring formulas.
 
 ## Current work and process handles
 
-- Root branch `development/v3.0.0`; merged source through `3c75a38`. All twelve
+- Root branch `development/v3.0.0`; core workflow source through `3c75a38`; community benchmark through `0501c14`. All twelve
   acceptance gates remain open. Real-data learned-model fitting is still pending.
 - Claude Sonnet 5.5 `/tmp/gspa-v3-context-workflow`: phase A (`d2e5ef7`) merged
-  as `3c75a38`; phase B is wiring metabolic/community subprocesses and evidence-guided
-  context into the shared workflow. Session `7544`, logs `context-workflow.jsonl`.
-- Claude Sonnet 5.5 `/tmp/gspa-v3-community-benchmark`: full 1,035-pair Wintermute
-  benchmark runner, fixed-medium assumptions and oxygen/trace-metal sensitivities.
-  Session `64780`, logs `community-benchmark.jsonl`.
+  as `3c75a38`; phase B (`c924448`) awaits review fixes before merge. Required fixes include matched-medium
+  knockout comparisons, reaction-specific EC bindings, weak/unmapped candidate retention,
+  evidence-based shortlisting and private fresh subprocess outputs. Active review session
+  `24084`, prompt/logs `context-review.txt` / `.jsonl`; original session `7544` completed.
+- Community runner and review fixes merged as `4ff862f` / `0501c14`: all-case reporting,
+  matched no-transfer controls, strain resampling, explicit failed/unknown coverage,
+  model-owned cache. Job 9741 runs all 1,035 pairs under six oxygen/trace conditions
+  in `/data/hohndor/gspa-v3/community-development-0501c14`.
+- Claude Sonnet 5.5 `/tmp/gspa-v3-ledger-learned` is joining actual learned-model
+  role/null artifacts to the UI and preserving stage order and scoring-mode labels.
+  Session `72970`, logs `ledger-learned.jsonl`.
 - Ontology concurrency agent and two reviews completed; merged as `45c9622`,
   `d9c5ea1`, `7d36adb`. Single-flight exact inferred has_part extraction, immutable
   results and source/revision-aware cache validation have biological concurrency tests.
@@ -57,7 +63,8 @@ execution must use production inference, not parallel scoring formulas.
   under `benchmark/v3/results/development-e8bcc07`; no large accuracy gain.
   Job 9738 independently replays all matched control/deletion LPs with COBRApy/GLPK.
 - All 132 original full-proteome Price predictor files (23.6 GB) copied from IBEX
-  to `/data/hohndor/gspa-v3/price-raw-sources`; destination hashes are being verified.
+  to `/data/hohndor/gspa-v3/price-raw-sources`; all 132 destination hashes and sizes verified in job 9740.
+  Matrix schema/FASTA ID probes are queued as job 9742 after the COBRA environment setup.
   Transfer manifest/log: `/tmp/gspa-v3-agents/price-transfer.jsonl` and `.log`.
 - All 22 exact assembly versions acquired via NCBI Datasets with protein FASTA/GFF3;
   package MD5 and returned assembly IDs checked. Local sources and acquisition log:
@@ -135,3 +142,10 @@ execution must use production inference, not parallel scoring formulas.
   deletion; missing sidecars or malformed constraints fail as unknown.
 - `dae00b3`: independent COBRApy/GLPK replay checker; two biological/hash-integrity
   tests passed locally. This validates implementation agreement, not biological truth.
+
+- `0501c14`: 221 benchmark tests passed (2 opt-in skips), plus 29 community
+  mechanism tests. Six-arm real coculture execution is running, not yet a reported result.
+- `b2bbcf1`: complete Price source-transfer verification and 22 exact NCBI assembly
+  acquisition records committed; see `docs/benchmarks/v3-price-context-data.md`.
+- Latest complete JVM run: core 561 (2 skipped), CLI 66, predictors 241;
+  0 failures/errors. This establishes implementation checks, not release readiness.
