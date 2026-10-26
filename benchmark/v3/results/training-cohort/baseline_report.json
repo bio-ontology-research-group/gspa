@@ -1,0 +1,486 @@
+{
+ "diamond": {
+  "command": "diamond blastp -q /home/leechuck/.cache/gspa-v3-data/training-cohort/prepared/unique_proteins.faa -d /home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/reference.dmnd -o /home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/hits.tsv --threads 4 --evalue 1e-5 --max-target-seqs 10 --outfmt 6 qseqid sseqid pident qcovhsp evalue bitscore --sensitive",
+  "hits_sha256": "b1ef9317af4f7ccedbc4c36edfc98324b05b718ee5097e9b44f0520d3365a243",
+  "version": "diamond version 2.1.11"
+ },
+ "go_obo": {
+  "path": "/home/leechuck/.cache/gspa-v3-data/training-cohort/go-basic.obo",
+  "sha256": "b08d45b268b8c24ccb2513dbbbc7d4df9f6521c099b413f79eb31e06e0fa3bcc"
+ },
+ "limitations": [
+  "Scored against Swiss-Prot labels that are partial per genome: an unlabelled true function counts as a false positive (closed world on labelled proteins only).",
+  "The reference is Swiss-Prot with the cohort genera removed; Swiss-Prot labels of OTHER genera are the claim source, so this measures homology transfer, not independent prediction from sequence alone.",
+  "Score is identity x coverage of the best supporting hit - a ranking, not a probability.",
+  "GO is propagated over is_a/part_of when an OBO is given; EC is scored by exact complete-EC top-1 only.",
+  "Fmax thresholds are chosen on the scored labels (descriptive upper bound).",
+  "Few labelled proteins per organism and 4 test genomes: bootstrap intervals are wide.",
+  "Pretrained-model leakage is not applicable to this baseline but remains unassessed for any neural channel."
+ ],
+ "modes": {
+  "family_excluded": {
+   "claim_files": {
+    "GCA_000007005.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000007005.1.claims.jsonl",
+     "records": 15664,
+     "sha256": "a21c5095ea14ef73e79316f97bdd546070026c7ec99ab17e474283c0b483b374"
+    },
+    "GCA_000007065.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000007065.1.claims.jsonl",
+     "records": 15887,
+     "sha256": "b19f612dffdc012df3c5a245c5af6806ce9ee0f9e5612f8afb1bb5f0df334d21"
+    },
+    "GCA_000008485.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000008485.1.claims.jsonl",
+     "records": 16575,
+     "sha256": "a383db89c0b844243423e241fcb8e181a4615d03aed99fcc1d16735f355d9424"
+    },
+    "GCA_000008765.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000008765.1.claims.jsonl",
+     "records": 21188,
+     "sha256": "0e16584f2e4e0d185aee39138b2a35d7c934b1532be329f3c3e5f0bb110662a4"
+    },
+    "GCA_000009085.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000009085.1.claims.jsonl",
+     "records": 9101,
+     "sha256": "31cac650bef56778ca7df108fe912fb047c59865a5c85e2e5741fa682464a195"
+    },
+    "GCA_000009965.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000009965.1.claims.jsonl",
+     "records": 10979,
+     "sha256": "8c3b9b7e1af333daa2ebc97b8ad675867e949ef65b7fc8212efaa7256fd1e105"
+    },
+    "GCA_000009985.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000009985.1.claims.jsonl",
+     "records": 25935,
+     "sha256": "4c2872536750c023caf9b8969c041e3db3d834ae48351d8b11598a6e1c5e92f5"
+    },
+    "GCA_000011125.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000011125.1.claims.jsonl",
+     "records": 9511,
+     "sha256": "f359363a3ae3ccd72f5e252253f6329826ede86413fd752137b5b6ea1e90b889"
+    },
+    "GCA_000011205.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000011205.1.claims.jsonl",
+     "records": 14272,
+     "sha256": "51323747fb361d56a36d720123e82f1e14ec40c1ca6b36433f88cc9770dc9db1"
+    },
+    "GCA_000011585.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000011585.1.claims.jsonl",
+     "records": 8756,
+     "sha256": "0e3ef11e17393d12c8983233ed0647751abc8831ffa53a41b5c3a2aee263c583"
+    },
+    "GCA_000012285.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000012285.1.claims.jsonl",
+     "records": 13515,
+     "sha256": "a27145bffb5c0ecca475908e77f8105ebc7daa9c3e5f534e5106fe69272b29b8"
+    },
+    "GCA_000012525.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000012525.1.claims.jsonl",
+     "records": 16647,
+     "sha256": "feb3746cb218ba351a62b613d9b35d1ec621abcb1e89cfc9411c12c99546e907"
+    },
+    "GCA_000025685.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000025685.1.claims.jsonl",
+     "records": 19558,
+     "sha256": "09a4b3d113934538a25125a38ed09dfa19812ea20a5b9562b2ecaa0d429bb83d"
+    },
+    "GCA_000027305.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000027305.1.claims.jsonl",
+     "records": 10147,
+     "sha256": "97a39d75b8fa69665bd259fc9d0a04ba6a655050624e115f1f748d6a1191b9f8"
+    },
+    "GCA_000046845.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000046845.1.claims.jsonl",
+     "records": 20671,
+     "sha256": "a9476a28ccc0d1ca44137bacea1d637c052d43f18c590fd9f56a9df485da0272"
+    },
+    "GCA_000145295.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000145295.1.claims.jsonl",
+     "records": 8154,
+     "sha256": "d8c190bcab7d65fad700ad6342f78ced55608d7dbbeece0ca4444359167ba5c5"
+    },
+    "GCA_000147055.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000147055.1.claims.jsonl",
+     "records": 26292,
+     "sha256": "ffbdbdce48f3c5238df32167aa0ff1947db530a847555ada1f1e76f4fcb113b1"
+    },
+    "GCA_000195915.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/family_excluded/GCA_000195915.1.claims.jsonl",
+     "records": 9514,
+     "sha256": "0c762f610bf689fc39721cfc591c83a5e5e71798a75df8067321bd47f8d62e4f"
+    }
+   },
+   "claim_rows": 272262,
+   "claims_sha256": "a36c04c64a0c25d3314b8435477dc33826654867d399541d348bee31cf5f3be4",
+   "evaluation": {
+    "calibration": {
+     "counts": {
+      "ec_pairs": 64,
+      "ec_proteins": 61,
+      "genomes": 3,
+      "go_pairs": 818,
+      "go_proteins": 63
+     },
+     "ec_top1_accuracy": {
+      "ci_high": 0.35,
+      "ci_low": 0.037037037037037035,
+      "estimate": 0.16393442622950818,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "ec_top1_coverage": {
+      "ci_high": 0.7,
+      "ci_low": 0.1111111111111111,
+      "estimate": 0.4262295081967213,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "go_fmax": {
+      "ci_high": 0.30747531734837796,
+      "ci_low": 0.08639308855291576,
+      "estimate": 0.2305084745762712,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "go_fmax_point": {
+      "fmax": 0.2305084745762712,
+      "precision": 0.258751902587519,
+      "recall": 0.2078239608801956,
+      "threshold": 0.23,
+      "threshold_on_test": true
+     }
+    },
+    "test": {
+     "counts": {
+      "ec_pairs": 39,
+      "ec_proteins": 37,
+      "genomes": 4,
+      "go_pairs": 952,
+      "go_proteins": 64
+     },
+     "ec_top1_accuracy": {
+      "ci_high": 0.6,
+      "ci_low": 0.0,
+      "estimate": 0.10810810810810811,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "ec_top1_coverage": {
+      "ci_high": 0.8,
+      "ci_low": 0.16666666666666666,
+      "estimate": 0.35135135135135137,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "go_fmax": {
+      "ci_high": 0.23671497584541062,
+      "ci_low": 0.12732615083251714,
+      "estimate": 0.18425760286225404,
+      "n_boot": 1000,
+      "n_genomes": 4
+     },
+     "go_fmax_point": {
+      "fmax": 0.18425760286225404,
+      "precision": 0.16043613707165108,
+      "recall": 0.21638655462184875,
+      "threshold": 0.11,
+      "threshold_on_test": true
+     }
+    },
+    "train": {
+     "counts": {
+      "ec_pairs": 232,
+      "ec_proteins": 193,
+      "genomes": 11,
+      "go_pairs": 3399,
+      "go_proteins": 199
+     },
+     "ec_top1_accuracy": {
+      "ci_high": 0.2391304347826087,
+      "ci_low": 0.18041237113402062,
+      "estimate": 0.20725388601036268,
+      "n_boot": 1000,
+      "n_genomes": 11
+     },
+     "ec_top1_coverage": {
+      "ci_high": 0.587378640776699,
+      "ci_low": 0.4101123595505618,
+      "estimate": 0.49740932642487046,
+      "n_boot": 1000,
+      "n_genomes": 11
+     },
+     "go_fmax": {
+      "ci_high": 0.2746068209931083,
+      "ci_low": 0.21530626679869855,
+      "estimate": 0.24134985049124305,
+      "n_boot": 1000,
+      "n_genomes": 11
+     },
+     "go_fmax_point": {
+      "fmax": 0.24134985049124305,
+      "precision": 0.18943839061190276,
+      "recall": 0.33245072080023536,
+      "threshold": 0.16,
+      "threshold_on_test": true
+     }
+    }
+   },
+   "proteins_with_claims": 19272
+  },
+  "homology": {
+   "claim_files": {
+    "GCA_000007005.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000007005.1.claims.jsonl",
+     "records": 26328,
+     "sha256": "df0c186f4f56b9b53b8094ee55d7ce6645e586cca0a8c9e4ad0ab58b32d24d5b"
+    },
+    "GCA_000007065.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000007065.1.claims.jsonl",
+     "records": 27062,
+     "sha256": "07356225a6193cab952a9adc166f83b8c55e7058bc0a619c746260efd514f8e5"
+    },
+    "GCA_000008485.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000008485.1.claims.jsonl",
+     "records": 30077,
+     "sha256": "df502a7ae0521958fe145e2145973247580bf14b5215c36f97126fc08e628bb2"
+    },
+    "GCA_000008765.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000008765.1.claims.jsonl",
+     "records": 36403,
+     "sha256": "309b4798bc19c1cfd4dc5a9fa9cb508bf1023967ac001388be0f5c2ab26cf8ac"
+    },
+    "GCA_000009085.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000009085.1.claims.jsonl",
+     "records": 17150,
+     "sha256": "a94cac80f931c215a1b191772ad2527528f5de310efa3af2c45d61ad9f968a56"
+    },
+    "GCA_000009965.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000009965.1.claims.jsonl",
+     "records": 20149,
+     "sha256": "130109e631c057cdf0e41b01c9e9b29b719e0c2d5402dfdc4b302c5f01181187"
+    },
+    "GCA_000009985.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000009985.1.claims.jsonl",
+     "records": 42570,
+     "sha256": "77f046b27437d8cee03bc9fa5a4e425367d9fdb067f099352b199f8801f05e8d"
+    },
+    "GCA_000011125.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000011125.1.claims.jsonl",
+     "records": 16911,
+     "sha256": "ae81d188d6ba0804c44d6e1892a125522978d7e3ec7917770cd1d6ba8a972504"
+    },
+    "GCA_000011205.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000011205.1.claims.jsonl",
+     "records": 24142,
+     "sha256": "8523e8fd7b57f525bb35ab3f05f5f23c8331c9cd7d318d1547b46a44e0155507"
+    },
+    "GCA_000011585.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000011585.1.claims.jsonl",
+     "records": 15870,
+     "sha256": "5a977c69eb17440a2fa805a2114027ead399bdb9fefd61f8b44b4cc340686747"
+    },
+    "GCA_000012285.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000012285.1.claims.jsonl",
+     "records": 23070,
+     "sha256": "39f66dfc95d5bf3e00f371f66e488ce018be4523c0a46823ba895a3dd6cf995f"
+    },
+    "GCA_000012525.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000012525.1.claims.jsonl",
+     "records": 29079,
+     "sha256": "37fc78ce738de2cde7f11aaa64a958d36d6d1b2aca83418d046fd7b2edce8d92"
+    },
+    "GCA_000025685.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000025685.1.claims.jsonl",
+     "records": 33104,
+     "sha256": "49b79c9bb02b536e63a58e6c8c6262213844c1b2e010c5f79ff64ae50b360650"
+    },
+    "GCA_000027305.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000027305.1.claims.jsonl",
+     "records": 21721,
+     "sha256": "3a255e463bcc63fcf0e3a1196c8c492da3d62cf488c875b273c5f1cdb0a9141b"
+    },
+    "GCA_000046845.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000046845.1.claims.jsonl",
+     "records": 37621,
+     "sha256": "82dd25635e202cac7adc78c9116a226470ff3266aa1315e04691194c2ea089f4"
+    },
+    "GCA_000145295.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000145295.1.claims.jsonl",
+     "records": 15877,
+     "sha256": "7736e59a327e32bcf23d56556efdfaf489d7be3b3069f5a7a0db889a06a4a0d4"
+    },
+    "GCA_000147055.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000147055.1.claims.jsonl",
+     "records": 50066,
+     "sha256": "0c2d1e9a99395e55a92230a544fc817b13ddd2f0190cc82e756eae6f813bad56"
+    },
+    "GCA_000195915.1": {
+     "file": "/home/leechuck/.cache/gspa-v3-data/training-cohort/baseline/claims/homology/GCA_000195915.1.claims.jsonl",
+     "records": 17002,
+     "sha256": "fa82e1ab203953a5d29bf40e62514ac06e18253f00e22bbae1a87c7c565eb294"
+    }
+   },
+   "claim_rows": 483787,
+   "claims_sha256": "7fd3699a57408dd08a85702b40ffa55a5fba54205e5bb9946ac5690a7671418a",
+   "evaluation": {
+    "calibration": {
+     "counts": {
+      "ec_pairs": 64,
+      "ec_proteins": 61,
+      "genomes": 3,
+      "go_pairs": 818,
+      "go_proteins": 63
+     },
+     "ec_top1_accuracy": {
+      "ci_high": 0.9,
+      "ci_low": 0.2222222222222222,
+      "estimate": 0.47540983606557374,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "ec_top1_coverage": {
+      "ci_high": 1.0,
+      "ci_low": 0.37037037037037035,
+      "estimate": 0.6885245901639344,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "go_fmax": {
+      "ci_high": 0.27697841726618705,
+      "ci_low": 0.18181818181818182,
+      "estimate": 0.2393881453154876,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "go_fmax_point": {
+      "fmax": 0.2393881453154876,
+      "precision": 0.17417918753478018,
+      "recall": 0.38264058679706603,
+      "threshold": 0.23,
+      "threshold_on_test": true
+     }
+    },
+    "test": {
+     "counts": {
+      "ec_pairs": 39,
+      "ec_proteins": 37,
+      "genomes": 4,
+      "go_pairs": 952,
+      "go_proteins": 64
+     },
+     "ec_top1_accuracy": {
+      "ci_high": 0.8,
+      "ci_low": 0.25,
+      "estimate": 0.40540540540540543,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "ec_top1_coverage": {
+      "ci_high": 0.9166666666666666,
+      "ci_low": 0.75,
+      "estimate": 0.8108108108108109,
+      "n_boot": 1000,
+      "n_genomes": 3
+     },
+     "go_fmax": {
+      "ci_high": 0.460377358490566,
+      "ci_low": 0.21458773784355178,
+      "estimate": 0.2876984126984127,
+      "n_boot": 1000,
+      "n_genomes": 4
+     },
+     "go_fmax_point": {
+      "fmax": 0.2876984126984127,
+      "precision": 0.2725563909774436,
+      "recall": 0.30462184873949577,
+      "threshold": 0.27,
+      "threshold_on_test": true
+     }
+    },
+    "train": {
+     "counts": {
+      "ec_pairs": 232,
+      "ec_proteins": 193,
+      "genomes": 11,
+      "go_pairs": 3399,
+      "go_proteins": 199
+     },
+     "ec_top1_accuracy": {
+      "ci_high": 0.5810276679841897,
+      "ci_low": 0.44878048780487806,
+      "estimate": 0.5181347150259067,
+      "n_boot": 1000,
+      "n_genomes": 11
+     },
+     "ec_top1_coverage": {
+      "ci_high": 0.8911917098445595,
+      "ci_low": 0.7,
+      "estimate": 0.8082901554404145,
+      "n_boot": 1000,
+      "n_genomes": 11
+     },
+     "go_fmax": {
+      "ci_high": 0.39831528279181705,
+      "ci_low": 0.2765794372057374,
+      "estimate": 0.331421548545678,
+      "n_boot": 1000,
+      "n_genomes": 11
+     },
+     "go_fmax_point": {
+      "fmax": 0.331421548545678,
+      "precision": 0.2542026708562451,
+      "recall": 0.47602235951750516,
+      "threshold": 0.29,
+      "threshold_on_test": true
+     }
+    }
+   },
+   "proteins_with_claims": 26605
+  }
+ },
+ "reference": {
+  "dropped_cohort_genus": 44055,
+  "dropped_cohort_taxid": 8189,
+  "entries_read": 573661,
+  "excluded_genera": [
+   "acidovorax",
+   "acinetobacter",
+   "aeropyrum",
+   "azospira",
+   "azospirillum",
+   "campylobacter",
+   "clostridium",
+   "cupriavidus",
+   "dickeya",
+   "dinoroseobacter",
+   "ensifer",
+   "haemophilus",
+   "haloferax",
+   "legionella",
+   "magnetospirillum",
+   "marinobacter",
+   "methanococcus",
+   "methanosarcina",
+   "methanothermobacter",
+   "paraburkholderia",
+   "paramagnetospirillum",
+   "phaeobacter",
+   "pseudomonas",
+   "saccharolobus",
+   "shewanella",
+   "sphingomonas",
+   "stutzerimonas",
+   "sulfolobus",
+   "sulfurisphaera",
+   "synechococcus",
+   "thermococcus",
+   "thermoplasma"
+  ],
+  "kept": 82364,
+  "no_strict_label": 439053,
+  "reference_faa_sha256": "1d8c4ebb1e30e5bd85096e7459616a12697c0dc6d4b939d8dd0b32dc49cdf21a",
+  "reference_labels_sha256": "db8a8ac948988d42309eb2f0bedf9bb0535ef4710db798a04d550485bc8e6dd0"
+ },
+ "schema": "gspa.homology-baseline/1"
+}

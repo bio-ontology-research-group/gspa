@@ -1,0 +1,70 @@
+{
+ "claims": {
+  "all_sources_registered": true,
+  "checked_axes": [
+   "genome_id",
+   "group",
+   "source_registry",
+   "taxonomy:genus",
+   "taxonomy:family",
+   "protein_id_overlap(targets)",
+   "homology_clusters(targets)"
+  ],
+  "genome_disjoint_splits": true,
+  "group_disjoint_splits": true,
+  "homology_disjoint_checked": true,
+  "homology_scope": "labelled_target_proteins_only",
+  "independent_test_claim_supportable": true,
+  "independent_test_claim_text": "test is disjoint from train/calibration on: genome_id, group, source_registry, taxonomy:genus, taxonomy:family, protein_id_overlap(targets), homology_clusters(targets); not checked: taxonomy:species, pretrained_model_leakage, untouched_test_use",
+  "pretrained_model_leakage": "not_assessed",
+  "protein_overlap_checked": true,
+  "species_disjoint_splits": true,
+  "test_contains_development_data": false,
+  "test_contains_examined_or_development_data": false,
+  "unchecked_axes": [
+   "taxonomy:species",
+   "pretrained_model_leakage",
+   "untouched_test_use"
+  ],
+  "untouched_test_claim": "not_assessed"
+ },
+ "context_sharing": {
+  "clusters_shared_across_splits": 3905,
+  "note": "context proteins may share conserved families across splits; this is reported, not a violation (only labelled target examples must be family-disjoint)",
+  "protein_ids_shared_across_splits": 0
+ },
+ "counts": {
+  "calibration": {
+   "genomes": 3,
+   "groups": 3,
+   "sources": [
+    "swissprot_label_rich_v1"
+   ]
+  },
+  "test": {
+   "genomes": 4,
+   "groups": 4,
+   "sources": [
+    "swissprot_label_rich_v1"
+   ]
+  },
+  "train": {
+   "genomes": 11,
+   "groups": 9,
+   "sources": [
+    "swissprot_label_rich_v1"
+   ]
+  }
+ },
+ "disjoint_keys": [
+  "genome_id",
+  "group",
+  "genus",
+  "family"
+ ],
+ "violations": [],
+ "warnings": [
+  "17 homology cluster(s) of labelled target proteins span several splits, e.g. [('seq_08ce0ffb2601170f2c42', ['test', 'train']), ('seq_0b8c153ac0fb2fb0840f', ['calibration', 'train']), ('seq_2a32e60c5f4079bdf73e', ['calibration', 'train'])]; labelled examples will be masked by build-table (masked_examples.tsv)",
+  "only 4 test genome(s) (< 5): genome-level uncertainty will be wide"
+ ]
+}
