@@ -109,6 +109,7 @@ class FeatureContract {
         add('fn.go_aspect_unknown', FeatureGroup.FUNCTION_IDENTITY, '1 for GO claims with no aspect label (never assumed BP)')
         add('fn.in_complex_term', FeatureGroup.FUNCTION_IDENTITY, '1 if the GO term is a protein-complex term in state.complexClassification')
         add('fn.complex_heteromeric', FeatureGroup.FUNCTION_IDENTITY, '1 if that complex term is classified heteromeric (n)')
+        add('fn.complex_ambiguous', FeatureGroup.FUNCTION_IDENTITY, '1 if that complex term is classified ambiguous (a): neither homomeric nor heteromeric is asserted')
 
         CandidateRole.values().each {
             add(it.featureName(), FeatureGroup.ROLE, "1 if the candidate role is ${it.name()}; roles are distinct candidates")

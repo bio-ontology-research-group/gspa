@@ -43,6 +43,22 @@ class CandidateFeatures {
         values[i]
     }
 
+    /** SHA-256 over the exact IEEE-754 bits of the vector, in contract order (full-precision audit identity). */
+    String digest() {
+        def md = java.security.MessageDigest.getInstance('SHA-256')
+        def buf = java.nio.ByteBuffer.allocate(8 * values.length)
+        for (double v : values) buf.putLong(Double.doubleToLongBits(v))
+        md.update(buf.array())
+        md.digest().collect { String.format('%02x', it & 0xff) }.join()
+    }
+
+    /** Fail unless every value is finite; a non-finite feature can never be scored or exported. */
+    void requireFinite() {
+        for (int i = 0; i < values.length; i++) {
+            if (!Double.isFinite(values[i])) throw new IllegalArgumentException("non-finite value for feature ${contract.names()[i]} of ${candidateKey()}")
+        }
+    }
+
     Map<String, Double> asMap() {
         Map<String, Double> m = new LinkedHashMap<>()
         contract.names().eachWithIndex { String n, int i -> m[n] = values[i] }

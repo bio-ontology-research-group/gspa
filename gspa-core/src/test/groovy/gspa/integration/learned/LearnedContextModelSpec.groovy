@@ -201,14 +201,14 @@ class LearnedContextModelSpec extends Specification {
 
         when: "feature list drifted"
         def drift = new LinkedHashMap(good); drift.contract = good.contract + [fingerprint: 'deadbeef']
-        LearnedContextModel.loadJson(JsonOutput.toJson(drift), FeatureContract.CURRENT, true)
+        mechanismModel(JsonOutput.toJson(drift))
 
         then:
         thrown(ModelUnavailableException)
 
         when: "not declared frozen"
         def thawed = new LinkedHashMap(good); thawed.training = good.training + [frozen_before_test: false]
-        LearnedContextModel.loadJson(JsonOutput.toJson(thawed), FeatureContract.CURRENT, true)
+        mechanismModel(JsonOutput.toJson(thawed))
 
         then:
         thrown(ModelUnavailableException)
@@ -222,10 +222,95 @@ class LearnedContextModelSpec extends Specification {
         when: "malformed tree topology"
         def gb = new JsonSlurper().parse(res('mechanism_fixture_gbdt.json')) as Map
         gb.gbdt.trees[0].left[0] = 0
-        LearnedContextModel.loadJson(JsonOutput.toJson(gb), FeatureContract.CURRENT, true)
+        mechanismModel(JsonOutput.toJson(gb))
 
         then:
         thrown(ModelUnavailableException)
+    }
+
+    def "malformed numeric content is rejected at load: empty trees, no trees, NaN-like, infinite, bad calibration"() {
+        given:
+        def logistic = { new JsonSlurper().parse(res('mechanism_fixture_logistic.json')) as Map }
+        def gbdt = { new JsonSlurper().parse(res('mechanism_fixture_gbdt.json')) as Map }
+        def load = { Map art -> mechanismModel(JsonOutput.toJson(art)) }
+
+        when: "a tree with no nodes"
+        def a = gbdt()
+        ['feature', 'threshold', 'left', 'right', 'value'].each { a.gbdt.trees[0][it] = [] }
+        load(a)
+
+        then:
+        thrown(ModelUnavailableException)
+
+        when: "a gbdt artifact with zero trees"
+        a = gbdt()
+        a.gbdt.trees = []
+        load(a)
+
+        then:
+        thrown(ModelUnavailableException)
+
+        when: "a gbdt artifact whose trees are missing"
+        a = gbdt()
+        a.gbdt.remove('trees')
+        load(a)
+
+        then:
+        thrown(ModelUnavailableException)
+
+        when: "a leaf value that overflows to infinity"
+        a = gbdt()
+        a.gbdt.trees[0].value[0] = 1e999
+        mechanismModel(JsonOutput.toJson(a).replace('Infinity', '1e999'))
+
+        then:
+        thrown(ModelUnavailableException)
+
+        when: "a fractional feature index"
+        a = gbdt()
+        a.gbdt.trees[0].feature[0] = 1.5
+        load(a)
+
+        then:
+        thrown(ModelUnavailableException)
+
+        when: "a NaN literal in the artifact text"
+        mechanismModel(JsonOutput.toJson(logistic()).replaceFirst('"intercept":[^,}]+', '"intercept":NaN'))
+
+        then:
+        thrown(ModelUnavailableException)
+
+        when: "a non-positive calibration slope"
+        a = logistic()
+        a.calibration.a = -1.0d
+        load(a)
+
+        then:
+        thrown(ModelUnavailableException)
+
+        when: "an overflowing weight makes the margin non-finite at scoring time"
+        a = logistic()
+        int j = FeatureContract.CURRENT.indexOf('ctx.competitor.max_raw')
+        a.logistic.weights[j] = 1.0e308d
+        a.normalization.scale[j] = 1.0e-300d
+        a.normalization.mean[j] = 0.0d
+        def overflowing = load(a)
+        def x = new double[FeatureContract.CURRENT.size()]
+        x[j] = 1.0d
+        overflowing.margin(x)
+
+        then:
+        thrown(IllegalArgumentException)
+    }
+
+    def "the model carries the SHA-256 of the artifact text for audit"() {
+        given:
+        def text = res('mechanism_fixture_logistic.json').getText('UTF-8')
+        def expected = java.security.MessageDigest.getInstance('SHA-256').digest(text.getBytes('UTF-8')).collect { String.format('%02x', it & 0xff) }.join()
+
+        expect:
+        mechanismModel(text).sha256 == expected
+        !mechanismModel(text).production
     }
 
     def "scoring rejects wrong-width or non-finite vectors"() {
@@ -258,7 +343,7 @@ class LearnedContextModelSpec extends Specification {
             sparse.each { k, v -> x[names.indexOf(k as String)] = (v as Number).doubleValue() }
             x
         }
-        def model = LearnedContextModel.load(res("mechanism_fixture_${kind}.json"), FeatureContract.CURRENT, true)
+        def model = mechanismFixture("mechanism_fixture_${kind}.json")
 
         expect: "margins and calibrated probabilities"
         vectors.expected[kind].every { name, exp ->

@@ -39,7 +39,32 @@ class LearnedTestSupport {
             locus_model   : locus ?: [trained: false, reason: 'test artifact without locus layer'],
             training      : [frozen_before_test: true, synthetic: true],
         ]
-        LearnedContextModel.loadJson(JsonOutput.toJson(art), c, true)
+        mechanismModel(JsonOutput.toJson(art))
+    }
+
+    /**
+     * The ONLY way to obtain a mechanism-test (non-production) model: lives in the test sources, so
+     * no CLI/service code can reach it. Production loaders refuse these artifacts.
+     */
+    static LearnedContextModel mechanismModel(String json, FeatureContract c = FeatureContract.CURRENT) {
+        LearnedContextModel.parseArtifact(json, c, true)
+    }
+
+    static LearnedContextModel mechanismFixture(String resourceName) {
+        mechanismModel(LearnedTestSupport.getResourceAsStream("/learned/${resourceName}").getText('UTF-8'))
+    }
+
+    /** A stage that accepts mechanism-test models; the production class rejects them. */
+    static class MechanismStage extends LearnedIntegrationStage {
+        MechanismStage(LearnedStageSettings s) { super(s) }
+        @Override
+        protected void checkModelUse(LearnedContextModel model) { /* test API: mechanism models allowed */ }
+    }
+
+    static MechanismStage stage(LearnedContextModel model, Map overrides = [:]) {
+        def s = new LearnedStageSettings(model: model)
+        overrides.each { k, v -> s."$k" = v }
+        new MechanismStage(s)
     }
 
     static Map locusLayer(double scale, double nullBias, List<Double> nullWeights = [0, 0, 0, 0, 0, 0]) {

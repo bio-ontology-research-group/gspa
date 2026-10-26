@@ -1,6 +1,9 @@
 package gspa.integration.learned
 
 import groovy.json.JsonSlurper
+import gspa.model.AnnotationType
+
+import java.security.MessageDigest
 
 /**
  * Inference for an exported learned context model ({@code scripts/train_context_model.py}).
@@ -21,6 +24,8 @@ class LearnedContextModel {
     static final String SCHEMA = 'gspa.learned-context-model/1'
 
     final String modelId
+    /** SHA-256 of the artifact's UTF-8 JSON text, as written by the trainer (audit identity). */
+    final String sha256
     final String intendedUse
     final FeatureContract contract
     final String kind
@@ -61,9 +66,11 @@ class LearnedContextModel {
         double[] nullWeights
     }
 
-    private LearnedContextModel(Map a, FeatureContract contract) {
+    private LearnedContextModel(Map a, FeatureContract contract, String sha256) {
         this.contract = contract
+        this.sha256 = sha256
         this.modelId = a.model_id as String
+        if (!modelId) throw new ModelUnavailableException('artifact has no model_id')
         this.intendedUse = a.intended_use as String
         this.kind = a.kind as String
         this.training = (a.training ?: [:]) as Map
@@ -71,6 +78,7 @@ class LearnedContextModel {
         if (cal?.method != 'platt') throw new ModelUnavailableException("unsupported calibration ${cal?.method}")
         calibA = num(cal.a, 'calibration.a')
         calibB = num(cal.b, 'calibration.b')
+        if (!(calibA > 0.0d)) throw new ModelUnavailableException('calibration slope must be > 0 (a calibrated score must be monotone in the margin)')
         def dt = a.display_threshold as Map
         displayThreshold = num(dt?.value, 'display_threshold.value')
         if (displayThreshold < 0 || displayThreshold > 1) throw new ModelUnavailableException('display threshold outside [0,1]')
@@ -89,23 +97,31 @@ class LearnedContextModel {
             def g = a.gbdt as Map
             gbdtInit = num(g?.init, 'gbdt.init')
             learningRate = num(g?.learning_rate, 'gbdt.learning_rate')
+            if (!(learningRate > 0.0d)) throw new ModelUnavailableException('gbdt.learning_rate must be > 0')
+            if (!(g.trees instanceof List) || (g.trees as List).isEmpty()) {
+                throw new ModelUnavailableException('gbdt model has no trees')
+            }
             trees = (g.trees as List<Map>).collect { Map t ->
                 def tr = new Tree(
-                    feature: (t.feature as List).collect { (it as Number).intValue() } as int[],
-                    threshold: (t.threshold as List).collect { (it as Number).doubleValue() } as double[],
-                    left: (t.left as List).collect { (it as Number).intValue() } as int[],
-                    right: (t.right as List).collect { (it as Number).intValue() } as int[],
-                    value: (t.value as List).collect { (it as Number).doubleValue() } as double[])
+                    feature: ints(t.feature, 'tree.feature'),
+                    threshold: doubles(t.threshold, 'tree.threshold'),
+                    left: ints(t.left, 'tree.left'),
+                    right: ints(t.right, 'tree.right'),
+                    value: doubles(t.value, 'tree.value'))
                 int n = tr.feature.length
+                if (n == 0) throw new ModelUnavailableException('empty tree')
                 if ([tr.threshold.length, tr.left.length, tr.right.length, tr.value.length].any { it != n }) {
                     throw new ModelUnavailableException('malformed tree arrays')
                 }
+                boolean anyLeaf = false
                 for (int i = 0; i < n; i++) {
-                    if (tr.feature[i] >= d) throw new ModelUnavailableException('tree feature index outside contract')
+                    if (tr.feature[i] >= d || tr.feature[i] < -1) throw new ModelUnavailableException('tree feature index outside contract')
+                    if (tr.feature[i] < 0) anyLeaf = true
                     if (tr.feature[i] >= 0 && (tr.left[i] <= i || tr.right[i] <= i || tr.left[i] >= n || tr.right[i] >= n)) {
                         throw new ModelUnavailableException('malformed tree topology')
                     }
                 }
+                if (!anyLeaf) throw new ModelUnavailableException('tree has no leaf')
                 tr
             }
             mean = null; scale = null; weights = null; intercept = 0
@@ -121,6 +137,7 @@ class LearnedContextModel {
             }
             locus = new LocusLayer(scale: num(lm.scale, 'locus.scale'), nullBias: num(lm.null_bias, 'locus.null_bias'),
                 nullWeights: arr(lm.null_weights, FeatureContract.LOCUS_GROUP.size(), 'locus.null_weights'))
+            if (!(locus.scale > 0.0d)) throw new ModelUnavailableException('locus.scale must be > 0')
             locusUnavailableReason = null
         } else {
             locus = null
@@ -130,22 +147,31 @@ class LearnedContextModel {
 
     // ------------------------------------------------------------------------------ loading
 
-    static LearnedContextModel load(File file, FeatureContract expected = FeatureContract.CURRENT,
-                                    boolean allowMechanismFixture = false) {
+    // The public loaders accept production artifacts only. Mechanism-test fixtures (hand-set or
+    // synthetic weights) are loadable solely through the protected parseArtifact, which the test
+    // sources reach by subclassing; no CLI or service code path opts in.
+
+    static LearnedContextModel load(File file, FeatureContract expected = FeatureContract.CURRENT) {
         if (file == null || !file.isFile()) {
             throw new ModelUnavailableException("no trained model artifact at ${file}; the learned stage cannot run (no defaults exist)")
         }
-        loadJson(file.getText('UTF-8'), expected, allowMechanismFixture)
+        parseArtifact(file.getText('UTF-8'), expected, false)
     }
 
-    static LearnedContextModel load(InputStream stream, FeatureContract expected = FeatureContract.CURRENT,
-                                    boolean allowMechanismFixture = false) {
+    static LearnedContextModel load(InputStream stream, FeatureContract expected = FeatureContract.CURRENT) {
         if (stream == null) throw new ModelUnavailableException('no trained model artifact stream')
-        loadJson(stream.getText('UTF-8'), expected, allowMechanismFixture)
+        parseArtifact(stream.getText('UTF-8'), expected, false)
     }
 
-    static LearnedContextModel loadJson(String json, FeatureContract expected = FeatureContract.CURRENT,
-                                        boolean allowMechanismFixture = false) {
+    static LearnedContextModel loadJson(String json, FeatureContract expected = FeatureContract.CURRENT) {
+        parseArtifact(json, expected, false)
+    }
+
+    /** True for a trained production artifact; false for a mechanism-test fixture. */
+    boolean isProduction() { intendedUse == 'production' }
+
+    protected static LearnedContextModel parseArtifact(String json, FeatureContract expected, boolean allowMechanismFixture) {
+        if (json == null) throw new ModelUnavailableException('no trained model artifact text')
         Map a
         try {
             a = new JsonSlurper().parseText(json) as Map
@@ -160,6 +186,9 @@ class LearnedContextModel {
         if (use == 'mechanism_test' && !allowMechanismFixture) {
             throw new ModelUnavailableException('artifact is a mechanism-test fixture, not a trained production model')
         }
+        if (use == 'production' && (a.training as Map)?.synthetic == true) {
+            throw new ModelUnavailableException('artifact is marked synthetic and cannot be a production model')
+        }
         def c = a.contract as Map
         if (c?.id != expected.id || c?.fingerprint != expected.fingerprint() || c?.features != expected.names()) {
             throw new ModelUnavailableException(
@@ -169,7 +198,14 @@ class LearnedContextModel {
         if (tr?.frozen_before_test != true) {
             throw new ModelUnavailableException('artifact does not declare frozen_before_test; refusing to use it')
         }
-        new LearnedContextModel(a, expected)
+        String hash = MessageDigest.getInstance('SHA-256').digest(json.getBytes('UTF-8')).collect { String.format('%02x', it & 0xff) }.join()
+        try {
+            return new LearnedContextModel(a, expected, hash)
+        } catch (ModelUnavailableException e) {
+            throw e
+        } catch (ClassCastException | NullPointerException | NumberFormatException | IndexOutOfBoundsException e) {
+            throw new ModelUnavailableException("malformed model artifact: ${e.class.simpleName}: ${e.message}")
+        }
     }
 
     // ------------------------------------------------------------------------------ inference
@@ -180,13 +216,15 @@ class LearnedContextModel {
             throw new IllegalArgumentException("expected ${contract.size()} features, got ${x.length}")
         }
         for (double v : x) if (!Double.isFinite(v)) throw new IllegalArgumentException('non-finite feature value')
+        double z
         if (kind == 'logistic') {
-            double z = intercept
+            z = intercept
             for (int j = 0; j < x.length; j++) z += weights[j] * ((x[j] - mean[j]) / scale[j])
-            return z
+        } else {
+            z = gbdtInit
+            for (Tree t : trees) z += learningRate * t.eval(x)
         }
-        double z = gbdtInit
-        for (Tree t : trees) z += learningRate * t.eval(x)
+        if (!Double.isFinite(z)) throw new IllegalArgumentException('model margin is not finite for this feature vector')
         z
     }
 
@@ -213,44 +251,81 @@ class LearnedContextModel {
      * otherwise {@link ModelUnavailableException}; there is no default null weight.
      */
     LocusAssignment assignLocus(List<CandidateScore> group) {
+        if (group == null || group.isEmpty()) throw new IllegalArgumentException('empty locus group')
+        assignLocusMembers(group.collect { LocusMember.of(it) })
+    }
+
+    /**
+     * Compact view of a scored candidate sufficient for the locus layer: the pre-calibration
+     * margin and the two group-level indicators, without holding the feature vector.
+     */
+    static class LocusMember {
+        final String candidateKey
+        final String proteinId
+        final AnnotationType functionType
+        final String functionId
+        final CandidateRole role
+        final double margin
+        final boolean sequenceSupport
+        final boolean fragmentedAssembly
+
+        LocusMember(String candidateKey, String proteinId, AnnotationType functionType, String functionId,
+                    CandidateRole role, double margin, boolean sequenceSupport, boolean fragmentedAssembly) {
+            this.candidateKey = candidateKey
+            this.proteinId = proteinId
+            this.functionType = functionType
+            this.functionId = functionId
+            this.role = role
+            this.margin = margin
+            this.sequenceSupport = sequenceSupport
+            this.fragmentedAssembly = fragmentedAssembly
+        }
+
+        static LocusMember of(CandidateScore s) {
+            def f = s.features
+            new LocusMember(f.candidateKey(), f.proteinId, f.functionType, f.functionId, f.role, s.margin,
+                f.get('seq.n_groups_reporting') > 0,
+                f.get('asm.available') > 0 && f.get('asm.n_contigs') > Math.log(2.0d) + 1e-9)
+        }
+    }
+
+    LocusAssignment assignLocusMembers(List<LocusMember> group) {
         if (locus == null) {
             throw new ModelUnavailableException("no trained null-outcome layer: ${locusUnavailableReason}")
         }
         if (group == null || group.isEmpty()) throw new IllegalArgumentException('empty locus group')
-        def first = group[0].features
-        group.each { s ->
-            def f = s.features
-            if (f.functionType != first.functionType || f.functionId != first.functionId || f.role != first.role) {
+        LocusMember first = group[0]
+        Set<String> proteins = new HashSet<>()
+        for (LocusMember m : group) {
+            if (m.functionType != first.functionType || m.functionId != first.functionId || m.role != first.role) {
                 throw new IllegalArgumentException('a locus group must share one function and one role')
             }
-        }
-        if (group*.features*.proteinId.toSet().size() != group.size()) {
-            throw new IllegalArgumentException('a locus group must contain distinct proteins')
+            if (!proteins.add(m.proteinId)) throw new IllegalArgumentException('a locus group must contain distinct proteins')
         }
         double[] g = groupFeatures(group)
         double nullLogit = locus.nullBias
         for (int j = 0; j < g.length; j++) nullLogit += locus.nullWeights[j] * g[j]
         double[] logits = new double[group.size() + 1]
         logits[0] = nullLogit
-        group.eachWithIndex { CandidateScore s, int i -> logits[i + 1] = locus.scale * s.margin }
+        for (int i = 0; i < group.size(); i++) logits[i + 1] = locus.scale * group[i].margin
         double mx = logits.max()
         double z = 0
         double[] e = new double[logits.length]
         for (int i = 0; i < logits.length; i++) { e[i] = Math.exp(logits[i] - mx); z += e[i] }
         Map<String, Double> probs = new LinkedHashMap<>()
-        group.eachWithIndex { CandidateScore s, int i -> probs[s.candidateKey()] = e[i + 1] / z }
+        for (int i = 0; i < group.size(); i++) probs[group[i].candidateKey] = e[i + 1] / z
         new LocusAssignment(probs, e[0] / z, modelId)
     }
 
     /** Group features in {@link FeatureContract#LOCUS_GROUP} order. */
-    static double[] groupFeatures(List<CandidateScore> group) {
+    static double[] groupFeatures(List<LocusMember> group) {
         List<Double> margins = group*.margin.sort(false) { -it }
         double[] g = new double[FeatureContract.LOCUS_GROUP.size()]
         g[0] = margins[0]
         if (margins.size() > 1) { g[1] = 1; g[2] = margins[1] }
         g[3] = Math.log(1.0d + group.size())
-        g[4] = group.any { it.features.get('seq.n_groups_reporting') > 0 } ? 1 : 0
-        g[5] = group.any { it.features.get('asm.available') > 0 && it.features.get('asm.n_contigs') > Math.log(2.0d) + 1e-9 } ? 1 : 0
+        g[4] = group.any { it.sequenceSupport } ? 1 : 0
+        g[5] = group.any { it.fragmentedAssembly } ? 1 : 0
         g
     }
 
@@ -267,6 +342,20 @@ class LearnedContextModel {
             throw new ModelUnavailableException("missing or non-finite ${what}")
         }
         (o as Number).doubleValue()
+    }
+
+    private static double[] doubles(Object o, String what) {
+        if (!(o instanceof List)) throw new ModelUnavailableException("${what} must be an array")
+        (o as List).collect { num(it, what) } as double[]
+    }
+
+    private static int[] ints(Object o, String what) {
+        if (!(o instanceof List)) throw new ModelUnavailableException("${what} must be an array")
+        (o as List).collect {
+            double d = num(it, what)
+            if (d != Math.rint(d)) throw new ModelUnavailableException("${what} must hold integers")
+            (int) d
+        } as int[]
     }
 
     private static double[] arr(Object o, int n, String what) {

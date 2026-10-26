@@ -3,7 +3,9 @@
 Status: **mechanism and training/inference code only. There is no trained production
 model in the repository, and nothing here is evidence of improved annotation accuracy.**
 The shared engine does not yet call these classes; wiring and the real training runs are
-separate work (see [What real training needs](#what-real-training-needs)).
+separate work (see [What real training needs](#what-real-training-needs)). The pipeline stage and
+the training-row export built on this foundation are described in
+[learned-stage.md](learned-stage.md).
 
 This replaces hand-set boosts, floors and count-dependent caps with a model whose weights
 are learned from labelled candidates, calibrated on a separate split, and able to move a
@@ -153,7 +155,10 @@ below and the frozen-protocol report.
 Regenerate the fixture after a contract change: run `FeatureContractSpec` (it writes
 `gspa-core/build/learned-fixtures/feature_contract_v1.json`), then
 `train_context_model.py make-mechanism-fixture --contract <that file> --out-dir
-gspa-core/src/test/resources/learned`.
+gspa-core/src/test/resources/learned`; copy `feature_contract_v1.json` from the same build
+directory next to the fixtures, then re-run `FeatureExporterSpec` and copy
+`build/learned-fixtures/export_fixture*.jsonl` into the same resources directory (they embed the
+contract fingerprint and the model hash).
 
 ## What real training needs
 

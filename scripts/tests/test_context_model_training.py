@@ -462,5 +462,58 @@ class FixtureConsistency(unittest.TestCase):
         self.assertEqual(c["id"], "gspa.context-features/1")
 
 
+class ExportedRowsAgreeWithTrainer(unittest.TestCase):
+    """Rows written by the JVM FeatureExporter must be exactly what the trainer and the Python
+    reference predictor consume. Fixtures are committed by FeatureExporterSpec."""
+
+    def _rows(self, name):
+        return [json.loads(line) for line in (RES / name).read_text().splitlines() if line.strip()]
+
+    def test_export_rows_carry_no_truth_and_trainer_refuses_them_unlabelled(self):
+        c = contract()
+        rows = self._rows("export_fixture.jsonl")
+        self.assertTrue(rows)
+        for r in rows:
+            for forbidden in ("label", "split", "group", "example_id"):
+                self.assertNotIn(forbidden, r)
+            self.assertEqual(r["contract"]["fingerprint"], c["fingerprint"])
+            self.assertEqual(list(r["features"]), c["names"])
+        tmp = Path(tempfile.mkdtemp()) / "unlabelled.jsonl"
+        tmp.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+        with self.assertRaises(tcm.ProvenanceError):
+            tcm.read_table(tmp, c)      # absence is never auto-labelled: the trainer demands a joined label
+
+    def test_rows_joined_with_independent_truth_load_with_bit_exact_features(self):
+        c = contract()
+        rows = self._rows("export_fixture.jsonl")
+        joined = []
+        for i, r in enumerate(rows):
+            j = dict(r)
+            # what the dataset builder adds from independently curated truth and declared splits
+            j.update(example_id=r["candidate_key"], group=f"fam{i}", split="train", label=i % 2)
+            joined.append(j)
+        tmp = Path(tempfile.mkdtemp()) / "joined.jsonl"
+        tmp.write_text("\n".join(json.dumps(j) for j in joined) + "\n")
+        loaded = tcm.read_table(tmp, c)
+        self.assertEqual(len(loaded), len(rows))
+        for lr, r in zip(loaded, rows):
+            expected = np.array([float(r["features"][n]) for n in c["names"]])
+            self.assertTrue(np.array_equal(lr["x"], expected))
+            self.assertEqual(lr["role"], r["role"])
+            self.assertEqual(lr["genome_id"], r["genome_id"])
+
+    def test_python_reference_reproduces_the_jvm_margins_on_exported_vectors(self):
+        c = contract()
+        art = tcm.load_artifact(RES / "mechanism_fixture_logistic.json")
+        rows = self._rows("export_fixture_scored.jsonl")
+        self.assertTrue(rows)
+        artifact_sha = hashlib.sha256((RES / "mechanism_fixture_logistic.json").read_bytes()).hexdigest()
+        for r in rows:
+            x = np.array([r["features"][n] for n in c["names"]], dtype=float)
+            self.assertAlmostEqual(tcm.predict_margin(art, x), r["model"]["margin"], places=12)
+            self.assertAlmostEqual(tcm.predict_proba(art, x), r["model"]["probability"], places=12)
+            self.assertEqual(r["model"]["sha256"], artifact_sha)
+
+
 if __name__ == "__main__":
     unittest.main()
