@@ -117,4 +117,24 @@ class PredictionStateBiologySpec extends Specification {
         then:
         Math.abs(state.getMaxLikelihoodProbForProtein('gene') - 0.8d) < 1e-12
     }
+
+    def "many homolog hits from one tool do not become multiple supporting channels"() {
+        given:
+        def claims = (1..50).collect { n -> new EvidenceClaim(proteinId: 'enzyme',
+            functionType: AnnotationType.EC, functionId: '1.1.1.1', source: 'diamond',
+            evidenceType: EvidenceType.SEQUENCE_SIMILARITY, calibratedProb: 0.6d,
+            metadata: [target: "homolog_${n}"]) }
+        def oneState = new IntegrationState()
+        def manyState = new IntegrationState()
+        def refiner = new IterativeRefiner(new EvidenceCombiner())
+
+        when:
+        def one = refiner.refine([claims.first()], oneState)
+        def many = refiner.refine(claims, manyState)
+
+        then:
+        oneState.getClaimCount('enzyme|EC|1.1.1.1') == 1
+        manyState.getClaimCount('enzyme|EC|1.1.1.1') == 1
+        one.provenance['enzyme|EC|1.1.1.1'].finalProbability == many.provenance['enzyme|EC|1.1.1.1'].finalProbability
+    }
 }

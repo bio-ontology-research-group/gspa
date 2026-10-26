@@ -53,7 +53,9 @@ class IterativeRefiner {
         Map<String, Integer> counts = new LinkedHashMap<>()
         for (Map.Entry<String, List<EvidenceClaim>> entry : byKey.entrySet()) {
             likelihood[entry.key] = combiner.combineLikelihood(entry.value)
-            counts[entry.key] = entry.value.size()
+            // Repeated homolog/domain hits from one predictor are correlated
+            // observations, not additional independent channels for rescue.
+            counts[entry.key] = entry.value.collect { [it.source, it.evidenceType] }.toSet().size()
         }
 
         // Seed posteriors from likelihood alone.

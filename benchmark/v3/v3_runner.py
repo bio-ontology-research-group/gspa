@@ -205,11 +205,11 @@ def scan_claims(path: str) -> Tuple[Set[str], List[str]]:
     non-object lines, missing required fields, non-finite or non-numeric
     ``raw_score`` / ``calibrated_prob`` (probabilities must be in [0, 1]),
     label-like keys at top level or in ``metadata``, and exact duplicate
-    (protein, type, function, source) claims, which would double-count a
-    source. At most 3 examples are kept per problem class.
+    records. Distinct homology hits from one predictor are legitimate inputs;
+    the production combiner collapses them by evidence correlation group.
     """
     ids: Set[str] = set()
-    seen: Set[int] = set()
+    seen: Set[bytes] = set()
     counts: Dict[str, int] = defaultdict(int)
     first: Dict[str, int] = {}
 
@@ -247,9 +247,9 @@ def scan_claims(path: str) -> Tuple[Set[str], List[str]]:
                 elif key == "calibrated_prob" and not 0.0 <= v <= 1.0:
                     note("calibrated_prob outside [0, 1]", n)
             ids.add(str(rec["protein_id"]))
-            sig = hash((rec["protein_id"], rec["function_type"], rec["function_id"], rec["source"]))
+            sig = hashlib.sha256(json.dumps(rec, sort_keys=True, separators=(",", ":")).encode()).digest()
             if sig in seen:
-                note("duplicate (protein, type, function, source) claim", n)
+                note("duplicate identical claim record", n)
             seen.add(sig)
     problems = [f"{path}: {c} line(s) with {k} (first at line {first[k]})" for k, c in sorted(counts.items())]
     return ids, problems

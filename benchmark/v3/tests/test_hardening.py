@@ -43,6 +43,14 @@ class ClaimsScan(Base):
         _, probs = R.scan_claims(self.write("d.jsonl", c + "\n" + c + "\n"))
         self.assertTrue(any("duplicate" in p for p in probs))
 
+    def test_distinct_homology_matches_are_valid_correlated_evidence(self):
+        a = json.loads(claim("a", "EC", "1.1.1.1", 0.5))
+        b = dict(a)
+        a["metadata"] = {"target": "homolog_A"}
+        b["metadata"] = {"target": "homolog_B"}
+        _, probs = R.scan_claims(self.write("homologs.jsonl", json.dumps(a) + "\n" + json.dumps(b) + "\n"))
+        self.assertEqual(probs, [])
+
     def test_bad_claims_abort_run(self):
         m = self.manifest()
         self.write("g1.claims.jsonl", "{broken\n")
