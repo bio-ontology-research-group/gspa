@@ -70,3 +70,56 @@ versionless accession joins. An explicit different protein version is never
 silently joined. Its counts of nonzero and threshold-retained candidates are
 resource-planning diagnostics; they are not benchmark results or a chosen pruning
 policy. Slurm job 9743 runs this complete audit.
+
+## Cohort families and metadata
+
+`benchmark/v3/prepare_price_cohort.py` turns the layout directory, an MMseqs2
+easy-cluster membership TSV (id 0.3, coverage 0.8 both directions, over the namespaced
+combined FASTA) and the frozen NCBI taxonomy EFETCH XML into the two strict production
+inputs: `cohort_orthogroups.tsv` (`genome_id, protein_id, orthogroup_id, subfamily_id,
+weight`, read by `CohortOrthogroupReader.readCohortFile`) and `cohort_metadata.json`
+(`CohortMetadata`). It also writes `families.tsv` and a `report.json` with the SHA-256
+of every input, the MMseqs2 version and command (from `--mmseqs-log`, or
+`--mmseqs-version` plus `--mmseqs-command`; one is required), and the coverage audit.
+
+```bash
+python benchmark/v3/prepare_price_cohort.py \
+  --layout /tmp/gspa-v3-price-layout-v3 \
+  --clusters /tmp/gspa-v3-price-families/id30_cov80_cluster.tsv \
+  --taxonomy /tmp/gspa-v3-price-families/taxonomy.xml \
+  --mmseqs-log /tmp/gspa-v3-price-families/id30_cov80.log \
+  --out <fresh directory>
+```
+
+What the outputs mean:
+
+- **Families are sequence-similarity clusters**, not established orthologs. Paralogs
+  of one genome can share a family, and the same protein accession in two genomes is
+  two proteins (the combined FASTA namespace `<assembly>__<protein>` is split on the
+  first `__` only). Family IDs are `fam30_` plus a hash of the representative, with no
+  colon, because the production reader strips an `ns:` prefix.
+- **`familySearchComplete` is true only when every acquired protein occurs exactly
+  once** in the membership and no member ID is foreign (unknown genome, unacquired
+  protein, stripped namespace, other protein version). Repeated or foreign IDs, and
+  any missing protein, are rejected; `--allow-partial` writes an uncertified output
+  with `familySearchComplete=false` and the measured coverage. Absence of a family is
+  detection-limited to this cluster protocol and is not evidence that remote
+  homologs are absent.
+- **`clade` is the NCBI genus taxid and `strainCluster` the NCBI species taxid**, read
+  from the frozen lineage. The species block is a conservative redundancy proxy, not
+  an ANI cluster, and strains or species are not independent units. A missing taxon or
+  rank leaves the field absent (unknown) and is listed in the report. A top-level
+  `TaxId` that was not requested, including a merged ID, is an error.
+- **Subfamilies** (optional 70% subclusters, `--subclusters`) must nest in one 30%
+  family. A violation fails by default; `--subfamily-policy combined` uses the
+  family+subcluster signature for every protein and records a warning. Without a
+  subcluster file `subfamily_id` is `-`.
+
+Only identifiers, assembly status and contig lengths enter the outputs; functional GFF
+annotations never do. Tests: `benchmark/v3/tests/test_price_cohort.py`.
+
+Status: the layout digests (22 assemblies, 115,542 proteins) and the taxonomy
+cross-check (18 distinct requested taxids, all resolved, no mismatch) pass on the
+frozen inputs. The id 0.3 clustering over all proteins was still running when this was
+written, so the verified cohort artifact and its report are pending generation from the
+finished cluster file.
