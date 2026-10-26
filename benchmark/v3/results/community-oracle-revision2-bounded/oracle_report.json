@@ -1,0 +1,3611 @@
+{
+  "schema": "gspa.community_cobra_oracle/1",
+  "interpretation": "Independent implementation agreement and mechanism attribution on a declared development selection; not phenotype accuracy, not transporter evidence, not the full benchmark",
+  "status": "completed",
+  "hashes": {
+    "model_file_sha256": "9c772d44ca43350e40dc7ee86c7aa148796856be1eea45e5406c6df8f7dcde28",
+    "cases_sha256": "08850bf04a8d9014832aa281079a3350269b91b775d555ce0c0b908161d3f4fb",
+    "selection_sha256": "ec9ccfadada2fd0466c6af5f52ce0ef3b51d91bcecb96c62918557a824d7cfc9",
+    "oracle_script_sha256": "31454e6d141859910ebc25f608eff122534124850a2c6cefc001cbf806294e58",
+    "selection_canonical_sha256": "154390210ea4829e34115d34451fda0a4f867cd8f8faac2e03ffc51e77bb9a09"
+  },
+  "production": {
+    "report_sha256": "47b4614a1b3a26fe786667345f027116ec5032ead6f7e6785ab78630ad793a36",
+    "report_status": "complete",
+    "protocol_revision": 2,
+    "protocol_sha256": "d62dc7ecf94f7206471f7178055b5b04929f92e8757309b3c267184ead4a77dc",
+    "n_registered_cases": 5,
+    "n_cases_run": 5,
+    "partial_reasons": [],
+    "production_hashes": {
+      "runner_sha256": "ba517db67c32897b0f2e670fda440e79fae4dd018528f4af6eccd2a4a9c77156",
+      "engine_sha256": "3fdf76215e67c35260c663b3eb75ed16e36b424274a20afb695a55cbe50a63d7",
+      "community_module_sha256": "cd49e0c946883545df1b5fb3fad1e4abe9e184aca10b7decf7b8cc7792e85885",
+      "git_commit": "65ec9bdb51fadd713c84afa57fc9e275bd8e870f"
+    },
+    "cases_files": {
+      "o2_00_trace_absent": {
+        "file": "cases_o2_00_trace_absent.jsonl",
+        "sha256": "268080e52a23b4bbc2019422942543b82e9bdce43094dfd461c538131c855e65"
+      },
+      "o2_00_trace_present": {
+        "file": "cases_o2_00_trace_present.jsonl",
+        "sha256": "3a60d709530b1455001be4bc2890304739b48991e112d35dd7130b1554548a21"
+      },
+      "o2_02_trace_absent": {
+        "file": "cases_o2_02_trace_absent.jsonl",
+        "sha256": "82e1741a36343774325a1ebc4cd6b3ea4d6601381e5db405c0eab84b491fba52"
+      },
+      "o2_02_trace_present": {
+        "file": "cases_o2_02_trace_present.jsonl",
+        "sha256": "d04742d46af1ac7b08beef98ac4ebd2eb226b254638c81331db7a5398e039c18"
+      },
+      "o2_20_trace_absent": {
+        "file": "cases_o2_20_trace_absent.jsonl",
+        "sha256": "678af44b9c81abfb4d1ae81b453365554c6c593fc2fa6108192f1d75654705e3"
+      },
+      "o2_20_trace_present": {
+        "file": "cases_o2_20_trace_present.jsonl",
+        "sha256": "26751b46d4cd0fc0662a6a26bfe3ff591bedd3b89439ab8033fe32a1143499e9"
+      }
+    },
+    "provenance": "verified_against_production_report"
+  },
+  "versions": {
+    "python": "3.10.16",
+    "cobra": "0.32.1",
+    "optlang": "1.9.1",
+    "solver": "glpk",
+    "swiglpk": "unknown",
+    "glpk": "5.0"
+  },
+  "solver_parameters": {
+    "interface": "optlang.glpk_interface",
+    "presolve": "auto",
+    "lp_method": "None",
+    "timeout": null,
+    "cobra_tolerance": 1e-07,
+    "note": "library defaults; nothing tuned"
+  },
+  "tolerances": {
+    "mu_rel": 1e-06,
+    "mu_abs": 1e-07,
+    "cross_flux": 1e-07,
+    "outcome": "growth class must be identical (threshold = protocol.growth_threshold)"
+  },
+  "declaration": {
+    "role": "development",
+    "labels_used": false,
+    "declared_on": "2026-10-26",
+    "declared_before": "the first run of benchmark/v3/check_community_cobra.py and of the bounded revision-2 production fixture built from this file",
+    "basis": "pairs chosen as complementary auxotrophs in unrelated pathways (mechanistic), plus one pair with a viable monoculture; measured labels are neither read to choose nor to evaluate",
+    "not_held_out": "these pairs were examined in docs/v3-community-diagnosis.md; this is a development check of the engine, not a held-out evaluation and not evidence about the 1,035-pair benchmark",
+    "expected_outcomes_declared": "none; the oracle reports agreement with production and attribution, it does not assert a biological expectation"
+  },
+  "protocol": {
+    "glucose_exchange": "R_EX_glc__D_e",
+    "glucose_uptake": 10.0,
+    "ceiling": 1000.0,
+    "water_exchange": "R_EX_h2o_e",
+    "proton_exchange": "R_EX_h_e",
+    "co2_exchange": "R_EX_co2_e",
+    "oxygen_exchange": "R_EX_o2_e",
+    "maintenance_reaction": "R_ATPM",
+    "biomass_reaction": "R_BIOMASS_Ec_iML1515_core_75p37M",
+    "growth_threshold": 1e-06,
+    "oxygen_arms": [
+      0.0,
+      2.0,
+      20.0
+    ],
+    "trace_arms": "both"
+  },
+  "arms": {
+    "o2_00_trace_present": {
+      "arm": {
+        "id": "o2_00_trace_present",
+        "o2": 0.0,
+        "trace": true
+      },
+      "pairs": [
+        {
+          "pair_id": "WS2010:argB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "argB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.1573133707455102
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 1.2354646930379187e-30
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 22,
+            "necessary_given_other_transfers": [],
+            "n_dispensable": 22
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 2.3619994848900205e-14,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.15731337074548657
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.2354646930379187e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+lysA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "lysA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.15729721661386836
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 23,
+            "necessary_given_other_transfers": [
+              {
+                "species": "M_his__L_e",
+                "producers": {
+                  "lysA": 0.007451011853782333
+                },
+                "consumers": {
+                  "hisB": 0.007451011853782333
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "hisB",
+                    "reactions": [
+                      {
+                        "id": "R_HIStex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "hisB": {
+                    "outcome": "no_growth",
+                    "mu": 0.0
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              },
+              {
+                "species": "M_lys__L_e",
+                "producers": {
+                  "hisB": 0.026989135075215845
+                },
+                "consumers": {
+                  "lysA": 0.026989135075215845
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "lysA",
+                    "reactions": [
+                      {
+                        "id": "R_LYStex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "lysA": {
+                    "outcome": "no_growth",
+                    "mu": 0.0
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              }
+            ],
+            "n_dispensable": 21
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 2.456368441983159e-14,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.1572972166138438
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.15741431904824962
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 22,
+            "necessary_given_other_transfers": [
+              {
+                "species": "M_his__L_e",
+                "producers": {
+                  "trpA": 0.007456558878996538
+                },
+                "consumers": {
+                  "hisB": 0.007456558878996538
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "hisB",
+                    "reactions": [
+                      {
+                        "id": "R_HIStex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "hisB": {
+                    "outcome": "no_growth",
+                    "mu": 0.0
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              }
+            ],
+            "n_dispensable": 21
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 3.1585845050585704e-14,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.1574143190482812
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:metA+pyrF",
+          "role": "diagnostic",
+          "strains": [
+            "metA",
+            "pyrF"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.1570755860203466
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 26,
+            "necessary_given_other_transfers": [
+              {
+                "species": "M_met__L_e",
+                "producers": {
+                  "pyrF": 0.01208783025998878
+                },
+                "consumers": {
+                  "metA": 0.01208783025998878
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "metA",
+                    "reactions": [
+                      {
+                        "id": "R_METtex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "metA": {
+                    "outcome": "no_growth",
+                    "mu": 0.0
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              }
+            ],
+            "n_dispensable": 25
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.915134717478395e-14,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.15707558602032745
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:serA+trpA",
+          "role": "viable_monoculture_control",
+          "strains": [
+            "serA",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "growth",
+              "mu": 0.15299712173426838
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.15717504429190096
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 23,
+            "necessary_given_other_transfers": [],
+            "n_dispensable": 23
+          },
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 3.0808688933348094e-15,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.1529971217342653
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.6517343048860766e-13,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.1571750442917358
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        }
+      ],
+      "single_controls": [
+        {
+          "strain": "trpA",
+          "locus_tag": "b1260",
+          "supplement": "R_EX_trp__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.15741431904824635
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.24540227638103673
+          }
+        },
+        {
+          "strain": "hisB",
+          "locus_tag": "b2022",
+          "supplement": "R_EX_his__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.15741431904824635
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.15896074148693004
+          }
+        },
+        {
+          "strain": "argB",
+          "locus_tag": "b3959",
+          "supplement": "R_EX_arg__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.15741431904824635
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.187036445583248
+          }
+        },
+        {
+          "strain": "lysA",
+          "locus_tag": "b2838",
+          "supplement": "R_EX_lys__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.15741431904824635
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.15968131453472179
+          }
+        },
+        {
+          "strain": "pyrF",
+          "locus_tag": "b1281",
+          "supplement": "R_EX_ura_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.15741431904824635
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.16022292508630198
+          }
+        },
+        {
+          "strain": "metA",
+          "locus_tag": "b4013",
+          "supplement": "R_EX_met__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.15741431904824635
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.1594308978459164
+          }
+        }
+      ]
+    },
+    "o2_00_trace_absent": {
+      "arm": {
+        "id": "o2_00_trace_absent",
+        "o2": 0.0,
+        "trace": false
+      },
+      "pairs": [
+        {
+          "pair_id": "WS2010:argB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "argB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 1.2380702784204193e-30
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.2380702784204193e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+lysA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "lysA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 1.0904452381056058e-31
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.0904452381056058e-31,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 1.9999359007628716e-30
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.9999359007628716e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:metA+pyrF",
+          "role": "diagnostic",
+          "strains": [
+            "metA",
+            "pyrF"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 1.7234836888954262e-17
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.7234836888954262e-17,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:serA+trpA",
+          "role": "viable_monoculture_control",
+          "strains": [
+            "serA",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 1.013888843525307e-30
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 1.6103186360101185e-30
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 1.4040065709394028e-29
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.013888843525307e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.6103186360101185e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.4040065709394028e-29,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        }
+      ],
+      "single_controls": [
+        {
+          "strain": "trpA",
+          "locus_tag": "b1260",
+          "supplement": "R_EX_trp__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "hisB",
+          "locus_tag": "b2022",
+          "supplement": "R_EX_his__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "argB",
+          "locus_tag": "b3959",
+          "supplement": "R_EX_arg__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "lysA",
+          "locus_tag": "b2838",
+          "supplement": "R_EX_lys__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "pyrF",
+          "locus_tag": "b1281",
+          "supplement": "R_EX_ura_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 1.1622378025995067e-29
+          }
+        },
+        {
+          "strain": "metA",
+          "locus_tag": "b4013",
+          "supplement": "R_EX_met__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 3.502261140940727e-45
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        }
+      ]
+    },
+    "o2_02_trace_present": {
+      "arm": {
+        "id": "o2_02_trace_present",
+        "o2": 2.0,
+        "trace": true
+      },
+      "pairs": [
+        {
+          "pair_id": "WS2010:argB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "argB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.2358783723085293
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 1.9638410228186493e-30
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 19,
+            "necessary_given_other_transfers": [],
+            "n_dispensable": 19
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 5.717648576819556e-15,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.23587837230852357
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.9638410228186493e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+lysA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "lysA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.23585409749348146
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 4.398856225479025e-18
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 2.4594251926536792e-30
+            }
+          },
+          "transfers": {
+            "candidates_tested": 21,
+            "necessary_given_other_transfers": [
+              {
+                "species": "M_his__L_e",
+                "producers": {
+                  "lysA": 0.011172172744168726
+                },
+                "consumers": {
+                  "hisB": 0.011172172744168726
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "hisB",
+                    "reactions": [
+                      {
+                        "id": "R_HIStex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "hisB": {
+                    "outcome": "no_growth",
+                    "mu": 1.419799602347582e-31
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              },
+              {
+                "species": "M_lys__L_e",
+                "producers": {
+                  "hisB": 0.0404679639749803
+                },
+                "consumers": {
+                  "lysA": 0.0404679639749803
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "lysA",
+                    "reactions": [
+                      {
+                        "id": "R_LYStex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "lysA": {
+                    "outcome": "no_growth",
+                    "mu": 0.0
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              }
+            ],
+            "n_dispensable": 19
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.4710455076283324e-15,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.23585409749348293
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 4.398856225479025e-18,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.23603006757954517
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 6.523193888823771e-31
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 21,
+            "necessary_given_other_transfers": [
+              {
+                "species": "M_his__L_e",
+                "producers": {
+                  "trpA": 0.011180508271175477
+                },
+                "consumers": {
+                  "hisB": 0.011180508271175477
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "hisB",
+                    "reactions": [
+                      {
+                        "id": "R_HIStex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "hisB": {
+                    "outcome": "no_growth",
+                    "mu": 0.0
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              }
+            ],
+            "n_dispensable": 20
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 3.0531133177191805e-16,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.23603006757954548
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 6.523193888823771e-31,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:metA+pyrF",
+          "role": "diagnostic",
+          "strains": [
+            "metA",
+            "pyrF"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.2355210542827255
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 22,
+            "necessary_given_other_transfers": [
+              {
+                "species": "M_met__L_e",
+                "producers": {
+                  "pyrF": 0.01812464049285428
+                },
+                "consumers": {
+                  "metA": 0.01812464049285428
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "metA",
+                    "reactions": [
+                      {
+                        "id": "R_METtex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "metA": {
+                    "outcome": "no_growth",
+                    "mu": 0.0
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              }
+            ],
+            "n_dispensable": 21
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 3.444466933899548e-14,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.23552105428275993
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:serA+trpA",
+          "role": "viable_monoculture_control",
+          "strains": [
+            "serA",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "growth",
+              "mu": 0.2293927327172871
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.23567028130893442
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 22,
+            "necessary_given_other_transfers": [],
+            "n_dispensable": 22
+          },
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 8.715250743307479e-15,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.22939273271729582
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 4.829470157119431e-15,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.23567028130893924
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        }
+      ],
+      "single_controls": [
+        {
+          "strain": "trpA",
+          "locus_tag": "b1260",
+          "supplement": "R_EX_trp__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.23603006757954917
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.3246023394557741
+          }
+        },
+        {
+          "strain": "hisB",
+          "locus_tag": "b2022",
+          "supplement": "R_EX_his__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.23603006757954917
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.23835393379307465
+          }
+        },
+        {
+          "strain": "argB",
+          "locus_tag": "b3959",
+          "supplement": "R_EX_arg__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.23603006757954917
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.2685971965313416
+          }
+        },
+        {
+          "strain": "lysA",
+          "locus_tag": "b2838",
+          "supplement": "R_EX_lys__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.23603006757954917
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.23926073361341132
+          }
+        },
+        {
+          "strain": "pyrF",
+          "locus_tag": "b1281",
+          "supplement": "R_EX_ura_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.23603006757954917
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.23972274351146072
+          }
+        },
+        {
+          "strain": "metA",
+          "locus_tag": "b4013",
+          "supplement": "R_EX_met__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.23603006757954917
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.23899713096486236
+          }
+        }
+      ]
+    },
+    "o2_02_trace_absent": {
+      "arm": {
+        "id": "o2_02_trace_absent",
+        "o2": 2.0,
+        "trace": false
+      },
+      "pairs": [
+        {
+          "pair_id": "WS2010:argB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "argB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 3.594477570809119e-30
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 3.594477570809119e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+lysA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "lysA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 8.582790415265253e-47
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 8.582790415265253e-47,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:metA+pyrF",
+          "role": "diagnostic",
+          "strains": [
+            "metA",
+            "pyrF"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 5.436415664670348e-16
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 1.4054005661235698e-17
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 5.436415664670348e-16,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.4054005661235698e-17,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:serA+trpA",
+          "role": "viable_monoculture_control",
+          "strains": [
+            "serA",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        }
+      ],
+      "single_controls": [
+        {
+          "strain": "trpA",
+          "locus_tag": "b1260",
+          "supplement": "R_EX_trp__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "hisB",
+          "locus_tag": "b2022",
+          "supplement": "R_EX_his__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "argB",
+          "locus_tag": "b3959",
+          "supplement": "R_EX_arg__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "lysA",
+          "locus_tag": "b2838",
+          "supplement": "R_EX_lys__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "pyrF",
+          "locus_tag": "b1281",
+          "supplement": "R_EX_ura_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "metA",
+          "locus_tag": "b4013",
+          "supplement": "R_EX_met__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        }
+      ]
+    },
+    "o2_20_trace_present": {
+      "arm": {
+        "id": "o2_20_trace_present",
+        "o2": 20.0,
+        "trace": true
+      },
+      "pairs": [
+        {
+          "pair_id": "WS2010:argB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "argB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.8213140136133463
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 18,
+            "necessary_given_other_transfers": [],
+            "n_dispensable": 18
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 2.6756374893466273e-14,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.8213140136133196
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+lysA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "lysA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.8212365701776545
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 20,
+            "necessary_given_other_transfers": [
+              {
+                "species": "M_his__L_e",
+                "producers": {
+                  "lysA": 0.03890115509274532
+                },
+                "consumers": {
+                  "hisB": 0.03890115509274532
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "hisB",
+                    "reactions": [
+                      {
+                        "id": "R_HIStex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "hisB": {
+                    "outcome": "no_growth",
+                    "mu": 0.0
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              },
+              {
+                "species": "M_lys__L_e",
+                "producers": {
+                  "hisB": 0.14090818132936705
+                },
+                "consumers": {
+                  "lysA": 0.14090818132936705
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "lysA",
+                    "reactions": [
+                      {
+                        "id": "R_LYStex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "lysA": {
+                    "outcome": "no_growth",
+                    "mu": 1.52480243712266e-16
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              }
+            ],
+            "n_dispensable": 18
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 3.9968028886505635e-15,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.8212365701776505
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.8217979336265971
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 1.357146277296764e-31
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 12,
+            "necessary_given_other_transfers": [
+              {
+                "species": "M_his__L_e",
+                "producers": {
+                  "trpA": 0.03892774631795828
+                },
+                "consumers": {
+                  "hisB": 0.03892774631795828
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "hisB",
+                    "reactions": [
+                      {
+                        "id": "R_HIStex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "hisB": {
+                    "outcome": "no_growth",
+                    "mu": 0.0
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              }
+            ],
+            "n_dispensable": 11
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 5.062616992290714e-14,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.8217979336265465
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.357146277296764e-31,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:metA+pyrF",
+          "role": "diagnostic",
+          "strains": [
+            "metA",
+            "pyrF"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.8201739345264571
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 7.017165303816718e-32
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 20,
+            "necessary_given_other_transfers": [
+              {
+                "species": "M_met__L_e",
+                "producers": {
+                  "pyrF": 0.06311689521845076
+                },
+                "consumers": {
+                  "metA": 0.06311689521845076
+                },
+                "consumer_entry": [
+                  {
+                    "consumer": "metA",
+                    "reactions": [
+                      {
+                        "id": "R_METtex",
+                        "bounds": [
+                          -1000.0,
+                          1000.0
+                        ],
+                        "gpr": "G_b0241 or G_b0929 or G_b1377 or G_b2215"
+                      }
+                    ]
+                  }
+                ],
+                "growth_with_consumer_entry_reactions_closed": {
+                  "metA": {
+                    "outcome": "no_growth",
+                    "mu": 7.466694566873428e-31
+                  }
+                },
+                "exchange_native_bounds": [
+                  0.0,
+                  1000.0
+                ]
+              }
+            ],
+            "n_dispensable": 19
+          },
+          "rescue_in_oracle": true,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 8.770761894538737e-15,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.8201739345264484
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 7.017165303816718e-32,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:serA+trpA",
+          "role": "viable_monoculture_control",
+          "strains": [
+            "serA",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "growth",
+              "mu": 0.7876193943975552
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "growth",
+              "mu": 0.8205606201487213
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": {
+            "candidates_tested": 14,
+            "necessary_given_other_transfers": [],
+            "n_dispensable": 14
+          },
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 8.992806499463768e-15,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.7876193943975462
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.2989609388114332e-14,
+                "agrees": true,
+                "production": {
+                  "outcome": "growth",
+                  "mu": 0.8205606201487083
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        }
+      ],
+      "single_controls": [
+        {
+          "strain": "trpA",
+          "locus_tag": "b1260",
+          "supplement": "R_EX_trp__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.8217979336266141
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.9368712324982671
+          }
+        },
+        {
+          "strain": "hisB",
+          "locus_tag": "b2022",
+          "supplement": "R_EX_his__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.8217979336266141
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.8295469811583329
+          }
+        },
+        {
+          "strain": "argB",
+          "locus_tag": "b3959",
+          "supplement": "R_EX_arg__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.8217979336266141
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.9497821637642911
+          }
+        },
+        {
+          "strain": "lysA",
+          "locus_tag": "b2838",
+          "supplement": "R_EX_lys__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.8217979336266141
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.8372502974832725
+          }
+        },
+        {
+          "strain": "pyrF",
+          "locus_tag": "b1281",
+          "supplement": "R_EX_ura_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.8217979336266141
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.8337839119971326
+          }
+        },
+        {
+          "strain": "metA",
+          "locus_tag": "b4013",
+          "supplement": "R_EX_met__L_e",
+          "wild_type": {
+            "outcome": "growth",
+            "mu": 0.8217979336266141
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "growth",
+            "mu": 0.835080676123734
+          }
+        }
+      ]
+    },
+    "o2_20_trace_absent": {
+      "arm": {
+        "id": "o2_20_trace_absent",
+        "o2": 20.0,
+        "trace": false
+      },
+      "pairs": [
+        {
+          "pair_id": "WS2010:argB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "argB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 1.8480548593336313e-30
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 2.652032762727094e-15
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.8480548593336313e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 2.652032762727094e-15,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+lysA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "lysA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:hisB+trpA",
+          "role": "diagnostic",
+          "strains": [
+            "hisB",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:metA+pyrF",
+          "role": "diagnostic",
+          "strains": [
+            "metA",
+            "pyrF"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 9.417640782102557e-30
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 2.484553700946677e-31
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 9.417640782102557e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 2.484553700946677e-31,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        },
+        {
+          "pair_id": "WS2010:serA+trpA",
+          "role": "viable_monoculture_control",
+          "strains": [
+            "serA",
+            "trpA"
+          ],
+          "oracle": {
+            "mono_a": {
+              "outcome": "no_growth",
+              "mu": 1.7149030178968047e-30
+            },
+            "mono_b": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "control": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            },
+            "native_bounds_community": {
+              "outcome": "no_growth",
+              "mu": 0.0
+            }
+          },
+          "transfers": null,
+          "rescue_in_oracle": false,
+          "production_comparison": {
+            "status": "compared",
+            "sims": {
+              "mono_a": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 1.7149030178968047e-30,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "mono_b": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "community": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              },
+              "control": {
+                "outcome_agrees": true,
+                "mu_agrees": true,
+                "abs_diff": 0.0,
+                "agrees": true,
+                "production": {
+                  "outcome": "no_growth",
+                  "mu": 0.0
+                }
+              }
+            },
+            "agrees": true
+          }
+        }
+      ],
+      "single_controls": [
+        {
+          "strain": "trpA",
+          "locus_tag": "b1260",
+          "supplement": "R_EX_trp__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "hisB",
+          "locus_tag": "b2022",
+          "supplement": "R_EX_his__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "argB",
+          "locus_tag": "b3959",
+          "supplement": "R_EX_arg__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "lysA",
+          "locus_tag": "b2838",
+          "supplement": "R_EX_lys__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "pyrF",
+          "locus_tag": "b1281",
+          "supplement": "R_EX_ura_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          }
+        },
+        {
+          "strain": "metA",
+          "locus_tag": "b4013",
+          "supplement": "R_EX_met__L_e",
+          "wild_type": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion": {
+            "outcome": "no_growth",
+            "mu": 0.0
+          },
+          "deletion_plus_supplement": {
+            "outcome": "no_growth",
+            "mu": 9.718044276582064e-31
+          }
+        }
+      ]
+    }
+  },
+  "agreement": {
+    "n_pair_arm_compared": 30,
+    "n_agree": 30,
+    "max_abs_mu_diff": 1.6517343048860766e-13,
+    "all_agree": true
+  },
+  "limits": [
+    "one optimal solution per community LP; alternative optima can change which species look cross-fed",
+    "growth classification near the threshold would be solver-sensitive; mu values are reported",
+    "agreement between two implementations is not evidence that a transporter exists"
+  ]
+}

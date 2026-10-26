@@ -45,6 +45,24 @@ dependencies below).
 - **Closed boundaries.** Single-metabolite reactions that are not extracellular
   ports (sinks, demands, biomass drains) have uptake closed.
 
+- **Port import is opt-in (`open_uptake`).** By default a port keeps the model's own exchange bounds, so an
+  exchange whose uptake bound is closed in the SBML cannot import a partner's product. This is the intended legacy
+  semantics and there is no blanket opening: BiGG-style models (iML1515 closes uptake on 307 of 331 exchanges) are
+  silently unable to cross-feed unless the manifest says otherwise. To let a port receive a partner's product,
+  set `open_uptake` (finite, > 0, mmol/gDW/h) **on that port**; it is the explicit, registered ports policy and
+  nothing else opens imports. Application users who want partner uptake must set it for every port they intend to
+  open (see the manifest below). Details:
+  - it opens the import direction to *at least* the rate (`lower_bound = min(native, -rate)`, or the upper bound for the
+    opposite sign convention); a native bound that is already more permissive is kept, so `open_uptake` is a floor
+    on the opening, **not** a cap. To cap uptake, close it (`closed_ports` / experiment `direction: "uptake"`) or
+    limit the pool `supply` and the partner's secretion;
+  - it is applied before closed ports, `ports_closed_by_policy` and experiment closures, which therefore still win;
+  - only the exchange boundary is opened. Internal reactions, including periplasmic and inner-membrane transporters,
+    keep their bounds and GPRs, so opening an exchange does not bypass membrane transport; growth that rests on a
+    transport step still needs that reaction to be open in the model;
+  - it does not create nutrients: the pool balance (supply and the partner's secretion) limits the import, and it
+    says nothing about whether a real transporter exists (see `support` below).
+
 ## Manifest
 
 ```json
@@ -53,7 +71,7 @@ dependencies below).
     {"id": "P", "model": "P.xml", "sha256": "<optional>", "biomass": "BIO", "biomass_units": "1/h",
      "maintenance": {"reaction": "ATPM", "lower_bound": 0.1},
      "ports": {"EX_glc_e": {"pool": "glc", "support": "curated"},
-               "EX_vit_e": {"pool": "vit", "support": "predicted", "evidence": "..."}},
+               "EX_vit_e": {"pool": "vit", "support": "predicted", "evidence": "...", "open_uptake": 1000.0}},
      "closed_ports": [], "knockouts": []}
   ],
   "pool": {"metabolites": {"glc": {"identity": "glucose", "formula": "C6H12O6"}},
@@ -73,7 +91,7 @@ declared `metabolite` must match the species the exchange acts on; where both a
 pool `formula` and an SBML formula exist they must match (otherwise identity is
 as declared and recorded as unverified); `flux_units` must be `mmol/gDW/h` and
 `biomass_units` must be `1/h` (biomass normalised to 1 gDW); `scale` > 0 and
-finite; supply, removal and ratios finite; model `sha256` must match if given;
+finite; `open_uptake`, when present, finite and > 0; supply, removal and ratios finite; model `sha256` must match if given;
 organism ids unique.
 
 **Transport support.** Each port has `support` in `curated | predicted | unknown`
@@ -120,6 +138,10 @@ python3 scripts/community_metabolism.py --manifest community.json --out result.j
 python3 -m unittest scripts/tests/test_community_metabolism.py   # needs libsbml, scipy, numpy
 ```
 
+An independent COBRApy/GLPK re-implementation of this formulation for the v3 community benchmark is
+`benchmark/v3/check_community_cobra.py` (optional dependency `cobra`; its tests skip only when it is absent). See
+[v3 community diagnosis](../v3-community-diagnosis.md) for how to run it and what it does and does not show.
+
 ## Production route
 
 `gspa integrate --community-manifest community.json` (single run or batch; a batch runs it once and every genome
@@ -127,6 +149,9 @@ ledger points at the same result) executes this script as the `community_metabol
 fresh-output, checked execution as the single-organism experiments: hard solver-call budget
 (`--community-max-solver-calls`), wall-clock limit, schema and per-organism model SHA-256 checks, and every conditional
 record must say `enzyme_assignment: none`, no probability and no promotion. Results are written to `<out>.community/`.
+The stage never opens ports on its own: a community manifest without `open_uptake` on the receiving ports keeps the
+models' native import bounds, so for BiGG-style models a partner's product cannot be taken up and every rescue
+is negative by construction. Declare `open_uptake` on the ports meant to receive partner products.
 
 Results stay **organism-specific**. Growth restored by a partner's metabolite assigns no enzyme or gene, does not show
 that a transporter exists, and is **not** used as evidence for any candidate: the community has no typed feature

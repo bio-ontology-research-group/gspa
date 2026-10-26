@@ -1,0 +1,5332 @@
+{
+  "schema": "gspa.community_benchmark/1",
+  "role": "static balanced-growth feasibility of measured Keio auxotroph pairs; not fold change, competitive fitness, or gene/function recovery; iML1515 transportability baseline for an iAF1260 study",
+  "status": "complete",
+  "execution": {
+    "complete": true,
+    "n_failed": 0,
+    "n_incomplete_simulation": 0,
+    "n_unknown_primary_predictions": 0
+  },
+  "coverage": {
+    "o2_00_trace_present": {
+      "n_registered_cases": 5,
+      "n_with_prediction_primary": 5,
+      "fraction_with_prediction_primary": 1.0,
+      "n_with_prediction_strict": 5,
+      "n_unmapped_or_failed": 0,
+      "n_unknown_primary": 0
+    },
+    "o2_00_trace_absent": {
+      "n_registered_cases": 5,
+      "n_with_prediction_primary": 5,
+      "fraction_with_prediction_primary": 1.0,
+      "n_with_prediction_strict": 5,
+      "n_unmapped_or_failed": 0,
+      "n_unknown_primary": 0
+    },
+    "o2_02_trace_present": {
+      "n_registered_cases": 5,
+      "n_with_prediction_primary": 5,
+      "fraction_with_prediction_primary": 1.0,
+      "n_with_prediction_strict": 5,
+      "n_unmapped_or_failed": 0,
+      "n_unknown_primary": 0
+    },
+    "o2_02_trace_absent": {
+      "n_registered_cases": 5,
+      "n_with_prediction_primary": 5,
+      "fraction_with_prediction_primary": 1.0,
+      "n_with_prediction_strict": 5,
+      "n_unmapped_or_failed": 0,
+      "n_unknown_primary": 0
+    },
+    "o2_20_trace_present": {
+      "n_registered_cases": 5,
+      "n_with_prediction_primary": 5,
+      "fraction_with_prediction_primary": 1.0,
+      "n_with_prediction_strict": 5,
+      "n_unmapped_or_failed": 0,
+      "n_unknown_primary": 0
+    },
+    "o2_20_trace_absent": {
+      "n_registered_cases": 5,
+      "n_with_prediction_primary": 5,
+      "fraction_with_prediction_primary": 1.0,
+      "n_with_prediction_strict": 5,
+      "n_unmapped_or_failed": 0,
+      "n_unknown_primary": 0
+    }
+  },
+  "partial_reasons": [],
+  "n_registered_cases": 5,
+  "n_cases_run": 5,
+  "inputs": {
+    "cases_sha256": "08850bf04a8d9014832aa281079a3350269b91b775d555ce0c0b908161d3f4fb",
+    "model_sha256": "9c772d44ca43350e40dc7ee86c7aa148796856be1eea45e5406c6df8f7dcde28",
+    "model_file_sha256": "9c772d44ca43350e40dc7ee86c7aa148796856be1eea45e5406c6df8f7dcde28",
+    "protocol_sha256": "d62dc7ecf94f7206471f7178055b5b04929f92e8757309b3c267184ead4a77dc",
+    "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+    "runner_sha256": "ba517db67c32897b0f2e670fda440e79fae4dd018528f4af6eccd2a4a9c77156",
+    "engine_sha256": "3fdf76215e67c35260c663b3eb75ed16e36b424274a20afb695a55cbe50a63d7",
+    "community_module_sha256": "cd49e0c946883545df1b5fb3fad1e4abe9e184aca10b7decf7b8cc7792e85885",
+    "git_commit": "65ec9bdb51fadd713c84afa57fc9e275bd8e870f"
+  },
+  "protocol": {
+    "schema": "gspa.community_benchmark_protocol/1",
+    "dataset": "Wintermute & Silver 2010 (10.1038/msb.2010.66), 1,035 unordered pairs of 46 Keio auxotrophs",
+    "model": "iML1515 (exact acquired file; hash taken from the case inputs); authors modelled iAF1260",
+    "model_role": "development transportability baseline, not the authors' model",
+    "glucose_uptake_mmol_gdw_h": 10.0,
+    "glucose_note": "normalisation assumption (as in the auxotroph protocols); NOT inferred from 20 g/l",
+    "medium_components_from_input": "printed M9 exchanges other than glucose supplied at the ceiling",
+    "ceiling_mmol_gdw_h": 1000.0,
+    "ceiling_applies_to": [
+      "ammonium",
+      "phosphate",
+      "other printed inorganic ions",
+      "H2O",
+      "H+",
+      "assumed trace metals (arm: trace present)"
+    ],
+    "trace_metals": "taken from inputs.medium.assumed_not_in_paper.trace_exchanges; assumed required, not measured",
+    "oxygen_arms_mmol_gdw_h": [
+      0.0,
+      2.0,
+      20.0
+    ],
+    "oxygen_selection": "all three are reported; none is chosen by outcome",
+    "trace_arms": {
+      "present": "primary",
+      "absent": "sensitivity"
+    },
+    "organic_supplements": "none beyond glucose",
+    "maintenance": "model-native R_ATPM lower bound, read from the model, not tuned",
+    "biomass": "the model's single active-objective biomass reaction, normalised to 1 gDW",
+    "community": "balanced growth, common growth rate mu, equal biomass fractions 0.5/0.5, objective max mu",
+    "monocultures": "same pool, ports, supply and removal, fraction 1, identical gene deletion",
+    "pool": "each model-native extracellular species (unique SBML species id) is one pool metabolite; every native external exchange of every organism is a port with support 'predicted'",
+    "port_support": "predicted (model-derived, not experiment-curated)",
+    "removal": "every pool metabolite may be removed up to the ceiling (waste accumulates in the medium); removal never supplies anything",
+    "internal_bounds": "model internal reaction and transport bounds kept; non-port single-metabolite reactions get no uptake",
+    "port_uptake": "every port may import up to the ceiling (the model's own exchange bounds describe its own medium; iML1515 closes uptake of all but 24 exchanges, which made every cross-feeding transfer impossible in the first run, see docs/v3-community-diagnosis.md); the pool balance limits what can be imported",
+    "protocol_revision": 2,
+    "gene_deletion": "locus tag -> model gene product -> Model.blocked_by_genes (GPR-aware); no guessed genes",
+    "growth_threshold_mu": 1e-06,
+    "control": "same pair and deletions with uptake from the pool forbidden for every metabolite that is not a medium nutrient or one of H2O, H+, CO2, O2 (no cross-organism transfer of other metabolites)",
+    "prediction": "positive iff community grows AND both matched monocultures do not grow; one or two viable monocultures are flagged separately and are not positive",
+    "infeasibility": "infeasible under fixed maintenance = predicted no growth (primary); strict variant treats it as unknown; solver errors and exhausted budget are unknown",
+    "labels": "paper thresholds on mean day-4 fold growth: synergy > 50, no_synergy < 8, intermediate kept separate",
+    "scope": "feasibility of mutual growth in static balanced growth only; not fold change or fitness"
+  },
+  "analysis": {
+    "schema": "gspa.community_benchmark_analysis/1",
+    "dependence": "pairs share strains (46 strains, 1,035 dyads); pair-level binomial intervals are not valid",
+    "leave_one_strain_out": "drop every pair containing one strain; recompute; report range, vertex-jackknife SE and the most influential strains. Sensitivity, not a confidence interval",
+    "vertex_bootstrap": {
+      "replicates": 1000,
+      "seed": 20261026,
+      "scheme": "resample the 46 strains with replacement; a pair of distinct strains gets weight m_a*m_b; pairs of copies of the same strain are dropped; percentile 2.5/97.5"
+    },
+    "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough"
+  },
+  "model_audit_summary": {
+    "n_reactions": 2712,
+    "n_metabolites": 1877,
+    "n_external_exchanges": 331,
+    "biomass_reaction": "R_BIOMASS_Ec_iML1515_core_75p37M",
+    "maintenance": {
+      "reaction": "R_ATPM",
+      "lower_bound": 6.86
+    },
+    "n_strains_mapped": 7,
+    "unmapped_strains": [],
+    "mapped_gene_in_no_gpr": [],
+    "loci_shared_by_several_strains": {},
+    "n_strains_blocking_no_reaction": []
+  },
+  "arms": {
+    "o2_00_trace_present": {
+      "arm": {
+        "id": "o2_00_trace_present",
+        "o2": 0.0,
+        "trace": true
+      },
+      "n_cases": 5,
+      "n_executed": 5,
+      "n_failed": 0,
+      "n_incomplete_simulation": 0,
+      "execution_complete": true,
+      "coverage": {
+        "n_registered_cases": 5,
+        "n_with_prediction_primary": 5,
+        "fraction_with_prediction_primary": 1.0,
+        "n_with_prediction_strict": 5,
+        "n_unmapped_or_failed": 0,
+        "n_unknown_primary": 0
+      },
+      "monoculture_growth": {
+        "strains_growing_alone_in_model": [
+          "serA"
+        ],
+        "n_strains": 7,
+        "pairs_both_not_growing": 4,
+        "pairs_one_viable": 1,
+        "pairs_both_viable": 0
+      },
+      "model_outcomes": {
+        "community_growth": 5,
+        "community_infeasible_with_maintenance": 0,
+        "community_solver_problem": 0,
+        "control_growth_while_both_monocultures_not_growing": 0,
+        "positive_with_control_growth": 0
+      },
+      "control_comparison": {
+        "definition": "control = same pair, uptake from the pool forbidden for every metabolite outside 'nutrient_exchanges'; H2O, H+, CO2, O2 and medium nutrients stay exchangeable, so a rescue whose control still grows is NOT attributable to the blocked transfer",
+        "categories": {
+          "growth_lost_when_other_transfer_forbidden": 5
+        },
+        "categories_among_primary_positive": {
+          "growth_lost_when_other_transfer_forbidden": 4
+        }
+      },
+      "evaluation_primary": {
+        "all_cases": {
+          "n_cases": 5,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 4
+          },
+          "predicted_counts": {
+            "positive": 4,
+            "negative": 1
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 1,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 3,
+              "negative": 1,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 1,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "recall": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 3,
+            "n": 4,
+            "value": 0.75
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 1,
+              "n": 4,
+              "value": 0.25
+            },
+            "negative": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            }
+          }
+        },
+        "both_monocultures_not_growing": {
+          "n_cases": 4,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 3
+          },
+          "predicted_counts": {
+            "positive": 4
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 1,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 3,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 1,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "recall": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 3,
+            "n": 3,
+            "value": 1.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 1,
+              "n": 4,
+              "value": 0.25
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "one_viable_monoculture": {
+          "n_cases": 1,
+          "observed_counts": {
+            "intermediate": 1
+          },
+          "predicted_counts": {
+            "negative": 1
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 1,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            }
+          }
+        },
+        "both_monocultures_viable": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "failed_or_unknown_monoculture_state": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        }
+      },
+      "evaluation_strict_optimal_only": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "positive": 4,
+          "negative": 1
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 1,
+            "negative": 0,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 3,
+            "negative": 1,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 1,
+          "fn": 0,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "recall": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 3,
+          "n": 4,
+          "value": 0.75
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 1,
+            "n": 4,
+            "value": 0.25
+          },
+          "negative": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          }
+        }
+      },
+      "evaluation_control_gated": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "positive": 4,
+          "negative": 1
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 1,
+            "negative": 0,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 3,
+            "negative": 1,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 1,
+          "fn": 0,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "recall": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 3,
+          "n": 4,
+          "value": 0.75
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 1,
+            "n": 4,
+            "value": 0.25
+          },
+          "negative": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          }
+        }
+      },
+      "strain_resampling": {
+        "primary": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "recall": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "strict": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "recall": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "control_gated": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "recall": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        }
+      },
+      "solver": {
+        "max_calls": 117,
+        "used": 17,
+        "cache_hits": {
+          "monoculture": 3
+        },
+        "cache_misses": {
+          "monoculture": 7,
+          "community": 5,
+          "control": 5
+        },
+        "lp_build_seconds": 0.82,
+        "lp_solve_seconds": 0.92,
+        "n_infeasible": 0,
+        "n_error": 0
+      },
+      "conditions": {
+        "supply_exchanges": {
+          "R_EX_ca2_e": 1000.0,
+          "R_EX_cl_e": 1000.0,
+          "R_EX_cobalt2_e": 1000.0,
+          "R_EX_cu2_e": 1000.0,
+          "R_EX_fe2_e": 1000.0,
+          "R_EX_fe3_e": 1000.0,
+          "R_EX_glc__D_e": 10.0,
+          "R_EX_h2o_e": 1000.0,
+          "R_EX_h_e": 1000.0,
+          "R_EX_k_e": 1000.0,
+          "R_EX_mg2_e": 1000.0,
+          "R_EX_mn2_e": 1000.0,
+          "R_EX_mobd_e": 1000.0,
+          "R_EX_na1_e": 1000.0,
+          "R_EX_nh4_e": 1000.0,
+          "R_EX_ni2_e": 1000.0,
+          "R_EX_o2_e": 0.0,
+          "R_EX_pi_e": 1000.0,
+          "R_EX_sel_e": 1000.0,
+          "R_EX_slnt_e": 1000.0,
+          "R_EX_so4_e": 1000.0,
+          "R_EX_tungs_e": 1000.0,
+          "R_EX_zn2_e": 1000.0
+        },
+        "nutrient_exchanges": [
+          "R_EX_ca2_e",
+          "R_EX_cl_e",
+          "R_EX_co2_e",
+          "R_EX_cobalt2_e",
+          "R_EX_cu2_e",
+          "R_EX_fe2_e",
+          "R_EX_fe3_e",
+          "R_EX_glc__D_e",
+          "R_EX_h2o_e",
+          "R_EX_h_e",
+          "R_EX_k_e",
+          "R_EX_mg2_e",
+          "R_EX_mn2_e",
+          "R_EX_mobd_e",
+          "R_EX_na1_e",
+          "R_EX_nh4_e",
+          "R_EX_ni2_e",
+          "R_EX_o2_e",
+          "R_EX_pi_e",
+          "R_EX_sel_e",
+          "R_EX_slnt_e",
+          "R_EX_so4_e",
+          "R_EX_tungs_e",
+          "R_EX_zn2_e"
+        ]
+      },
+      "monoculture_by_strain": {
+        "argB": "no_growth",
+        "hisB": "no_growth",
+        "lysA": "no_growth",
+        "metA": "no_growth",
+        "pyrF": "no_growth",
+        "serA": "growth",
+        "trpA": "no_growth"
+      },
+      "wall_seconds": 1.8
+    },
+    "o2_00_trace_absent": {
+      "arm": {
+        "id": "o2_00_trace_absent",
+        "o2": 0.0,
+        "trace": false
+      },
+      "n_cases": 5,
+      "n_executed": 5,
+      "n_failed": 0,
+      "n_incomplete_simulation": 0,
+      "execution_complete": true,
+      "coverage": {
+        "n_registered_cases": 5,
+        "n_with_prediction_primary": 5,
+        "fraction_with_prediction_primary": 1.0,
+        "n_with_prediction_strict": 5,
+        "n_unmapped_or_failed": 0,
+        "n_unknown_primary": 0
+      },
+      "monoculture_growth": {
+        "strains_growing_alone_in_model": [],
+        "n_strains": 7,
+        "pairs_both_not_growing": 5,
+        "pairs_one_viable": 0,
+        "pairs_both_viable": 0
+      },
+      "model_outcomes": {
+        "community_growth": 0,
+        "community_infeasible_with_maintenance": 0,
+        "community_solver_problem": 0,
+        "control_growth_while_both_monocultures_not_growing": 0,
+        "positive_with_control_growth": 0
+      },
+      "control_comparison": {
+        "definition": "control = same pair, uptake from the pool forbidden for every metabolite outside 'nutrient_exchanges'; H2O, H+, CO2, O2 and medium nutrients stay exchangeable, so a rescue whose control still grows is NOT attributable to the blocked transfer",
+        "categories": {
+          "no_growth_in_either": 5
+        },
+        "categories_among_primary_positive": {}
+      },
+      "evaluation_primary": {
+        "all_cases": {
+          "n_cases": 5,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 4
+          },
+          "predicted_counts": {
+            "negative": 5
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 1,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 4,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 4,
+            "value": 0.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 1,
+              "n": 5,
+              "value": 0.2
+            }
+          }
+        },
+        "both_monocultures_not_growing": {
+          "n_cases": 5,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 4
+          },
+          "predicted_counts": {
+            "negative": 5
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 1,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 4,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 4,
+            "value": 0.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 1,
+              "n": 5,
+              "value": 0.2
+            }
+          }
+        },
+        "one_viable_monoculture": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "both_monocultures_viable": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "failed_or_unknown_monoculture_state": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        }
+      },
+      "evaluation_strict_optimal_only": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "negative": 5
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 0,
+            "negative": 1,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 0,
+            "negative": 4,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 0,
+          "fn": 1,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 0,
+          "n": 4,
+          "value": 0.0
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "negative": {
+            "k": 1,
+            "n": 5,
+            "value": 0.2
+          }
+        }
+      },
+      "evaluation_control_gated": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "negative": 5
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 0,
+            "negative": 1,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 0,
+            "negative": 4,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 0,
+          "fn": 1,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 0,
+          "n": 4,
+          "value": 0.0
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "negative": {
+            "k": 1,
+            "n": 5,
+            "value": 0.2
+          }
+        }
+      },
+      "strain_resampling": {
+        "primary": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": null,
+            "recall": 0.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "recall": {
+              "full": 0.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 0.0,
+              "loso_max": 0.0,
+              "loso_mean": 0.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 0.0,
+              "bootstrap_p97_5": 0.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "strict": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": null,
+            "recall": 0.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "recall": {
+              "full": 0.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 0.0,
+              "loso_max": 0.0,
+              "loso_mean": 0.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 0.0,
+              "bootstrap_p97_5": 0.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "control_gated": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": null,
+            "recall": 0.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "recall": {
+              "full": 0.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 0.0,
+              "loso_max": 0.0,
+              "loso_mean": 0.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 0.0,
+              "bootstrap_p97_5": 0.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        }
+      },
+      "solver": {
+        "max_calls": 117,
+        "used": 17,
+        "cache_hits": {
+          "monoculture": 3
+        },
+        "cache_misses": {
+          "monoculture": 7,
+          "community": 5,
+          "control": 5
+        },
+        "lp_build_seconds": 0.49,
+        "lp_solve_seconds": 0.79,
+        "n_infeasible": 0,
+        "n_error": 0
+      },
+      "conditions": {
+        "supply_exchanges": {
+          "R_EX_ca2_e": 1000.0,
+          "R_EX_cl_e": 1000.0,
+          "R_EX_glc__D_e": 10.0,
+          "R_EX_h2o_e": 1000.0,
+          "R_EX_h_e": 1000.0,
+          "R_EX_k_e": 1000.0,
+          "R_EX_mg2_e": 1000.0,
+          "R_EX_na1_e": 1000.0,
+          "R_EX_nh4_e": 1000.0,
+          "R_EX_o2_e": 0.0,
+          "R_EX_pi_e": 1000.0,
+          "R_EX_so4_e": 1000.0
+        },
+        "nutrient_exchanges": [
+          "R_EX_ca2_e",
+          "R_EX_cl_e",
+          "R_EX_co2_e",
+          "R_EX_glc__D_e",
+          "R_EX_h2o_e",
+          "R_EX_h_e",
+          "R_EX_k_e",
+          "R_EX_mg2_e",
+          "R_EX_na1_e",
+          "R_EX_nh4_e",
+          "R_EX_o2_e",
+          "R_EX_pi_e",
+          "R_EX_so4_e"
+        ]
+      },
+      "monoculture_by_strain": {
+        "argB": "no_growth",
+        "hisB": "no_growth",
+        "lysA": "no_growth",
+        "metA": "no_growth",
+        "pyrF": "no_growth",
+        "serA": "no_growth",
+        "trpA": "no_growth"
+      },
+      "wall_seconds": 1.3
+    },
+    "o2_02_trace_present": {
+      "arm": {
+        "id": "o2_02_trace_present",
+        "o2": 2.0,
+        "trace": true
+      },
+      "n_cases": 5,
+      "n_executed": 5,
+      "n_failed": 0,
+      "n_incomplete_simulation": 0,
+      "execution_complete": true,
+      "coverage": {
+        "n_registered_cases": 5,
+        "n_with_prediction_primary": 5,
+        "fraction_with_prediction_primary": 1.0,
+        "n_with_prediction_strict": 5,
+        "n_unmapped_or_failed": 0,
+        "n_unknown_primary": 0
+      },
+      "monoculture_growth": {
+        "strains_growing_alone_in_model": [
+          "serA"
+        ],
+        "n_strains": 7,
+        "pairs_both_not_growing": 4,
+        "pairs_one_viable": 1,
+        "pairs_both_viable": 0
+      },
+      "model_outcomes": {
+        "community_growth": 5,
+        "community_infeasible_with_maintenance": 0,
+        "community_solver_problem": 0,
+        "control_growth_while_both_monocultures_not_growing": 0,
+        "positive_with_control_growth": 0
+      },
+      "control_comparison": {
+        "definition": "control = same pair, uptake from the pool forbidden for every metabolite outside 'nutrient_exchanges'; H2O, H+, CO2, O2 and medium nutrients stay exchangeable, so a rescue whose control still grows is NOT attributable to the blocked transfer",
+        "categories": {
+          "growth_lost_when_other_transfer_forbidden": 5
+        },
+        "categories_among_primary_positive": {
+          "growth_lost_when_other_transfer_forbidden": 4
+        }
+      },
+      "evaluation_primary": {
+        "all_cases": {
+          "n_cases": 5,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 4
+          },
+          "predicted_counts": {
+            "positive": 4,
+            "negative": 1
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 1,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 3,
+              "negative": 1,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 1,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "recall": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 3,
+            "n": 4,
+            "value": 0.75
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 1,
+              "n": 4,
+              "value": 0.25
+            },
+            "negative": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            }
+          }
+        },
+        "both_monocultures_not_growing": {
+          "n_cases": 4,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 3
+          },
+          "predicted_counts": {
+            "positive": 4
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 1,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 3,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 1,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "recall": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 3,
+            "n": 3,
+            "value": 1.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 1,
+              "n": 4,
+              "value": 0.25
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "one_viable_monoculture": {
+          "n_cases": 1,
+          "observed_counts": {
+            "intermediate": 1
+          },
+          "predicted_counts": {
+            "negative": 1
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 1,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            }
+          }
+        },
+        "both_monocultures_viable": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "failed_or_unknown_monoculture_state": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        }
+      },
+      "evaluation_strict_optimal_only": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "positive": 4,
+          "negative": 1
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 1,
+            "negative": 0,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 3,
+            "negative": 1,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 1,
+          "fn": 0,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "recall": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 3,
+          "n": 4,
+          "value": 0.75
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 1,
+            "n": 4,
+            "value": 0.25
+          },
+          "negative": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          }
+        }
+      },
+      "evaluation_control_gated": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "positive": 4,
+          "negative": 1
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 1,
+            "negative": 0,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 3,
+            "negative": 1,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 1,
+          "fn": 0,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "recall": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 3,
+          "n": 4,
+          "value": 0.75
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 1,
+            "n": 4,
+            "value": 0.25
+          },
+          "negative": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          }
+        }
+      },
+      "strain_resampling": {
+        "primary": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "recall": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "strict": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "recall": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "control_gated": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "recall": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        }
+      },
+      "solver": {
+        "max_calls": 117,
+        "used": 17,
+        "cache_hits": {
+          "monoculture": 3
+        },
+        "cache_misses": {
+          "monoculture": 7,
+          "community": 5,
+          "control": 5
+        },
+        "lp_build_seconds": 0.47,
+        "lp_solve_seconds": 0.92,
+        "n_infeasible": 0,
+        "n_error": 0
+      },
+      "conditions": {
+        "supply_exchanges": {
+          "R_EX_ca2_e": 1000.0,
+          "R_EX_cl_e": 1000.0,
+          "R_EX_cobalt2_e": 1000.0,
+          "R_EX_cu2_e": 1000.0,
+          "R_EX_fe2_e": 1000.0,
+          "R_EX_fe3_e": 1000.0,
+          "R_EX_glc__D_e": 10.0,
+          "R_EX_h2o_e": 1000.0,
+          "R_EX_h_e": 1000.0,
+          "R_EX_k_e": 1000.0,
+          "R_EX_mg2_e": 1000.0,
+          "R_EX_mn2_e": 1000.0,
+          "R_EX_mobd_e": 1000.0,
+          "R_EX_na1_e": 1000.0,
+          "R_EX_nh4_e": 1000.0,
+          "R_EX_ni2_e": 1000.0,
+          "R_EX_o2_e": 2.0,
+          "R_EX_pi_e": 1000.0,
+          "R_EX_sel_e": 1000.0,
+          "R_EX_slnt_e": 1000.0,
+          "R_EX_so4_e": 1000.0,
+          "R_EX_tungs_e": 1000.0,
+          "R_EX_zn2_e": 1000.0
+        },
+        "nutrient_exchanges": [
+          "R_EX_ca2_e",
+          "R_EX_cl_e",
+          "R_EX_co2_e",
+          "R_EX_cobalt2_e",
+          "R_EX_cu2_e",
+          "R_EX_fe2_e",
+          "R_EX_fe3_e",
+          "R_EX_glc__D_e",
+          "R_EX_h2o_e",
+          "R_EX_h_e",
+          "R_EX_k_e",
+          "R_EX_mg2_e",
+          "R_EX_mn2_e",
+          "R_EX_mobd_e",
+          "R_EX_na1_e",
+          "R_EX_nh4_e",
+          "R_EX_ni2_e",
+          "R_EX_o2_e",
+          "R_EX_pi_e",
+          "R_EX_sel_e",
+          "R_EX_slnt_e",
+          "R_EX_so4_e",
+          "R_EX_tungs_e",
+          "R_EX_zn2_e"
+        ]
+      },
+      "monoculture_by_strain": {
+        "argB": "no_growth",
+        "hisB": "no_growth",
+        "lysA": "no_growth",
+        "metA": "no_growth",
+        "pyrF": "no_growth",
+        "serA": "growth",
+        "trpA": "no_growth"
+      },
+      "wall_seconds": 1.4
+    },
+    "o2_02_trace_absent": {
+      "arm": {
+        "id": "o2_02_trace_absent",
+        "o2": 2.0,
+        "trace": false
+      },
+      "n_cases": 5,
+      "n_executed": 5,
+      "n_failed": 0,
+      "n_incomplete_simulation": 0,
+      "execution_complete": true,
+      "coverage": {
+        "n_registered_cases": 5,
+        "n_with_prediction_primary": 5,
+        "fraction_with_prediction_primary": 1.0,
+        "n_with_prediction_strict": 5,
+        "n_unmapped_or_failed": 0,
+        "n_unknown_primary": 0
+      },
+      "monoculture_growth": {
+        "strains_growing_alone_in_model": [],
+        "n_strains": 7,
+        "pairs_both_not_growing": 5,
+        "pairs_one_viable": 0,
+        "pairs_both_viable": 0
+      },
+      "model_outcomes": {
+        "community_growth": 0,
+        "community_infeasible_with_maintenance": 0,
+        "community_solver_problem": 0,
+        "control_growth_while_both_monocultures_not_growing": 0,
+        "positive_with_control_growth": 0
+      },
+      "control_comparison": {
+        "definition": "control = same pair, uptake from the pool forbidden for every metabolite outside 'nutrient_exchanges'; H2O, H+, CO2, O2 and medium nutrients stay exchangeable, so a rescue whose control still grows is NOT attributable to the blocked transfer",
+        "categories": {
+          "no_growth_in_either": 5
+        },
+        "categories_among_primary_positive": {}
+      },
+      "evaluation_primary": {
+        "all_cases": {
+          "n_cases": 5,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 4
+          },
+          "predicted_counts": {
+            "negative": 5
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 1,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 4,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 4,
+            "value": 0.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 1,
+              "n": 5,
+              "value": 0.2
+            }
+          }
+        },
+        "both_monocultures_not_growing": {
+          "n_cases": 5,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 4
+          },
+          "predicted_counts": {
+            "negative": 5
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 1,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 4,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 4,
+            "value": 0.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 1,
+              "n": 5,
+              "value": 0.2
+            }
+          }
+        },
+        "one_viable_monoculture": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "both_monocultures_viable": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "failed_or_unknown_monoculture_state": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        }
+      },
+      "evaluation_strict_optimal_only": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "negative": 5
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 0,
+            "negative": 1,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 0,
+            "negative": 4,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 0,
+          "fn": 1,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 0,
+          "n": 4,
+          "value": 0.0
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "negative": {
+            "k": 1,
+            "n": 5,
+            "value": 0.2
+          }
+        }
+      },
+      "evaluation_control_gated": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "negative": 5
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 0,
+            "negative": 1,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 0,
+            "negative": 4,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 0,
+          "fn": 1,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 0,
+          "n": 4,
+          "value": 0.0
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "negative": {
+            "k": 1,
+            "n": 5,
+            "value": 0.2
+          }
+        }
+      },
+      "strain_resampling": {
+        "primary": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": null,
+            "recall": 0.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "recall": {
+              "full": 0.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 0.0,
+              "loso_max": 0.0,
+              "loso_mean": 0.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 0.0,
+              "bootstrap_p97_5": 0.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "strict": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": null,
+            "recall": 0.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "recall": {
+              "full": 0.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 0.0,
+              "loso_max": 0.0,
+              "loso_mean": 0.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 0.0,
+              "bootstrap_p97_5": 0.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "control_gated": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": null,
+            "recall": 0.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "recall": {
+              "full": 0.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 0.0,
+              "loso_max": 0.0,
+              "loso_mean": 0.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 0.0,
+              "bootstrap_p97_5": 0.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        }
+      },
+      "solver": {
+        "max_calls": 117,
+        "used": 17,
+        "cache_hits": {
+          "monoculture": 3
+        },
+        "cache_misses": {
+          "monoculture": 7,
+          "community": 5,
+          "control": 5
+        },
+        "lp_build_seconds": 0.49,
+        "lp_solve_seconds": 0.8,
+        "n_infeasible": 0,
+        "n_error": 0
+      },
+      "conditions": {
+        "supply_exchanges": {
+          "R_EX_ca2_e": 1000.0,
+          "R_EX_cl_e": 1000.0,
+          "R_EX_glc__D_e": 10.0,
+          "R_EX_h2o_e": 1000.0,
+          "R_EX_h_e": 1000.0,
+          "R_EX_k_e": 1000.0,
+          "R_EX_mg2_e": 1000.0,
+          "R_EX_na1_e": 1000.0,
+          "R_EX_nh4_e": 1000.0,
+          "R_EX_o2_e": 2.0,
+          "R_EX_pi_e": 1000.0,
+          "R_EX_so4_e": 1000.0
+        },
+        "nutrient_exchanges": [
+          "R_EX_ca2_e",
+          "R_EX_cl_e",
+          "R_EX_co2_e",
+          "R_EX_glc__D_e",
+          "R_EX_h2o_e",
+          "R_EX_h_e",
+          "R_EX_k_e",
+          "R_EX_mg2_e",
+          "R_EX_na1_e",
+          "R_EX_nh4_e",
+          "R_EX_o2_e",
+          "R_EX_pi_e",
+          "R_EX_so4_e"
+        ]
+      },
+      "monoculture_by_strain": {
+        "argB": "no_growth",
+        "hisB": "no_growth",
+        "lysA": "no_growth",
+        "metA": "no_growth",
+        "pyrF": "no_growth",
+        "serA": "no_growth",
+        "trpA": "no_growth"
+      },
+      "wall_seconds": 1.3
+    },
+    "o2_20_trace_present": {
+      "arm": {
+        "id": "o2_20_trace_present",
+        "o2": 20.0,
+        "trace": true
+      },
+      "n_cases": 5,
+      "n_executed": 5,
+      "n_failed": 0,
+      "n_incomplete_simulation": 0,
+      "execution_complete": true,
+      "coverage": {
+        "n_registered_cases": 5,
+        "n_with_prediction_primary": 5,
+        "fraction_with_prediction_primary": 1.0,
+        "n_with_prediction_strict": 5,
+        "n_unmapped_or_failed": 0,
+        "n_unknown_primary": 0
+      },
+      "monoculture_growth": {
+        "strains_growing_alone_in_model": [
+          "serA"
+        ],
+        "n_strains": 7,
+        "pairs_both_not_growing": 4,
+        "pairs_one_viable": 1,
+        "pairs_both_viable": 0
+      },
+      "model_outcomes": {
+        "community_growth": 5,
+        "community_infeasible_with_maintenance": 0,
+        "community_solver_problem": 0,
+        "control_growth_while_both_monocultures_not_growing": 0,
+        "positive_with_control_growth": 0
+      },
+      "control_comparison": {
+        "definition": "control = same pair, uptake from the pool forbidden for every metabolite outside 'nutrient_exchanges'; H2O, H+, CO2, O2 and medium nutrients stay exchangeable, so a rescue whose control still grows is NOT attributable to the blocked transfer",
+        "categories": {
+          "growth_lost_when_other_transfer_forbidden": 5
+        },
+        "categories_among_primary_positive": {
+          "growth_lost_when_other_transfer_forbidden": 4
+        }
+      },
+      "evaluation_primary": {
+        "all_cases": {
+          "n_cases": 5,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 4
+          },
+          "predicted_counts": {
+            "positive": 4,
+            "negative": 1
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 1,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 3,
+              "negative": 1,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 1,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "recall": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 3,
+            "n": 4,
+            "value": 0.75
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 1,
+              "n": 4,
+              "value": 0.25
+            },
+            "negative": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            }
+          }
+        },
+        "both_monocultures_not_growing": {
+          "n_cases": 4,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 3
+          },
+          "predicted_counts": {
+            "positive": 4
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 1,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 3,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 1,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "recall": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 1,
+              "n": 1,
+              "value": 1.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 3,
+            "n": 3,
+            "value": 1.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 1,
+              "n": 4,
+              "value": 0.25
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "one_viable_monoculture": {
+          "n_cases": 1,
+          "observed_counts": {
+            "intermediate": 1
+          },
+          "predicted_counts": {
+            "negative": 1
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 1,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            }
+          }
+        },
+        "both_monocultures_viable": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "failed_or_unknown_monoculture_state": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        }
+      },
+      "evaluation_strict_optimal_only": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "positive": 4,
+          "negative": 1
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 1,
+            "negative": 0,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 3,
+            "negative": 1,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 1,
+          "fn": 0,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "recall": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 3,
+          "n": 4,
+          "value": 0.75
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 1,
+            "n": 4,
+            "value": 0.25
+          },
+          "negative": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          }
+        }
+      },
+      "evaluation_control_gated": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "positive": 4,
+          "negative": 1
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 1,
+            "negative": 0,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 3,
+            "negative": 1,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 1,
+          "fn": 0,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "recall": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 1,
+            "n": 1,
+            "value": 1.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 3,
+          "n": 4,
+          "value": 0.75
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 1,
+            "n": 4,
+            "value": 0.25
+          },
+          "negative": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          }
+        }
+      },
+      "strain_resampling": {
+        "primary": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "recall": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "strict": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "recall": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "control_gated": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "recall": {
+              "full": 1.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 1.0,
+              "loso_max": 1.0,
+              "loso_mean": 1.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 1.0,
+              "bootstrap_p97_5": 1.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        }
+      },
+      "solver": {
+        "max_calls": 117,
+        "used": 17,
+        "cache_hits": {
+          "monoculture": 3
+        },
+        "cache_misses": {
+          "monoculture": 7,
+          "community": 5,
+          "control": 5
+        },
+        "lp_build_seconds": 0.49,
+        "lp_solve_seconds": 0.97,
+        "n_infeasible": 0,
+        "n_error": 0
+      },
+      "conditions": {
+        "supply_exchanges": {
+          "R_EX_ca2_e": 1000.0,
+          "R_EX_cl_e": 1000.0,
+          "R_EX_cobalt2_e": 1000.0,
+          "R_EX_cu2_e": 1000.0,
+          "R_EX_fe2_e": 1000.0,
+          "R_EX_fe3_e": 1000.0,
+          "R_EX_glc__D_e": 10.0,
+          "R_EX_h2o_e": 1000.0,
+          "R_EX_h_e": 1000.0,
+          "R_EX_k_e": 1000.0,
+          "R_EX_mg2_e": 1000.0,
+          "R_EX_mn2_e": 1000.0,
+          "R_EX_mobd_e": 1000.0,
+          "R_EX_na1_e": 1000.0,
+          "R_EX_nh4_e": 1000.0,
+          "R_EX_ni2_e": 1000.0,
+          "R_EX_o2_e": 20.0,
+          "R_EX_pi_e": 1000.0,
+          "R_EX_sel_e": 1000.0,
+          "R_EX_slnt_e": 1000.0,
+          "R_EX_so4_e": 1000.0,
+          "R_EX_tungs_e": 1000.0,
+          "R_EX_zn2_e": 1000.0
+        },
+        "nutrient_exchanges": [
+          "R_EX_ca2_e",
+          "R_EX_cl_e",
+          "R_EX_co2_e",
+          "R_EX_cobalt2_e",
+          "R_EX_cu2_e",
+          "R_EX_fe2_e",
+          "R_EX_fe3_e",
+          "R_EX_glc__D_e",
+          "R_EX_h2o_e",
+          "R_EX_h_e",
+          "R_EX_k_e",
+          "R_EX_mg2_e",
+          "R_EX_mn2_e",
+          "R_EX_mobd_e",
+          "R_EX_na1_e",
+          "R_EX_nh4_e",
+          "R_EX_ni2_e",
+          "R_EX_o2_e",
+          "R_EX_pi_e",
+          "R_EX_sel_e",
+          "R_EX_slnt_e",
+          "R_EX_so4_e",
+          "R_EX_tungs_e",
+          "R_EX_zn2_e"
+        ]
+      },
+      "monoculture_by_strain": {
+        "argB": "no_growth",
+        "hisB": "no_growth",
+        "lysA": "no_growth",
+        "metA": "no_growth",
+        "pyrF": "no_growth",
+        "serA": "growth",
+        "trpA": "no_growth"
+      },
+      "wall_seconds": 1.5
+    },
+    "o2_20_trace_absent": {
+      "arm": {
+        "id": "o2_20_trace_absent",
+        "o2": 20.0,
+        "trace": false
+      },
+      "n_cases": 5,
+      "n_executed": 5,
+      "n_failed": 0,
+      "n_incomplete_simulation": 0,
+      "execution_complete": true,
+      "coverage": {
+        "n_registered_cases": 5,
+        "n_with_prediction_primary": 5,
+        "fraction_with_prediction_primary": 1.0,
+        "n_with_prediction_strict": 5,
+        "n_unmapped_or_failed": 0,
+        "n_unknown_primary": 0
+      },
+      "monoculture_growth": {
+        "strains_growing_alone_in_model": [],
+        "n_strains": 7,
+        "pairs_both_not_growing": 5,
+        "pairs_one_viable": 0,
+        "pairs_both_viable": 0
+      },
+      "model_outcomes": {
+        "community_growth": 0,
+        "community_infeasible_with_maintenance": 0,
+        "community_solver_problem": 0,
+        "control_growth_while_both_monocultures_not_growing": 0,
+        "positive_with_control_growth": 0
+      },
+      "control_comparison": {
+        "definition": "control = same pair, uptake from the pool forbidden for every metabolite outside 'nutrient_exchanges'; H2O, H+, CO2, O2 and medium nutrients stay exchangeable, so a rescue whose control still grows is NOT attributable to the blocked transfer",
+        "categories": {
+          "no_growth_in_either": 5
+        },
+        "categories_among_primary_positive": {}
+      },
+      "evaluation_primary": {
+        "all_cases": {
+          "n_cases": 5,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 4
+          },
+          "predicted_counts": {
+            "negative": 5
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 1,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 4,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 4,
+            "value": 0.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 1,
+              "n": 5,
+              "value": 0.2
+            }
+          }
+        },
+        "both_monocultures_not_growing": {
+          "n_cases": 5,
+          "observed_counts": {
+            "synergy": 1,
+            "intermediate": 4
+          },
+          "predicted_counts": {
+            "negative": 5
+          },
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 1,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 4,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 1,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 1,
+              "value": 0.0
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": 1.0
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 4,
+            "value": 0.0
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 1,
+              "n": 5,
+              "value": 0.2
+            }
+          }
+        },
+        "one_viable_monoculture": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "both_monocultures_viable": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        },
+        "failed_or_unknown_monoculture_state": {
+          "n_cases": 0,
+          "observed_counts": {},
+          "predicted_counts": {},
+          "confusion_observed_by_predicted": {
+            "synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "intermediate": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            },
+            "no_synergy": {
+              "positive": 0,
+              "negative": 0,
+              "unknown": 0
+            }
+          },
+          "binary_synergy_vs_no_synergy": {
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "tn": 0,
+            "unknown_synergy": 0,
+            "unknown_no_synergy": 0,
+            "precision": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "recall_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "specificity_counting_unknown_as_miss": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "balanced_accuracy": null,
+            "mcc": null,
+            "base_rate_synergy": null
+          },
+          "intermediate_predicted_positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "observed_synergy_rate_given_predicted": {
+            "positive": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            },
+            "negative": {
+              "k": 0,
+              "n": 0,
+              "value": null
+            }
+          }
+        }
+      },
+      "evaluation_strict_optimal_only": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "negative": 5
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 0,
+            "negative": 1,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 0,
+            "negative": 4,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 0,
+          "fn": 1,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 0,
+          "n": 4,
+          "value": 0.0
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "negative": {
+            "k": 1,
+            "n": 5,
+            "value": 0.2
+          }
+        }
+      },
+      "evaluation_control_gated": {
+        "n_cases": 5,
+        "observed_counts": {
+          "synergy": 1,
+          "intermediate": 4
+        },
+        "predicted_counts": {
+          "negative": 5
+        },
+        "confusion_observed_by_predicted": {
+          "synergy": {
+            "positive": 0,
+            "negative": 1,
+            "unknown": 0
+          },
+          "intermediate": {
+            "positive": 0,
+            "negative": 4,
+            "unknown": 0
+          },
+          "no_synergy": {
+            "positive": 0,
+            "negative": 0,
+            "unknown": 0
+          }
+        },
+        "binary_synergy_vs_no_synergy": {
+          "tp": 0,
+          "fn": 1,
+          "fp": 0,
+          "tn": 0,
+          "unknown_synergy": 0,
+          "unknown_no_synergy": 0,
+          "precision": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "recall_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 1,
+            "value": 0.0
+          },
+          "specificity_counting_unknown_as_miss": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "balanced_accuracy": null,
+          "mcc": null,
+          "base_rate_synergy": 1.0
+        },
+        "intermediate_predicted_positive": {
+          "k": 0,
+          "n": 4,
+          "value": 0.0
+        },
+        "observed_synergy_rate_given_predicted": {
+          "positive": {
+            "k": 0,
+            "n": 0,
+            "value": null
+          },
+          "negative": {
+            "k": 1,
+            "n": 5,
+            "value": 0.2
+          }
+        }
+      },
+      "strain_resampling": {
+        "primary": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": null,
+            "recall": 0.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "recall": {
+              "full": 0.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 0.0,
+              "loso_max": 0.0,
+              "loso_mean": 0.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 0.0,
+              "bootstrap_p97_5": 0.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "strict": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": null,
+            "recall": 0.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "recall": {
+              "full": 0.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 0.0,
+              "loso_max": 0.0,
+              "loso_mean": 0.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 0.0,
+              "bootstrap_p97_5": 0.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        },
+        "control_gated": {
+          "n_strains": 7,
+          "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+          "analysis_sha256": "c7fd626e6fd3f4a3c3ff2323ad173d9d0d05384eb9f871dab86f1b5869aa80a1",
+          "full_data": {
+            "precision": null,
+            "recall": 0.0,
+            "specificity": null,
+            "balanced_accuracy": null,
+            "mcc": null
+          },
+          "metrics": {
+            "precision": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "recall": {
+              "full": 0.0,
+              "loso_n_defined": 5,
+              "n_strains": 7,
+              "bootstrap_n_defined": 420,
+              "bootstrap_replicates": 1000,
+              "loso_min": 0.0,
+              "loso_max": 0.0,
+              "loso_mean": 0.0,
+              "jackknife_se": 0.0,
+              "most_influential_strains": [
+                "hisB",
+                "lysA",
+                "metA"
+              ],
+              "bootstrap_p2_5": 0.0,
+              "bootstrap_p97_5": 0.0
+            },
+            "specificity": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "balanced_accuracy": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            },
+            "mcc": {
+              "full": null,
+              "loso_n_defined": 0,
+              "n_strains": 7,
+              "bootstrap_n_defined": 0,
+              "bootstrap_replicates": 1000
+            }
+          }
+        }
+      },
+      "solver": {
+        "max_calls": 117,
+        "used": 17,
+        "cache_hits": {
+          "monoculture": 3
+        },
+        "cache_misses": {
+          "monoculture": 7,
+          "community": 5,
+          "control": 5
+        },
+        "lp_build_seconds": 0.49,
+        "lp_solve_seconds": 0.8,
+        "n_infeasible": 0,
+        "n_error": 0
+      },
+      "conditions": {
+        "supply_exchanges": {
+          "R_EX_ca2_e": 1000.0,
+          "R_EX_cl_e": 1000.0,
+          "R_EX_glc__D_e": 10.0,
+          "R_EX_h2o_e": 1000.0,
+          "R_EX_h_e": 1000.0,
+          "R_EX_k_e": 1000.0,
+          "R_EX_mg2_e": 1000.0,
+          "R_EX_na1_e": 1000.0,
+          "R_EX_nh4_e": 1000.0,
+          "R_EX_o2_e": 20.0,
+          "R_EX_pi_e": 1000.0,
+          "R_EX_so4_e": 1000.0
+        },
+        "nutrient_exchanges": [
+          "R_EX_ca2_e",
+          "R_EX_cl_e",
+          "R_EX_co2_e",
+          "R_EX_glc__D_e",
+          "R_EX_h2o_e",
+          "R_EX_h_e",
+          "R_EX_k_e",
+          "R_EX_mg2_e",
+          "R_EX_na1_e",
+          "R_EX_nh4_e",
+          "R_EX_o2_e",
+          "R_EX_pi_e",
+          "R_EX_so4_e"
+        ]
+      },
+      "monoculture_by_strain": {
+        "argB": "no_growth",
+        "hisB": "no_growth",
+        "lysA": "no_growth",
+        "metA": "no_growth",
+        "pyrF": "no_growth",
+        "serA": "no_growth",
+        "trpA": "no_growth"
+      },
+      "wall_seconds": 1.3
+    }
+  },
+  "resources": {
+    "wall_seconds": 9.5,
+    "peak_rss_mb": 363.8,
+    "cpu_count": 16,
+    "platform": "Linux-7.2.9+deb13-amd64-x86_64-with-glibc2.41",
+    "libraries": {
+      "python": "3.10.16",
+      "numpy": "2.2.6",
+      "scipy": "1.15.3",
+      "libsbml": "5.21.2",
+      "highspy": "unavailable"
+    },
+    "slurm": {}
+  },
+  "limitations": [
+    "iML1515 is a transportability baseline; the authors used iAF1260 (not run here)",
+    "static balanced growth cannot reproduce 4-day fold change, lag, density or competitive fitness",
+    "Trace metals, oxygen, glucose uptake and unlimited waste removal are assumptions, not measurements",
+    "labels are measured but the 'intermediate' class (41%) is not binary and is reported separately",
+    "port support is model-predicted, not experiment-curated; a predicted rescue assigns no gene or function",
+    "development set only: protocol fixed before outcomes, no condition tuned to labels, no held-out split"
+  ]
+}

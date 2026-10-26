@@ -18,7 +18,8 @@ The pool balance, flux signs and the matched monocultures were correct.
 
 ## Evidence (all bounded, no label used to choose anything)
 
-Scripts for this check were scratch scripts; the evidence is reproduced by the regression tests below.
+The evidence below was first obtained with scratch scripts. It is now reproduced by a committed, hashed CLI,
+`benchmark/v3/check_community_cobra.py` (section *Reproducible independent oracle*), and by the regression tests.
 
 1. **Bounds.** `R_EX_trp__L_e`, `his__L_e`, `leu__L_e`, `arg__L_e`, `ser__L_e`, `ura_e` all have bounds
    `[0, 1000]`; `glc__D_e` is `[-10, 1000]`, `o2_e` `[-1000, 1000]`; 24 of 331 exchanges have `lb < 0`.
@@ -67,7 +68,7 @@ denominator. Any change here (e.g. assigning a gene to `DHORDfum`) would be tuni
 ## Fix
 
 * `scripts/community_metabolism.py`: an optional per-port `open_uptake` (finite, > 0). When present, `build_lp`
-  opens the exchange's import direction to that rate, **before** closed ports and uptake closures are applied,
+  opens the exchange's import direction to at least that rate (a more permissive native bound is kept), **before** closed ports and uptake closures are applied,
   so closed ports and the control still win. The pool balance, not the bound, limits what can be imported.
   Default (key absent) keeps the previous behaviour, so all earlier manifests are unchanged.
 * `benchmark/v3/run_community_benchmark.py`: every port sets `open_uptake` to the protocol ceiling; PROTOCOL
@@ -78,13 +79,32 @@ denominator. Any change here (e.g. assigning a gene to `DHORDfum`) would be tuni
   `test_native_closed_organic_uptake_does_not_prevent_cross_feeding` (runner, BiGG-style closed organics). The
   earlier fixtures gave every exchange `lb = -1000`, which is why the suite missed this.
 
-Risk: this raises the number of open import routes for **every** exchange, including metabolites the model's
-authors left closed, so false positives (rescues through a transfer that has no real transporter) are now
-possible; they were previously impossible. The control and the per-pair `control_comparison` record whether
-a rescue needs the transfer, but nothing checks that a transporter exists. Treat the new run as the first
-interpretable result of this model, not as a tuned one.
+`open_uptake` semantics, stated precisely: the import bound becomes `min(native lower bound, -rate)`. It opens *at
+least* `rate` and never caps, so a native bound more permissive than the rate (e.g. -2000 against a ceiling of 1000) is
+kept (pinned by `test_open_uptake_opens_at_least_the_rate_and_never_caps_a_wider_native_bound`). iML1515 has no
+such exchange (all native import bounds are 0 or >= -1000), so the benchmark is unaffected; a general per-port use
+that needs a cap must close or limit the import by other means. Ports are not opened by default: omitting
+`open_uptake` keeps the native-bound semantics on purpose (earlier manifests are unchanged), and an application
+manifest must register `open_uptake` per receiving port (`docs/scenarios/community-metabolism.md`). Nothing opens
+ports on its own.
 
-## Why nothing else needs fixing, and what remains biological
+Risk: this raises the number of open import routes for **every** exchange, including metabolites the model's
+authors left closed, so rescues are now possible that have no real transporter behind them; they were previously
+impossible. Only the *exchange boundary* is opened. The model's internal transport reactions (outer-membrane
+porins and inner-membrane transporters, with their bounds and GPRs) are retained, so opening an exchange does
+not bypass membrane transport: a metabolite still has to cross through reactions the model contains. What this does
+not establish is that those reactions correspond to real, expressed transporters in the strain or that the
+exchange occurs; a model transport step with a broad GPR is as weak a claim as any other model-conditional one.
+The control and the per-pair `control_comparison` record whether a rescue needs the transfer; the independent
+oracle (below) additionally records, per rescue, which transferred species the growth depends on and the
+consumer's own transport reactions for them. The transporter-evidence experiment (curated or predicted transporter
+per port, transporter-knockout phenotypes) has not been done and its outcome is unknown. Treat the new run as the
+first interpretable result of this model, not as a tuned one.
+
+## Remaining limits, scoped
+
+What this diagnosis covers is the all-negative pattern of the first run, which is explained by the closed import
+bounds. It does not show that nothing else is wrong; the limits below are the ones identified, not a complete list.
 
 * **Steady state versus 4-day fold change.** The model is static balanced growth at equal fractions; the data are
   day-4 fold growth in sealed microplates. A positive means "mutual growth is feasible if the transfers exist"
@@ -92,12 +112,70 @@ interpretable result of this model, not as a tuned one.
   intermediate class (41%) has no counterpart in the binary prediction.
 * **Export limits.** Free secretion (`removal` and unbounded `ub = 1000` on every export) makes any product
   exportable and the model has no leakage cost, so an optimistic rate is expected; real amino-acid release is slow
-  and the paper reports growth only after days.
-* **Transport.** After the fix, transport is as constrained as the model's internal transporters (periplasmic
-  and inner-membrane reactions keep their bounds); the exchange boundary is no longer the limiter.
+  and the paper reports growth only after days. Not investigated further here.
+* **Transport.** Only the exchange boundary is opened; the model's internal transporters (periplasmic and
+  inner-membrane reactions) keep their bounds and GPRs, so the exchange is no longer the limiter but membrane
+  transport is still the model's own. Whether those transporters exist and are expressed in the strains is
+  **unknown**: the transporter-evidence experiment has not been run, and the oracle shows model dependence on
+  transport reactions, not transporter existence.
 * **Model source.** The authors used iAF1260; iML1515 is its successor with different gene content (e.g. the
   GPR of the six strains above). The iAF1260 file was **not** acquired in this session (network access needs
   approval); do not infer that the bypasses above exist in iAF1260.
+* **Not examined.** Condition choices (oxygen, trace metals, glucose rate) were fixed in advance and not varied
+  here beyond the six declared arms; no assessment of the other 1,030 pairs was made in this diagnosis.
+
+## Reproducible independent oracle
+
+`benchmark/v3/check_community_cobra.py` re-solves a fixed, declared selection with COBRApy 0.32.1 and GLPK. It builds
+the shared-pool formulation itself (prefixed organism copies, one pool metabolite per extracellular exchange with
+coefficient `-c * fraction`, supply and removal reactions, `mu` coupled to every biomass reaction) from COBRApy
+objects only, preserves the SBML identifiers (`f_replace={}`), and takes gene deletions from COBRApy's own GPR
+evaluation. It imports nothing from the production parser, LP builder, GPR evaluator or solver. Measured labels are
+never read (a test shows identical output with labels flipped or removed); the selection manifest
+(`benchmark/v3/selections/community_oracle_selection.json`) declares the pairs, arms, protocol values and
+numeric tolerances before any run, role `development`, `labels_used: false`.
+
+Selection (declared on 2026-10-26, mechanistic, not held out): four complementary-auxotroph pairs trpA+argB,
+hisB+lysA, trpA+hisB, pyrF+metA; one viable-monoculture control serA+trpA; single-strain controls (wild type,
+deletion, deletion plus 10 mmol/gDW/h of the missing metabolite) for trpA, hisB, argB, lysA, pyrF, metA; all six
+oxygen x trace arms. Agreement tolerances: `mu` relative 1e-6 and absolute 1e-7, identical growth class at the
+1e-6 threshold. The report records the SHA-256 of the model file, cases file, selection manifest, production report
+and per-arm files, oracle script, plus the production runner, engine and community-module hashes and git commit, the
+Python/cobra/optlang/GLPK versions and the solver parameters (library defaults, nothing tuned).
+
+Reproduce (about 6 min on one core; no remote job, no full 1,035-pair loop):
+
+```bash
+python benchmark/v3/check_community_cobra.py --cases wintermute2010_cases.jsonl \
+    --selection benchmark/v3/selections/community_oracle_selection.json --write-subset-cases subset.jsonl
+python benchmark/v3/run_community_benchmark.py --cases subset.jsonl --model iML1515.xml --out prod_fixture
+python benchmark/v3/check_community_cobra.py --model iML1515.xml --cases subset.jsonl \
+    --selection benchmark/v3/selections/community_oracle_selection.json \
+    --production-report prod_fixture/report.json --out oracle_report.json
+```
+
+A full revision-2 production run can be validated the same way (`--production-report` of that run, or
+`--arm-cases cases_<arm>.jsonl ...` for per-arm files, which leaves provenance marked unverified); only the selected
+pairs are re-solved. Committed result: `benchmark/v3/results/community-oracle-revision2-bounded/` (the oracle report
+and the bounded production fixture it compared against: production at `65ec9bd`, protocol revision 2, status
+`complete`, 5 pairs x 6 arms).
+
+Result on this selection: all 30 pair x arm comparisons (four simulations each: both monocultures, community,
+transfer-forbidden control) agree in growth class and `mu`, largest |delta mu| 1.7e-13. In the arms with trace metals
+present, the four diagnostic pairs grow (0.1571 to 0.1574 /h at 0 oxygen, 0.2355 to 0.2360 at 2, 0.8202 to 0.8218 at 20 mmol/gDW/h) while both
+monocultures do not, the transfer-forbidden control does not, and the same community with the model's native
+exchange bounds (no `open_uptake`) does not; serA+trpA has one viable monoculture and is not a rescue. In the
+trace-absent arms nothing grows, not even the wild type. In the trace-present arms the single-strain controls
+reproduce the earlier statements (wild type grows; each deletion does not grow without its supplement and does with it).
+
+Which part carries the rescue (one optimal solution per LP, one species closed at a time, given the other
+transfers stay open): closing the consumer's own reactions that touch the extracellular species (its porins and
+transporters, with the model's bounds and GPRs) removes growth for histidine (hisB) in hisB+lysA and hisB+trpA,
+lysine (lysA) in hisB+lysA, and methionine (metA) in pyrF+metA. For trpA+argB no single listed species is
+individually necessary, i.e. another transfer can substitute for each; the joint dependence on transfer is shown only
+by the control. This shows that, in the model, growth depends on the *model's transport reactions* for those
+metabolites, not only on the opened exchange bound. It does not show that these transporters exist or are expressed;
+the transporter-evidence experiment is still open and its outcome unknown.
 
 ## Frozen follow-up design (to run by the root, not here)
 

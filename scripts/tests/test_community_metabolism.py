@@ -486,6 +486,9 @@ class TestNativeClosedUptake(unittest.TestCase):
         a["EX_vit_e"] = ({"vit_e": 1}, {}, 0, 1000, None)          # uptake closed natively
         write_sbml(cls.dir / "P.xml", producer(), SPECIES)
         write_sbml(cls.dir / "A_closed.xml", a, SPECIES)
+        wide = auxotroph()
+        wide["EX_vit_e"] = ({"vit_e": 1}, {}, -2000, 1000, None)   # native import more permissive than the ceiling
+        write_sbml(cls.dir / "A_wide.xml", wide, SPECIES)
 
     @classmethod
     def tearDownClass(cls):
@@ -525,6 +528,20 @@ class TestNativeClosedUptake(unittest.TestCase):
         out = CM.run_community(m, self.dir)
         self.assertEqual(next(r for r in out["experiments"] if r["id"] == "user:close_import")["outcome"],
                          "no_common_growth")
+
+    def import_bound(self, model_file, rate):
+        m = self.manifest(rate)
+        m["organisms"][1]["model"] = model_file
+        cfg = {**CM.DEFAULT_CONFIG}
+        orgs = CM.load_organisms(m, self.dir, cfg)
+        lp = CM.build_lp(orgs, {"P": 1.0, "A": 1.0}, {"glc": 10.0}, {})
+        return lp.lb[lp.col_names.index("A::EX_vit_e")]
+
+    def test_open_uptake_opens_at_least_the_rate_and_never_caps_a_wider_native_bound(self):
+        self.assertEqual(self.import_bound("A_closed.xml", None), 0.0)         # key absent: legacy semantics
+        self.assertEqual(self.import_bound("A_closed.xml", 1000.0), -1000.0)   # closed native bound is opened
+        self.assertEqual(self.import_bound("A_wide.xml", 1000.0), -2000.0)     # wider native bound is kept, not capped
+        self.assertEqual(self.import_bound("A_wide.xml", 3000.0), -3000.0)
 
     def test_invalid_open_uptake_is_rejected(self):
         for bad in (0, -1.0, float("nan"), "x"):

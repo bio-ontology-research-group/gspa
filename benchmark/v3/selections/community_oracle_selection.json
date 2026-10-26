@@ -1,0 +1,47 @@
+{
+  "schema": "gspa.community_oracle_selection/1",
+  "declaration": {
+    "role": "development",
+    "labels_used": false,
+    "declared_on": "2026-10-26",
+    "declared_before": "the first run of benchmark/v3/check_community_cobra.py and of the bounded revision-2 production fixture built from this file",
+    "basis": "pairs chosen as complementary auxotrophs in unrelated pathways (mechanistic), plus one pair with a viable monoculture; measured labels are neither read to choose nor to evaluate",
+    "not_held_out": "these pairs were examined in docs/v3-community-diagnosis.md; this is a development check of the engine, not a held-out evaluation and not evidence about the 1,035-pair benchmark",
+    "expected_outcomes_declared": "none; the oracle reports agreement with production and attribution, it does not assert a biological expectation"
+  },
+  "protocol": {
+    "glucose_exchange": "R_EX_glc__D_e",
+    "glucose_uptake": 10.0,
+    "ceiling": 1000.0,
+    "water_exchange": "R_EX_h2o_e",
+    "proton_exchange": "R_EX_h_e",
+    "co2_exchange": "R_EX_co2_e",
+    "oxygen_exchange": "R_EX_o2_e",
+    "maintenance_reaction": "R_ATPM",
+    "biomass_reaction": "R_BIOMASS_Ec_iML1515_core_75p37M",
+    "growth_threshold": 1e-06,
+    "oxygen_arms": [0.0, 2.0, 20.0],
+    "trace_arms": "both"
+  },
+  "tolerances": {
+    "mu_rel": 1e-06,
+    "mu_abs": 1e-07,
+    "cross_flux": 1e-07,
+    "outcome": "growth class must be identical (threshold = protocol.growth_threshold)"
+  },
+  "pairs": [
+    {"a": "trpA", "b": "argB", "role": "diagnostic", "reason": "tryptophan and arginine auxotrophs, unrelated pathways"},
+    {"a": "hisB", "b": "lysA", "role": "diagnostic", "reason": "histidine and lysine auxotrophs, unrelated pathways"},
+    {"a": "trpA", "b": "hisB", "role": "diagnostic", "reason": "tryptophan and histidine auxotrophs, unrelated pathways"},
+    {"a": "pyrF", "b": "metA", "role": "diagnostic", "reason": "pyrimidine and methionine auxotrophs, unrelated pathways"},
+    {"a": "serA", "b": "trpA", "role": "viable_monoculture_control", "reason": "serA is expected to be viable alone in iML1515 (reverse GHMT2r), so no partner-dependent rescue should be predicted"}
+  ],
+  "single_controls": [
+    {"strain": "trpA", "supplement_exchange": "R_EX_trp__L_e", "supplement_rate": 10.0},
+    {"strain": "hisB", "supplement_exchange": "R_EX_his__L_e", "supplement_rate": 10.0},
+    {"strain": "argB", "supplement_exchange": "R_EX_arg__L_e", "supplement_rate": 10.0},
+    {"strain": "lysA", "supplement_exchange": "R_EX_lys__L_e", "supplement_rate": 10.0},
+    {"strain": "pyrF", "supplement_exchange": "R_EX_ura_e", "supplement_rate": 10.0},
+    {"strain": "metA", "supplement_exchange": "R_EX_met__L_e", "supplement_rate": 10.0}
+  ]
+}
