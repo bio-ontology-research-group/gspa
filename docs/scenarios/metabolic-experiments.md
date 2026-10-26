@@ -34,8 +34,13 @@ either, nor any scoring.
   state meets the maintenance constraint) and `inconclusive` (solver error,
   non-finite or mass-balance-violating solution, budget exhausted mid-run).
   Skipped items are listed with a status (`skipped_budget`,
-  `skipped_not_selected`, `skipped_baseline_not_growing`). An empty menu gives
+  `skipped_not_selected`). An empty menu gives
   `outcome: "no_candidate_experiments"` with zero solver calls.
+- A non-growing or infeasible baseline does **not** stop condition selection.
+  Alternative conditions can report `growth_recovered`; their growth ratio is
+  undefined (`null`). A failed reference solve is unknown, not zero growth:
+  successful conditions report `growth_without_baseline` in that case. Neither
+  recovery nor lack of recovery alone establishes a candidate protein function.
 
 Exchange signs are read from stoichiometry, so both `M_e ->` (v < 0 uptake) and
 the refiner's reversed `-> M_e` (v > 0 uptake) are handled. Boundary species are

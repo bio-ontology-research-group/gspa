@@ -480,13 +480,63 @@ class TestStrategies(Base):
 
 
 class TestBaselineFailure(Base):
-    def test_non_growing_baseline_skips_everything(self):
-        m = manifest(strategy="fixed")
-        m["baseline"]["medium"] = {"EX_nh4_e": 10}  # no carbon source: maintenance unattainable
+    def carbon_starved(self):
+        m = manifest(strategy="fixed", panel=["carbon_source:EX_ac_e"], max_experiments=1)
+        del m["baseline"]["medium"]["EX_glc_e"]
+        return m
+
+    def test_alternative_carbon_recovers_infeasible_baseline_and_tests_candidate(self):
+        m = self.carbon_starved()  # no carbon source: maintenance unattainable
         out = ME.run_experiments(m, self.model)
-        self.assertEqual(out["outcome"], "baseline_infeasible_or_non_growing")
+        by_id = self.by_id(out)
+        self.assertEqual(by_id["baseline"]["outcome"], "infeasible_with_maintenance")
+        recovered = by_id["carbon_source:EX_ac_e"]
+        self.assertEqual(recovered["outcome"], "growth_recovered")
+        self.assertIsNone(recovered["measurements"]["growth_ratio"])
+        self.assertIsNone(recovered["measurements"]["baseline_growth"])
+        checks = recovered["measurements"]["focus_checks"]
+        self.assertEqual(checks[0]["reaction"], "ACS")
+        self.assertEqual(checks[0]["flux_class"], "required_flux")
+        self.assertFalse(recovered["conditional_evidence"]["independent_proof_of_function"])
+        self.assertEqual(recovered["conditional_evidence"]["promotion"], "none")
+        self.assertEqual(out["solver"]["used"], 5)
+
+    def test_zero_growth_feasible_baseline_recovers_without_dividing_by_zero(self):
+        m = self.carbon_starved()
+        m["objectives"]["maintenance"] = "none"
+        out = ME.run_experiments(m, self.model)
+        by_id = self.by_id(out)
+        self.assertEqual(by_id["baseline"]["outcome"], "no_growth_feasible")
+        recovered = by_id["carbon_source:EX_ac_e"]
+        self.assertEqual(recovered["outcome"], "growth_recovered")
+        self.assertEqual(recovered["measurements"]["baseline_growth"], 0)
+        self.assertIsNone(recovered["measurements"]["growth_ratio"])
+
+    def test_failed_reference_is_not_called_zero_growth_or_recovery(self):
+        runner = ME.Runner(self.model, self.carbon_starved(), dict(ME.DEFAULT_CONFIG))
+        with mock.patch.object(runner, "_growth", return_value=(ME.LPResult("error", None, None, None), 0)):
+            self.assertEqual(runner.run(ME.baseline_item())["status"], "inconclusive")
+        menu, _ = ME.build_menu(self.model, runner.manifest, external=runner.external)
+        recovered = runner.run(next(m for m in menu if m["id"] == "carbon_source:EX_ac_e"))
+        self.assertEqual(recovered["outcome"], "growth_without_baseline")
+        self.assertIsNone(recovered["measurements"]["baseline_growth"])
+        self.assertIsNone(recovered["measurements"]["growth_ratio"])
+
+    def test_no_growth_under_either_condition_is_not_growth_loss(self):
+        m = self.carbon_starved()
+        m["objectives"]["maintenance"] = "none"
+        del m["baseline"]["medium"]["EX_nh4_e"]
+        out = ME.run_experiments(m, self.model)
+        rec = self.by_id(out)["carbon_source:EX_ac_e"]
+        self.assertEqual(rec["outcome"], "no_growth_feasible")
+        self.assertEqual(rec["conditional_evidence"]["bearing"], "uninformative")
+
+    def test_recovery_search_still_respects_solver_budget(self):
+        m = self.carbon_starved()
+        m["config"]["max_solver_calls"] = 1
+        out = ME.run_experiments(m, self.model)
+        self.assertEqual(self.by_id(out)["carbon_source:EX_ac_e"]["status"], "skipped_budget")
         self.assertEqual(out["solver"]["used"], 1)
-        self.assertTrue(all(r["status"] == "skipped_baseline_not_growing" for r in out["experiments"][1:]))
 
 
 class TestCli(Base):

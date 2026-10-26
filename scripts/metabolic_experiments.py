@@ -577,6 +577,7 @@ class Runner:
         self.external = validate_boundary(model, manifest)
         self.base_lb, self.base_ub = baseline_bounds(model, manifest, cfg, self.external)
         self.baseline_growth: float | None = None
+        self.baseline_outcome: str | None = None
 
     def _unit(self, col: int, sign: float) -> np.ndarray:
         c = np.zeros(len(self.model.rxn_ids))
@@ -615,6 +616,8 @@ class Runner:
             m = rec["measurements"]
             if r.status == "infeasible":
                 rec["outcome"] = "infeasible_with_maintenance"
+                if item["kind"] == "baseline":
+                    self.baseline_outcome = rec["outcome"]
                 rec["note"] = "no steady state satisfies the maintenance constraint under this condition"
                 m["max_growth"] = None
                 return self._finish(rec, first)
@@ -625,11 +628,19 @@ class Runner:
             if item["kind"] == "baseline":
                 self.baseline_growth = growth
                 rec["outcome"] = "growth" if growth >= cfg["growth_threshold"] else "no_growth_feasible"
+                self.baseline_outcome = rec["outcome"]
             else:
-                bg = self.baseline_growth or 0.0
+                bg = self.baseline_growth
                 m["baseline_growth"] = bg
-                m["growth_ratio"] = growth / bg if bg > cfg["growth_threshold"] else None
-                rec["outcome"] = _growth_class(m["growth_ratio"] or 0.0, cfg, growth)
+                m["baseline_outcome"] = self.baseline_outcome
+                m["growth_ratio"] = growth / bg if bg is not None and bg >= cfg["growth_threshold"] else None
+                if m["growth_ratio"] is not None:
+                    rec["outcome"] = _growth_class(m["growth_ratio"], cfg, growth)
+                elif self.baseline_outcome in ("no_growth_feasible", "infeasible_with_maintenance"):
+                    rec["outcome"] = "growth_recovered" if growth >= cfg["growth_threshold"] else "no_growth_feasible"
+                else:
+                    # A failed or unrun reference is unknown, not zero growth.
+                    rec["outcome"] = "growth_without_baseline" if growth >= cfg["growth_threshold"] else "no_growth_feasible"
             if item["kind"] in ("knockout", "ko_rescue") and r.x is not None:
                 alt = [p for p in self._peer_reactions(item) if p not in killed
                        and abs(r.x[model.rxn_index[p]]) > cfg["flux_tol"]]
@@ -952,11 +963,8 @@ def run_experiments(manifest: dict[str, Any], model: Model, overrides: dict[str,
 
     base = runner.run(baseline_item())
     results.append(base)
-    if base["status"] != "completed" or base["outcome"] != "growth":
-        for m in menu:
-            results.append(_unrun(m, "baseline_not_growing"))
-        out["outcome"] = "baseline_infeasible_or_non_growing"
-        return _finalise(out, runner, manifest)
+    # Alternative media are especially useful when the reference cannot grow.
+    # Keep absolute condition results even without a usable relative baseline.
 
     limit = int(cfg["max_experiments"])
     if strategy == "qwen":
