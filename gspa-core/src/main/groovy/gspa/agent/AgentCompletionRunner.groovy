@@ -30,6 +30,7 @@ class AgentCompletionRunner {
 
     File sidecarScript = new File('benchmark/agent/run_gspa_agent.py')
     String agentModel = 'qwen3.8-27b'
+    String pythonBin = 'python3'
     String apiBaseUrl = null
     boolean guardrail = true
     int maxConcurrency = 8
@@ -59,7 +60,8 @@ class AgentCompletionRunner {
             return summary
         }
 
-        // Invoke Python sidecar via uv if resolutionsFile doesn't already exist or we are running live
+        // Each live request must produce its own resolutions. A failed request
+        // must never reuse a previous run's output at the same path.
         File resolvedSidecar = sidecarScript
         File extractedResDir = null
         if (resolvedSidecar == null || !resolvedSidecar.exists()) {
@@ -89,18 +91,14 @@ class AgentCompletionRunner {
             }
         }
         if (resolvedSidecar != null && resolvedSidecar.exists()) {
-            boolean hasUv = false
-            try {
-                Process p = new ProcessBuilder(['uv', '--version']).start()
-                hasUv = (p.waitFor() == 0)
-            } catch (Exception ignored) {
-                hasUv = false
-            }
-            List<String> cmd = hasUv ? ['uv', 'run', 'python'] : ['python3']
+            resolutionsFile.absoluteFile.parentFile.mkdirs()
+            File pendingResolutions = new File(resolutionsFile.absoluteFile.parentFile,
+                ".${resolutionsFile.name}.${UUID.randomUUID()}.pending")
+            List<String> cmd = [pythonBin]
             cmd.addAll([
                 resolvedSidecar.absolutePath,
                 '--anomalies', anomaliesFile.absolutePath,
-                '--out', resolutionsFile.absolutePath,
+                '--out', pendingResolutions.absolutePath,
                 '--model', agentModel,
                 '--max-concurrency', maxConcurrency.toString()
             ])
@@ -114,18 +112,23 @@ class AgentCompletionRunner {
                 cmd << '--no-guardrail'
             }
             ProcessBuilder pb = new ProcessBuilder(cmd)
-            pb.redirectErrorStream(false)
-            Process proc = pb.start()
-            String stdout = proc.inputStream.getText('UTF-8')
-            String stderr = proc.errorStream.getText('UTF-8')
-            int code = proc.waitFor()
-            if (code != 0) {
-                log.warn("Agent sidecar exited with code ${code}: ${stderr ?: stdout}")
+            File runLog = new File(resolutionsFile.absolutePath + '.log')
+            pb.redirectErrorStream(true)
+            pb.redirectOutput(runLog)
+            try {
+                Process proc = pb.start()
+                int code = proc.waitFor()
+                if (code != 0 || !pendingResolutions.isFile()) {
+                    throw new IllegalStateException("Agent sidecar failed (exit=${code}, output=${pendingResolutions.isFile()}); see ${runLog}")
+                }
+                applyResolutions(state, integrated, pendingResolutions, summary)
+                java.nio.file.Files.move(pendingResolutions.toPath(), resolutionsFile.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            } finally {
+                pendingResolutions.delete()
             }
-        }
-
-        if (resolutionsFile != null && resolutionsFile.exists()) {
-            applyResolutions(state, integrated, resolutionsFile, summary)
+        } else {
+            throw new IllegalStateException('Agent sidecar is unavailable')
         }
 
         summary.elapsedSeconds = (System.nanoTime() - t0) / 1_000_000_000.0d
