@@ -13,9 +13,16 @@ strict solver-call budget and emits an auditable JSON record.
 What the records mean (and do not mean):
   * Every outcome is conditional on the supplied model, medium and bounds.
     A planner-chosen objective is never independent proof of gene function.
-  * "Conditional feasibility" of a product (max secretion flux at a growth
-    floor) is reported separately from "actual production" (the minimum
-    secretion flux that growth forces).  Optional flux is not required flux.
+  * Product checks report two model properties at a growth floor: the maximum
+    secretion flux (conditional feasibility) and the minimum secretion flux
+    (secretion the model cannot avoid when growing).  Neither is observed
+    production or expression; a nonzero minimum only says the stoichiometry
+    couples the exchange to growth.  Optional flux is not required flux.
+  * Solver failure, infeasibility and budget exhaustion are reported as such
+    and are never read as "not producible" or as evidence about a function.
+  * Boundaries are explicit: only exchanges the manifest declares as external
+    (extracellular species) can import nutrients; all other single-metabolite
+    reactions (sinks, demands, biomass drains) have uptake closed.
   * No probabilities are produced and no gap-fill is promoted; every record
     carries ``promotion: "none"`` and ``calibrated_probability: null``.
   * Qwen only chooses an experiment id from the menu; it never sees or edits
@@ -99,9 +106,12 @@ class Model:
     S: csc_matrix
     lb: np.ndarray
     ub: np.ndarray
-    objective: str | None
+    objective_terms: list[tuple[str, float]]  # active SBML objective as (reaction, coefficient)
+    objective_sense: str | None               # "maximize" | "minimize" | None
     gpr: dict[str, list[list[str]]]          # reaction -> DNF over gene product ids
     gene_alias: dict[str, str]               # id or label -> gene product id
+    met_compartment: dict[str, str] = field(default_factory=dict)
+    n_infinite_bounds: int = 0
     rxn_index: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -116,6 +126,13 @@ class Model:
         if len(coeff) != 1:
             raise ManifestError(f"not a single-metabolite exchange: {rid}")
         return col, float(coeff[0])
+
+    def exchange_metabolite(self, rid: str) -> str:
+        col, _ = self.exchange(rid)
+        return self.met_ids[int(self.S[:, col].indices[0])]
+
+    def is_single_metabolite(self, rid: str) -> bool:
+        return len(self.S[:, self.rxn_index[rid]].data) == 1
 
     def secretion_sign(self, rid: str) -> float:
         return -float(np.sign(self.exchange(rid)[1]))
@@ -161,19 +178,32 @@ def load_sbml_model(path: Path, default_bound: float = 1000.0) -> Model:
         if assoc is not None and assoc.isSetAssociation():
             gpr[r.getId()] = parse_gpr_to_dnf(assoc.getAssociation().toInfix())
     S = coo_matrix((vals, (rows, cols)), shape=(len(mets), len(reactions))).tocsc()
-    lb_a = np.clip(np.array(lb, dtype=float), -default_bound, default_bound)
-    ub_a = np.clip(np.array(ub, dtype=float), -default_bound, default_bound)
-    objective = None
+    lb_a, ub_a = np.array(lb, dtype=float), np.array(ub, dtype=float)
+    if np.any(np.isnan(lb_a)) or np.any(np.isnan(ub_a)):
+        raise ValueError("model has NaN flux bounds")
+    # Only infinities are replaced; finite bounds are kept exactly as written.
+    n_inf = int(np.isinf(lb_a).sum() + np.isinf(ub_a).sum())
+    lb_a[np.isneginf(lb_a)] = -default_bound
+    ub_a[np.isposinf(ub_a)] = default_bound
+    if np.any(np.isinf(lb_a)) or np.any(np.isinf(ub_a)):
+        raise ValueError("lower bound +inf or upper bound -inf is not a valid flux bound")
+    bad = np.flatnonzero(lb_a > ub_a)
+    if bad.size:
+        raise ValueError("lower bound exceeds upper bound for: " + ", ".join(reactions[i].getId() for i in bad[:5]))
+    terms: list[tuple[str, float]] = []
+    sense = None
     active = model.getPlugin("fbc").getActiveObjective()
-    if active is not None and active.getNumFluxObjectives():
-        objective = active.getFluxObjective(0).getReaction()
+    if active is not None:
+        sense = active.getType()
+        terms = [(t.getReaction(), float(t.getCoefficient())) for t in active.getListOfFluxObjectives()]
     alias: dict[str, str] = {}
     for gp in model.getPlugin("fbc").getListOfGeneProducts():
         alias[gp.getId()] = gp.getId()
         if gp.isSetLabel():
             alias[gp.getLabel()] = gp.getId()
     return Model(str(path), hashlib.sha256(raw).hexdigest(), list(mets), [r.getId() for r in reactions],
-                 S, lb_a, ub_a, objective, gpr, alias)
+                 S, lb_a, ub_a, terms, sense, gpr, alias,
+                 {s.getId(): s.getCompartment() for s in species}, n_inf)
 
 
 # --------------------------------------------------------------------------- solver
@@ -248,15 +278,47 @@ def open_uptake(model: Model, lb: np.ndarray, ub: np.ndarray, rid: str, rate: fl
         lb[col] = min(lb[col], -rate)
 
 
-def baseline_bounds(model: Model, manifest: dict[str, Any], cfg: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
-    lb, ub = model.lb.copy(), model.ub.copy()
+def validate_boundary(model: Model, manifest: dict[str, Any]) -> set[str]:
+    """Return the trusted external exchanges declared in ``baseline.exchanges``.
+
+    Each must be a single-metabolite reaction on an extracellular species
+    (``baseline.extracellular_compartments``, default ["e"]).  Medium entries and the
+    carbon/nitrogen/oxygen lists must all be declared exchanges.
+    """
     base = manifest.get("baseline", {})
-    medium = base.get("medium", {})
-    if base.get("close_unlisted_exchanges", True):
-        for rid in model.rxn_ids:
-            col = model.rxn_index[rid]
-            if len(model.S[:, col].data) == 1 and rid not in medium:
-                close_uptake(model, lb, ub, rid)
+    declared = base.get("exchanges")
+    if not declared:
+        raise ManifestError("baseline.exchanges (explicit external exchange reactions) is required")
+    ext_comp = set(base.get("extracellular_compartments", ["e"]))
+    for rid in declared:
+        model.exchange(rid)  # raises if unknown or not a single-metabolite reaction
+        met = model.exchange_metabolite(rid)
+        if model.met_compartment[met] not in ext_comp:
+            raise ManifestError(f"declared exchange {rid} acts on {met} in non-extracellular compartment "
+                                f"{model.met_compartment[met]}")
+    external = set(declared)
+    refs = list(base.get("medium", {})) + list(base.get("carbon_exchanges", [])) + \
+        list(base.get("nitrogen_exchanges", [])) + _as_list(base.get("oxygen_exchange"))
+    for rid in refs:
+        if rid not in external:
+            raise ManifestError(f"{rid} is used in the baseline but not declared in baseline.exchanges")
+    for rid, rate in base.get("medium", {}).items():
+        if not isinstance(rate, (int, float)) or not np.isfinite(rate) or rate < 0:
+            raise ManifestError(f"medium uptake limit for {rid} must be a finite number >= 0")
+    return external
+
+
+def baseline_bounds(model: Model, manifest: dict[str, Any], cfg: dict[str, Any],
+                    external: set[str] | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Closed-by-default medium: every external exchange not in the medium has uptake closed,
+    and every undeclared single-metabolite reaction (sink / demand / biomass drain) has its
+    uptake direction closed so it cannot supply metabolites from nothing."""
+    external = validate_boundary(model, manifest) if external is None else external
+    lb, ub = model.lb.copy(), model.ub.copy()
+    medium = manifest.get("baseline", {}).get("medium", {})
+    for rid in model.rxn_ids:
+        if model.is_single_metabolite(rid) and rid not in medium:
+            close_uptake(model, lb, ub, rid)
     for rid, rate in medium.items():
         col, coeff = model.exchange(rid)
         if coeff > 0:
@@ -273,12 +335,17 @@ def baseline_bounds(model: Model, manifest: dict[str, Any], cfg: dict[str, Any])
 
 
 def apply_mods(model: Model, manifest: dict[str, Any], cfg: dict[str, Any],
-               lb: np.ndarray, ub: np.ndarray, mods: list[dict[str, Any]]) -> list[str]:
-    """Apply admissible modifications in place; return the reactions knocked out."""
+               lb: np.ndarray, ub: np.ndarray, mods: list[dict[str, Any]],
+               external: set[str] | None = None) -> list[str]:
+    """Apply admissible modifications in place; return the reactions knocked out.
+    Uptake can only be opened or closed on declared external exchanges."""
     base = manifest.get("baseline", {})
+    external = validate_boundary(model, manifest) if external is None else external
     killed: set[str] = set()
     for mod in mods:
         op = mod["op"]
+        if "exchange" in mod and mod["exchange"] not in external:
+            raise ManifestError(f"{mod['exchange']} is not a declared external exchange")
         if op in ("carbon_swap", "nitrogen_swap"):
             key = "carbon_exchanges" if op == "carbon_swap" else "nitrogen_exchanges"
             for rid in base.get(key, []):
@@ -310,8 +377,16 @@ def _as_list(v: Any) -> list[str]:
     return [v] if isinstance(v, str) else list(v)
 
 
-def build_menu(model: Model, manifest: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
-    """Derive the admissible experiment menu from context records. Returns (menu, rejections)."""
+def build_menu(model: Model, manifest: dict[str, Any], max_focus: int = DEFAULT_CONFIG["max_focus_reactions"],
+               external: set[str] | None = None) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    """Derive the admissible experiment menu from context records. Returns (menu, rejections).
+
+    A hypothesis may name candidate genes, model reactions, or both.  Reactions given directly
+    are used as-is; genes are mapped through the model GPR when present.  A candidate gene that
+    is absent from the model GPR (e.g. masked target assignments) is recorded as unmapped and
+    does not remove a reaction-level hypothesis from the menu.
+    """
+    external = validate_boundary(model, manifest) if external is None else external
     ctx = manifest.get("context", {})
     evidence = ctx.get("evidence", [])
     hyps = {h["id"]: h for h in ctx.get("hypotheses", [])}
@@ -326,16 +401,13 @@ def build_menu(model: Model, manifest: dict[str, Any]) -> tuple[list[dict[str, A
             ev_by_hyp[hid].append(ev)
 
     def hyp_reactions(h: dict[str, Any]) -> tuple[list[str], list[str]]:
-        genes, missing = [], []
-        for g in _as_list(h.get("gene")) + _as_list(h.get("genes")):
-            if g in model.gene_alias:
-                genes.append(model.gene_alias[g])
-            else:
-                missing.append(g)
+        genes = [model.gene_alias[g] for g in _as_list(h.get("gene")) + _as_list(h.get("genes"))
+                 if g in model.gene_alias]
         rxns = [r for r in _as_list(h.get("reactions")) if r in model.rxn_index]
-        missing += [r for r in _as_list(h.get("reactions")) if r not in model.rxn_index]
-        rxns = sorted(set(rxns) | model.blocked_by_genes(set(genes)))
-        return rxns, genes
+        return sorted(set(rxns) | model.blocked_by_genes(set(genes))), genes
+
+    def unmapped_genes(h: dict[str, Any]) -> list[str]:
+        return sorted(g for g in _as_list(h.get("gene")) + _as_list(h.get("genes")) if g not in model.gene_alias)
 
     def peers(hid: str) -> list[str]:
         grp = hyps[hid].get("group")
@@ -357,10 +429,13 @@ def build_menu(model: Model, manifest: dict[str, Any]) -> tuple[list[dict[str, A
     def exch_ok(rid: str, why: str) -> bool:
         try:
             model.exchange(rid)
-            return True
         except ManifestError as exc:
             rejected.append({"item": why, "reason": str(exc)})
             return False
+        if rid not in external:
+            rejected.append({"item": why, "reason": f"{rid} is not a declared external exchange"})
+            return False
+        return True
 
     def linked_focus(ev: dict[str, Any]) -> tuple[list[str], list[str]]:
         hid = ev.get("hypothesis_id")
@@ -416,7 +491,26 @@ def build_menu(model: Model, manifest: dict[str, Any]) -> tuple[list[dict[str, A
             add(f"ko_rescue:{hid}:rescued", "ko_rescue", cond + [ko, {"op": "open", "exchange": resc}],
                 f"knock out {','.join(rxns)} with {resc} supplied", ev_ids, [hid], rxns)
 
+    for item in menu.values():
+        hs = [hyps[h] for h in item["hypothesis_ids"]]
+        item["candidate_genes"] = sorted({g for h in hs for g in _as_list(h.get("gene")) + _as_list(h.get("genes"))})
+        item["unmapped_candidate_genes"] = sorted({g for h in hs for g in unmapped_genes(h)})
+        item["candidate_reactions"] = sorted({r for h in hs for r in hyp_reactions(h)[0]})
+        item["min_calls"], item["max_calls"] = call_bounds(item, max_focus)
     return sorted(menu.values(), key=lambda m: (KIND_ORDER.index(m["kind"]), m["id"])), rejected
+
+
+def call_bounds(item: dict[str, Any], max_focus: int) -> tuple[int, int]:
+    """Solver-call cost policy, identical for every selection strategy.
+
+    mandatory = 1 growth LP (+2 product LPs when the item has a product exchange);
+    optional focus checks = 3 LPs (FVA min, FVA max, knockout growth) per focus reaction not
+    knocked out by the item itself, at most ``max_focus`` reactions.
+    """
+    mandatory = 1 + (2 if item.get("product_exchange") else 0)
+    killed = {r for m in item["mods"] if m["op"] == "knockout" for r in m["reactions"]}
+    n_focus = min(len([r for r in item["focus_reactions"] if r not in killed]), max_focus)
+    return mandatory, mandatory + 3 * n_focus
 
 
 # --------------------------------------------------------------------------- execution
@@ -432,15 +526,34 @@ def _growth_class(ratio: float, cfg: dict[str, Any], growth: float) -> str:
     return "growth_unchanged"
 
 
+def resolve_objective(model: Model, manifest: dict[str, Any]) -> tuple[str, str]:
+    """Biomass reaction id and where it came from.  Never guesses.
+
+    ``objectives.biomass`` is preferred.  Otherwise the SBML active objective is accepted only
+    if it is a single maximised term with positive coefficient; anything else is rejected.
+    """
+    explicit = manifest["objectives"].get("biomass")
+    if explicit:
+        if explicit not in model.rxn_index:
+            raise ManifestError(f"biomass reaction not in model: {explicit}")
+        return explicit, "manifest"
+    terms = model.objective_terms
+    if len(terms) != 1 or terms[0][1] <= 0 or (model.objective_sense or "").lower() != "maximize":
+        raise ManifestError("SBML objective is not a single maximised positive-coefficient term "
+                            f"({terms}, {model.objective_sense}); set objectives.biomass explicitly")
+    if terms[0][0] not in model.rxn_index:
+        raise ManifestError(f"SBML objective reaction not in model: {terms[0][0]}")
+    return terms[0][0], "sbml_active_objective"
+
+
 class Runner:
     def __init__(self, model: Model, manifest: dict[str, Any], cfg: dict[str, Any]):
         self.model, self.manifest, self.cfg = model, manifest, cfg
         self.solver = BudgetedSolver(model, cfg["max_solver_calls"], cfg["residual_tol"])
-        obj = manifest["objectives"].get("biomass") or model.objective
-        if obj not in model.rxn_index:
-            raise ManifestError(f"biomass/objective reaction not in model: {obj}")
+        obj, self.objective_source = resolve_objective(model, manifest)
         self.bio = model.rxn_index[obj]
-        self.base_lb, self.base_ub = baseline_bounds(model, manifest, cfg)
+        self.external = validate_boundary(model, manifest)
+        self.base_lb, self.base_ub = baseline_bounds(model, manifest, cfg, self.external)
         self.baseline_growth: float | None = None
 
     def _unit(self, col: int, sign: float) -> np.ndarray:
@@ -459,18 +572,22 @@ class Runner:
             "mods": item["mods"], "evidence_ids": item["evidence_ids"],
             "hypothesis_ids": item["hypothesis_ids"],
             "competing_hypotheses": item.get("competing_hypotheses", []),
+            "candidate_genes": item.get("candidate_genes", []),
+            "unmapped_candidate_genes": item.get("unmapped_candidate_genes", []),
+            "candidate_reactions": item.get("candidate_reactions", []),
             "status": "completed", "outcome": None, "measurements": {}, "solver_calls": [],
         }
         product = item.get("product_exchange")
-        reserve = 2 if product else 0
-        if self.solver.remaining < 1 + reserve:
+        needed = item["min_calls"] if "min_calls" in item else call_bounds(item, cfg["max_focus_reactions"])[0]
+        reserve = needed - 1  # product LPs are held back so focus checks cannot starve them
+        if self.solver.remaining < needed:
             rec.update(status="skipped_budget", outcome="not_run",
-                       reason=f"{self.solver.remaining} solver calls left, {1 + reserve} needed")
+                       reason=f"{self.solver.remaining} solver calls left, {needed} needed")
             return self._finish(rec)
         lb, ub = self.base_lb.copy(), self.base_ub.copy()
         first = len(self.solver.log)
         try:
-            killed = apply_mods(model, self.manifest, cfg, lb, ub, item["mods"])
+            killed = apply_mods(model, self.manifest, cfg, lb, ub, item["mods"], self.external)
             rec["measurements"]["knocked_out_reactions"] = killed
             r, growth = self._growth(lb, ub, f"{item['id']}:max_growth")
             m = rec["measurements"]
@@ -586,15 +703,17 @@ class Runner:
         if hi.status == lo.status == "optimal":
             # the two LPs minimise -secretion and +secretion respectively
             pmax, pmin = max(0.0, -hi.objective), max(0.0, lo.objective)
-            info.update(max_secretion=pmax, min_secretion_forced_by_growth=pmin)
+            info.update(max_secretion=pmax, min_secretion_at_growth_floor=pmin)
             tol = cfg["flux_tol"]
             info["conditional_feasibility"] = pmax > tol
-            info["forced_production"] = pmin > tol
-            info["class"] = ("not_producible_at_growth_floor" if pmax <= tol
-                             else "production_required_by_growth" if pmin > tol
-                             else "feasible_but_not_required")
+            info["secretion_unavoidable_in_model"] = pmin > tol
+            info["class"] = ("no_secretion_possible_in_model_at_growth_floor" if pmax <= tol
+                             else "secretion_unavoidable_in_model" if pmin > tol
+                             else "secretion_feasible_not_unavoidable")
         else:
+            # solver failure / infeasibility is not a statement about the product
             info["class"] = "inconclusive"
+            info["lp_status"] = {"max": hi.status, "min": lo.status}
         rec["measurements"]["product"] = info
 
 
@@ -609,22 +728,29 @@ def conditional_record(rec: dict[str, Any]) -> dict[str, Any]:
     m = rec["measurements"]
     bearing = "uninformative"
     for fc in m.get("focus_checks", []):
-        if fc.get("knockout_class") in ("knockout_reduces_growth", "knockout_abolishes_growth",
-                                        "knockout_infeasible_with_maintenance") or \
+        if fc.get("knockout_class") in ("knockout_reduces_growth", "knockout_abolishes_growth") or \
                 fc.get("flux_class") == "required_flux":
             bearing = "model_requires_reaction_in_condition"
         elif bearing == "uninformative" and (fc.get("knockout_class") == "knockout_dispensable"
                                             or fc.get("flux_class") == "optional_flux"):
             bearing = "model_does_not_require_reaction_in_condition"
-    if rec["kind"] == "knockout" and rec.get("outcome") in ("growth_lost", "growth_reduced", "infeasible_with_maintenance"):
+    if rec["kind"] == "knockout" and rec.get("outcome") in ("growth_lost", "growth_reduced"):
         bearing = "model_requires_reaction_in_condition"
     elif rec["kind"] == "knockout" and rec.get("outcome") == "growth_unchanged":
         bearing = "model_does_not_require_reaction_in_condition"
-    if rec["status"] != "completed":
+    # infeasible / failed / skipped runs say nothing about the candidate function
+    if rec["status"] != "completed" or rec.get("outcome") == "infeasible_with_maintenance":
         bearing = "no_result"
-    return {"bearing": bearing, "model_conditional": True, "independent_proof_of_function": False,
+    return {"evidence_type": "metabolic_experiment_conditional",
+            "bearing": bearing, "model_conditional": True, "independent_proof_of_function": False,
             "calibrated_probability": None, "promotion": "none",
-            "hypothesis_ids": rec["hypothesis_ids"], "evidence_ids": rec["evidence_ids"]}
+            "status": rec["status"], "outcome": rec.get("outcome"),
+            "hypothesis_ids": rec.get("hypothesis_ids", []), "evidence_ids": rec.get("evidence_ids", []),
+            "candidate_genes": rec.get("candidate_genes", []),
+            "unmapped_candidate_genes": rec.get("unmapped_candidate_genes", []),
+            "candidate_reactions": rec.get("candidate_reactions", []),
+            "note": "Model-conditional; not observed phenotype, expression or production. "
+                    "A required/dispensable call reflects this model's network, which may omit alternatives."}
 
 
 # --------------------------------------------------------------------------- selection
@@ -710,7 +836,8 @@ def parse_choice(text: str, admissible: set[str]) -> tuple[str | None, str, str]
 
 def qwen_prompt(remaining: list[dict[str, Any]], results: list[dict[str, Any]], budget_left: int) -> list[dict[str, str]]:
     menu = [{"experiment_id": m["id"], "kind": m["kind"], "description": m["description"],
-             "evidence_ids": m["evidence_ids"], "competing_hypotheses": m["competing_hypotheses"]}
+             "evidence_ids": m["evidence_ids"], "competing_hypotheses": m["competing_hypotheses"],
+             "min_calls": m["min_calls"], "max_calls": m["max_calls"]}
             for m in remaining]
     prior = [{"experiment_id": r["experiment_id"], "status": r["status"], "outcome": r["outcome"],
               "growth_ratio": r["measurements"].get("growth_ratio")} for r in results]
@@ -722,6 +849,36 @@ def qwen_prompt(remaining: list[dict[str, Any]], results: list[dict[str, Any]], 
 
 
 # --------------------------------------------------------------------------- driver
+
+
+BUDGET_POLICY = {
+    "applies_to": "all strategies (fixed, random, evidence, qwen) identically",
+    "baseline": "1 LP (maximise biomass); always run first when the menu is non-empty",
+    "per_experiment_mandatory": "1 growth LP, plus 2 LPs (max and min secretion) for product experiments",
+    "per_focus_reaction": "3 LPs (FVA min, FVA max, knockout growth) for up to config.max_focus_reactions "
+                          "reactions of the linked hypotheses that the experiment does not itself knock out",
+    "skip_rule": "an experiment is skipped (skipped_budget) if remaining calls < its mandatory calls",
+    "focus_truncation": "focus checks run for floor((remaining - product_LPs) / 3) reactions after the growth "
+                        "LP; any shortfall is recorded as focus_checks_truncated_by_budget",
+    "no_planner_reserve": "no calls are held back for any planner; qwen requests do not consume solver calls",
+    "experiment_limit": "config.max_experiments counts every attempted menu item, skipped_budget included",
+}
+
+
+def assumptions(model: Model, manifest: dict[str, Any], cfg: dict[str, Any], runner: Runner) -> list[str]:
+    base = manifest.get("baseline", {})
+    internal = sorted(r for r in model.rxn_ids if model.is_single_metabolite(r) and r not in runner.external)
+    return [
+        f"external exchanges (trusted, declared): {sorted(runner.external)}",
+        f"medium uptake limits: {base.get('medium', {})}; all other declared exchanges closed to uptake",
+        f"undeclared single-metabolite reactions with uptake closed: {internal}",
+        f"opened exchanges use uptake_rate={cfg['uptake_rate']}",
+        f"maintenance constraint: {manifest['objectives']['maintenance']}",
+        f"biomass objective {model.rxn_ids[runner.bio]} (source: {runner.objective_source}); maximised, "
+        "growth counted above growth_threshold",
+        f"{model.n_infinite_bounds} infinite SBML bounds replaced by +-{cfg['default_bound']}; finite bounds unchanged",
+        "all outcomes are model-conditional and not observations of growth, expression or production",
+    ]
 
 
 def canonical_hash(obj: Any) -> str:
@@ -748,13 +905,16 @@ def run_experiments(manifest: dict[str, Any], model: Model, overrides: dict[str,
     validate_manifest(manifest)
     cfg = resolve_config(manifest, overrides)
     strategy = cfg["strategy"]
-    menu, menu_rejections = build_menu(model, manifest)
     runner = Runner(model, manifest, cfg)
+    menu, menu_rejections = build_menu(model, manifest, cfg["max_focus_reactions"], runner.external)
     out: dict[str, Any] = {
         "schema": SCHEMA, "disclaimer": DISCLAIMER, "strategy": strategy, "seed": cfg["seed"],
         "model": {"path": model.path, "sha256": model.sha256, "n_metabolites": len(model.met_ids),
                   "n_reactions": len(model.rxn_ids), "biomass_reaction": model.rxn_ids[runner.bio],
-                  "maintenance": manifest["objectives"]["maintenance"]},
+                  "maintenance": manifest["objectives"]["maintenance"],
+                  "objective_source": runner.objective_source, "n_infinite_bounds_replaced": model.n_infinite_bounds},
+        "budget_policy": BUDGET_POLICY,
+        "assumptions": assumptions(model, manifest, cfg, runner),
         "config": {k: v for k, v in cfg.items()},
         "hashes": {"model_sha256": model.sha256, "config_sha256": canonical_hash(cfg),
                    "context_sha256": canonical_hash(manifest.get("context", {})),
@@ -772,10 +932,7 @@ def run_experiments(manifest: dict[str, Any], model: Model, overrides: dict[str,
     results.append(base)
     if base["status"] != "completed" or base["outcome"] != "growth":
         for m in menu:
-            results.append({"experiment_id": m["id"], "kind": m["kind"], "status": "skipped_baseline_not_growing",
-                            "outcome": "not_run", "evidence_ids": m["evidence_ids"],
-                            "hypothesis_ids": m["hypothesis_ids"], "measurements": {}, "solver_calls": []})
-            results[-1]["conditional_evidence"] = conditional_record({**results[-1], "mods": []})
+            results.append(_unrun(m, "baseline_not_growing"))
         out["outcome"] = "baseline_infeasible_or_non_growing"
         return _finalise(out, runner, manifest)
 
@@ -784,7 +941,7 @@ def run_experiments(manifest: dict[str, Any], model: Model, overrides: dict[str,
         chat = chat or make_qwen_chat(cfg)
         remaining, invalid, fallback = list(menu), 0, False
         fb_order, _ = order_menu("evidence", menu, manifest, cfg)
-        while remaining and len(results) - 1 < limit and runner.solver.remaining > 0:
+        while remaining and len(results) - 1 < limit:
             if fallback:
                 item, entry = next(m for m in fb_order if m in remaining), {"source": "evidence_fallback"}
             else:
@@ -834,7 +991,9 @@ def run_experiments(manifest: dict[str, Any], model: Model, overrides: dict[str,
 def _unrun(m: dict[str, Any], why: str) -> dict[str, Any]:
     rec = {"experiment_id": m["id"], "kind": m["kind"], "status": f"skipped_{why}", "outcome": "not_run",
            "evidence_ids": m["evidence_ids"], "hypothesis_ids": m["hypothesis_ids"], "measurements": {},
-           "solver_calls": []}
+           "solver_calls": [], "candidate_genes": m.get("candidate_genes", []),
+           "unmapped_candidate_genes": m.get("unmapped_candidate_genes", []),
+           "candidate_reactions": m.get("candidate_reactions", [])}
     rec["conditional_evidence"] = conditional_record({**rec, "mods": []})
     return rec
 
@@ -844,8 +1003,12 @@ def _finalise(out: dict[str, Any], runner: Runner, manifest: dict[str, Any]) -> 
     all_ev = [e.get("id") for e in manifest.get("context", {}).get("evidence", [])]
     used = sorted({e for r in out["experiments"] if r["status"] == "completed" for e in r["evidence_ids"]})
     out["evidence"] = {"used": used, "not_used": sorted(set(all_ev) - set(used))}
-    out["conditional_evidence"] = [dict(r["conditional_evidence"], experiment_id=r["experiment_id"])
-                                   for r in out["experiments"] if r["experiment_id"] != "baseline"]
+    # integration-ready records: provenance only, no confidence value
+    out["conditional_evidence"] = [
+        dict(r["conditional_evidence"], experiment_id=r["experiment_id"], kind=r["kind"],
+             model_sha256=out["hashes"]["model_sha256"], config_sha256=out["hashes"]["config_sha256"],
+             solver_calls=r["solver_calls"])
+        for r in out["experiments"] if r["experiment_id"] != "baseline"]
     out["promotion"] = "none"
     return out
 

@@ -14,11 +14,16 @@ either, nor any scoring.
   function.
 - Every record carries `calibrated_probability: null` and `promotion: "none"`.
   Nothing is scored and no gap-fill is promoted automatically.
-- **Conditional feasibility vs. actual production.** For a product exchange the
-  record gives `max_secretion` at a growth floor (feasible?) and
-  `min_secretion_forced_by_growth` (actually required?). Classes:
-  `not_producible_at_growth_floor`, `feasible_but_not_required`,
-  `production_required_by_growth`.
+- **Secretion checks are model properties, not production.** For a product
+  exchange the record gives `max_secretion` at a growth floor (can this model
+  secrete it?) and `min_secretion_at_growth_floor` (can it avoid secreting it
+  while growing?). Classes: `no_secretion_possible_in_model_at_growth_floor`,
+  `secretion_feasible_not_unavoidable`, `secretion_unavoidable_in_model`. A
+  nonzero minimum only means the stoichiometry couples that exchange to growth;
+  none of these are observed or expressed production. If either LP fails or is
+  infeasible the class is `inconclusive` and never "no secretion possible".
+- **Infeasible, failed and skipped runs are not function evidence.** Their
+  `conditional_evidence.bearing` is `no_result`.
 - **Optional vs. required flux.** For focus reactions (from the linked
   hypotheses) FVA at the growth floor gives `required_flux` / `optional_flux` /
   `carries_no_flux_at_growth_floor`, and a knockout re-solve gives
@@ -37,6 +42,24 @@ the refiner's reversed `-> M_e` (v > 0 uptake) are handled. Boundary species are
 excluded from mass balance. Every solution is checked for finiteness,
 `max|S v|` and bound violations.
 
+**Objective.** `objectives.biomass` is preferred. Otherwise the SBML active
+objective is used only if it is a single maximised term with a positive
+coefficient; multi-term, minimised, negative or missing objectives are rejected
+rather than guessed.
+
+**Bounds.** Only infinite bounds are replaced (by `+-default_bound`, count
+recorded); finite bounds are never clipped. NaN, `lb > ub` and `+inf` lower /
+`-inf` upper bounds are rejected at load time.
+
+**External boundary.** `baseline.exchanges` must list the trusted external
+exchange reactions; each must be a single-metabolite reaction on an
+extracellular species (`baseline.extracellular_compartments`, default `["e"]`).
+Medium entries and the carbon/nitrogen/oxygen lists must be declared. Declared
+exchanges not in the medium have uptake closed, and every *undeclared*
+single-metabolite reaction (sinks, demands, biomass drains) has its uptake
+direction closed, so nothing can be supplied from nowhere. Experiments can only
+open or close declared exchanges.
+
 ## Manifest
 
 ```json
@@ -44,6 +67,7 @@ excluded from mass balance. Every solution is checked for finiteness,
   "model": "model.xml",
   "config": {"strategy": "evidence", "seed": 0, "max_experiments": 8, "max_solver_calls": 60},
   "baseline": {
+    "exchanges": ["EX_glc_e", "EX_ac_e", "EX_nh4_e", "EX_o2_e", "EX_vit_e"],
     "medium": {"EX_glc_e": 10, "EX_nh4_e": 10, "EX_o2_e": 10},
     "carbon_exchanges": ["EX_glc_e"], "nitrogen_exchanges": ["EX_nh4_e"],
     "oxygen_exchange": "EX_o2_e"
@@ -73,7 +97,13 @@ The admissible menu is derived only from these records:
 | each hypothesis | `knockout:<id>` (optionally under its `condition`) |
 | hypothesis with `rescue_exchange` | `ko_rescue:<id>:unrescued` / `:rescued` |
 
-Items that do not resolve to the model go to `menu_rejections`.
+Items that do not resolve to the model go to `menu_rejections`. A hypothesis
+may give candidate genes, model reactions, or both; reactions given directly
+are used as-is and genes map through the model GPR. A candidate gene absent from
+the GPR (for example when target assignments are masked) is listed in
+`unmapped_candidate_genes` and does not remove a reaction-level hypothesis.
+A gene-only hypothesis whose genes are unmapped has nothing to test and is
+rejected.
 
 ## Selection strategies
 
@@ -92,9 +122,19 @@ from `BORG_LLM_API_KEY` / `OPENAI_API_KEY` / `~/.config/borg-llm/api-key`
 ## Budget
 
 `max_solver_calls` is a hard cap across the baseline and all experiments
-(inconsistent-bound checks cost no call). An experiment is skipped when its
-mandatory calls do not fit, and FVA/knockout focus checks (3 calls per reaction,
-at most `max_focus_reactions`) are truncated to what remains.
+(inconsistent-bound checks cost no call). The policy is identical for all four
+strategies and is written to `budget_policy` in every output; each menu item
+lists its `min_calls` / `max_calls`:
+
+- baseline: 1 LP, always first when the menu is non-empty;
+- per experiment: 1 growth LP, plus 2 LPs (max/min secretion) for product items;
+- per focus reaction: 3 LPs (FVA min, FVA max, knockout growth), at most
+  `max_focus_reactions`, excluding reactions the item itself knocks out;
+- an experiment is skipped (`skipped_budget`) if remaining calls < mandatory
+  calls; focus checks are truncated to `floor((remaining - product LPs) / 3)`
+  reactions and the shortfall is recorded;
+- no calls are reserved for any planner, Qwen requests use no solver calls, and
+  `max_experiments` counts every attempted item including budget-skipped ones.
 
 ## CLI
 
@@ -108,7 +148,14 @@ Output JSON: `hashes` (model SHA-256, config, context, manifest), `menu`,
 `menu_rejections`, `selection_log`, `experiments` (each with mods,
 `evidence_ids`, `hypothesis_ids`, measurements, status, outcome, solver-call
 indices, `conditional_evidence`), `solver` (budget and per-call log),
-`evidence` (used / not used), `outcome`.
+`evidence` (used / not used), `assumptions`, `budget_policy`, `outcome`.
+
+The top-level `conditional_evidence` list is the integration interface: one
+record per experiment with `candidate_genes`, `unmapped_candidate_genes`,
+`candidate_reactions`, `hypothesis_ids`, `evidence_ids`, `bearing`, `status`,
+`outcome`, `model_sha256`, `config_sha256` and `solver_calls`. It carries no
+confidence; connecting it to learned candidate attribution is left to the
+integration step, which must supply its own calibration.
 
 Python: `load_sbml_model(path)` then `run_experiments(manifest, model,
 overrides=None, chat=None)`; pass `chat=callable(messages) -> str` to inject a
@@ -123,5 +170,6 @@ python3 -m unittest scripts/tests/test_metabolic_experiments.py
 Needs `libsbml`, `scipy`, `numpy`. The tests use a small stoichiometric network
 to check mechanisms (carbon-source-dependent catabolism, auxotrophy rescue,
 oxygen dependence, an unnecessary secondary product, alternative routes,
-infeasibility, no-candidate, budget, selection). They are not scientific
+infeasibility, no-candidate, budget, selection, objective handling, bound
+validation, closed internal sinks, masked-GPR hypotheses). They are not scientific
 benchmarks.

@@ -2,7 +2,7 @@
 
 These use a small hand-built stoichiometric network written to real SBML-FBC and
 read back through libsbml. They check mechanisms (signs, mass balance, budget,
-status handling, conditional-vs-actual production), not scientific accuracy.
+status handling, conditional secretion checks), not scientific accuracy.
 
 Run with:  python3 -m unittest scripts/tests/test_metabolic_experiments.py
 """
@@ -54,7 +54,10 @@ SPECIES = ["glc_e", "ac_e", "o2_e", "vit_e", "sec_e", "coup_e", "nh4_e",
            "glc_c", "ac_c", "o2_c", "vit_c", "sec_c", "coup_c", "nh4_c", "pyr_c", "atp_c"]
 
 
-def write_sbml(path, reactions=REACTIONS):
+EXCHANGES = ["EX_glc_e", "EX_ac_e", "EX_o2_e", "EX_vit_e", "EX_sec_e", "EX_coup_e", "EX_nh4_e"]
+
+
+def write_sbml(path, reactions=REACTIONS, objective=(("BIOMASS", 1.0),), sense="maximize", species=SPECIES):
     ns = libsbml.SBMLNamespaces(3, 1)
     ns.addPkgNamespace("fbc", 2)
     doc = libsbml.SBMLDocument(ns)
@@ -64,7 +67,7 @@ def write_sbml(path, reactions=REACTIONS):
     model.getPlugin("fbc").setStrict(False)
     for comp in ("c", "e"):
         c = model.createCompartment(); c.setId(comp); c.setConstant(True); c.setSize(1)
-    for sid in SPECIES:
+    for sid in species:
         s = model.createSpecies(); s.setId(sid); s.setCompartment(sid[-1])
         s.setBoundaryCondition(False); s.setConstant(False); s.setHasOnlySubstanceUnits(False)
     fbc = model.getPlugin("fbc")
@@ -82,8 +85,9 @@ def write_sbml(path, reactions=REACTIONS):
         rf.setLowerFluxBound("lb_" + rid); rf.setUpperFluxBound("ub_" + rid)
         if gpr:
             rf.createGeneProductAssociation().createGeneProductRef().setGeneProduct(gpr)
-    obj = fbc.createObjective(); obj.setId("bio"); obj.setType("maximize")
-    fo = obj.createFluxObjective(); fo.setReaction("BIOMASS"); fo.setCoefficient(1)
+    obj = fbc.createObjective(); obj.setId("bio"); obj.setType(sense)
+    for rid, coeff in objective:
+        fo = obj.createFluxObjective(); fo.setReaction(rid); fo.setCoefficient(coeff)
     fbc.setActiveObjectiveId("bio")
     libsbml.writeSBMLToFile(doc, str(path))
 
@@ -97,6 +101,7 @@ def manifest(context=None, **config):
         "model": "toy.xml",
         "config": config,
         "baseline": {"medium": {"EX_glc_e": 10, "EX_nh4_e": 10, "EX_o2_e": 10, "EX_vit_e": 10},
+                     "exchanges": list(EXCHANGES),
                      "carbon_exchanges": ["EX_glc_e"], "nitrogen_exchanges": ["EX_nh4_e"],
                      "oxygen_exchange": "EX_o2_e"},
         "objectives": {"biomass": "BIOMASS", "maintenance": {"reaction": "ATPM", "lower_bound": 1.0}},
@@ -152,7 +157,8 @@ class Base(unittest.TestCase):
 
 class TestModelAndSigns(Base):
     def test_loads_real_sbml_with_hash_gpr_and_objective(self):
-        self.assertEqual(self.model.objective, "BIOMASS")
+        self.assertEqual(self.model.objective_terms, [("BIOMASS", 1.0)])
+        self.assertEqual(self.model.objective_sense, "maximize")
         self.assertEqual(len(self.model.sha256), 64)
         self.assertEqual(self.model.blocked_by_genes({"g3"}), {"ACS"})
 
@@ -243,17 +249,48 @@ class TestBiology(Base):
     def test_secondary_product_feasible_but_not_required(self):
         p = self.rec["product:EX_sec_e"]["measurements"]["product"]
         self.assertTrue(p["conditional_feasibility"])
-        self.assertFalse(p["forced_production"])
-        self.assertEqual(p["class"], "feasible_but_not_required")
+        self.assertFalse(p["secretion_unavoidable_in_model"])
+        self.assertEqual(p["class"], "secretion_feasible_not_unavoidable")
         self.assertGreater(p["max_secretion"], 0)
-        self.assertEqual(p["min_secretion_forced_by_growth"], 0.0)
+        self.assertAlmostEqual(p["min_secretion_at_growth_floor"], 0.0, places=6)
         # growth is unaffected by removing the secondary pathway
         self.assertEqual(self.rec["knockout:H_sec"]["outcome"], "growth_unchanged")
 
-    def test_growth_coupled_product_is_actual_production(self):
+    def test_growth_coupled_secretion_is_a_model_property_not_production(self):
         p = self.rec["product:EX_coup_e"]["measurements"]["product"]
-        self.assertEqual(p["class"], "production_required_by_growth")
-        self.assertGreater(p["min_secretion_forced_by_growth"], 0)
+        self.assertEqual(p["class"], "secretion_unavoidable_in_model")
+        self.assertGreater(p["min_secretion_at_growth_floor"], 0)
+        text = json.dumps(self.rec["product:EX_coup_e"])
+        self.assertNotIn("actual_production", text)
+        self.assertNotIn("forced_production", text)
+
+    def test_failed_or_infeasible_lps_are_not_negative_product_evidence(self):
+        item = next(m for m in self.out["menu"] if m["id"] == "product:EX_sec_e")
+        runner = ME.Runner(self.model, manifest(), {**ME.DEFAULT_CONFIG})
+        runner.run(ME.baseline_item())
+        real = ME.linprog
+        calls = {"n": 0}
+
+        def flaky(*a, **k):
+            calls["n"] += 1
+            res = real(*a, **k)
+            if calls["n"] > 1:  # let the growth LP succeed, break the product LPs
+                res.status, res.success = 4, False
+            return res
+
+        with mock.patch.object(ME, "linprog", flaky):
+            rec = runner.run(item)
+        p = rec["measurements"]["product"]
+        self.assertEqual(p["class"], "inconclusive")
+        self.assertNotIn("max_secretion", p)
+        self.assertEqual(rec["conditional_evidence"]["bearing"], "uninformative")
+        # an infeasible knockout condition carries no function evidence either
+        both = self.rec["knockout:H_both"]
+        self.assertEqual(both["conditional_evidence"]["bearing"], "no_result")
+        # budget-skipped experiments likewise
+        skipped = self.run_all("fixed", max_solver_calls=1)
+        self.assertTrue(all(r["conditional_evidence"]["bearing"] == "no_result"
+                            for r in skipped["experiments"][1:]))
 
     def test_alternative_routes(self):
         a, b = self.rec["knockout:H_a"], self.rec["knockout:H_b"]
@@ -439,6 +476,158 @@ class TestCli(Base):
         self.assertEqual(res["config"]["max_solver_calls"], 20)
         self.assertEqual(res["model"]["sha256"], self.model.sha256)
         self.assertEqual(buf.getvalue(), "")
+
+
+class TestModelValidation(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def load(self, **kw):
+        p = self.dir / "m.xml"
+        write_sbml(p, **kw)
+        return ME.load_sbml_model(p)
+
+    def test_objective_is_never_guessed(self):
+        m = manifest(); del m["objectives"]["biomass"]
+        ok = self.load()
+        self.assertEqual(ME.resolve_objective(ok, m), ("BIOMASS", "sbml_active_objective"))
+        for kw in ({"objective": (("BIOMASS", 1.0), ("ATPM", 1.0))},   # multi-term
+                   {"objective": (("BIOMASS", -1.0),)},                  # negative coefficient
+                   {"objective": (("BIOMASS", 1.0),), "sense": "minimize"},
+                   {"objective": ()}):
+            with self.assertRaises(ME.ManifestError, msg=str(kw)):
+                ME.resolve_objective(self.load(**kw), m)
+        # an explicit id is honoured even when the SBML objective is unusable
+        m["objectives"]["biomass"] = "BIOMASS"
+        self.assertEqual(ME.resolve_objective(self.load(objective=()), m)[1], "manifest")
+        m["objectives"]["biomass"] = "NOPE"
+        with self.assertRaises(ME.ManifestError):
+            ME.resolve_objective(ok, m)
+
+    def test_finite_bounds_kept_and_infinities_replaced(self):
+        rx = dict(REACTIONS)
+        rx["T_glc"] = ({"glc_e": 1}, {"glc_c": 1}, 0, 5000, None)       # finite, above default_bound
+        rx["T_ac"] = ({"ac_e": 1}, {"ac_c": 1}, 0, float("inf"), None)
+        rx["T_o2"] = ({"o2_e": 1}, {"o2_c": 1}, float("-inf"), 1000, None)
+        m = self.load(reactions=rx)
+        self.assertEqual(m.ub[m.rxn_index["T_glc"]], 5000.0)
+        self.assertEqual(m.ub[m.rxn_index["T_ac"]], 1000.0)
+        self.assertEqual(m.lb[m.rxn_index["T_o2"]], -1000.0)
+        self.assertEqual(m.n_infinite_bounds, 2)
+        self.assertTrue(np.all(np.isfinite(m.lb)) and np.all(np.isfinite(m.ub)) and np.all(m.lb <= m.ub))
+
+    def test_misordered_or_nan_bounds_rejected(self):
+        for lo, hi in ((5, 1), (float("nan"), 10), (float("inf"), float("inf"))):
+            rx = dict(REACTIONS)
+            rx["T_glc"] = ({"glc_e": 1}, {"glc_c": 1}, lo, hi, None)
+            with self.assertRaises(ValueError, msg=str((lo, hi))):
+                self.load(reactions=rx)
+
+
+class TestBoundaries(unittest.TestCase):
+    """Nothing may be imported from nowhere: only declared external exchanges can supply nutrients."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        rx = dict(REACTIONS)
+        rx["DM_atp"] = ({"atp_c": 1}, {}, -1000, 1000, None)      # reversible demand = potential ATP source
+        rx["SINK_pyr"] = ({"pyr_c": 1}, {}, -1000, 1000, None)    # reversible sink = potential pyruvate source
+        rx["BIOMASS_FREE"] = ({}, {"pyr_c": 1}, 0, 1000, None)    # bare source reaction, never declared
+        path = Path(self.tmp.name) / "m.xml"
+        write_sbml(path, reactions=rx)
+        self.model = ME.load_sbml_model(path)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_internal_sinks_cannot_supply_metabolites(self):
+        m = manifest(); m["baseline"]["medium"] = {"EX_nh4_e": 10}  # no carbon at all
+        runner = ME.Runner(self.model, m, {**ME.DEFAULT_CONFIG})
+        for rid in ("DM_atp", "SINK_pyr"):
+            self.assertEqual(runner.base_lb[self.model.rxn_index[rid]], 0.0)
+        self.assertEqual(runner.base_ub[self.model.rxn_index["BIOMASS_FREE"]], 0.0)
+        rec = runner.run(ME.baseline_item())
+        # without any declared carbon source the maintenance ATP cannot be made from nothing
+        self.assertEqual(rec["outcome"], "infeasible_with_maintenance")
+
+    def test_growth_unchanged_by_presence_of_undeclared_sinks(self):
+        r1 = ME.Runner(self.model, manifest(), {**ME.DEFAULT_CONFIG}).run(ME.baseline_item())
+        tmp = Path(self.tmp.name) / "plain.xml"
+        write_sbml(tmp)
+        plain = ME.Runner(ME.load_sbml_model(tmp), manifest(), {**ME.DEFAULT_CONFIG}).run(ME.baseline_item())
+        self.assertAlmostEqual(r1["measurements"]["max_growth"], plain["measurements"]["max_growth"], places=6)
+
+    def test_declared_exchange_must_be_extracellular_and_used_ids_declared(self):
+        m = manifest(); m["baseline"]["exchanges"] = EXCHANGES + ["DM_atp"]
+        with self.assertRaises(ME.ManifestError):
+            ME.validate_boundary(self.model, m)
+        m = manifest(); del m["baseline"]["exchanges"]
+        with self.assertRaises(ME.ManifestError):
+            ME.validate_boundary(self.model, m)
+        m = manifest(); m["baseline"]["medium"]["SINK_pyr"] = 10
+        with self.assertRaises(ME.ManifestError):
+            ME.validate_boundary(self.model, m)
+        m = manifest(); m["baseline"]["medium"]["EX_glc_e"] = float("inf")
+        with self.assertRaises(ME.ManifestError):
+            ME.validate_boundary(self.model, m)
+
+    def test_experiments_cannot_open_undeclared_ports(self):
+        lb, ub = self.model.lb.copy(), self.model.ub.copy()
+        with self.assertRaises(ME.ManifestError):
+            ME.apply_mods(self.model, manifest(), ME.DEFAULT_CONFIG, lb, ub,
+                          [{"op": "open", "exchange": "SINK_pyr"}])
+        ctx = {"hypotheses": [], "evidence": [ev("T", "transport", None, substrate_exchange="SINK_pyr")]}
+        menu, rej = ME.build_menu(self.model, manifest(ctx))
+        self.assertEqual(menu, [])
+        self.assertIn("not a declared external exchange", rej[0]["reason"])
+
+
+class TestHypothesesAndPolicy(Base):
+    def test_reaction_hypothesis_survives_masked_gpr(self):
+        ctx = {"hypotheses": [{"id": "H_masked", "gene": "masked_locus", "reactions": ["SEC"]},
+                              {"id": "H_gene_only", "gene": "masked_locus"}],
+               "evidence": []}
+        menu, rej = ME.build_menu(self.model, manifest(ctx), external=ME.validate_boundary(self.model, manifest(ctx)))
+        ids = [m["id"] for m in menu]
+        self.assertEqual(ids, ["knockout:H_masked"])
+        self.assertEqual(menu[0]["unmapped_candidate_genes"], ["masked_locus"])
+        self.assertEqual(menu[0]["candidate_reactions"], ["SEC"])
+        self.assertEqual(rej[0]["item"], "H_gene_only")
+        # the masked gene still appears in the integration-facing evidence record, with no confidence
+        out = ME.run_experiments(manifest(ctx, strategy="fixed"), self.model)
+        ce = out["conditional_evidence"][0]
+        self.assertEqual(ce["candidate_genes"], ["masked_locus"])
+        self.assertEqual(ce["unmapped_candidate_genes"], ["masked_locus"])
+        self.assertIsNone(ce["calibrated_probability"])
+        self.assertEqual(ce["model_sha256"], self.model.sha256)
+
+    def test_budget_policy_is_recorded_and_identical_across_strategies(self):
+        outs = [self.run_all(s, chat=(lambda m: '{"stop": true}') if s == "qwen" else None)
+                for s in ("fixed", "random", "evidence", "qwen")]
+        self.assertTrue(all(o["budget_policy"] == ME.BUDGET_POLICY for o in outs))
+        self.assertIn("no_planner_reserve", ME.BUDGET_POLICY)
+
+    def test_declared_call_bounds_match_actual_use(self):
+        out = self.run_all("fixed", max_experiments=50)
+        menu = {m["id"]: m for m in out["menu"]}
+        for r in out["experiments"][1:]:
+            n = len(r["solver_calls"])
+            lo, hi = menu[r["experiment_id"]]["min_calls"], menu[r["experiment_id"]]["max_calls"]
+            if r["outcome"] == "infeasible_with_maintenance" or r["outcome"] == "growth_lost":
+                self.assertLessEqual(n, hi)
+            else:
+                self.assertTrue(lo <= n <= hi, (r["experiment_id"], lo, n, hi))
+
+    def test_outputs_state_assumptions(self):
+        out = self.run_all("fixed", max_experiments=1)
+        self.assertEqual(out["model"]["objective_source"], "manifest")
+        joined = " ".join(out["assumptions"])
+        self.assertIn("undeclared single-metabolite reactions with uptake closed", joined)
+        self.assertIn("ATPM", joined)
 
 
 if __name__ == "__main__":
