@@ -22,6 +22,7 @@ DE   RecName: Full=Old kinase;
 DE            EC=2.7.11.1 {ECO:0000255|PROSITE-ProRule:PRU00159};
 DR   GO; GO:0004672; F:protein kinase activity; IDA:UniProtKB.
 DR   GO; GO:0016020; C:membrane; IEA:UniProtKB-KW.
+DR   GO; GO:0005524; F:ATP binding; TAS:UniProtKB.
 //
 ID   NEW1_TEST               Reviewed;         100 AA.
 AC   Q00002; Q00003;
@@ -38,6 +39,8 @@ DR   GO; GO:0003824; F:catalytic activity; IMP:UniProtKB.
 ID   EDGE_TEST               Reviewed;         100 AA.
 AC   P00004;
 DT   01-JAN-2024, integrated into UniProtKB/Swiss-Prot.
+DE   RecName: Full=Edge lyase;
+DE            EC=4.2.1.1 {ECO:0000269|PubMed:123, ECO:0000305};
 DR   GO; GO:0005515; F:protein binding; IPI:UniProtKB.
 //
 ID   NODT_TEST               Reviewed;         100 AA.
@@ -77,7 +80,7 @@ class TemporalSplitTests(unittest.TestCase):
         tmp = self.run_split()
         ec_old = self.rows(tmp / "ec.integrated_le_cutoff.tsv")
         ec_new = self.rows(tmp / "ec.integrated_gt_cutoff.tsv")
-        self.assertEqual([r[2] for r in ec_old], ["EC:2.7.11.1"])     # ECO tag stripped
+        self.assertEqual([r[2] for r in ec_old], ["EC:2.7.11.1", "EC:4.2.1.1"])     # ECO tag stripped
         self.assertEqual([r[2] for r in ec_new], ["EC:3.1.1.1"])      # 3.5.1.n2 and 1.1.1.- skipped
 
     def test_cutoff_day_is_on_or_before_and_undated_entries_are_excluded_not_trained_on(self):
@@ -101,10 +104,21 @@ class TemporalSplitTests(unittest.TestCase):
     def test_experimental_filter_drops_iea_and_keeps_the_evidence_column(self):
         tmp = self.run_split(extra=["--evidence", "experimental"])
         old = self.rows(tmp / "go.integrated_le_cutoff.tsv")
-        self.assertEqual({r[3] for r in old}, {"IDA", "IPI"})
+        self.assertEqual({r[3] for r in old}, {"IDA", "IPI"})            # TAS is curated, not experimental
         self.assertNotIn("GO:0016020", {r[2] for r in old})
+        self.assertNotIn("GO:0005524", {r[2] for r in old})
+        cafa = self.rows(self.run_split(extra=["--evidence", "cafa_eligible"]) / "go.integrated_le_cutoff.tsv")
+        self.assertEqual({r[3] for r in cafa}, {"IDA", "IPI", "TAS"})
         allmode = self.run_split()
         self.assertIn("IEA", {r[3] for r in self.rows(allmode / "go.integrated_le_cutoff.tsv")})
+
+    def test_ec_lines_carry_their_eco_tag_and_the_filter_applies_to_ec(self):
+        allmode = {r[2]: r[3] for r in self.rows(self.run_split() / "ec.integrated_le_cutoff.tsv")}
+        self.assertEqual(allmode, {"EC:2.7.11.1": "ECO:0000255", "EC:4.2.1.1": "ECO:0000269"})
+        strict = self.rows(self.run_split(extra=["--evidence", "experimental"]) / "ec.integrated_le_cutoff.tsv")
+        self.assertEqual([r[2] for r in strict], ["EC:4.2.1.1"])        # similarity-tagged and untagged EC dropped
+        untagged = {r[2]: r[3] for r in self.rows(self.run_split() / "ec.integrated_gt_cutoff.tsv")}
+        self.assertEqual(untagged, {"EC:3.1.1.1": "-"})
 
     def test_first_three_columns_stay_compatible_with_load_truth(self):
         tmp = self.run_split()

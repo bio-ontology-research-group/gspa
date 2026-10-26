@@ -11,7 +11,9 @@ ID   A_ECOLI                 Reviewed;         10 AA.
 AC   P1;
 OC   Bacteria; Proteobacteria.
 OX   NCBI_TaxID=83333;
+OS   Escherichia coli (strain K12).
 DE            EC=1.1.1.1 {ECO:0000269|PubMed:1};
+DR   Proteomes; UP000000625; Chromosome.
 DR   GO; GO:0000001; F:x; IDA:UniProtKB.
 //
 ID   B_ECOLI                 Reviewed;         10 AA.
@@ -20,6 +22,13 @@ OC   Bacteria; Proteobacteria.
 OX   NCBI_TaxID=83333;
 DE            EC=2.2.2.2 {ECO:0000250|UniProtKB:Q1};
 DR   GO; GO:0000002; F:y; IEA:InterPro.
+//
+ID   D_ECOLI                 Reviewed;         10 AA.
+AC   P4;
+OC   Bacteria; Proteobacteria.
+OX   NCBI_TaxID=83333;
+DE            EC=3.3.3.3 {ECO:0000305};
+DR   GO; GO:0000004; F:w; TAS:Reactome.
 //
 ID   C_YEAST                 Reviewed;         10 AA.
 AC   P3;
@@ -37,13 +46,32 @@ class CohortProfileTests(unittest.TestCase):
             p.write_text(DAT)
             out = A.profile_swissprot_taxa(p)
         self.assertEqual(out["taxa"], 2)
-        self.assertEqual(out["entries"], 3)
+        self.assertEqual(out["entries"], 4)
         got = {r["taxid"]: r for r in out["top10_by_experimental_go_proteins"]}
         self.assertEqual(set(got), {"83333", "559292"})                  # no '=' prefix, no ECO tail
-        self.assertEqual(got["83333"]["exp_go"], 1)                      # IEA line is not experimental
-        self.assertEqual(got["83333"]["ec_any_evidence"], 2)
-        self.assertEqual(got["83333"]["ec_experimental_eco"], 1)         # similarity-inferred EC is not
+        self.assertEqual(got["83333"]["exp_go"], 1)                      # IEA is not experimental, TAS is not either
+        self.assertEqual(got["83333"]["cafa_go"], 2)                     # IDA + TAS are CAFA-eligible
+        self.assertEqual(got["83333"]["ec_any_evidence"], 3)
+        self.assertEqual(got["83333"]["ec_experimental_eco"], 1)         # similarity (0000250) and curator inference are not
+        self.assertEqual(got["83333"]["ec_cafa_eligible"], 2)            # curator inference ECO:0000305 is eligible, not experimental
         self.assertEqual(out["taxa_with_at_least"]["exp_go>=25"]["total"], 0)
+
+    def test_taxa_table_records_organism_lineage_proteome_and_single_count_per_protein(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "sp.dat"
+            p.write_text(DAT)
+            per = A.swissprot_taxa_table(p)
+            tsv = Path(t) / "taxa.tsv"
+            n = A.write_taxa_tsv(per, tsv)
+            rows = [l.split("\t") for l in tsv.read_text().splitlines()]
+        rec = per["83333"]
+        self.assertEqual(rec["organism"], "Escherichia coli (strain K12)")
+        self.assertEqual(rec["lineage_full"], "Bacteria; Proteobacteria")
+        self.assertEqual(rec["labelled_strict"], 1)       # P1 (IDA + ECO:0000269) counts once; P4 is TAS/ECO:0000305 only
+        self.assertEqual(rec["proteomes"], {"UP000000625": 1})
+        self.assertEqual(n, 2)
+        first = dict(zip(rows[0], rows[1]))
+        self.assertEqual((first["taxid"], first["labelled_strict"], first["proteome_ids"]), ("83333", "1", "UP000000625:1"))
 
     def test_cafa6_profile_separates_snapshot_difference_from_date_difference(self):
         with tempfile.TemporaryDirectory() as t:

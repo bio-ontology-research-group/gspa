@@ -1,0 +1,53 @@
+{
+  "schema": "gspa.evaluation-exclusions/1",
+  "description": "Organisms (by genus, plus exact taxids) that are Price148 development targets, P03 panel13/panel21 genomes, or earlier benchmark panels. Selection excludes the whole GENUS of every listed organism, not only the strain, so a genus-disjoint train/test split cannot be undermined by a congeneric training genome. Sources are files in this repository; nothing here is guessed from assembly accessions.",
+  "genus_synonyms": {
+    "Mycoplasmoides": ["Mycoplasma"],
+    "Mycoplasma": ["Mycoplasmoides"],
+    "Nostoc": ["Anabaena"],
+    "Anabaena": ["Nostoc"],
+    "Escherichia": ["Shigella"],
+    "Shigella": ["Escherichia"],
+    "Mycobacterium": ["Mycolicibacterium", "Mycobacteroides"],
+    "Borrelia": ["Borreliella"],
+    "Sinorhizobium": ["Rhizobium", "Ensifer"],
+    "Rhizobium": ["Sinorhizobium", "Ensifer"]
+  },
+  "sources": [
+    {
+      "id": "p03_panel13",
+      "role": "examined",
+      "file": "benchmark/RESULTS.md (10-Genome PGAP table) + benchmark/score_phase_c.sh + paper-reproducibility/pipelines/P03_reference_panels/fetched/panel13_per_genome.tsv",
+      "organisms": [
+        {"tag": "vcholerae", "genus": "Vibrio"},
+        {"tag": "saureus", "genus": "Staphylococcus"},
+        {"tag": "spneumoniae", "genus": "Streptococcus"},
+        {"tag": "ccrescentus", "genus": "Caulobacter"},
+        {"tag": "rprowazekii", "genus": "Rickettsia"},
+        {"tag": "tpallidum", "genus": "Treponema"},
+        {"tag": "tthermophilus", "genus": "Thermus"},
+        {"tag": "dradiodurans", "genus": "Deinococcus"},
+        {"tag": "scoelicolor", "genus": "Streptomyces"},
+        {"tag": "pfuriosus", "genus": "Pyrococcus"},
+        {"tag": "hpylori", "genus": "Helicobacter"},
+        {"tag": "mgenitalium", "genus": "Mycoplasmoides"},
+        {"tag": "mjannaschii", "genus": "Methanocaldococcus"}
+      ]
+    },
+    {
+      "id": "price148_documented_hosts",
+      "role": "development",
+      "file": "docs/benchmarks/flux-repair-price149.md (organisms named there); the 22 host assemblies of benchmark/manifests/suite6_price149_manifest.tsv carry no organism names in the repository",
+      "organisms": [
+        {"tag": "ecoli_k12_mg1655", "genus": "Escherichia", "taxid": "511145"},
+        {"tag": "pputida_kt2440", "genus": "Pseudomonas"}
+      ],
+      "unresolved": "The other host assemblies of the Price manifest are exclusion-relevant but their organism/genus is not recorded locally; the selection manifest lists them as unresolved and every selected genus keeps price_genus_check=pending until the assemblies are resolved against NCBI."
+    }
+  ],
+  "read_from_manifests": [
+    {"id": "panel30", "file": "benchmark/panel/panel_manifest.tsv", "taxid_column": "taxid", "species_column": "species", "role": "examined"},
+    {"id": "suite2_proteomes25", "file": "benchmark/manifests/suite2_proteomes25_manifest.tsv", "genus_column": "genus", "domain_column": "domain", "keep_domains": ["bacteria", "archaea"], "role": "examined"}
+  ],
+  "price_host_assemblies_file": "benchmark/manifests/suite6_price149_manifest.tsv"
+}

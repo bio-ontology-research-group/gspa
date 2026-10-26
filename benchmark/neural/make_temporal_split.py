@@ -27,7 +27,7 @@ Output: evidence-level TSVs ``protein_id  aspect  term  evidence  integration_da
 aspect is MF/BP/CC and ``evidence`` is the evidence code of the ``DR GO`` line
 (``--evidence experimental`` keeps only experimental codes; the default keeps every code,
 IEA included, which is not experimental truth). For EC the aspect is blank and evidence
-is ``-``. Only complete four-level EC numbers are kept (``1.1.1.-`` and preliminary
+is its strongest ECO id (``-`` if untagged). Only complete four-level EC numbers are kept (``1.1.1.-`` and preliminary
 ``3.5.1.n2`` numbers are skipped).
 
 Inputs
@@ -37,7 +37,9 @@ Inputs
                     cutoff day counts as ``le`` (not after).
 --go-out / --ec-out Output TSV stem; at least one is required.
 --heldout-only      Skip the on-or-before side.
---evidence          ``all`` (default) or ``experimental`` (GO lines only).
+--evidence          ``all`` (default), ``experimental`` (strict: EXP/IDA/IPI/IMP/IGI/IEP/H*
+                    GO codes, ECO:0000269 on EC lines) or ``cafa_eligible`` (adds TAS/IC and
+                    ECO:0000303/305, which are curated inferential, not experimental).
 """
 from __future__ import annotations
 
@@ -46,9 +48,13 @@ import gzip
 import json
 import logging
 import re
+import sys
 from datetime import date
 from pathlib import Path
 from typing import Iterator, Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "v3"))
+import evidence_codes as EV  # noqa: E402
 
 LOG = logging.getLogger("make_temporal_split")
 
@@ -65,9 +71,7 @@ EC_LINE = re.compile(r"^DE\s+EC=([^;\s{]+)")
 COMPLETE_EC = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
 DT_INTEGRATED = re.compile(r"^DT\s+(\d{2})-([A-Z]{3})-(\d{4}),\s+integrated into UniProtKB")
 
-# Experimental codes as used for CAFA ground truth (TAS/IC are curator-asserted, not IEA).
-EXPERIMENTAL_EVIDENCE = frozenset(
-    {"EXP", "IDA", "IPI", "IMP", "IGI", "IEP", "TAS", "IC", "HTP", "HDA", "HMP", "HGI", "HEP"})
+ECO_TAG = re.compile(r"ECO:\d{7}")
 
 MONTHS = {
     "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
@@ -90,8 +94,9 @@ def parse_args(argv=None) -> argparse.Namespace:
                     help="EC evidence TSV stem (the two side files are derived from it)")
     ap.add_argument("--heldout-only", action="store_true",
                     help="Emit only the after-cutoff side; skip the on-or-before side")
-    ap.add_argument("--evidence", choices=("all", "experimental"), default="all",
-                    help="GO evidence filter (default all, which includes IEA)")
+    ap.add_argument("--evidence", choices=("all", "experimental", "cafa_eligible"), default="all",
+                    help="evidence filter on GO codes and EC ECO tags (default all, which includes IEA; "
+                         "experimental is strict; cafa_eligible adds TAS/IC/ECO:0000303/305)")
     return ap.parse_args(argv)
 
 
@@ -149,13 +154,26 @@ def parse_entries(path: Path) -> Iterator[tuple[str, Optional[date], list[Eviden
             if line.startswith("DE ") and "EC=" in line:
                 m = EC_LINE.match(line)
                 if m and COMPLETE_EC.match(m.group(1)):
-                    evidences.append(("EC", f"EC:{m.group(1)}", "", "-"))
+                    evidences.append(("EC", f"EC:{m.group(1)}", "", ec_evidence(line)))
+
+
+def ec_evidence(line: str) -> str:
+    """The strongest ECO id tagged on a Swiss-Prot EC line, or ``-`` when untagged.
+
+    Strongest = experimental (ECO:0000269) > curated inferential (ECO:0000303/305) > any other tag.
+    """
+    tags = ECO_TAG.findall(line)
+    for pool in (EV.EXPERIMENTAL, EV.CURATED_INFERENTIAL):
+        for t in tags:
+            if t in pool:
+                return t
+    return tags[0] if tags else "-"
 
 
 def keep_evidence(ev: Evidence, mode: str) -> bool:
-    if mode == "experimental" and ev[0] == "GO":
-        return ev[3] in EXPERIMENTAL_EVIDENCE
-    return True
+    """``experimental`` is strict (no TAS/IC); ``cafa_eligible`` adds the curated-inferential codes.
+    The filter applies to GO codes and to the ECO tag of EC lines."""
+    return EV.allowed(ev[3], mode)
 
 
 def side_path(stem: Path, side: str) -> Path:
@@ -188,7 +206,7 @@ def write_provenance(stem: Path, args, cutoff: date, counts: dict, kind: str) ->
         "cutoff": cutoff.isoformat(),
         "cutoff_rule": "later side: integration date strictly after cutoff; earlier side: on or before",
         "source": str(args.swissprot_dat),
-        "evidence_filter": args.evidence if kind == "GO" else "n/a (complete EC numbers only)",
+        "evidence_filter": args.evidence,
         "kind": kind,
         "counts": counts,
         "files": {"integrated_gt_cutoff": str(side_path(stem, "gt")),

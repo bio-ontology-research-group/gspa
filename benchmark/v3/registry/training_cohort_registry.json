@@ -93,6 +93,16 @@
       "gaps": ["no experimental truth: usable only for unlabelled context features (cohort recurrence), not labels"]
     },
     {
+      "id": "swissprot_label_rich_v1",
+      "role": "reference",
+      "allowed_splits": ["train", "calibration", "test"],
+      "genome_level": true,
+      "labels": "Swiss-Prot reviewed proteins with strictly experimental GO (EXP/IDA/IPI/IMP/IGI/IEP/H*) or EC with ECO:0000269, on the exact assemblies of the organisms in benchmark/v3/results/label-rich-selection/selection_manifest.json",
+      "counts": {"organisms_selected": 19, "labelled_strict_proteins_total": 577, "genomes_acquired": 0},
+      "location": "selection manifest only; genomes not acquired (assembly mapping unresolved for every organism)",
+      "gaps": ["selection only: no genome, no feature export, no labels table exists yet", "20-58 labelled proteins per organism: partial truth, metrics stay on labelled proteins", "Swiss-Prot labels are inputs of pretrained predictors: pretrained-model leakage not assessed", "Price host organisms not all resolved locally: price_genus_check pending", "family/cluster map pending"]
+    },
+    {
       "id": "allthebacteria",
       "role": "excluded",
       "allowed_splits": [],

@@ -28,14 +28,50 @@ CLEAN = [split("g1", "train", "f1"), split("g2", "calibration", "f2"), split("g3
 
 
 class SplitAuditTests(unittest.TestCase):
-    def test_clean_split_supports_independence_claims(self):
+    def test_clean_split_without_protein_or_homology_checks_is_not_an_independence_claim(self):
         r = P.audit_splits(CLEAN, REGISTRY)
         self.assertEqual(r["violations"], [])
-        self.assertTrue(r["claims"]["independent_test_claim_supportable"])
-        self.assertTrue(r["claims"]["untouched_test_claim_supportable"])
-        self.assertEqual(r["claims"]["pretrained_model_leakage"], "not_assessed")
-        self.assertFalse(r["claims"]["homology_disjoint_checked"])
+        c = r["claims"]
+        self.assertFalse(c["independent_test_claim_supportable"])
+        self.assertIn("protein_id_overlap", c["unchecked_axes"])
+        self.assertIn("homology_clusters", c["unchecked_axes"])
+        self.assertEqual(c["checked_axes"], ["genome_id", "group", "source_registry"])
+        self.assertEqual(c["pretrained_model_leakage"], "not_assessed")
+        self.assertEqual(c["untouched_test_claim"], "not_assessed")
+        self.assertNotIn("untouched_test_claim_supportable", c)
+        self.assertIn("NOT a supported independence claim", c["independent_test_claim_text"])
         self.assertTrue(any("protein-id overlap NOT assessed" in w for w in r["warnings"]))
+
+    def test_all_checked_axes_support_independence_but_never_untouched(self):
+        prot = [("g1", "p1"), ("g3", "p3")]
+        r = P.audit_splits(CLEAN, REGISTRY, proteins=prot, protein_clusters={"p1": "c1", "p3": "c3"})
+        c = r["claims"]
+        self.assertTrue(c["independent_test_claim_supportable"])
+        self.assertEqual(c["untouched_test_claim"], "not_assessed")
+        self.assertIn("homology_clusters(targets)", c["checked_axes"])
+        self.assertEqual(c["homology_scope"], "labelled_target_proteins_only")
+
+    def test_duplicate_genome_rows_with_conflicting_group_or_source_are_refused_even_in_one_split(self):
+        for dup in (split("g1", "train", "OTHER"), split("g1", "train", "f1", source="ex")):
+            r = P.audit_splits(CLEAN + [dup], REGISTRY)
+            self.assertTrue(any("genome g1 has 2 rows with conflicting" in v for v in r["violations"]), r["violations"])
+            self.assertFalse(r["claims"]["independent_test_claim_supportable"])
+        r = P.audit_splits(CLEAN + [split("g1", "train", "f1")], REGISTRY)         # identical repeat: not a conflict
+        self.assertEqual(r["violations"], [])
+        self.assertTrue(any("listed 2 times" in w for w in r["warnings"]))
+
+    def test_requested_taxonomy_disjointness_without_taxonomy_is_refused(self):
+        r = P.audit_splits(CLEAN, REGISTRY, disjoint=("genome_id", "group", "genus"))
+        self.assertTrue(any("taxonomy is unavailable" in v and "'genus'" in v for v in r["violations"]))
+        rows = [{**x, "genus": g} for x, g in zip(CLEAN, ("A", "B", "C"))]
+        r = P.audit_splits(rows, REGISTRY, disjoint=("genome_id", "group", "genus"))
+        self.assertEqual(r["violations"], [])
+        self.assertIn("taxonomy:genus", r["claims"]["checked_axes"])
+        rows[2]["genus"] = "A"
+        r = P.audit_splits(rows, REGISTRY, disjoint=("genome_id", "group", "genus"))
+        self.assertTrue(any("genus(s) span several splits" in v for v in r["violations"]))
+        with self.assertRaises(P.PreparationError):
+            P.audit_splits(CLEAN, REGISTRY, disjoint=("genome_id", "order"))
 
     def test_genome_in_two_splits_is_a_violation(self):
         r = P.audit_splits(CLEAN + [split("g1", "test", "f1")], REGISTRY)
@@ -64,10 +100,11 @@ class SplitAuditTests(unittest.TestCase):
 
     def test_examined_test_data_is_disjoint_but_not_untouched(self):
         rows = [split("g1", "train", "f1"), split("g2", "calibration", "f2"), split("g3", "test", "f3", source="ex")]
-        r = P.audit_splits(rows, REGISTRY)
+        r = P.audit_splits(rows, REGISTRY, proteins=[("g1", "p1"), ("g3", "p3")], protein_clusters={"p1": "a", "p3": "b"})
         self.assertEqual(r["violations"], [])
         self.assertTrue(r["claims"]["independent_test_claim_supportable"])
-        self.assertFalse(r["claims"]["untouched_test_claim_supportable"])
+        self.assertTrue(r["claims"]["test_contains_examined_or_development_data"])
+        self.assertEqual(r["claims"]["untouched_test_claim"], "not_assessed")
         self.assertTrue(any("examined" in w for w in r["warnings"]))
 
     def test_unregistered_and_protein_level_sources_refused(self):
@@ -80,18 +117,34 @@ class SplitAuditTests(unittest.TestCase):
         r = P.audit_splits(CLEAN[:2], REGISTRY)
         self.assertIn("split 'test' has no genomes", r["violations"])
 
-    def test_protein_overlap_and_homology_clusters(self):
+    def test_protein_overlap_and_homology_clusters_for_labelled_targets(self):
         prot = [("g1", "pA"), ("g3", "pA")]
         r = P.audit_splits(CLEAN, REGISTRY, proteins=prot)
         self.assertTrue(any("'pA' appears in train and test" in v for v in r["violations"]))
         prot = [("g1", "p1"), ("g3", "p3")]
         r = P.audit_splits(CLEAN, REGISTRY, proteins=prot, protein_clusters={"p1": "c", "p3": "c"})
-        self.assertTrue(any("homology cluster(s) span" in v for v in r["violations"]))
+        self.assertTrue(any("homology cluster(s) of labelled target proteins span" in v for v in r["violations"]))
         r = P.audit_splits(CLEAN, REGISTRY, proteins=prot, protein_clusters={"p1": "c1"})
-        self.assertTrue(any("does not cover 1 protein" in v for v in r["violations"]))
+        self.assertTrue(any("does not cover 1 target protein" in v for v in r["violations"]))
         r = P.audit_splits(CLEAN, REGISTRY, proteins=prot, protein_clusters={"p1": "c1", "p3": "c3"})
         self.assertEqual(r["violations"], [])
         self.assertTrue(r["claims"]["homology_disjoint_checked"])
+
+    def test_context_proteins_may_share_families_across_splits_without_violation(self):
+        prot = [("g1", "t1", "target"), ("g3", "t3", "target"), ("g1", "core1", "context"), ("g3", "core3", "context"),
+                ("g1", "core", "context"), ("g3", "core", "context")]
+        clusters = {"t1": "x", "t3": "y", "core1": "CORE", "core3": "CORE", "core": "CORE2"}
+        r = P.audit_splits(CLEAN, REGISTRY, proteins=prot, protein_clusters=clusters)
+        self.assertEqual(r["violations"], [])
+        self.assertEqual(r["context_sharing"]["clusters_shared_across_splits"], 2)
+        self.assertEqual(r["context_sharing"]["protein_ids_shared_across_splits"], 1)
+        prot[1] = ("g3", "t3", "target")
+        clusters["t3"] = "x"                          # but a TARGET family crossing splits is still a violation
+        r = P.audit_splits(CLEAN, REGISTRY, proteins=prot, protein_clusters=clusters)
+        self.assertTrue(any("labelled target proteins span" in v for v in r["violations"]))
+        r = P.audit_splits(CLEAN, REGISTRY, proteins=prot, protein_clusters=clusters, cluster_policy="mask")
+        self.assertEqual(r["violations"], [])
+        self.assertTrue(any("will be masked" in w for w in r["warnings"]))
 
     def test_committed_registry_forbids_price148_as_test_and_loads(self):
         reg = P.load_registry()
@@ -111,25 +164,37 @@ class Fixture:
         self.contract_path = tmp / "feature_contract.json"
         self.contract_path.write_text(CONTRACT.read_text())
         self.fingerprint = c["fingerprint"]
+        self.contract_id = c["id"]
         self.names = [f["name"] for f in c["features"]]
         self.feature_dir = tmp / "features"
 
-    def export(self, genome, rows, labels_included=False, fingerprint=None):
+    def export(self, genome, rows, labels_included=False, fingerprint=None, mutate_row=None, mutate_manifest=None):
+        """Same files, keys and key layout as gspa.integration.learned.FeatureExporter.exportToDirectory."""
         d = self.feature_dir / genome
         d.mkdir(parents=True)
         fp = fingerprint or self.fingerprint
         with open(d / "candidate_features.jsonl", "w") as fh:
             for protein, ftype, fid, role in rows:
-                key = f"{protein}|{ftype}|{fid}|{role}"
+                fkey = f"{protein}|{ftype}|{fid}"
                 feats = {n: 0.0 for n in self.names}
                 feats["seq.max_raw_any"] = 0.5
-                fh.write(json.dumps({"schema": "gspa.context-feature-row/1", "contract": {"id": "x", "fingerprint": fp},
-                                     "genome_id": genome, "protein_id": protein, "function_type": ftype,
-                                     "function_id": fid, "function_key": f"{protein}|{ftype}|{fid}", "role": role,
-                                     "candidate_key": key, "features": feats}) + "\n")
+                row = {"schema": "gspa.context-feature-row/1", "contract": {"id": self.contract_id, "fingerprint": fp},
+                       "genome_id": genome, "protein_id": protein, "function_type": ftype,
+                       "function_id": fid, "function_key": fkey, "role": role,
+                       "candidate_key": f"{fkey}|{role}", "features": feats,
+                       "available_contexts": {k: False for k in P.EXPORT_CONTEXT_KEYS}, "notes": []}
+                if mutate_row:
+                    mutate_row(row)
+                fh.write(json.dumps(row) + "\n")
+        (d / "feature_contract.json").write_text(CONTRACT.read_text())
         digest = hashlib.sha256((d / "candidate_features.jsonl").read_bytes()).hexdigest()
-        (d / "export_manifest.json").write_text(json.dumps(
-            {"rows_sha256": digest, "contract_fingerprint": fp, "labels_included": labels_included}))
+        manifest = {"schema": "gspa.context-feature-export/1", "rows_file": "candidate_features.jsonl", "rows": len(rows),
+                    "functions": len(rows), "rows_with_sequence_evidence": len(rows), "rows_sha256": digest,
+                    "contract_file": "feature_contract.json", "contract_id": self.contract_id,
+                    "contract_fingerprint": fp, "model": None, "labels_included": labels_included}
+        if mutate_manifest:
+            mutate_manifest(manifest)
+        (d / "export_manifest.json").write_text(json.dumps(manifest))
         return d
 
     def write(self, name, text):
@@ -240,7 +305,7 @@ class BuildTableTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             _, kw = standard(Path(t), labels=labels)
             m = P.build_table(**kw)
-            self.assertEqual(m["truth_recall_ceiling"]["g1/EC"], {"truth_pairs": 2, "with_candidate_row": 1})
+            self.assertEqual(m["truth_recall_ceiling"]["g1/EC/CATALYTIC"], {"truth_pairs": 2, "with_candidate_row": 1})
 
     def test_tampered_or_mislabelled_exports_are_refused(self):
         with tempfile.TemporaryDirectory() as t:

@@ -5,25 +5,52 @@ Two subcommands, both read-only on their inputs:
 
 ``audit-splits``  validates a genome split table against the cohort registry
                   (``registry/training_cohort_registry.json``) and, optionally, a protein
-                  list / homology-cluster map. Exit status 2 on any violation.
+                  list / homology-cluster map. Exit status 2 on any violation. The report names
+                  the axes that were CHECKED and the ones that were NOT; it never turns the
+                  registry's role labels into an "untouched test" claim.
 ``build-table``   joins production feature rows (``gspa integrate --feature-export-dir``)
                   with independently curated labels and the audited split table, and writes
                   the ``scripts/train_context_model.py`` input plus a manifest of exact counts.
 
+Context proteins vs labelled examples
+-------------------------------------
+Whole-genome context (every protein of a genome, used only to compute features) CANNOT be made
+cluster-disjoint across genomes: conserved core families occur in every genome. The protocol
+therefore separates two populations:
+
+* *context proteins* - unlabelled genome content. May share homologs across splits; sharing is
+  counted and reported, never a violation.
+* *labelled examples* - rows of the training table (positives, declared negatives) that the model
+  is fitted on or evaluated against. With ``--protein-clusters`` the builder removes every
+  labelled example of a lower-precedence split whose family also occurs among the labelled
+  examples of a higher-precedence one (test > calibration > train: test targets are never
+  dropped). Every removed example is written to ``masked_examples.tsv`` with its cluster and the
+  split it clashes with, counted per split in the manifest, and a split left without positives
+  stops the build. Hard test cases (family seen in train) are retained and counted.
+
 Label policy (nothing is invented)
 ----------------------------------
 A candidate row is labelled 1 only when an allowed-evidence truth assertion names the same
-protein and function (GO optionally propagated over ``is_a``/``part_of``). Absence of an
-assertion is NOT a negative. A row becomes 0 only when its dataset declares
-``negative_policy: closed_world_declared`` for that function type with a written
-justification, and only for proteins that carry at least one truth assertion of that type
-(labelled proteins); every such row is stamped ``label_basis: closed_world_unconfirmed``.
-Everything else is excluded and counted (``no_truth_not_negative``). Role mismatch is
-excluded too (``role_not_labelled``): an EC assertion labels only CATALYTIC candidates, a
-GO assertion only UNSPECIFIED / COMPLEX_SUBUNIT ones, so accessory/transporter/regulator
-candidates are never turned into negatives from incomplete GO/EC annotations. ``locus_group_id``
-is only set from an explicit locus-group file whose group declares complete truth; EC
-exclusivity ("one EC per protein") and role/null negatives are never inferred.
+protein and function (GO optionally propagated over ``is_a``/``part_of``; obsolete GO terms are
+dropped and counted). Absence of an assertion is NOT a negative. A row becomes 0 only when its
+dataset declares ``negative_policy: closed_world_declared`` for that function type with a written
+justification, only for the type's default role, and only for proteins that carry at least one
+truth assertion of that type (labelled proteins); every such row is stamped
+``label_basis: closed_world_unconfirmed``. Everything else is excluded and counted
+(``no_truth_not_negative``).
+
+Roles: an EC assertion labels only CATALYTIC candidates and a GO assertion only UNSPECIFIED ones.
+A COMPLEX_SUBUNIT (or any other) role is labelled only from role truth that says so: a labels-file
+``role`` column whose role the dataset's policy declares under ``role_truth`` with its source, or,
+when the policy opts in via ``complex_membership_from_cc`` (with a source) and a GO OBO is supplied,
+an experimental cellular-component assertion to a protein-containing-complex term (GO:0032991
+descendant) for a candidate naming that same complex term. An unrelated MF/BP label never labels a
+subunit role, and no role negatives are ever inferred. ``locus_group_id`` is only set from an
+explicit locus-group file whose group declares complete truth.
+
+Evidence: ``allowed_evidence`` is ``experimental`` (strict, the default: EXP/IDA/IPI/IMP/IGI/IEP/H*
+and ECO:0000269), ``cafa_eligible`` (adds the curated-inferential TAS/IC/ECO:0000303/305, which are
+not experimental) or ``all``/an explicit list. See ``evidence_codes.py``.
 """
 from __future__ import annotations
 
@@ -31,21 +58,38 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import evidence_codes as EV  # noqa: E402
+from v3_metrics import GO_ROOTS, load_obo  # noqa: E402
+
 REGISTRY_DEFAULT = HERE / "registry" / "training_cohort_registry.json"
 SPLITS = ("train", "calibration", "test")
 REGISTRY_SCHEMA = "gspa.training-cohort-registry/1"
 MANIFEST_SCHEMA = "gspa.training-table-manifest/1"
+EXPORT_MANIFEST_SCHEMA = "gspa.context-feature-export/1"
+EXPORT_ROW_SCHEMA = "gspa.context-feature-row/1"
+EXPORT_ROWS_FILE, EXPORT_CONTRACT_FILE, EXPORT_MANIFEST_FILE = (
+    "candidate_features.jsonl", "feature_contract.json", "export_manifest.json")
+EXPORT_CONTEXT_KEYS = ("sequence_evidence", "predictor_status", "operon", "layout", "gap", "neighborhood",
+                       "cohort", "assembly", "assembly_completeness", "fba", "fba_suppressed")
+CANDIDATE_ROLES = ("CATALYTIC", "ACCESSORY", "TRANSPORTER", "REGULATOR", "COMPLEX_SUBUNIT", "UNSPECIFIED")
 NEGATIVE_POLICIES = ("none", "closed_world_declared")
-EXPERIMENTAL_EVIDENCE = frozenset(
-    {"EXP", "IDA", "IPI", "IMP", "IGI", "IEP", "TAS", "IC", "HTP", "HDA", "HMP", "HGI", "HEP"})
-DEFAULT_ROLE_MAP = {"EC": ("CATALYTIC",), "GO": ("UNSPECIFIED", "COMPLEX_SUBUNIT")}
-# Same split disjointness the trainer enforces, plus species when the table carries it.
+# One default (positive-labelled) role per function type. Other roles need their own role truth.
+DEFAULT_ROLE_MAP = {"EC": ("CATALYTIC",), "GO": ("UNSPECIFIED",)}
+COMPLEX_ROLE = "COMPLEX_SUBUNIT"
+GO_COMPLEX, GO_CC_ROOT = "GO:0032991", "GO:0005575"
+TAXON_KEYS = ("species", "genus", "family")
+DISJOINT_KEYS = ("genome_id", "group") + TAXON_KEYS
+# Same split disjointness the trainer enforces. Taxonomy keys are opt-in (and then mandatory).
 DEFAULT_DISJOINT = ("genome_id", "group")
+# Precedence for family masking: a lower-precedence split loses examples that clash with these.
+MASK_PRECEDENCE = {"train": ("calibration", "test"), "calibration": ("test",), "test": ()}
 
 
 class PreparationError(ValueError):
@@ -94,32 +138,75 @@ def function_id(kind: str, value: str) -> str:
     return v
 
 
+def contract_fingerprint(contract: dict) -> str:
+    md = hashlib.sha256(contract["id"].encode())
+    for f in contract["features"]:
+        md.update(("\n" + f["name"] + "\t" + f["group"]).encode())
+    return md.hexdigest()
+
+
 # ------------------------------------------------------------------------------------ split audit
 
+_SPLIT_COLUMNS = ("genome_id", "split", "group", "source")
+
+
 def read_split_table(path) -> list[dict]:
-    rows = read_tsv(path, ("genome_id", "split", "group", "source"))
+    rows = read_tsv(path, _SPLIT_COLUMNS)
     for i, r in enumerate(rows, 2):
-        for c in ("genome_id", "split", "group", "source"):
+        for c in _SPLIT_COLUMNS:
             if not (r[c] or "").strip():
                 raise PreparationError(f"{path} line {i}: empty '{c}'")
             r[c] = r[c].strip()
-        r["species"] = (r.get("species") or "").strip()
+        for c in TAXON_KEYS:
+            r[c] = (r.get(c) or "").strip()
     return rows
 
 
+def _normalise_proteins(proteins):
+    """``(genome, protein[, kind])`` -> ``(genome, protein, kind)``; kind is ``target`` or ``context``."""
+    out = []
+    for t in proteins:
+        genome, protein, kind = (tuple(t) + ("target",))[:3]
+        kind = (kind or "target").strip() or "target"
+        if kind not in ("target", "context"):
+            raise PreparationError(f"protein {protein!r}: kind {kind!r} must be 'target' or 'context'")
+        out.append((genome, protein, kind))
+    return out
+
+
 def audit_splits(rows, registry, *, disjoint=DEFAULT_DISJOINT, proteins=None, protein_clusters=None,
-                 min_test_genomes=5) -> dict:
-    """Return ``{violations, warnings, counts, claims}``; never raises on a finding."""
+                 min_test_genomes=5, cluster_policy="refuse") -> dict:
+    """Return ``{violations, warnings, counts, claims, ...}``; never raises on a finding.
+
+    ``proteins``: ``(genome_id, protein_id[, kind])``. ``protein_id`` must be a cross-genome identity
+    (accession / sequence hash), not a per-genome sequence id. ``kind='target'`` proteins are the
+    labelled/evaluated examples; ``kind='context'`` proteins are unlabelled genome content, whose
+    cross-split sharing is counted (``context_sharing``) but is not a violation. Target homology
+    clusters spanning splits are a violation under ``cluster_policy='refuse'`` and a warning under
+    ``'mask'`` (the builder then masks the lower-precedence labelled examples).
+    """
     violations, warnings = [], []
+    unknown = [k for k in disjoint if k not in DISJOINT_KEYS]
+    if unknown:
+        raise PreparationError(f"unknown disjointness key(s) {unknown}; choose from {list(DISJOINT_KEYS)}")
+    if cluster_policy not in ("refuse", "mask"):
+        raise PreparationError(f"cluster_policy {cluster_policy!r} must be 'refuse' or 'mask'")
     for r in rows:
         if r["split"] not in SPLITS:
             violations.append(f"genome {r['genome_id']}: split {r['split']!r} not in {SPLITS}")
-    by_genome = defaultdict(set)
+
+    by_genome = defaultdict(list)
     for r in rows:
-        by_genome[r["genome_id"]].add(r["split"])
-    for g, s in sorted(by_genome.items()):
-        if len(s) > 1:
-            violations.append(f"genome {g} is declared in several splits {sorted(s)}")
+        by_genome[r["genome_id"]].append(r)
+    for g, rs in sorted(by_genome.items()):
+        if len(rs) == 1:
+            continue
+        conflicting = [c for c in ("group", "source", "split") + TAXON_KEYS if len({x.get(c, "") for x in rs}) > 1]
+        if conflicting:
+            violations.append(f"genome {g} has {len(rs)} rows with conflicting {conflicting}"
+                              + (" (declared in several splits)" if "split" in conflicting else ""))
+        else:
+            warnings.append(f"genome {g} is listed {len(rs)} times with identical metadata")
 
     def spans(key):
         owner = defaultdict(set)
@@ -128,12 +215,17 @@ def audit_splits(rows, registry, *, disjoint=DEFAULT_DISJOINT, proteins=None, pr
                 owner[r[key]].add(r["split"])
         return {k: sorted(v) for k, v in owner.items() if len(v) > 1}
 
-    for key in ("group", "species"):
+    for key in TAXON_KEYS:
+        if key in disjoint:
+            missing = sorted({r["genome_id"] for r in rows if not r.get(key)})
+            if missing:
+                violations.append(f"disjointness on '{key}' requested but taxonomy is unavailable for "
+                                  f"{len(missing)} genome(s), e.g. {missing[:3]}; refusing to assume it")
+    for key in ("group",) + TAXON_KEYS:
         crossing = spans(key)
         if not crossing:
             continue
-        msg = (f"{len(crossing)} {key}(s) span several splits, e.g. "
-               f"{sorted(crossing.items())[:3]}")
+        msg = f"{len(crossing)} {key}(s) span several splits, e.g. {sorted(crossing.items())[:3]}"
         (violations if key in disjoint else warnings).append(msg)
 
     registered_ok = True
@@ -153,32 +245,53 @@ def audit_splits(rows, registry, *, disjoint=DEFAULT_DISJOINT, proteins=None, pr
         if entry["role"] == "examined" and "test" in used:
             warnings.append(f"source {src!r} was examined during earlier development; its use as test data "
                             f"supports a disjointness claim, not an untouched-test claim")
+
+    context_sharing = None
+    homology_checked = False
     if proteins is not None:
-        split_of = {r["genome_id"]: r["split"] for r in rows}
+        proteins = _normalise_proteins(proteins)
+        split_of = {g: rs[0]["split"] for g, rs in by_genome.items()}
         owner = {}
-        for genome, protein in proteins:
+        shared_ctx_ids = set()
+        for genome, protein, kind in proteins:
             if genome not in split_of:
                 violations.append(f"protein list names genome {genome!r} that has no split")
                 continue
             s = split_of[genome]
             if protein in owner and owner[protein][1] != s:
-                violations.append(f"protein id {protein!r} appears in {owner[protein][1]} and {s}")
-            owner.setdefault(protein, (genome, s))
+                if kind == "target" and owner[protein][2] == "target":
+                    violations.append(f"protein id {protein!r} appears in {owner[protein][1]} and {s}")
+                else:
+                    shared_ctx_ids.add(protein)
+            owner.setdefault(protein, (genome, s, kind))
+        context_sharing = {"protein_ids_shared_across_splits": len(shared_ctx_ids)}
         if protein_clusters is not None:
-            unmapped = sorted(p for p in owner if p not in protein_clusters)
-            if unmapped:
-                violations.append(f"homology map does not cover {len(unmapped)} protein(s), e.g. {unmapped[:3]}")
-            cl = defaultdict(set)
-            for p, (_, s) in owner.items():
-                if p in protein_clusters:
-                    cl[protein_clusters[p]].add(s)
-            span = {c: sorted(s) for c, s in cl.items() if len(s) > 1}
+            homology_checked = True
+            tgt, ctx = defaultdict(set), defaultdict(set)
+            for genome, p, kind in proteins:
+                if p in protein_clusters and genome in split_of:
+                    (tgt if kind == "target" else ctx)[protein_clusters[p]].add(split_of[genome])
+            unmapped_t = sorted(p for p, (_, _, k) in owner.items() if k == "target" and p not in protein_clusters)
+            unmapped_c = sorted(p for p, (_, _, k) in owner.items() if k == "context" and p not in protein_clusters)
+            if unmapped_t:
+                violations.append(f"homology map does not cover {len(unmapped_t)} target protein(s), e.g. {unmapped_t[:3]}")
+            if unmapped_c:
+                warnings.append(f"homology map does not cover {len(unmapped_c)} context protein(s); their family sharing is not assessed")
+            span = {c: sorted(s) for c, s in tgt.items() if len(s) > 1}
             if span:
-                violations.append(f"{len(span)} homology cluster(s) span several splits, e.g. {sorted(span.items())[:3]}")
+                msg = f"{len(span)} homology cluster(s) of labelled target proteins span several splits, e.g. {sorted(span.items())[:3]}"
+                if cluster_policy == "refuse":
+                    violations.append(msg)
+                else:
+                    warnings.append(msg + "; labelled examples will be masked by build-table (masked_examples.tsv)")
+            context_sharing["clusters_shared_across_splits"] = sum(1 for s in ctx.values() if len(s) > 1)
+            context_sharing["note"] = ("context proteins may share conserved families across splits; this is reported, "
+                                       "not a violation (only labelled target examples must be family-disjoint)")
         else:
             warnings.append("no homology-cluster map declared: protein-level family disjointness NOT assessed")
     else:
         warnings.append("no protein list declared: protein-id overlap NOT assessed")
+
     counts = {s: {"genomes": len({r["genome_id"] for r in rows if r["split"] == s}),
                   "groups": len({r["group"] for r in rows if r["split"] == s}),
                   "sources": sorted({r["source"] for r in rows if r["split"] == s})} for s in SPLITS}
@@ -191,57 +304,68 @@ def audit_splits(rows, registry, *, disjoint=DEFAULT_DISJOINT, proteins=None, pr
     dev_in_test = any(registry.get(r["source"], {}).get("role") == "development" and r["split"] == "test" for r in rows)
     examined_in_test = any(registry.get(r["source"], {}).get("role") in ("development", "examined")
                            and r["split"] == "test" for r in rows)
+
+    # Precisely which axes were actually looked at. An axis that was not checked is listed as such.
+    taxon_checked = {k: (k in disjoint and not any("disjointness on '%s'" % k in v for v in violations)) for k in TAXON_KEYS}
+    checked = ["genome_id"] + (["group"] if "group" in disjoint else []) + (["source_registry"] if registered_ok else [])
+    checked += [f"taxonomy:{k}" for k, ok in taxon_checked.items() if ok]
+    if proteins is not None:
+        checked.append("protein_id_overlap(targets)")
+    if homology_checked:
+        checked.append("homology_clusters(targets)")
+    unchecked = [f"taxonomy:{k}" for k, ok in taxon_checked.items() if not ok]
+    if proteins is None:
+        unchecked.append("protein_id_overlap")
+    if not homology_checked:
+        unchecked.append("homology_clusters")
+    unchecked += ["pretrained_model_leakage", "untouched_test_use"]
+    required = {"genome_id", "group", "source_registry", "protein_id_overlap(targets)", "homology_clusters(targets)"}
+    independent = not violations and not dev_in_test and required <= set(checked)
     claims = {
-        "genome_disjoint_splits": not any("several splits" in v and v.startswith("genome") for v in violations),
+        "genome_disjoint_splits": all(len({x["split"] for x in rs}) == 1 for rs in by_genome.values()),
         "group_disjoint_splits": not spans("group"),
-        "species_disjoint_splits": not spans("species") if any(r["species"] for r in rows) else "not_assessed",
+        "species_disjoint_splits": (not spans("species")) if taxon_checked["species"] or any(r["species"] for r in rows) else "not_assessed",
         "protein_overlap_checked": proteins is not None,
-        "homology_disjoint_checked": proteins is not None and protein_clusters is not None,
+        "homology_disjoint_checked": homology_checked,
+        "homology_scope": "labelled_target_proteins_only" if homology_checked else "not_assessed",
         "test_contains_development_data": dev_in_test,
         "test_contains_examined_or_development_data": examined_in_test,
         "all_sources_registered": registered_ok,
         "pretrained_model_leakage": "not_assessed",
+        # The registry records KNOWN past use only; the absence of a recorded use is not evidence
+        # that a cohort is untouched, so this claim is never derived from it.
+        "untouched_test_claim": "not_assessed",
+        "checked_axes": checked,
+        "unchecked_axes": unchecked,
+        "independent_test_claim_supportable": independent,
     }
-    claims["independent_test_claim_supportable"] = (
-        not violations and not dev_in_test and claims["group_disjoint_splits"] is True)
-    claims["untouched_test_claim_supportable"] = claims["independent_test_claim_supportable"] and not examined_in_test
+    claims["independent_test_claim_text"] = (
+        ("test is disjoint from train/calibration on: " if independent else "NOT a supported independence claim; checked: ")
+        + ", ".join(checked) + "; not checked: " + ", ".join(unchecked))
     return {"violations": violations, "warnings": warnings, "counts": counts, "claims": claims,
-            "disjoint_keys": list(disjoint)}
+            "context_sharing": context_sharing, "disjoint_keys": list(disjoint)}
 
 
-# ------------------------------------------------------------------------------------ GO propagation
+# ------------------------------------------------------------------------------------ GO
 
-def load_go_parents(obo_path) -> tuple[dict, dict]:
-    parents, alt = defaultdict(set), {}
-    term, obsolete = None, set()
-    with open(obo_path) as fh:
-        for line in fh:
-            line = line.strip()
-            if line == "[Term]":
-                term = None
-            elif line.startswith("id: GO:"):
-                term = line[4:]
-            elif term and line.startswith("alt_id: "):
-                alt[line[8:]] = term
-            elif term and line.startswith("is_obsolete: true"):
-                obsolete.add(term)
-            elif term and line.startswith("is_a: "):
-                parents[term].add(line[6:].split()[0])
-            elif term and line.startswith("relationship: part_of "):
-                parents[term].add(line.split()[2])
-    return parents, alt
+class GoView:
+    """GO closure over ``v3_metrics.load_obo`` (``[Typedef]`` stanzas skipped, alt ids and obsolete terms honoured)."""
 
+    def __init__(self, obo_path):
+        self.onto = load_obo(str(obo_path))
 
-def go_closure(term, parents, alt) -> set:
-    term = alt.get(term, term)
-    seen, stack = set(), [term]
-    while stack:
-        t = stack.pop()
-        if t in seen:
-            continue
-        seen.add(t)
-        stack.extend(parents.get(t, ()))
-    return seen - {"GO:0003674", "GO:0008150", "GO:0005575"}
+    def primary(self, term):
+        return self.onto.primary(term)
+
+    def obsolete(self, term) -> bool:
+        return self.primary(term) in self.onto.obsolete
+
+    def closure(self, term) -> set:
+        return set(self.onto.ancestors(term)) - GO_ROOTS
+
+    def is_complex_term(self, term) -> bool:
+        anc = self.onto.ancestors(term)
+        return GO_COMPLEX in anc and GO_CC_ROOT in anc
 
 
 # ------------------------------------------------------------------------------------ labels
@@ -258,23 +382,30 @@ def load_label_policy(path) -> dict:
             if neg != "none" and not str(p.get("justification", "")).strip():
                 raise PreparationError(f"label policy {ds}/{kind}: a negative policy needs a written justification")
             ev = p.get("allowed_evidence", "experimental")
-            if ev not in ("experimental", "all") and not isinstance(ev, list):
-                raise PreparationError(f"label policy {ds}/{kind}: allowed_evidence must be 'experimental', 'all' or a list")
+            if ev not in EV.POLICIES and not isinstance(ev, list):
+                raise PreparationError(f"label policy {ds}/{kind}: allowed_evidence must be one of {EV.POLICIES} or a list")
+            for role, src in (p.get("role_truth") or {}).items():
+                if role not in CANDIDATE_ROLES or not str(src).strip():
+                    raise PreparationError(f"label policy {ds}/{kind}: role_truth needs a known role and a source string")
+            if "complex_membership_from_cc" in p:
+                if kind != "GO" or not str(p["complex_membership_from_cc"]).strip():
+                    raise PreparationError(f"label policy {ds}/{kind}: complex_membership_from_cc is a GO-only opt-in "
+                                           "and needs a written source")
     return pol
 
 
 def evidence_ok(code: str, allowed) -> bool:
-    if allowed == "all":
-        return True
-    pool = EXPERIMENTAL_EVIDENCE if allowed == "experimental" else set(allowed)
-    return code in pool
+    return EV.allowed(code, allowed)
 
 
-def read_labels(path, split_rows, policy, go_closure_fn=None):
-    """Positive truth per (genome, kind) -> {protein: {function ids}}; returns also drop counts."""
+def read_labels(path, split_rows, policy, go: GoView | None = None):
+    """Positive truth ``{(genome, kind, role): {protein: {function id: {codes, basis}}}}`` plus drop counts."""
     source_of = {r["genome_id"]: r["source"] for r in split_rows}
-    truth = defaultdict(lambda: defaultdict(set))
+    truth = defaultdict(lambda: defaultdict(dict))
     dropped = Counter()
+    with open(path, newline="") as fh:
+        header = csv.DictReader(fh, delimiter="\t").fieldnames or []
+    has_role = "role" in header
     for r in read_tsv(path, ("genome_id", "protein_id", "function_id", "evidence")):
         g = r["genome_id"].strip()
         if g not in source_of:
@@ -287,43 +418,124 @@ def read_labels(path, split_rows, policy, go_closure_fn=None):
         if p is None:
             dropped[f"no_label_policy_for_{kind}"] += 1
             continue
-        if not evidence_ok(r["evidence"].strip(), p.get("allowed_evidence", "experimental")):
+        code = r["evidence"].strip()
+        if not evidence_ok(code, p.get("allowed_evidence", "experimental")):
             dropped["evidence_not_allowed"] += 1
+            if EV.category(code) == "curated_inferential":
+                dropped["evidence_curated_inferential_not_experimental"] += 1
             continue
-        ids = {fid}
-        if kind == "GO" and go_closure_fn is not None:
-            ids = go_closure_fn(fid)
-        truth[(g, kind)][r["protein_id"].strip()].update(ids)
+        protein = r["protein_id"].strip()
+        explicit = (r.get("role") or "").strip() if has_role else ""
+        if kind == "GO" and go is not None:
+            if go.obsolete(fid):
+                dropped["obsolete_go_term"] += 1
+                continue
+            ids = go.closure(fid)
+        else:
+            ids = {fid}
+        if explicit and explicit != DEFAULT_ROLE_MAP[kind][0]:
+            src = (p.get("role_truth") or {}).get(explicit)
+            if src is None:
+                dropped["explicit_role_not_declared_in_policy"] += 1
+                continue
+            _add(truth[(g, kind, explicit)], protein, {fid}, code, f"explicit_role_truth:{src}")   # exact term, no propagation
+            continue
+        _add(truth[(g, kind, DEFAULT_ROLE_MAP[kind][0])], protein, ids, code, "default_role")
+        if kind == "GO" and p.get("complex_membership_from_cc") and go is not None and go.is_complex_term(fid):
+            cids = {t for t in ids if go.is_complex_term(t)}
+            _add(truth[(g, kind, COMPLEX_ROLE)], protein, cids, code,
+                 f"cc_complex_membership:{p['complex_membership_from_cc']}")
     return truth, dropped
+
+
+def _add(bucket, protein, ids, code, basis):
+    for t in ids:
+        rec = bucket[protein].setdefault(t, {"codes": set(), "basis": basis})
+        rec["codes"].add(code)
 
 
 # ------------------------------------------------------------------------------------ feature rows
 
+def _finite(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+
+def validate_export_dir(d: Path, contract: dict) -> int:
+    """Check one ``<genome>/`` export against the production writer's contract
+    (``gspa.integration.learned.FeatureExporter``); returns the number of rows."""
+    for name in (EXPORT_ROWS_FILE, EXPORT_CONTRACT_FILE, EXPORT_MANIFEST_FILE):
+        if not (d / name).exists():
+            raise PreparationError(f"{d}: missing {name}")
+    manifest = json.loads((d / EXPORT_MANIFEST_FILE).read_text())
+    if manifest.get("schema") != EXPORT_MANIFEST_SCHEMA:
+        raise PreparationError(f"{d}: export manifest schema {manifest.get('schema')!r} is not {EXPORT_MANIFEST_SCHEMA}")
+    if manifest.get("labels_included") is not False:
+        raise PreparationError(f"{d}: export manifest does not state labels_included=false")
+    if manifest.get("rows_file") != EXPORT_ROWS_FILE or manifest.get("contract_file") != EXPORT_CONTRACT_FILE:
+        raise PreparationError(f"{d}: export manifest names unexpected rows/contract files")
+    if manifest.get("rows_sha256") != sha256_file(d / EXPORT_ROWS_FILE):
+        raise PreparationError(f"{d}: candidate_features.jsonl does not match its export manifest hash")
+    if manifest.get("contract_fingerprint") != contract["fingerprint"] or manifest.get("contract_id") != contract["id"]:
+        raise PreparationError(f"{d}: exported with a different feature contract than the one supplied")
+    shipped = json.loads((d / EXPORT_CONTRACT_FILE).read_text())
+    if (shipped.get("id") != contract["id"] or shipped.get("fingerprint") != contract["fingerprint"]
+            or [(f["name"], f["group"]) for f in shipped.get("features", [])] !=
+            [(f["name"], f["group"]) for f in contract["features"]]):
+        raise PreparationError(f"{d}: exported feature_contract.json differs from the supplied contract")
+    n = 0
+    with open(d / EXPORT_ROWS_FILE) as fh:
+        for ln, line in enumerate(fh, 1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            where = f"{d}/{EXPORT_ROWS_FILE}:{ln}"
+            if row.get("schema") != EXPORT_ROW_SCHEMA:
+                raise PreparationError(f"{where}: row schema {row.get('schema')!r} is not {EXPORT_ROW_SCHEMA}")
+            if row.get("contract") != {"id": contract["id"], "fingerprint": contract["fingerprint"]}:
+                raise PreparationError(f"{where}: row contract id/fingerprint mismatch")
+            for key in ("protein_id", "function_type", "function_id", "function_key", "role", "candidate_key"):
+                if not isinstance(row.get(key), str) or not row[key]:
+                    raise PreparationError(f"{where}: missing or empty '{key}'")
+            if row["role"] not in CANDIDATE_ROLES:
+                raise PreparationError(f"{where}: unknown role {row['role']!r}")
+            fkey = f"{row['protein_id']}|{row['function_type']}|{row['function_id']}"
+            if row["function_key"] != fkey or row["candidate_key"] != f"{fkey}|{row['role']}":
+                raise PreparationError(f"{where}: function_key/candidate_key do not follow the writer's layout")
+            if "genome_id" in row and row["genome_id"] != d.name:
+                raise PreparationError(f"{where}: genome_id {row['genome_id']!r} differs from its export directory {d.name!r}")
+            for forbidden in ("label", "split", "group", "example_id"):
+                if forbidden in row:
+                    raise PreparationError(f"{where}: exporter row already carries '{forbidden}'")
+            feats = row.get("features")
+            if not isinstance(feats, dict) or list(feats) != contract["names"]:
+                raise PreparationError(f"{where}: features are not exactly the contract columns in order")
+            bad = [k for k, v in feats.items() if not _finite(v)]
+            if bad:
+                raise PreparationError(f"{where}: non-finite feature value(s) {bad[:3]}")
+            ctxs = row.get("available_contexts")
+            if (not isinstance(ctxs, dict) or set(ctxs) != set(EXPORT_CONTEXT_KEYS)
+                    or not all(isinstance(v, bool) for v in ctxs.values())):
+                raise PreparationError(f"{where}: available_contexts does not match the writer's layout")
+            if not isinstance(row.get("notes"), list):
+                raise PreparationError(f"{where}: notes must be a list")
+            n += 1
+    if manifest.get("rows") != n:
+        raise PreparationError(f"{d}: export manifest says {manifest.get('rows')} rows, file has {n}")
+    return n
+
+
 def iter_feature_rows(feature_dir, contract):
-    """Yield ``(genome_dir_name, row)`` after verifying every export against its manifest."""
+    """Yield ``(genome_dir_name, row)`` after verifying every export against its manifest and the writer's layout."""
     feature_dir = Path(feature_dir)
-    dirs = sorted(p for p in feature_dir.iterdir() if p.is_dir() and (p / "candidate_features.jsonl").exists())
+    dirs = sorted(p for p in feature_dir.iterdir() if p.is_dir() and (p / EXPORT_ROWS_FILE).exists())
     if not dirs:
         raise PreparationError(f"{feature_dir}: no <genome>/candidate_features.jsonl found")
     for d in dirs:
-        manifest = json.loads((d / "export_manifest.json").read_text())
-        if manifest.get("labels_included") is not False:
-            raise PreparationError(f"{d}: export manifest does not state labels_included=false")
-        if manifest.get("rows_sha256") != sha256_file(d / "candidate_features.jsonl"):
-            raise PreparationError(f"{d}: candidate_features.jsonl does not match its export manifest hash")
-        if manifest.get("contract_fingerprint") != contract["fingerprint"]:
-            raise PreparationError(f"{d}: exported with a different feature contract than the one supplied")
-        with open(d / "candidate_features.jsonl") as fh:
-            for ln, line in enumerate(fh, 1):
-                if not line.strip():
-                    continue
-                row = json.loads(line)
-                if row.get("contract", {}).get("fingerprint") != contract["fingerprint"]:
-                    raise PreparationError(f"{d}/candidate_features.jsonl:{ln}: row contract fingerprint mismatch")
-                for forbidden in ("label", "split", "group", "example_id"):
-                    if forbidden in row:
-                        raise PreparationError(f"{d}/candidate_features.jsonl:{ln}: exporter row already carries '{forbidden}'")
-                yield d.name, row
+        validate_export_dir(d, contract)
+        with open(d / EXPORT_ROWS_FILE) as fh:
+            for line in fh:
+                if line.strip():
+                    yield d.name, json.loads(line)
 
 
 def load_locus_groups(path, policy_declares_complete):
@@ -340,39 +552,94 @@ def load_locus_groups(path, policy_declares_complete):
     return out
 
 
+# ------------------------------------------------------------------------------------ family masking
+
+def read_protein_clusters(path) -> dict:
+    """``protein_id -> cluster`` (global ids) or, with a ``genome_id`` column, ``(genome_id, protein_id) -> cluster``."""
+    rows = read_tsv(path, ("protein_id", "cluster"))
+    has_genome = "genome_id" in rows[0] if rows else False
+    return {((r["genome_id"].strip(), r["protein_id"].strip()) if has_genome else r["protein_id"].strip()): r["cluster"].strip()
+            for r in rows}
+
+
+def _cluster_of(clusters, genome, protein):
+    return clusters.get((genome, protein), clusters.get(protein))
+
+
+def mask_homologous_examples(rows_out, clusters):
+    """Mask labelled examples whose family also occurs among higher-precedence labelled examples.
+
+    Returns ``(kept, masked, report)``. ``masked`` rows carry ``masked_reason``/``cluster``/
+    ``clashes_with``. Raises when a labelled example has no cluster (never silently kept or dropped).
+    """
+    unmapped = sorted({(r["genome_id"], r["protein_id"]) for r in rows_out
+                       if _cluster_of(clusters, r["genome_id"], r["protein_id"]) is None})
+    if unmapped:
+        raise PreparationError(f"homology map does not cover {len(unmapped)} labelled protein(s), e.g. {unmapped[:3]}")
+    split_by_cluster = defaultdict(set)
+    for r in rows_out:
+        split_by_cluster[_cluster_of(clusters, r["genome_id"], r["protein_id"])].add(r["split"])
+    kept, masked = [], []
+    for r in rows_out:
+        c = _cluster_of(clusters, r["genome_id"], r["protein_id"])
+        clash = sorted(s for s in MASK_PRECEDENCE[r["split"]] if s in split_by_cluster[c])
+        if clash:
+            masked.append({**r, "cluster": c, "clashes_with": clash,
+                           "masked_reason": "family_in_" + "+".join(clash) + "_labelled_examples"})
+        else:
+            kept.append(r)
+    hard_test = sum(1 for r in rows_out if r["split"] == "test"
+                    and "train" in split_by_cluster[_cluster_of(clusters, r["genome_id"], r["protein_id"])])
+    report = {"labelled_examples_before": len(rows_out), "masked": len(masked), "kept": len(kept),
+              "masked_by_split": {s: sum(1 for m in masked if m["split"] == s) for s in SPLITS},
+              "masked_positives_by_split": {s: sum(m["label"] for m in masked if m["split"] == s) for s in SPLITS},
+              "test_examples_with_family_in_train_retained": hard_test,
+              "family_disjoint_verified": True}
+    left = defaultdict(set)
+    for r in kept:
+        left[_cluster_of(clusters, r["genome_id"], r["protein_id"])].add(r["split"])
+    if any(len(s) > 1 for s in left.values()):
+        raise PreparationError("internal error: kept labelled examples still share families across splits")
+    for s in SPLITS:
+        if any(r["split"] == s for r in rows_out) and not any(r["split"] == s and r["label"] == 1 for r in kept):
+            raise PreparationError(f"family masking left split '{s}' without positive labelled examples "
+                                   f"({report['masked_by_split'][s]} masked); refusing to continue")
+    return kept, masked, report
+
+
+# ------------------------------------------------------------------------------------ build
+
 def build_table(feature_dir, contract_path, labels_path, split_path, policy_path, out_dir, *,
                 registry_path=REGISTRY_DEFAULT, go_obo=None, locus_groups=None, protein_list=None,
-                protein_clusters=None, disjoint=DEFAULT_DISJOINT) -> dict:
+                protein_clusters=None, example_clusters=None, disjoint=DEFAULT_DISJOINT) -> dict:
+    """``protein_list``/``protein_clusters`` feed the pre-build audit (kind=context|target per protein);
+    ``example_clusters`` (``protein_id[,genome_id],cluster``) enables family masking of labelled examples."""
     out_dir = Path(out_dir)
     contract = json.loads(Path(contract_path).read_text())
     contract["names"] = [f["name"] for f in contract["features"]]
-    md = hashlib.sha256()
-    md.update(contract["id"].encode())
-    for f in contract["features"]:
-        md.update(("\n" + f["name"] + "\t" + f["group"]).encode())
-    contract["fingerprint"] = md.hexdigest()
+    if contract.get("fingerprint") not in (None, contract_fingerprint(contract)):
+        raise PreparationError(f"{contract_path}: stated fingerprint does not match its feature list")
+    contract["fingerprint"] = contract_fingerprint(contract)
     registry = load_registry(registry_path)
     split_rows = read_split_table(split_path)
     proteins = None
     if protein_list:
-        proteins = [(r["genome_id"], r["protein_id"]) for r in read_tsv(protein_list, ("genome_id", "protein_id"))]
-    clusters = None
-    if protein_clusters:
-        clusters = {r["protein_id"]: r["cluster"] for r in read_tsv(protein_clusters, ("protein_id", "cluster"))}
-    audit = audit_splits(split_rows, registry, disjoint=disjoint, proteins=proteins, protein_clusters=clusters)
+        proteins = [(r["genome_id"], r["protein_id"], r.get("kind") or "target")
+                    for r in read_tsv(protein_list, ("genome_id", "protein_id"))]
+    clusters = read_protein_clusters(protein_clusters) if protein_clusters else None
+    audit = audit_splits(split_rows, registry, disjoint=disjoint, proteins=proteins,
+                         protein_clusters=clusters if clusters and all(isinstance(k, str) for k in clusters) else None,
+                         cluster_policy="mask" if example_clusters else "refuse")
     if audit["violations"]:
         raise PreparationError("split audit failed: " + "; ".join(audit["violations"]))
     policy = load_label_policy(policy_path)
-    closure = None
-    if go_obo:
-        parents, alt = load_go_parents(go_obo)
-        closure = lambda t: go_closure(t, parents, alt)  # noqa: E731
-    truth, label_drops = read_labels(labels_path, split_rows, policy, closure)
+    go = GoView(go_obo) if go_obo else None
+    truth, label_drops = read_labels(labels_path, split_rows, policy, go)
     locus = load_locus_groups(locus_groups, bool(policy.get("locus_truth_complete")))
     info = {r["genome_id"]: r for r in split_rows}
 
     rows_out, excluded = [], Counter()
-    seen, seen_candidates = set(), defaultdict(set)
+    seen = set()
     positives_with_candidate = defaultdict(set)
     for genome, row in iter_feature_rows(feature_dir, contract):
         gid = row.get("genome_id") or genome
@@ -383,54 +650,79 @@ def build_table(feature_dir, contract_path, labels_path, split_path, policy_path
         if kind not in ("EC", "GO"):
             excluded["unsupported_function_type"] += 1
             continue
-        role_ok = DEFAULT_ROLE_MAP[kind]
         key = (gid, row["candidate_key"])
         if key in seen:
             raise PreparationError(f"duplicate candidate {key}")
         seen.add(key)
         fid = function_id(kind, row["function_id"])
-        seen_candidates[(gid, kind)].add((row["protein_id"], fid))
-        if row["role"] not in role_ok:
-            excluded["role_not_labelled"] += 1
-            continue
+        if kind == "GO" and go is not None:
+            if go.obsolete(fid):
+                excluded["obsolete_go_candidate"] += 1
+                continue
+            fid = go.primary(fid)
+        role, default_role = row["role"], DEFAULT_ROLE_MAP[kind][0]
         info_g = info[gid]
         pol = policy["datasets"].get(info_g["source"], {}).get(kind)
         if pol is None:
             excluded["no_label_policy"] += 1
             continue
-        positives = truth.get((gid, kind), {})
-        labelled_protein = row["protein_id"] in positives
-        if labelled_protein and fid in positives[row["protein_id"]]:
-            label, basis = 1, "positive_truth"
-            positives_with_candidate[(gid, kind)].add((row["protein_id"], fid))
-        elif labelled_protein and pol.get("negative_policy") == "closed_world_declared":
-            label, basis = 0, "closed_world_unconfirmed"
-        else:
-            excluded["no_truth_not_negative" if not labelled_protein else "unconfirmed_not_negative"] += 1
+        protein = row["protein_id"]
+        rec = truth.get((gid, kind, role), {}).get(protein, {}).get(fid)
+        if rec is not None:
+            label, basis, codes, role_basis = 1, "positive_truth", sorted(rec["codes"]), rec["basis"]
+            positives_with_candidate[(gid, kind, role)].add((protein, fid))
+        elif role != default_role:
+            excluded["role_not_labelled"] += 1
+            if role == COMPLEX_ROLE:
+                excluded["complex_subunit_without_role_truth"] += 1
             continue
+        else:
+            labelled_protein = protein in truth.get((gid, kind, default_role), {})
+            if labelled_protein and pol.get("negative_policy") == "closed_world_declared":
+                label, basis, codes, role_basis = 0, "closed_world_unconfirmed", [], "default_role"
+            else:
+                excluded["no_truth_not_negative" if not labelled_protein else "unconfirmed_not_negative"] += 1
+                continue
         rows_out.append({
             "example_id": f"{gid}|{row['candidate_key']}", "genome_id": gid, "group": info_g["group"],
             "split": info_g["split"], "label": label, "label_basis": basis, "dataset": info_g["source"],
-            "candidate_key": row["candidate_key"], "protein_id": row["protein_id"],
-            "function_id": fid, "function_type": kind, "role": row["role"],
+            "label_evidence": codes, "label_evidence_categories": sorted({EV.category(c) for c in codes}),
+            "label_role_basis": role_basis,
+            "candidate_key": row["candidate_key"], "protein_id": protein,
+            "function_id": fid, "function_type": kind, "role": role,
             "locus_group_id": locus.get(key), "features": row["features"]})
+
+    masking = None
+    masked = []
+    if example_clusters:
+        rows_out, masked, masking = mask_homologous_examples(rows_out, read_protein_clusters(example_clusters))
     out_dir.mkdir(parents=True, exist_ok=True)
     table = out_dir / "training_table.jsonl"
     with open(table, "w") as fh:
         for r in rows_out:
             fh.write(json.dumps(r, sort_keys=True) + "\n")
+    masked_path = None
+    if example_clusters:
+        masked_path = out_dir / "masked_examples.tsv"
+        with open(masked_path, "w") as fh:
+            fh.write("example_id\tsplit\tlabel\tlabel_basis\tprotein_id\tfunction_id\trole\tcluster\tclashes_with\tmasked_reason\n")
+            for m in masked:
+                fh.write("\t".join(str(x) for x in (m["example_id"], m["split"], m["label"], m["label_basis"], m["protein_id"],
+                                                    m["function_id"], m["role"], m["cluster"], "+".join(m["clashes_with"]),
+                                                    m["masked_reason"])) + "\n")
     per_split = {}
     for s in SPLITS:
         sub = [r for r in rows_out if r["split"] == s]
         per_split[s] = {"rows": len(sub), "positives": sum(r["label"] for r in sub),
                         "closed_world_negatives": sum(1 for r in sub if r["label_basis"] == "closed_world_unconfirmed"),
                         "genomes": len({r["genome_id"] for r in sub}), "groups": len({r["group"] for r in sub}),
-                        "locus_group_rows": sum(1 for r in sub if r["locus_group_id"])}
+                        "locus_group_rows": sum(1 for r in sub if r["locus_group_id"]),
+                        "role_basis": dict(Counter(r["label_role_basis"].split(":")[0] for r in sub if r["label"] == 1))}
     unreachable = {}
-    for (gid, kind), by_protein in truth.items():
-        total = sum(1 for p, fs in by_protein.items() for f in fs)
-        reached = len(positives_with_candidate.get((gid, kind), ()))
-        unreachable[f"{gid}/{kind}"] = {"truth_pairs": total, "with_candidate_row": reached}
+    for (gid, kind, role), by_protein in truth.items():
+        total = sum(len(fs) for fs in by_protein.values())
+        reached = len(positives_with_candidate.get((gid, kind, role), ()))
+        unreachable[f"{gid}/{kind}/{role}"] = {"truth_pairs": total, "with_candidate_row": reached}
     manifest = {
         "schema": MANIFEST_SCHEMA, "table": str(table), "table_sha256": sha256_file(table),
         "inputs": {"feature_dir": str(feature_dir), "contract": str(contract_path),
@@ -439,9 +731,15 @@ def build_table(feature_dir, contract_path, labels_path, split_path, policy_path
                    "splits_sha256": sha256_file(split_path), "label_policy": str(policy_path),
                    "label_policy_sha256": sha256_file(policy_path), "registry": str(registry_path),
                    "go_obo": str(go_obo) if go_obo else None,
-                   "go_propagation": "is_a+part_of" if go_obo else "exact_term"},
+                   "go_obo_sha256": sha256_file(go_obo) if go_obo else None,
+                   "go_propagation": "is_a+part_of" if go_obo else "exact_term",
+                   "example_clusters": str(example_clusters) if example_clusters else None,
+                   "example_clusters_sha256": sha256_file(example_clusters) if example_clusters else None},
         "split_audit": audit, "per_split": per_split, "excluded_rows": dict(excluded),
         "label_records_dropped": dict(label_drops),
+        "family_masking": masking if masking else {"applied": False,
+                                                   "note": "no --example-clusters: labelled-example family disjointness NOT enforced"},
+        "masked_examples_file": str(masked_path) if masked_path else None,
         "truth_recall_ceiling": unreachable,
         "label_basis_note": ("label 0 rows exist only where a dataset declared closed_world_declared; "
                              "they are 'unconfirmed', not verified-false"),
@@ -459,9 +757,10 @@ def main(argv=None) -> int:
     a = sub.add_parser("audit-splits")
     a.add_argument("--splits", required=True)
     a.add_argument("--registry", default=str(REGISTRY_DEFAULT))
-    a.add_argument("--proteins", help="TSV genome_id<TAB>protein_id")
+    a.add_argument("--proteins", help="TSV genome_id<TAB>protein_id[<TAB>kind: target|context]; protein_id must be a cross-genome identity")
     a.add_argument("--protein-clusters", help="TSV protein_id<TAB>cluster")
-    a.add_argument("--disjoint", default=",".join(DEFAULT_DISJOINT))
+    a.add_argument("--cluster-policy", choices=("refuse", "mask"), default="refuse")
+    a.add_argument("--disjoint", default=",".join(DEFAULT_DISJOINT), help=f"comma list from {list(DISJOINT_KEYS)}")
     a.add_argument("--out", help="write the report JSON here")
     b = sub.add_parser("build-table")
     b.add_argument("--feature-dir", required=True)
@@ -474,6 +773,8 @@ def main(argv=None) -> int:
     b.add_argument("--locus-groups")
     b.add_argument("--proteins")
     b.add_argument("--protein-clusters")
+    b.add_argument("--example-clusters", help="TSV protein_id[<TAB>genome_id]<TAB>cluster covering every labelled protein; "
+                                              "enables family masking of labelled examples (masked_examples.tsv)")
     b.add_argument("--disjoint", default=",".join(DEFAULT_DISJOINT))
     b.add_argument("--out-dir", required=True)
     args = ap.parse_args(argv)
@@ -482,11 +783,12 @@ def main(argv=None) -> int:
         if args.cmd == "audit-splits":
             proteins = clusters = None
             if args.proteins:
-                proteins = [(r["genome_id"], r["protein_id"]) for r in read_tsv(args.proteins, ("genome_id", "protein_id"))]
+                proteins = [(r["genome_id"], r["protein_id"], r.get("kind") or "target")
+                            for r in read_tsv(args.proteins, ("genome_id", "protein_id"))]
             if args.protein_clusters:
-                clusters = {r["protein_id"]: r["cluster"] for r in read_tsv(args.protein_clusters, ("protein_id", "cluster"))}
+                clusters = read_protein_clusters(args.protein_clusters)
             report = audit_splits(read_split_table(args.splits), load_registry(args.registry), disjoint=disjoint,
-                                  proteins=proteins, protein_clusters=clusters)
+                                  proteins=proteins, protein_clusters=clusters, cluster_policy=args.cluster_policy)
             text = json.dumps(report, indent=1, sort_keys=True)
             if args.out:
                 Path(args.out).write_text(text + "\n")
@@ -494,8 +796,10 @@ def main(argv=None) -> int:
             return 2 if report["violations"] else 0
         manifest = build_table(args.feature_dir, args.contract, args.labels, args.splits, args.label_policy, args.out_dir,
                                registry_path=args.registry, go_obo=args.go_obo, locus_groups=args.locus_groups,
-                               protein_list=args.proteins, protein_clusters=args.protein_clusters, disjoint=disjoint)
-        print(json.dumps({"per_split": manifest["per_split"], "excluded_rows": manifest["excluded_rows"]}, indent=1))
+                               protein_list=args.proteins, protein_clusters=args.protein_clusters,
+                               example_clusters=args.example_clusters, disjoint=disjoint)
+        print(json.dumps({"per_split": manifest["per_split"], "excluded_rows": manifest["excluded_rows"],
+                          "family_masking": manifest["family_masking"]}, indent=1))
         return 0
     except PreparationError as e:
         print(f"REFUSED: {e}", file=sys.stderr)
