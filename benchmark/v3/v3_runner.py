@@ -775,6 +775,11 @@ def run_experiment(man: dict, manifest_path: str, outdir: str, phases=("run", "e
     result["engine"] = engine_identity(man, repo)
     if leaks:
         result["status"] = "aborted: leakage"
+        result["abort_stage"] = "input_and_leakage_audit"
+        result["execution_status"] = {a["name"]: {g["genome_id"]: "not_run: input audit failed"
+                                               for g in man["genomes"] if g["split"] == "test"}
+                                      for a in man["arms"]}
+        result["n_not_executed"] = sum(len(row) for row in result["execution_status"].values())
         _write(outdir, result)
         return result
 

@@ -164,6 +164,8 @@ class Leakage(Base):
         res = R.run_experiment(m, self.write("m.json", json.dumps(m)), os.path.join(self.tmp, "out"))
         self.assertEqual(res["status"], "aborted: leakage")
         self.assertNotIn("runs", res)
+        self.assertEqual(res["n_not_executed"], len(m["arms"]) * sum(g["split"] == "test" for g in m["genomes"]))
+        self.assertTrue(all(s.startswith("not_run") for row in res["execution_status"].values() for s in row.values()))
 
 
 class Orchestration(Base):

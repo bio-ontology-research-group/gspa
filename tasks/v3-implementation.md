@@ -12,7 +12,7 @@ No item is complete merely because its scaffolding or synthetic test passes.
 | 1 | Production-engine benchmark runner; frozen splits, input hashes, matched baselines and all-case reports | In progress: production runner and 73 tests including real CLI smoke; full datasets pending |
 | 2 | Equivalent single/batch/web/Nextflow execution; stage status; coherent gene-keyed predictions | In progress: synchronized prediction state, identical single/batch stages, per-stage change ledger; annotate/web/NF parity pending |
 | 3 | Correct tool contracts and end-to-end biological parser/dispatch/failure tests | In progress: adapters repaired with typed statuses, strict output contracts and biological dispatch tests; external-tool fixtures still need validation |
-| 4 | Trained context model and held-out calibration/precision evidence; revisable inference and null assignments | Pending |
+| 4 | Trained context model and held-out calibration/precision evidence; revisable inference and null assignments | In progress: typed feature extraction, logistic/tree training and JVM inference with explicit null layer; synthetic agreement tests pass; real training and production wiring pending |
 | 5 | Reaction/interaction context wired into production candidates and attribution; biological network ablations | Pending |
 | 6 | Cohort recurrence with evolutionary/missing-data controls; no singleton certainty bug; independent-clade evaluation | Pending |
 | 7 | Weak-candidate retention; role-specific enzyme/complex attribution; same-operon decoy evaluation | Pending |
@@ -59,6 +59,28 @@ execution must use production inference, not parallel scoring formulas.
   These are implementation checks, not held-out benchmark results.
 
 ## Development evidence (not release benchmark results)
+
+- `b15c3df`: condition search continues after a non-growing/infeasible reference;
+  explicit maintenance-only product experiments support non-growing cells;
+  redundant isozyme deletions remain executable. Forty-seven mechanistic tests
+  pass. The phenotype runner has nine tests, including real LPs and truth-blind
+  simulation checks. These mechanisms are not an annotation-accuracy result.
+- `e63e735`: learned feature/training/inference foundations. Full JVM tests and
+  31 Python training tests pass. No real-data model has been fitted or enabled.
+- Empirical auxotroph benchmark: all 61 published cases ran at `d4e9895` in
+  Slurm job 9727, with 25/44 binary observations agreeing; 17 partial-growth
+  cases are separate. This is unregulated FBA using repository/model defaults,
+  not the paper's full regulatory configuration. See
+  `docs/benchmarks/v3-metabolic-development.md` and its linked all-case report.
+- Price development runs use full nonzero target candidates. Initial completed
+  DeepProZyme, TopEC and pool4 runs show identical EC top-1 before/after current
+  pathway priors (49/148, 5/148, 60/148 respectively). Remaining runs and raw-rank
+  checks are pending. These are reused-data, limited-context regressions.
+- Panel13 job 9726 failed its input audit before inference: 420 exact duplicate
+  records remain in the historical merged claims (distinct homolog hits are now
+  allowed). A separate, hashed deduplication preparation is required; originals
+  are retained. Job 9716 on node008 was cancelled after no output; job 9726
+  was the separate node002 retry.
 
 - `822ab69`: gene identity, single/batch stage parity, ledger, adapter foundation,
   production benchmark harness, metabolic experiment mechanics. The built jar
