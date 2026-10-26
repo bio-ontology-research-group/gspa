@@ -265,8 +265,150 @@ class SimulationTests(Base):
         self.assertEqual((a["tp"], a["fp"]), (1, 0))
         self.assertEqual((b["tp"], b["fp"]), (0, 1))
 
+    def clean_records(self):
+        return [r for r in self.records() if "ghost" not in r["inputs"]["pair_id"]]
+
+    def test_status_complete_only_when_every_case_ran_to_an_answer(self):
+        rep = self.run_bench(self.clean_records(), "clean")
+        self.assertEqual(rep["status"], "complete")
+        self.assertTrue(rep["execution"]["complete"])
+        self.assertEqual(rep["execution"]["n_unknown_primary_predictions"], 0)
+
+    def test_failed_case_prevents_complete_status_and_nonzero_exit(self):
+        rep = self.run_bench(self.records(), "withghost")            # one unmapped strain in every arm
+        self.assertEqual(rep["status"], "incomplete_execution")
+        self.assertFalse(rep["execution"]["complete"])
+        self.assertEqual(rep["execution"]["n_failed"], len(B.ARMS))
+        self.assertEqual(rep["execution"]["n_unknown_primary_predictions"], len(B.ARMS))
+        path = self.base / "cli.jsonl"
+        path.write_text("\n".join(json.dumps(r) for r in self.records()))
+        argv = ["x", "--cases", str(path), "--model", str(self.model), "--out", str(self.base / "cli")]
+        old = sys.argv
+        try:
+            sys.argv = argv
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(B.main(), 1)
+        finally:
+            sys.argv = old
+
+    def test_skipped_budget_is_incomplete_not_failed_and_not_complete(self):
+        rep = self.run_bench(self.clean_records(), "budget", max_solver_calls=3)
+        arm = rep["arms"]["o2_20_trace_present"]
+        self.assertEqual(arm["n_failed"], 0)
+        self.assertGreater(arm["n_incomplete_simulation"], 0)
+        self.assertFalse(arm["execution_complete"])
+        self.assertEqual(rep["status"], "partial_run")
+        self.assertFalse(rep["execution"]["complete"])
+        rows = [json.loads(l) for l in (self.base / "budget" / "cases_o2_20_trace_present.jsonl").read_text().splitlines()]
+        late = [r for r in rows if r["execution_status"] == "incomplete_simulation"]
+        self.assertTrue(late and all(r["incomplete_simulations"] for r in late))
+        self.assertTrue(any(r["prediction_primary"] == "unknown" for r in late))       # counted as unknown
+        for r in late:    # a row whose control did not run can never carry a control-gated positive
+            self.assertEqual(r["prediction_control_gated"] == "positive", False)
+            if "control" in r["incomplete_simulations"]:
+                self.assertEqual(r["control_comparison"]["category"], "undetermined")
+
+    def test_partial_but_clean_subset_is_never_called_complete(self):
+        rep = self.run_bench(self.clean_records(), "subset", arm_ids=["o2_20_trace_present"])
+        self.assertEqual(rep["status"], "partial_run")
+        self.assertTrue(rep["execution"]["complete"])
+        rep = self.run_bench(self.clean_records(), "smoke", max_cases=1)
+        self.assertEqual(rep["status"], "partial_run")
+
+    def test_invalid_selections_are_rejected_before_anything_is_written(self):
+        for kw in ({"arm_ids": []}, {"arm_ids": ["nope"]}, {"arm_ids": ["o2_20_trace_present"] * 2},
+                   {"max_cases": 0}, {"max_solver_calls": 0}):
+            with self.assertRaises(ValueError, msg=str(kw)):
+                self.run_bench(self.clean_records(), "bad", **kw)
+            self.assertFalse((self.base / "bad").exists())
+
+    def test_cli_rejects_empty_arm_list(self):
+        old = sys.argv
+        try:
+            sys.argv = ["x", "--cases", "c", "--model", "m", "--out", "o", "--arms"]
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                B.main()
+        finally:
+            sys.argv = old
+
+    def test_failed_cases_stay_in_every_denominator(self):
+        rep = self.run_bench(self.records(), "denoms")
+        for arm in rep["arms"].values():
+            strata = arm["evaluation_primary"]
+            self.assertEqual(strata["all_cases"]["n_cases"], 4)
+            parts = sum(strata[k]["n_cases"] for k in ("both_monocultures_not_growing", "one_viable_monoculture",
+                                                       "both_monocultures_viable", "failed_or_unknown_monoculture_state"))
+            self.assertEqual(parts, 4)
+            self.assertEqual(strata["failed_or_unknown_monoculture_state"]["n_cases"], 1)
+            for name in ("evaluation_strict_optimal_only", "evaluation_control_gated"):
+                self.assertEqual(arm[name]["n_cases"], 4)
+                self.assertEqual(arm[name]["confusion_observed_by_predicted"]["intermediate"]["unknown"], 1)
+            b = strata["all_cases"]["binary_synergy_vs_no_synergy"]
+            self.assertEqual(b["tp"] + b["fn"] + b["fp"] + b["tn"] + b["unknown_synergy"] + b["unknown_no_synergy"], 3)
+
+    def test_labels_are_never_inputs_to_simulation(self):
+        import inspect
+        self.assertNotIn("observed", inspect.getsource(B.simulate_pair))
+        self.assertNotIn("observed", inspect.getsource(B.Simulator))
+        recs = self.clean_records()
+        for r in recs:
+            r["observed"]["label"] = "SECRET_LABEL"
+            r["observed"]["day4_fold_growth_mean"] = 123456.0
+        self.run_bench(recs, "secret", arm_ids=["o2_20_trace_present"])
+        rows = [json.loads(l) for l in (self.base / "secret" / "cases_o2_20_trace_present.jsonl").read_text().splitlines()]
+        for r in rows:
+            blob = json.dumps({k: v for k, v in r.items() if not k.startswith("observed")})
+            self.assertNotIn("SECRET_LABEL", blob)
+            self.assertNotIn("123456", blob)
+
+    def test_control_comparison_is_recorded_per_case_and_in_the_summary(self):
+        rep = self.run_bench(self.clean_records(), "ctl", arm_ids=["o2_20_trace_present"])
+        rows = {json.loads(l)["case_id"]: json.loads(l) for l in
+                (self.base / "ctl" / "cases_o2_20_trace_present.jsonl").read_text().splitlines()}
+        pos = rows["T:vitA_ko+vitB_ko"]
+        self.assertEqual(pos["control_comparison"]["category"], "growth_lost_when_other_transfer_forbidden")
+        self.assertGreater(pos["control_comparison"]["community_mu"], 0)
+        self.assertGreater(pos["control_comparison"]["n_closed_uptake_ports_per_pair"], 0)
+        self.assertEqual(pos["prediction_control_gated"], "positive")
+        self.assertEqual(rows["T:inert+iso_ko"]["control_comparison"]["category"], "growth_persists_in_control")
+        summ = rep["arms"]["o2_20_trace_present"]["control_comparison"]
+        self.assertEqual(summ["categories_among_primary_positive"], {"growth_lost_when_other_transfer_forbidden": 1})
+        self.assertIn("NOT attributable", summ["definition"])
+
+    def test_gated_prediction_demotes_rescue_that_survives_the_control(self):
+        ok = {"status": "completed", "outcome": "growth", "mu": 0.5}
+        none = {"status": "completed", "outcome": "no_growth", "mu": 0.0}
+        res = {"mono_a": none, "mono_b": none, "community": ok, "control": ok}
+        primary = B.predict(res)
+        self.assertEqual(primary["prediction"], "positive")           # registered rule is unchanged
+        cc = B.control_comparison(res)
+        self.assertEqual(cc["category"], "growth_persists_in_control")
+        self.assertEqual(B.gated_prediction(primary, cc), "negative")
+        res["control"] = {"status": "inconclusive", "outcome": "solver_error", "mu": None}
+        cc = B.control_comparison(res)
+        self.assertEqual((cc["category"], B.gated_prediction(primary, cc)), ("undetermined", "unknown"))
+
+    def test_all_mapped_loci_are_validated_and_reported(self):
+        rep = self.run_bench(self.records(), "loci")
+        s = rep["model_audit_summary"]
+        self.assertEqual(s["unmapped_strains"], ["ghost"])
+        self.assertEqual(s["mapped_gene_in_no_gpr"], ["inert"])
+        self.assertEqual(s["loci_shared_by_several_strains"], {})
+        ctx = B.Context(self.model, {"a": "b1001", "b": "b1001"})
+        self.assertEqual(ctx.audit()["loci_shared_by_several_strains"], {"b1001": ["a", "b"]})
+        for bad in ("", "  ", None):
+            with self.assertRaises(ValueError):
+                B.Context(self.model, {"a": bad})
+
+    def test_report_has_no_pair_level_binomial_intervals(self):
+        rep = self.run_bench(self.records(), "nowilson")
+        text = json.dumps(rep)
+        self.assertNotIn("wilson", text.lower())
+        arm = rep["arms"]["o2_20_trace_present"]
+        self.assertIn("not independent confidence intervals", arm["strain_resampling"]["primary"]["status"])
+
     def test_report_records_hashes_resources_and_scope(self):
-        rep = self.run_bench(self.records())
+        rep = self.run_bench(self.clean_records())
         for k in ("cases_sha256", "model_sha256", "protocol_sha256", "runner_sha256", "engine_sha256",
                   "community_module_sha256"):
             self.assertEqual(len(rep["inputs"][k]), 64)
@@ -304,6 +446,60 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(full["confusion_observed_by_predicted"]["intermediate"],
                          {"positive": 1, "negative": 2, "unknown": 0})     # kept out of the binary table
         self.assertEqual(full["n_cases"], 14)
+
+    @staticmethod
+    def dyads(n=8):
+        import itertools
+        rows = []
+        for i, (a, b) in enumerate(itertools.combinations([f"s{k}" for k in range(n)], 2)):
+            obs = "synergy" if i % 3 == 0 else "no_synergy" if i % 3 == 1 else "intermediate"
+            pred = "positive" if i % 4 == 0 else "negative"
+            rows.append({"strain_a": a, "strain_b": b, "observed": obs, "prediction_primary": pred})
+        return rows
+
+    def test_strain_resampling_matches_full_metrics_and_is_reproducible(self):
+        rows = self.dyads()
+        r = B.strain_resampling(rows, "prediction_primary")
+        full = B.evaluate(rows, "prediction_primary")["binary_synergy_vs_no_synergy"]
+        self.assertAlmostEqual(r["full_data"]["recall"], full["recall"]["value"])
+        self.assertAlmostEqual(r["full_data"]["mcc"], full["mcc"])
+        self.assertEqual(r["n_strains"], 8)
+        m = r["metrics"]["recall"]
+        self.assertEqual(m["loso_n_defined"], 8)
+        self.assertLessEqual(m["loso_min"], m["full"] + 1e-12)
+        self.assertGreaterEqual(m["loso_max"], m["full"] - 1e-12)
+        self.assertGreaterEqual(m["jackknife_se"], 0)
+        self.assertLessEqual(m["bootstrap_p2_5"], m["bootstrap_p97_5"])
+        self.assertEqual(m["bootstrap_replicates"], 1000)
+        self.assertEqual(r, B.strain_resampling(rows, "prediction_primary"))      # fixed seed
+        self.assertIn("not independent confidence intervals", r["status"])
+
+    def test_leave_one_strain_out_removes_exactly_the_pairs_of_that_strain(self):
+        rows = self.dyads(5)
+        r = B.strain_resampling(rows, "prediction_primary")
+        # recompute LOSO recall for s0 by hand
+        sub = [x for x in rows if "s0" not in (x["strain_a"], x["strain_b"])]
+        hand = B.evaluate(sub, "prediction_primary")["binary_synergy_vs_no_synergy"]["recall"]["value"]
+        vals = []
+        for s in sorted({x["strain_a"] for x in rows} | {x["strain_b"] for x in rows}):
+            sub = [x for x in rows if s not in (x["strain_a"], x["strain_b"])]
+            vals.append(B.evaluate(sub, "prediction_primary")["binary_synergy_vs_no_synergy"]["recall"]["value"])
+        self.assertAlmostEqual(hand, vals[0])
+        self.assertAlmostEqual(r["metrics"]["recall"]["loso_min"], min(vals))
+        self.assertAlmostEqual(r["metrics"]["recall"]["loso_max"], max(vals))
+
+    def test_resampling_handles_undefined_metrics(self):
+        rows = [{"strain_a": "a", "strain_b": "b", "observed": "intermediate", "prediction_primary": "negative"},
+                {"strain_a": "a", "strain_b": "c", "observed": "intermediate", "prediction_primary": "unknown"}]
+        r = B.strain_resampling(rows, "prediction_primary")
+        self.assertIsNone(r["full_data"]["precision"])
+        self.assertEqual(r["metrics"]["precision"]["loso_n_defined"], 0)
+        self.assertEqual(r["metrics"]["precision"]["bootstrap_n_defined"], 0)
+
+    def test_point_counts_are_kept_and_no_binomial_interval_is_given(self):
+        ev = B.evaluate(self.dyads(), "prediction_primary")["binary_synergy_vs_no_synergy"]
+        self.assertEqual(set(ev["precision"]), {"k", "n", "value"})
+        self.assertGreater(ev["tp"] + ev["fp"] + ev["tn"] + ev["fn"], 0)
 
     def test_empty_classes_do_not_divide_by_zero(self):
         ev = B.evaluate([{"observed": "intermediate", "prediction_primary": "negative"}], "prediction_primary")

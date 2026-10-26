@@ -425,5 +425,55 @@ class TestBudgetAndCli(Base):
         self.assertEqual(buf.getvalue(), "")
 
 
+class TestBlockCache(Base):
+    """The per-model COO cache must not change the LP, and must not outlive the model."""
+
+    def build(self, orgs):
+        _, supply, removal = CM.validate_pool(self.manifest())
+        return CM.build_lp(orgs, {o.id: 1.0 for o in orgs}, supply, removal)
+
+    def test_cached_lp_equals_uncached_and_legacy_construction(self):
+        orgs = CM.load_organisms(self.manifest(), self.dir, {**CM.DEFAULT_CONFIG})
+        for o in orgs:
+            if hasattr(o.model, "_coo_blocks"):
+                del o.model._coo_blocks
+        cold = self.build(orgs)                       # builds the cache
+        self.assertTrue(all(hasattr(o.model, "_coo_blocks") for o in orgs))
+        warm = self.build(orgs)                       # uses it
+        self.assertEqual((cold.S != warm.S).nnz, 0)
+        self.assertTrue(np.array_equal(cold.lb, warm.lb) and np.array_equal(cold.ub, warm.ub))
+        # legacy construction: one S entry per model entry, rows addressed by metabolite name
+        names = {n: i for i, n in enumerate(cold.row_names)}
+        offset = 0
+        for o in orgs:
+            coo = o.model.S.tocoo()
+            for i, j, v in zip(coo.row, coo.col, coo.data):
+                self.assertEqual(cold.S[names[f"{o.id}::{o.model.met_ids[i]}"], offset + j], v)
+            offset += len(o.model.rxn_ids)
+        # same optimum, with the cache dropped and rebuilt
+        for o in orgs:
+            del o.model._coo_blocks
+        again = self.build(orgs)
+        self.assertEqual((cold.S != again.S).nnz, 0)
+
+    def test_cache_does_not_keep_models_alive(self):
+        import gc
+        import weakref
+        orgs = CM.load_organisms(self.manifest(), self.dir, {**CM.DEFAULT_CONFIG})
+        self.build(orgs)
+        ref = weakref.ref(orgs[0].model)
+        self.assertFalse(hasattr(CM, "_COO_CACHE"))   # no module-level strong references
+        del orgs
+        gc.collect()
+        self.assertIsNone(ref())
+
+    def test_cache_is_rebuilt_if_the_matrix_object_is_replaced(self):
+        orgs = CM.load_organisms(self.manifest(), self.dir, {**CM.DEFAULT_CONFIG})
+        m = orgs[0].model
+        first = CM._block_coo(m)
+        m.S = m.S.copy()
+        self.assertIsNot(CM._block_coo(m), first)
+
+
 if __name__ == "__main__":
     unittest.main()

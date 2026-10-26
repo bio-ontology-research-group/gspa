@@ -240,16 +240,17 @@ def _direction_close(model: Model, lb: np.ndarray, ub: np.ndarray, rid: str, dir
         raise ManifestError(f"unknown port direction: {direction}")
 
 
-_COO_CACHE: dict[int, tuple[Model, tuple[np.ndarray, np.ndarray, np.ndarray]]] = {}
-
-
 def _block_coo(m: Model) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Row, column, value triplets of a model's stoichiometry (cached; the matrix is never mutated)."""
-    hit = _COO_CACHE.get(id(m))
-    if hit is None or hit[0] is not m:
+    """Row, column, value triplets of a model's stoichiometry.
+
+    The cache is an attribute of the model itself, so it lives and dies with the model (no module-level
+    reference).  It is keyed on the identity of ``m.S``: if the matrix object is replaced the triplets are
+    rebuilt.  ``m.S`` is never modified."""
+    hit = getattr(m, "_coo_blocks", None)
+    if hit is None or hit[0] is not m.S:
         coo = m.S.tocoo()
-        hit = (m, (coo.row.astype(np.int64), coo.col.astype(np.int64), coo.data.astype(float)))
-        _COO_CACHE[id(m)] = hit
+        hit = (m.S, (coo.row.astype(np.int64), coo.col.astype(np.int64), coo.data.astype(float)))
+        m._coo_blocks = hit
     return hit[1]
 
 

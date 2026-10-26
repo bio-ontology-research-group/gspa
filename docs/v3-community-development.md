@@ -42,8 +42,16 @@ Six arms: oxygen {0, 2, 20} x trace {present (primary), absent (sensitivity)}.
 1. each deletion strain alone (fraction 1),
 2. the community,
 3. **control**: the same pair with uptake from the pool forbidden for every metabolite that is not a
-   medium nutrient or H2O, H+, CO2, O2. If growth survives, it does not depend on cross-organism
-   transfer of anything else, which separates model rescue from autonomous growth.
+   medium nutrient or H2O, H+, CO2, O2.
+
+The control is recorded explicitly per pair (`control_comparison`: category, community and control mu,
+number of closed uptake ports) and summarised per arm (`control_comparison.categories`, also among
+registered positives). It only tests whether growth *needs* the transfer of the forbidden metabolites.
+H2O, H+, CO2, O2 and the medium nutrients remain exchangeable, so **a rescue whose control still grows
+(`growth_persists_in_control`) cannot be ascribed to the blocked transfer**, and a rescue that is lost is
+conditional on the model, not evidence of an actual exchange. The registered prediction is unchanged; a
+secondary `prediction_control_gated` demotes such positives to negative (unknown if the control did not
+run) and is evaluated separately (`evaluation_control_gated`).
 
 **Prediction.** `positive` iff the community grows and both monocultures do not. One or two viable
 monocultures are flagged separately (`one_viable_monoculture`, `growth_without_partner`) and are not
@@ -61,7 +69,10 @@ simulation fields are unchanged).
 
 Monocultures and communities are cached on a hash of the exact condition (model, deletions as blocked
 reactions, supply, removal, fractions, threshold, maintenance); a hit returns what the LP would give.
-`build_lp` reuses cached COO triplets per model and `build_organism` lets 46 deletion variants share one
+`build_lp` reuses COO triplets cached as an attribute of each `Model` (no module-level reference, so the
+cache is freed with the model; keyed on the identity of `Model.S`, which is never modified; tests compare
+the cached LP with a cold build and with the legacy entry-by-entry construction, and check the model is
+garbage-collected) and `build_organism` lets 46 deletion variants share one
 parsed model; LP semantics are unchanged (the existing 26 community tests pass). Each arm has a
 solver-call cap (default: planned need), and the report records calls used, cache hits and misses,
 infeasible and error counts, build and solve seconds, peak RSS, CPU count, library versions and Slurm
@@ -81,8 +92,16 @@ $PY benchmark/v3/run_community_benchmark.py ... --arms o2_20_trace_present   # o
 $PY -m unittest benchmark/v3/tests/test_run_community_benchmark.py          # fixture LPs only, no network
 ```
 
-`--arms`, `--max-cases` and `--max-solver-calls` mark the run `partial_run`; only the default invocation
-is a complete result. Exit code is 1 if any case failed to execute.
+`--arms` (at least one known, distinct arm), `--max-cases` and `--max-solver-calls` (both at least 1) mark
+the run `partial_run`; invalid selections are rejected before anything is written.
+
+**Execution versus coverage.** `status` is `complete` only for the default invocation when every case of
+every arm ran all four LPs to a solver answer and no primary prediction is unknown. Otherwise it is
+`incomplete_execution` (failed cases, LPs skipped by the budget or ending in a solver problem, unknown
+predictions) or `partial_run` (a deliberate subset). `report.execution` and each arm give `n_executed`,
+`n_failed` (exceptions, unmapped strains, digest or model-hash mismatch), `n_incomplete_simulation`
+(an LP was skipped or inconclusive) and `execution_complete`; `coverage` gives how many cases carry a
+prediction. Exit code: 0 complete; 2 clean but partial; 1 otherwise.
 
 Outputs in `<out>`: `report.json` (protocol, input / model / engine / community-module / runner / protocol
 hashes, git commit, resources, per-arm summaries, limitations), `protocol.json`, `model_audit.json`,
@@ -93,9 +112,17 @@ Per arm the summary reports: coverage (executed, failed, unmapped, with a predic
 monocultures (strains and pair counts), community growth, infeasible and solver-problem counts, control
 growth, and the confusion of the three labels against positive / negative / unknown, in strata
 (all, both monocultures not growing, one viable, both viable, unknown state), plus precision, recall,
-specificity, balanced accuracy and MCC for synergy vs no_synergy with Wilson intervals, recall and
-specificity counting unknown as a miss, and the observed synergy rate among predicted positives and
+specificity, balanced accuracy and MCC for synergy vs no_synergy (point counts and proportions, recall and
+specificity also counting unknown as a miss), and the observed synergy rate among predicted positives and
 negatives. All six arms are reported side by side; none is a "best" arm.
+
+**Uncertainty.** The 1,035 pairs are dyads of 46 shared strains, so pair-level binomial (Wilson) intervals
+would treat dependent observations as independent and are not reported. `strain_resampling` (primary,
+strict and control-gated predictions) gives, for each metric, a leave-one-strain-out range with the
+vertex-jackknife SE and the three most influential strains, and a vertex-bootstrap percentile interval
+(1,000 replicates, fixed seed, strains resampled, pair weight m_a x m_b, self-copy pairs dropped; settings
+hashed as `analysis_sha256`). These are descriptive sensitivity summaries, **not independent confidence
+intervals**; with 46 strains they are rough. They do not cover model-choice or assumption uncertainty.
 
 ## Review of the label extraction (done on the acquired file, no model involved)
 

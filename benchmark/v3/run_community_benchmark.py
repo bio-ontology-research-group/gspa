@@ -129,11 +129,17 @@ class Context:
             raise ME.ManifestError("native maintenance lower bound is not positive")
         self.maintenance = {"reaction": MAINTENANCE_REACTION, "lower_bound": atpm}
         self.strains: dict[str, dict[str, Any]] = {}
+        in_gpr = Counter(g for dnf in m.gpr.values() for g in {g for clause in dnf for g in clause})
         for strain, locus in sorted(loci.items()):
+            if not isinstance(locus, str) or not locus.strip():
+                raise ValueError(f"strain {strain}: locus tag must be a non-empty string, got {locus!r}")
             gene = m.gene_alias.get(locus)
             blocked = sorted(m.blocked_by_genes({gene})) if gene else []
             self.strains[strain] = {"locus_tag": locus, "gene_product": gene, "blocked_reactions": blocked,
-                                    "mapped": gene is not None}
+                                    "mapped": gene is not None, "n_reactions_with_gene_in_gpr": in_gpr[gene] if gene else 0}
+        shared = {l: sorted(s for s, v in self.strains.items() if v["locus_tag"] == l)
+                  for l in {v["locus_tag"] for v in self.strains.values()}}
+        self.shared_loci = {l: s for l, s in shared.items() if len(s) > 1}
         self._organisms: dict[str, CM.Organism] = {}
 
     def organism(self, strain: str) -> CM.Organism:
@@ -154,6 +160,10 @@ class Context:
                 "pool_metabolites": len(self.pool_mets),
                 "strains": self.strains,
                 "n_strains_mapped": sum(s["mapped"] for s in self.strains.values()),
+                "unmapped_strains": sorted(k for k, s in self.strains.items() if not s["mapped"]),
+                "mapped_gene_in_no_gpr": sorted(k for k, s in self.strains.items()
+                                                if s["mapped"] and s["n_reactions_with_gene_in_gpr"] == 0),
+                "loci_shared_by_several_strains": self.shared_loci,
                 "n_strains_blocking_no_reaction": sorted(k for k, s in self.strains.items()
                                                          if s["mapped"] and not s["blocked_reactions"])}
 
@@ -229,6 +239,7 @@ class Simulator:
                                      self.ctx.cfg["growth_threshold"])
         self.build_seconds += t1 - t0
         self.lp_seconds += time.perf_counter() - t1
+        res["n_closed_uptake_ports"] = len(closures)      # 0 except in the control
         self.cache[key] = res
         return {**res, "cached": False, "condition_sha256": key}
 
@@ -269,21 +280,111 @@ def predict(sim_result: dict[str, Any], strict: bool = False) -> dict[str, Any]:
             "states": st, "viable_monocultures": viable}
 
 
+def control_comparison(res: dict[str, Any]) -> dict[str, Any]:
+    """Explicit community-versus-control record.  The control closes uptake from the pool of every
+    metabolite outside the arm's nutrient list, so it can only show whether growth *needs* the transfer of
+    those metabolites.  H2O, H+, CO2, O2 and the medium nutrients stay exchangeable."""
+    c, k = growth_state(res["community"], False), growth_state(res["control"], False)
+    if "unknown" in (c, k):
+        cat = "undetermined"
+    elif c == "growth" and k == "no_growth":
+        cat = "growth_lost_when_other_transfer_forbidden"
+    elif c == "growth":
+        cat = "growth_persists_in_control"      # not attributable to the blocked transfer
+    elif k == "growth":
+        cat = "control_grows_community_does_not"
+    else:
+        cat = "no_growth_in_either"
+    return {"category": cat, "community_mu": res["community"]["mu"], "control_mu": res["control"]["mu"],
+            "n_closed_uptake_ports_per_pair": res["control"].get("n_closed_uptake_ports")}
+
+
+def gated_prediction(primary: dict[str, Any], comparison: dict[str, Any]) -> str:
+    """Positive only if the registered positive also loses growth in the control (secondary analysis)."""
+    if primary["prediction"] != "positive":
+        return primary["prediction"]
+    return {"growth_lost_when_other_transfer_forbidden": "positive", "undetermined": "unknown"}.get(
+        comparison["category"], "negative")
+
+
 # --------------------------------------------------------------------------- evaluation (labels only here)
 
 
-def wilson(k: int, n: int, z: float = 1.96) -> list[float] | None:
-    if n == 0:
-        return None
-    p = k / n
-    d = 1 + z * z / n
-    c = (p + z * z / (2 * n)) / d
-    h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return [max(0.0, c - h), min(1.0, c + h)]
-
-
 def _ratio(k: int, n: int) -> dict[str, Any]:
-    return {"k": k, "n": n, "value": k / n if n else None, "wilson95": wilson(k, n)}
+    """Descriptive proportion only.  The 1,035 pairs are dyads of 46 shared strains and are not independent,
+    so no binomial interval is given; see ``strain_resampling``."""
+    return {"k": k, "n": n, "value": k / n if n else None}
+
+
+ANALYSIS: dict[str, Any] = {
+    "schema": "gspa.community_benchmark_analysis/1",
+    "dependence": "pairs share strains (46 strains, 1,035 dyads); pair-level binomial intervals are not valid",
+    "leave_one_strain_out": "drop every pair containing one strain; recompute; report range, vertex-jackknife SE "
+                            "and the most influential strains. Sensitivity, not a confidence interval",
+    "vertex_bootstrap": {"replicates": 1000, "seed": 20261026,
+                         "scheme": "resample the 46 strains with replacement; a pair of distinct strains gets weight "
+                                   "m_a*m_b; pairs of copies of the same strain are dropped; percentile 2.5/97.5"},
+    "status": "descriptive; not independent confidence intervals; with 46 strains the intervals are rough",
+}
+ANALYSIS_SHA256 = hashlib.sha256(json.dumps(ANALYSIS, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+_METRICS = ("precision", "recall", "specificity", "balanced_accuracy", "mcc")
+
+
+def _cell_metrics(tp: float, fn: float, fp: float, tn: float) -> dict[str, float | None]:
+    def div(a, b):
+        return a / b if b else None
+    rec, spec = div(tp, tp + fn), div(tn, tn + fp)
+    denom = math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+    return {"precision": div(tp, tp + fp), "recall": rec, "specificity": spec,
+            "balanced_accuracy": (rec + spec) / 2 if rec is not None and spec is not None else None,
+            "mcc": (tp * tn - fp * fn) / denom if denom else None}
+
+
+def strain_resampling(rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
+    """Leave-one-strain-out and vertex-bootstrap sensitivity for the synergy / no_synergy metrics."""
+    import numpy as np
+    strains = sorted({r["strain_a"] for r in rows} | {r["strain_b"] for r in rows})
+    idx = {s: i for i, s in enumerate(strains)}
+    a = np.array([idx[r["strain_a"]] for r in rows])
+    b = np.array([idx[r["strain_b"]] for r in rows])
+    y = np.array([{"synergy": 1, "no_synergy": 0}.get(r["observed"], -1) for r in rows])
+    p = np.array([{"positive": 1, "negative": 0}.get(r[key], -1) for r in rows])
+    cells = [((y == 1) & (p == 1)), ((y == 1) & (p == 0)), ((y == 0) & (p == 1)), ((y == 0) & (p == 0))]
+
+    def metrics(w):
+        return _cell_metrics(*(float(w[c].sum()) for c in cells))
+
+    full = metrics(np.ones(len(rows)))
+    loso: dict[str, list] = {m: [] for m in _METRICS}
+    for s in range(len(strains)):
+        mt = metrics(((a != s) & (b != s)).astype(float))
+        for m in _METRICS:
+            loso[m].append(mt[m])
+    rng = np.random.default_rng(ANALYSIS["vertex_bootstrap"]["seed"])
+    boot: dict[str, list] = {m: [] for m in _METRICS}
+    for _ in range(ANALYSIS["vertex_bootstrap"]["replicates"]):
+        mult = np.bincount(rng.integers(0, len(strains), len(strains)), minlength=len(strains))
+        mt = metrics((mult[a] * mult[b]).astype(float))
+        for m in _METRICS:
+            boot[m].append(mt[m])
+    out: dict[str, Any] = {"n_strains": len(strains), "status": ANALYSIS["status"], "analysis_sha256": ANALYSIS_SHA256,
+                           "full_data": full, "metrics": {}}
+    for m in _METRICS:
+        vals = [(strains[i], v) for i, v in enumerate(loso[m]) if v is not None]
+        bs = np.array([v for v in boot[m] if v is not None], dtype=float)
+        entry: dict[str, Any] = {"full": full[m], "loso_n_defined": len(vals), "n_strains": len(strains),
+                                 "bootstrap_n_defined": int(bs.size), "bootstrap_replicates": len(boot[m])}
+        if vals:
+            v = np.array([x for _, x in vals])
+            n = len(v)
+            entry.update(loso_min=float(v.min()), loso_max=float(v.max()), loso_mean=float(v.mean()),
+                         jackknife_se=float(math.sqrt((n - 1) / n * ((v - v.mean()) ** 2).sum())),
+                         most_influential_strains=[s for s, x in sorted(
+                             vals, key=lambda t: -abs(t[1] - (full[m] if full[m] is not None else t[1])))[:3]])
+        if bs.size:
+            entry.update(bootstrap_p2_5=float(np.percentile(bs, 2.5)), bootstrap_p97_5=float(np.percentile(bs, 97.5)))
+        out["metrics"][m] = entry
+    return out
 
 
 def evaluate(rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
@@ -330,16 +431,25 @@ def stratum_rows(rows: list[dict[str, Any]], pred: str = "prediction_primary") -
 
 def arm_summary(arm: dict[str, Any], rows: list[dict[str, Any]], sim: Simulator | None,
                 mono_by_strain: dict[str, Any]) -> dict[str, Any]:
-    ok = [r for r in rows if r["execution_status"] == "completed"]
+    ok = [r for r in rows if r["execution_status"] != "failed"]    # simulations were attempted
     def count(f):
         return sum(1 for r in ok if f(r))
+    n_done = sum(r["execution_status"] == "completed" for r in rows)
+    n_failed = sum(r["execution_status"] == "failed" for r in rows)
+    n_incomplete = len(rows) - n_done - n_failed
+    n_pred = sum(r["prediction_primary"] != "unknown" for r in rows)
     summary = {
-        "arm": arm, "n_cases": len(rows), "n_executed": len(ok), "n_failed": len(rows) - len(ok),
+        "arm": arm, "n_cases": len(rows),
+        # execution: did every case run all four LPs to a solver answer?  coverage: how many have a prediction?
+        "n_executed": n_done, "n_failed": n_failed, "n_incomplete_simulation": n_incomplete,
+        "execution_complete": n_done == len(rows),
         "coverage": {
             "n_registered_cases": len(rows),
-            "n_with_prediction_primary": count(lambda r: r["prediction_primary"] != "unknown"),
-            "n_with_prediction_strict": count(lambda r: r["prediction_strict"] != "unknown"),
-            "n_unmapped_or_failed": len(rows) - len(ok),
+            "n_with_prediction_primary": n_pred,
+            "fraction_with_prediction_primary": n_pred / len(rows) if rows else None,
+            "n_with_prediction_strict": sum(r["prediction_strict"] != "unknown" for r in rows),
+            "n_unmapped_or_failed": n_failed,
+            "n_unknown_primary": len(rows) - n_pred,
         },
         "monoculture_growth": {
             "strains_growing_alone_in_model": sorted(s for s, v in mono_by_strain.items() if v == "growth"),
@@ -358,8 +468,21 @@ def arm_summary(arm: dict[str, Any], rows: list[dict[str, Any]], sim: Simulator 
             "positive_with_control_growth": count(lambda r: r["prediction_primary"] == "positive"
                                                   and r["control"]["outcome"] == "growth"),
         },
+        "control_comparison": {
+            "definition": "control = same pair, uptake from the pool forbidden for every metabolite outside "
+                          "'nutrient_exchanges'; H2O, H+, CO2, O2 and medium nutrients stay exchangeable, so a "
+                          "rescue whose control still grows is NOT attributable to the blocked transfer",
+            "categories": dict(Counter((r.get("control_comparison") or {}).get("category", "not_run") for r in rows)),
+            "categories_among_primary_positive": dict(Counter(
+                (r.get("control_comparison") or {}).get("category", "not_run")
+                for r in rows if r["prediction_primary"] == "positive")),
+        },
         "evaluation_primary": {name: evaluate(rs, "prediction_primary") for name, rs in stratum_rows(rows).items()},
         "evaluation_strict_optimal_only": evaluate(rows, "prediction_strict"),
+        "evaluation_control_gated": evaluate(rows, "prediction_control_gated"),
+        "strain_resampling": {"primary": strain_resampling(rows, "prediction_primary"),
+                              "strict": strain_resampling(rows, "prediction_strict"),
+                              "control_gated": strain_resampling(rows, "prediction_control_gated")},
     }
     if sim is not None:
         summary["solver"] = {"max_calls": sim.solver.max_calls, "used": sim.solver.used,
@@ -418,7 +541,7 @@ def run_arm(ctx: Context, recs: list[dict[str, Any]], arm: dict[str, Any], max_s
     rows: list[dict[str, Any]] = []
     t0 = time.perf_counter()
     for i, rec in enumerate(recs):
-        inputs, label = rec["inputs"], rec["observed"]
+        inputs = rec["inputs"]          # the only part of a record the simulation side may touch
         row: dict[str, Any] = {"case_id": inputs["pair_id"], "arm": arm["id"],
                                "strain_a": inputs["members"][0]["strain"], "strain_b": inputs["members"][1]["strain"],
                                "locus_a": inputs["members"][0]["locus_tag"], "locus_b": inputs["members"][1]["locus_tag"]}
@@ -431,8 +554,13 @@ def run_arm(ctx: Context, recs: list[dict[str, Any]], arm: dict[str, Any], max_s
                 raise ValueError("medium differs between cases (one medium per run)")
             res = simulate_pair(sim, inputs)
             p, s = predict(res), predict(res, strict=True)
-            row.update(execution_status="completed", prediction_primary=p["prediction"], prediction_basis=p["basis"],
+            cc = control_comparison(res)
+            incomplete = [k for k in ("mono_a", "mono_b", "community", "control") if res[k]["status"] != "completed"]
+            row.update(execution_status="incomplete_simulation" if incomplete else "completed",
+                       incomplete_simulations=incomplete,
+                       prediction_primary=p["prediction"], prediction_basis=p["basis"],
                        prediction_strict=s["prediction"], viable_monocultures=p.get("viable_monocultures"),
+                       control_comparison=cc, prediction_control_gated=gated_prediction(p, cc),
                        **{k: {f: res[k][f] for f in ("status", "outcome", "mu", "cached", "condition_sha256", "note")}
                           for k in ("mono_a", "mono_b", "community", "control")},
                        new_solver_calls=res["new_solver_calls"])
@@ -441,6 +569,7 @@ def run_arm(ctx: Context, recs: list[dict[str, Any]], arm: dict[str, Any], max_s
                      "condition_sha256": None, "note": ""}
             row.update(execution_status="failed", error=f"{type(exc).__name__}: {exc}",
                        prediction_primary="unknown", prediction_basis="execution_failed", prediction_strict="unknown",
+                       prediction_control_gated="unknown", control_comparison=None,
                        viable_monocultures=None, mono_a=empty, mono_b=empty, community=empty, control=empty,
                        new_solver_calls=0)
         rows.append(row)
@@ -453,7 +582,7 @@ def run_arm(ctx: Context, recs: list[dict[str, Any]], arm: dict[str, Any], max_s
         row["observed_day4_fold_growth_mean"] = rec["observed"].get("day4_fold_growth_mean")
     mono_by_strain = {}
     for r in rows:
-        if r["execution_status"] == "completed":
+        if r["execution_status"] != "failed" and r["mono_a"]["status"] == r["mono_b"]["status"] == "completed":
             mono_by_strain[r["strain_a"]] = growth_state(r["mono_a"], strict=False)
             mono_by_strain[r["strain_b"]] = growth_state(r["mono_b"], strict=False)
     summary = arm_summary(arm, rows, sim, mono_by_strain)
@@ -472,13 +601,20 @@ def run_benchmark(cases_path: Path, model_path: Path, out: Path, arm_ids: list[s
     recs = load_cases(cases_path)
     n_registered = len(recs)
     if max_cases is not None:
+        if max_cases < 1:
+            raise ValueError("max_cases must be at least 1")
         recs = recs[:max_cases]
+    if max_solver_calls is not None and max_solver_calls < 1:
+        raise ValueError("max_solver_calls must be at least 1")
+    if arm_ids is not None:
+        known = {a["id"] for a in ARMS}
+        if not arm_ids or set(arm_ids) - known or len(set(arm_ids)) != len(arm_ids):
+            raise ValueError(f"arm selection must be a non-empty list of distinct known arms {sorted(known)}, "
+                             f"got {arm_ids}")
     if out.exists():
         raise ValueError(f"refusing existing run directory: {out}")
-    out.mkdir(parents=True)
     arms = [a for a in ARMS if arm_ids is None or a["id"] in arm_ids]
-    if arm_ids and len(arms) != len(set(arm_ids)):
-        raise ValueError(f"unknown arm in {arm_ids}; known: {[a['id'] for a in ARMS]}")
+    out.mkdir(parents=True)
     t_start = time.perf_counter()
     ctx = Context(model_path, strain_loci(load_cases(cases_path)))
     audit = ctx.audit()
@@ -487,23 +623,37 @@ def run_benchmark(cases_path: Path, model_path: Path, out: Path, arm_ids: list[s
     # one LP per distinct condition: monoculture strains + community and control per pair, plus headroom
     per_arm_budget = max_solver_calls if max_solver_calls is not None else 2 * len(recs) + len(ctx.strains) + 100
     summaries = [run_arm(ctx, recs, a, per_arm_budget, out, log) for a in arms]
-    complete = max_cases is None and max_solver_calls is None and arm_ids is None
+    full_invocation = max_cases is None and max_solver_calls is None and arm_ids is None
+    execution = {
+        "complete": all(s["execution_complete"] for s in summaries),
+        "n_failed": sum(s["n_failed"] for s in summaries),
+        "n_incomplete_simulation": sum(s["n_incomplete_simulation"] for s in summaries),
+        "n_unknown_primary_predictions": sum(s["coverage"]["n_unknown_primary"] for s in summaries),
+    }
+    execution["complete"] = (execution["complete"] and execution["n_unknown_primary_predictions"] == 0)
+    # 'complete' needs the full invocation AND every case of every arm run to a solver answer
+    status = ("partial_run" if not full_invocation else "complete" if execution["complete"]
+              else "incomplete_execution")
     report = {
         "schema": SCHEMA,
         "role": "static balanced-growth feasibility of measured Keio auxotroph pairs; not fold change, competitive "
                 "fitness, or gene/function recovery; iML1515 transportability baseline for an iAF1260 study",
-        "status": "complete" if complete else "partial_run",
+        "status": status,
+        "execution": execution,
+        "coverage": {s["arm"]["id"]: s["coverage"] for s in summaries},
         "partial_reasons": [r for r, c in (("max_cases", max_cases is not None), ("max_solver_calls", max_solver_calls is not None),
                                            ("arm_subset", arm_ids is not None)) if c],
         "n_registered_cases": n_registered, "n_cases_run": len(recs),
         "inputs": {"cases_sha256": sha256_file(cases_path), "model_sha256": ctx.model.sha256,
                    "model_file_sha256": sha256_file(model_path), "protocol_sha256": PROTOCOL_SHA256,
-                   "runner_sha256": sha256_file(Path(__file__)),
+                   "analysis_sha256": ANALYSIS_SHA256, "runner_sha256": sha256_file(Path(__file__)),
                    "engine_sha256": sha256_file(Path(ME.__file__)),
                    "community_module_sha256": sha256_file(Path(CM.__file__)), "git_commit": git_commit()},
-        "protocol": PROTOCOL,
+        "protocol": PROTOCOL, "analysis": ANALYSIS,
         "model_audit_summary": {k: audit[k] for k in ("n_reactions", "n_metabolites", "n_external_exchanges",
                                                        "biomass_reaction", "maintenance", "n_strains_mapped",
+                                                       "unmapped_strains", "mapped_gene_in_no_gpr",
+                                                       "loci_shared_by_several_strains",
                                                        "n_strains_blocking_no_reaction")},
         "arms": {s["arm"]["id"]: s for s in summaries},
         "resources": {"wall_seconds": round(time.perf_counter() - t_start, 1),
@@ -530,7 +680,7 @@ def main() -> int:
     ap.add_argument("--cases", type=Path, required=True, help="wintermute2010_cases.jsonl")
     ap.add_argument("--model", type=Path, required=True, help="iML1515 SBML; hash must equal the case inputs")
     ap.add_argument("--out", type=Path, required=True, help="new directory")
-    ap.add_argument("--arms", nargs="*", help=f"subset of {[a['id'] for a in ARMS]} (default all; marks run partial)")
+    ap.add_argument("--arms", nargs="+", help=f"subset of {[a['id'] for a in ARMS]} (default all; marks run partial)")
     ap.add_argument("--max-solver-calls", type=int, help="per-arm cap (default: planned need); lower marks run partial")
     ap.add_argument("--max-cases", type=int, help="smoke test only; marks run partial")
     args = ap.parse_args()
@@ -538,8 +688,13 @@ def main() -> int:
                         log=lambda m: print(m, flush=True))
     for aid, s in rep["arms"].items():
         b = s["evaluation_primary"]["all_cases"]["binary_synergy_vs_no_synergy"]
-        print(aid, "executed", s["n_executed"], "/", s["n_cases"], "TP/FP/TN/FN", b["tp"], b["fp"], b["tn"], b["fn"])
-    return 0 if all(s["n_failed"] == 0 for s in rep["arms"].values()) else 1
+        print(aid, "executed", s["n_executed"], "/", s["n_cases"], "failed", s["n_failed"], "incomplete",
+              s["n_incomplete_simulation"], "predicted", s["coverage"]["n_with_prediction_primary"],
+              "TP/FP/TN/FN", b["tp"], b["fp"], b["tn"], b["fn"])
+    print("status:", rep["status"])
+    # 0: every case of every arm ran to a solver answer (and the invocation was complete);
+    # 2: nothing failed but the invocation was a deliberate subset; 1: failures, incomplete LPs or unknowns
+    return 0 if rep["status"] == "complete" else 2 if (rep["status"] == "partial_run" and rep["execution"]["complete"]) else 1
 
 
 if __name__ == "__main__":
