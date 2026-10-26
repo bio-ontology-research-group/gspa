@@ -52,9 +52,6 @@ import numpy as np
 from scipy.optimize import linprog
 from scipy.sparse import coo_matrix, csc_matrix
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from stoichiometric_locus_refiner import parse_gpr_to_dnf  # noqa: E402
-
 SCHEMA = "gspa.metabolic_experiments/1"
 
 DEFAULT_CONFIG: dict[str, Any] = {
@@ -145,6 +142,28 @@ class Model:
         return out
 
 
+def gpr_clauses(association) -> list[list[str]]:
+    """Read FBC gene identities directly, preserving AND subunits and OR isozymes.
+
+    libSBML's toInfix() uses display labels by default. Labels can differ from
+    gene-product IDs and contain spaces; parsing that string loses identities.
+    """
+    kind = association.getElementName()
+    if kind == "geneProductRef":
+        return [[association.getGeneProduct()]]
+    if kind not in ("and", "or"):
+        raise ValueError(f"unsupported FBC association: {kind}")
+    children = [gpr_clauses(association.getAssociation(i)) for i in range(association.getNumAssociations())]
+    if not children:
+        raise ValueError(f"empty FBC {kind} association")
+    if kind == "or":
+        return [clause for child in children for clause in child]
+    result = [[]]
+    for child in children:
+        result = [list(dict.fromkeys(left + right)) for left in result for right in child]
+    return result
+
+
 def load_sbml_model(path: Path, default_bound: float = 1000.0) -> Model:
     import libsbml
 
@@ -176,7 +195,7 @@ def load_sbml_model(path: Path, default_bound: float = 1000.0) -> Model:
                     vals.append(sign * ref.getStoichiometry())
         assoc = fbc.getGeneProductAssociation()
         if assoc is not None and assoc.isSetAssociation():
-            gpr[r.getId()] = parse_gpr_to_dnf(assoc.getAssociation().toInfix())
+            gpr[r.getId()] = gpr_clauses(assoc.getAssociation())
     S = coo_matrix((vals, (rows, cols)), shape=(len(mets), len(reactions))).tocsc()
     lb_a, ub_a = np.array(lb, dtype=float), np.array(ub, dtype=float)
     if np.any(np.isnan(lb_a)) or np.any(np.isnan(ub_a)):

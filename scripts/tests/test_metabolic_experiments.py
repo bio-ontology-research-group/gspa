@@ -34,6 +34,7 @@ REACTIONS = {
     "EX_sec_e": ({"sec_e": 1}, {}, -1000, 1000, None),
     "EX_coup_e": ({"coup_e": 1}, {}, -1000, 1000, None),
     "EX_nh4_e": ({}, {"nh4_e": 1}, -1000, 1000, None),
+    "EX_lac_e": ({"lac_e": 1}, {}, 0, 1000, None),
     "T_glc": ({"glc_e": 1}, {"glc_c": 1}, 0, 1000, None),
     "T_ac": ({"ac_e": 1}, {"ac_c": 1}, 0, 1000, None),
     "T_o2": ({"o2_e": 1}, {"o2_c": 1}, 0, 1000, None),
@@ -45,16 +46,19 @@ REACTIONS = {
     "GLYC2": ({"glc_c": 1}, {"pyr_c": 2, "atp_c": 2}, 0, 1000, "g2"),
     "ACS": ({"ac_c": 1, "atp_c": 1}, {"pyr_c": 1}, 0, 1000, "g3"),
     "RESP": ({"pyr_c": 1, "o2_c": 1}, {"atp_c": 8}, 0, 1000, "g4"),
+    # Carbon must leave the cell during fermentation. Without this outlet,
+    # the previous toy network could not balance glycolysis without oxygen.
+    "FERM": ({"pyr_c": 1}, {"lac_e": 1}, 0, 1000, None),
     "VITS": ({"pyr_c": 1, "atp_c": 1}, {"vit_c": 1}, 0, 1000, "g5"),
     "SEC": ({"pyr_c": 1, "atp_c": 1}, {"sec_c": 1}, 0, 1000, "g6"),
     "ATPM": ({"atp_c": 1}, {}, 0, 1000, None),
     "BIOMASS": ({"pyr_c": 1, "nh4_c": 1, "vit_c": 1, "atp_c": 4}, {"coup_c": 0.1}, 0, 1000, None),
 }
-SPECIES = ["glc_e", "ac_e", "o2_e", "vit_e", "sec_e", "coup_e", "nh4_e",
+SPECIES = ["glc_e", "ac_e", "o2_e", "vit_e", "sec_e", "coup_e", "nh4_e", "lac_e",
            "glc_c", "ac_c", "o2_c", "vit_c", "sec_c", "coup_c", "nh4_c", "pyr_c", "atp_c"]
 
 
-EXCHANGES = ["EX_glc_e", "EX_ac_e", "EX_o2_e", "EX_vit_e", "EX_sec_e", "EX_coup_e", "EX_nh4_e"]
+EXCHANGES = ["EX_glc_e", "EX_ac_e", "EX_o2_e", "EX_vit_e", "EX_sec_e", "EX_coup_e", "EX_nh4_e", "EX_lac_e"]
 
 
 def write_sbml(path, reactions=REACTIONS, objective=(("BIOMASS", 1.0),), sense="maximize", species=SPECIES):
@@ -162,6 +166,29 @@ class TestModelAndSigns(Base):
         self.assertEqual(len(self.model.sha256), 64)
         self.assertEqual(self.model.blocked_by_genes({"g3"}), {"ACS"})
 
+    def test_complex_requires_one_subunit_and_either_of_two_alternative_subunits(self):
+        doc = libsbml.readSBMLFromFile(str(self.path))
+        sbml = doc.getModel()
+        # Labels deliberately contain whitespace and differ from IDs. Gene
+        # identity must survive SBML import without parsing display strings.
+        sbml.getPlugin("fbc").getGeneProduct("g1").setLabel("catalytic subunit")
+        sbml.getPlugin("fbc").getGeneProduct("g2").setLabel("partner alpha")
+        sbml.getPlugin("fbc").getGeneProduct("g3").setLabel("partner beta")
+        tree = libsbml.FbcAnd(3, 1, 2)
+        tree.createGeneProductRef().setGeneProduct("g1")
+        alternatives = tree.createOr()
+        alternatives.createGeneProductRef().setGeneProduct("g2")
+        alternatives.createGeneProductRef().setGeneProduct("g3")
+        sbml.getReaction("ACS").getPlugin("fbc").getGeneProductAssociation().setAssociation(tree)
+        path = Path(self.tmp.name) / "complex.xml"
+        libsbml.writeSBMLToFile(doc, str(path))
+        model = ME.load_sbml_model(path)
+        self.assertEqual(model.gpr["ACS"], [["g1", "g2"], ["g1", "g3"]])
+        self.assertIn("ACS", model.blocked_by_genes({"g1"}))
+        self.assertNotIn("ACS", model.blocked_by_genes({"g2"}))
+        self.assertNotIn("ACS", model.blocked_by_genes({"g3"}))
+        self.assertIn("ACS", model.blocked_by_genes({"g2", "g3"}))
+
     def test_exchange_sign_follows_stoichiometry(self):
         m = self.model
         self.assertEqual(m.secretion_sign("EX_glc_e"), 1.0)    # "glc_e ->": v > 0 secretes
@@ -207,7 +234,9 @@ class TestBiology(Base):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.out = Base.run_all(cls, "fixed")
+        # Biological checks exercise the entire menu; budget limits are tested
+        # separately and must not silently skip the later product/rescue tests.
+        cls.out = Base.run_all(cls, "fixed", max_experiments=100, max_solver_calls=1000)
         cls.rec = Base.by_id(cls.out)
 
     def test_carbon_source_dependent_catabolism(self):
@@ -360,7 +389,7 @@ class TestBudget(Base):
         out = self.run_all("fixed", max_solver_calls=4, max_experiments=50, panel=["carbon_source:EX_ac_e"])
         ac = self.by_id(out)["carbon_source:EX_ac_e"]
         self.assertEqual(ac["status"], "completed")
-        self.assertNotIn("focus_checks", ac["measurements"])
+        self.assertEqual(ac["measurements"].get("focus_checks", []), [])
         self.assertEqual(ac["measurements"]["focus_checks_truncated_by_budget"], 1)
         self.assertEqual(out["solver"]["used"], 2)
         out = self.run_all("fixed", max_solver_calls=5, max_experiments=50, panel=["carbon_source:EX_ac_e"])
