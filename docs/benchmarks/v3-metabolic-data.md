@@ -184,7 +184,7 @@ with measured negatives or conditions was not located.
 
 - **`manuscript_unregulated`**: `python benchmark/v3/run_metabolic_benchmark.py --cases <data>/derived/cases_manuscript_unregulated.jsonl --model <data>/raw/iML1515.xml --out <new dir>`. The manifest and model hash are validated before execution.
 - **`manuscript_regulatory`**: use the same command with `cases_manuscript_regulatory.jsonl`. The runner validates and applies the frozen sidecar; mechanistic LP tests verify isozyme suppression, matched controls, substrate specificity and maintenance preservation.
-- **Community pairs**: `wintermute2010_cases.jsonl` needs a pair-growth runner with a frozen trace-metal and oxygen choice.
+- **Community pairs**: `benchmark/v3/run_community_benchmark.py` runs `wintermute2010_cases.jsonl` with a frozen trace-metal and oxygen protocol (three oxygen arms, trace present/absent); see `docs/v3-community-development.md`.
 - Report the three protocols side by side with the legacy run labelled as repository defaults. No condition may be tuned against the 61 labels.
 
 ## Exports (`<out>/derived/`)

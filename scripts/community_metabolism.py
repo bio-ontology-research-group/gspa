@@ -132,6 +132,59 @@ def validate_pool(manifest: dict[str, Any]) -> tuple[dict[str, Any], dict[str, f
     return mets, supply, removal
 
 
+def build_organism(oid: str, model: Model, spec: dict[str, Any], pool_mets: dict[str, Any],
+                   cfg: dict[str, Any]) -> Organism:
+    """Validate one organism spec against an already parsed model (hidden open boundaries rejected).
+
+    Reusable so that many organisms (e.g. gene-deletion variants) can share one parsed model."""
+    bio_id, _ = resolve_objective(model, {"objectives": {"biomass": spec.get("biomass")}})
+    maint = spec.get("maintenance")
+    if maint != "none" and not (isinstance(maint, dict) and {"reaction", "lower_bound"} <= set(maint)):
+        raise ManifestError(f"{oid}: maintenance must be {{reaction, lower_bound}} or 'none' (explicit)")
+    if maint != "none" and maint["reaction"] not in model.rxn_index:
+        raise ManifestError(f"{oid}: maintenance reaction not in model")
+    ext_comp = set(spec.get("extracellular_compartments", ["e"]))
+    ports = spec.get("ports", {})
+    closed = set(spec.get("closed_ports", []))
+    ext = {r for r in model.rxn_ids if model.is_single_metabolite(r)
+           and model.met_compartment[model.exchange_metabolite(r)] in ext_comp}
+    missing = sorted(ext - set(ports) - closed)
+    if missing:
+        raise ManifestError(f"{oid}: exchanges neither mapped to the pool nor closed (hidden open "
+                            f"boundary rejected): {missing}")
+    for rid in set(ports) | closed:
+        if rid not in ext:
+            raise ManifestError(f"{oid}: {rid} is not a single-metabolite exchange on an "
+                                f"extracellular species")
+    if set(ports) & closed:
+        raise ManifestError(f"{oid}: ports both mapped and closed: {sorted(set(ports) & closed)}")
+    by_policy = []
+    for rid, p in ports.items():
+        if p.get("pool") not in pool_mets:
+            raise ManifestError(f"{oid}.{rid}: unknown pool metabolite {p.get('pool')}")
+        if p.get("support", "unknown") not in SUPPORT_VALUES:
+            raise ManifestError(f"{oid}.{rid}: support must be one of {SUPPORT_VALUES}")
+        scale = p.get("scale", 1.0)
+        if not isinstance(scale, (int, float)) or not np.isfinite(scale) or scale <= 0:
+            raise ManifestError(f"{oid}.{rid}: scale must be a finite number > 0")
+        met = model.exchange_metabolite(rid)
+        if p.get("metabolite") and p["metabolite"] != met:
+            raise ManifestError(f"{oid}.{rid}: declared metabolite {p['metabolite']} but the exchange "
+                                f"acts on {met}")
+        pf, mf = pool_mets[p["pool"]].get("formula"), model.met_formula.get(met)
+        if pf and mf and pf != mf:
+            raise ManifestError(f"{oid}.{rid}: formula {mf} of {met} differs from pool "
+                                f"{p['pool']} formula {pf}")
+        if p.get("support", "unknown") not in cfg["open_ports_with_support"]:
+            by_policy.append(rid)
+    ko = set(spec.get("knockouts", []))
+    for rid in ko:
+        if rid not in model.rxn_index:
+            raise ManifestError(f"{oid}: knockout reaction not in model: {rid}")
+    return Organism(oid, model, model.sha256, model.rxn_index[bio_id], maint, ports, closed, ko,
+                    ext, sorted(by_policy))
+
+
 def load_organisms(manifest: dict[str, Any], base_dir: Path, cfg: dict[str, Any]) -> list[Organism]:
     pool_mets, _, _ = validate_pool(manifest)
     specs = manifest.get("organisms", [])
@@ -154,52 +207,7 @@ def load_organisms(manifest: dict[str, Any], base_dir: Path, cfg: dict[str, Any]
         if spec.get("biomass_units") != BIOMASS_UNITS:
             raise ManifestError(f"{oid}: declare biomass_units '{BIOMASS_UNITS}' "
                                 "(biomass reaction normalised to 1 gDW)")
-        bio_id, _ = resolve_objective(model, {"objectives": {"biomass": spec.get("biomass")}})
-        maint = spec.get("maintenance")
-        if maint != "none" and not (isinstance(maint, dict) and {"reaction", "lower_bound"} <= set(maint)):
-            raise ManifestError(f"{oid}: maintenance must be {{reaction, lower_bound}} or 'none' (explicit)")
-        if maint != "none" and maint["reaction"] not in model.rxn_index:
-            raise ManifestError(f"{oid}: maintenance reaction not in model")
-        ext_comp = set(spec.get("extracellular_compartments", ["e"]))
-        ports = spec.get("ports", {})
-        closed = set(spec.get("closed_ports", []))
-        ext = {r for r in model.rxn_ids if model.is_single_metabolite(r)
-               and model.met_compartment[model.exchange_metabolite(r)] in ext_comp}
-        missing = sorted(ext - set(ports) - closed)
-        if missing:
-            raise ManifestError(f"{oid}: exchanges neither mapped to the pool nor closed (hidden open "
-                                f"boundary rejected): {missing}")
-        for rid in set(ports) | closed:
-            if rid not in ext:
-                raise ManifestError(f"{oid}: {rid} is not a single-metabolite exchange on an "
-                                    f"extracellular species")
-        if set(ports) & closed:
-            raise ManifestError(f"{oid}: ports both mapped and closed: {sorted(set(ports) & closed)}")
-        by_policy = []
-        for rid, p in ports.items():
-            if p.get("pool") not in pool_mets:
-                raise ManifestError(f"{oid}.{rid}: unknown pool metabolite {p.get('pool')}")
-            if p.get("support", "unknown") not in SUPPORT_VALUES:
-                raise ManifestError(f"{oid}.{rid}: support must be one of {SUPPORT_VALUES}")
-            scale = p.get("scale", 1.0)
-            if not isinstance(scale, (int, float)) or not np.isfinite(scale) or scale <= 0:
-                raise ManifestError(f"{oid}.{rid}: scale must be a finite number > 0")
-            met = model.exchange_metabolite(rid)
-            if p.get("metabolite") and p["metabolite"] != met:
-                raise ManifestError(f"{oid}.{rid}: declared metabolite {p['metabolite']} but the exchange "
-                                    f"acts on {met}")
-            pf, mf = pool_mets[p["pool"]].get("formula"), model.met_formula.get(met)
-            if pf and mf and pf != mf:
-                raise ManifestError(f"{oid}.{rid}: formula {mf} of {met} differs from pool "
-                                    f"{p['pool']} formula {pf}")
-            if p.get("support", "unknown") not in cfg["open_ports_with_support"]:
-                by_policy.append(rid)
-        ko = set(spec.get("knockouts", []))
-        for rid in ko:
-            if rid not in model.rxn_index:
-                raise ManifestError(f"{oid}: knockout reaction not in model: {rid}")
-        orgs.append(Organism(oid, model, model.sha256, model.rxn_index[bio_id], maint, ports, closed, ko,
-                             ext, sorted(by_policy)))
+        orgs.append(build_organism(oid, model, spec, pool_mets, cfg))
     return orgs
 
 
@@ -232,6 +240,19 @@ def _direction_close(model: Model, lb: np.ndarray, ub: np.ndarray, rid: str, dir
         raise ManifestError(f"unknown port direction: {direction}")
 
 
+_COO_CACHE: dict[int, tuple[Model, tuple[np.ndarray, np.ndarray, np.ndarray]]] = {}
+
+
+def _block_coo(m: Model) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Row, column, value triplets of a model's stoichiometry (cached; the matrix is never mutated)."""
+    hit = _COO_CACHE.get(id(m))
+    if hit is None or hit[0] is not m:
+        coo = m.S.tocoo()
+        hit = (m, (coo.row.astype(np.int64), coo.col.astype(np.int64), coo.data.astype(float)))
+        _COO_CACHE[id(m)] = hit
+    return hit[1]
+
+
 def build_lp(orgs: list[Organism], alphas: dict[str, float], supply: dict[str, float],
              removal: dict[str, float], closures: list[tuple[str, str, str]] | None = None,
              knockouts: dict[str, set[str]] | None = None) -> CommunityLP:
@@ -254,15 +275,18 @@ def build_lp(orgs: list[Organism], alphas: dict[str, float], supply: dict[str, f
     for o in orgs:
         m = o.model
         offset = len(col_names)
+        row0 = len(rows)
         for r in m.met_ids:
             row(f"{o.id}::{r}")
         lb, ub = m.lb.copy(), m.ub.copy()
-        coo = m.S.tocoo()
-        for i, j, v in zip(coo.row, coo.col, coo.data):
-            entries.append((row(f"{o.id}::{m.met_ids[i]}"), offset + int(j), float(v)))
+        # organism metabolite rows are contiguous from row0; the COO triplets are cached per model
+        coo = _block_coo(m)
+        entries.extend(zip((coo[0] + row0).tolist(), (coo[1] + offset).tolist(), coo[2].tolist()))
         # single-metabolite reactions that are not ports (sinks, demands, drains): no uptake
-        for rid in m.rxn_ids:
-            if m.is_single_metabolite(rid) and rid not in o.ext:
+        single = np.flatnonzero(np.diff(m.S.indptr) == 1)       # same test as Model.is_single_metabolite
+        for j in single:
+            rid = m.rxn_ids[int(j)]
+            if rid not in o.ext:
                 close_uptake(m, lb, ub, rid)
         for rid in o.closed | set(o.ports_closed_by_policy):
             lb[m.rxn_index[rid]] = ub[m.rxn_index[rid]] = 0.0
@@ -337,6 +361,31 @@ def transfers(lp: CommunityLP, x: np.ndarray, orgs: dict[str, Organism], tol: fl
                                                 for o in set(prod) | set(cons)},
                           "units": "mmol/gDW_community/h"})
     return net, cross, env
+
+
+def solve_common_growth(solver: BudgetedSolver, lp: CommunityLP, label: str,
+                        growth_threshold: float) -> dict[str, Any]:
+    """Maximise the common growth rate mu of an LP built by ``build_lp`` under a shared solver budget.
+
+    Same semantics as ``Analysis.growth``: infeasibility under the fixed maintenance is reported as
+    ``infeasible_with_maintenance`` (never silently as zero growth); solver errors and an exhausted
+    budget are ``inconclusive``/``skipped_budget`` with no growth value."""
+    solver.model = SimpleNamespace(S=lp.S)
+    if solver.remaining < 1:
+        return {"status": "skipped_budget", "outcome": "not_run", "mu": None, "call": None,
+                "note": f"solver budget of {solver.max_calls} calls exhausted"}
+    c = np.zeros(len(lp.col_names))
+    c[lp.mu_col] = -1.0
+    r = solver.optimize(c, lp.lb, lp.ub, label)
+    if r.status == "infeasible":
+        return {"status": "completed", "outcome": "infeasible_with_maintenance", "mu": None, "call": r.call,
+                "note": "no steady state satisfies maintenance and balanced growth constraints"}
+    if r.status != "optimal":
+        return {"status": "inconclusive", "outcome": f"solver_{r.status}", "mu": None, "call": r.call,
+                "note": r.note}
+    mu = max(0.0, -r.objective)
+    return {"status": "completed", "outcome": "growth" if mu >= growth_threshold else "no_growth",
+            "mu": mu, "call": r.call, "note": ""}
 
 
 class Analysis:
