@@ -54,7 +54,7 @@ COMETS_REPO = ("jeremymchacon", "comets_protocols")
 PMC_BLOCKED_NOTE = "PMC serves a proof-of-work HTML page to scripted clients; it is not solved or bypassed"
 
 # kind -> magic check
-EXPECT = {"zip": "zip", "xml": "xml", "text": "text", "json": "json"}
+EXPECT = {"zip": "zip", "xml": "xml", "text": "text", "json": "json", "gzip": "gzip"}
 
 SOURCES: list[dict[str, Any]] = [
     {"id": "plos2026_supplement_zip", "filename": "PMC13345470_supplementary.zip", "expect": "zip",
@@ -80,9 +80,43 @@ SOURCES: list[dict[str, Any]] = [
      "github": (*AUX_REPO, "scripts/01_rfba_multi_carbon.py"), "license": "not declared in repository",
      "role": "design-pipeline medium (ALWAYS_OPEN, O2, carbon uptake) and CARBON_SOURCES; read with ast, never executed",
      "origin": "author repository"},
+    {"id": "aux_design_knockout_utils", "filename": "knockout_utils.py", "expect": "text",
+     "github": (*AUX_REPO, "src/knockout_utils.py"), "license": "not declared in repository",
+     "role": "authors' knockout-stage constants (ATPM_MAINT, O2_RATE, UPTAKE_RATE) and closure application; read with ast, never executed",
+     "origin": "author repository"},
+    {"id": "aux_design_script_03_single_knockout", "filename": "03_single_knockout.py", "expect": "text",
+     "github": (*AUX_REPO, "scripts/03_single_knockout.py"), "license": "not declared in repository",
+     "role": "authors' single-knockout stage (documents that closures and medium come from knockout_utils); not parsed",
+     "origin": "author repository"},
+    {"id": "wintermute2010_supplement_zip", "filename": "PMC2964121_supplementary.zip", "expect": "zip",
+     "urls": [f"{EPMC}/PMC2964121/supplementaryFiles"], "doi": "10.1038/msb.2010.66", "pmcid": "PMC2964121",
+     "license": "CC-BY-NC-SA (Mol Syst Biol open access; verify in the article)",
+     "strain": "E. coli K-12 Keio single-gene deletion pairs in co-culture",
+     "role": "measured_coculture_growth (alternative established community dataset: measured growth in explicit minimal media)",
+     "origin": "Europe PMC supplementary-files service for an open-access article"},
+    {"id": "wintermute2010_fulltext_xml", "filename": "PMC2964121_fulltext.xml", "expect": "xml",
+     "urls": [f"{EPMC}/PMC2964121/fullTextXML"], "doi": "10.1038/msb.2010.66", "pmcid": "PMC2964121",
+     "license": "see article", "role": "protocol: media, strains, growth read-out and thresholds of the co-culture experiment",
+     "origin": "Europe PMC full text"},
+    {"id": "harcombe2014_epmc_supplement", "filename": "PMC4097880_supplementary.zip", "expect": "zip",
+     "urls": [f"{EPMC}/PMC4097880/supplementaryFiles"], "doi": "10.1016/j.celrep.2014.03.070", "pmcid": "PMC4097880",
+     "license": "unknown", "role": "measured co-culture growth (Harcombe et al. 2014)",
+     "origin": "Europe PMC supplementary-files service (attempt; the article is reported as not open access)"},
+    {"id": "harcombe2014_epmc_fulltext", "filename": "PMC4097880_fulltext.xml", "expect": "xml",
+     "urls": [f"{EPMC}/PMC4097880/fullTextXML"], "doi": "10.1016/j.celrep.2014.03.070", "pmcid": "PMC4097880",
+     "license": "unknown", "role": "protocol and figure/table source for measured co-culture growth",
+     "origin": "Europe PMC full text (attempt)"},
+    {"id": "mibig4_json_tar", "filename": "mibig_json_4.0.tar.gz", "expect": "gzip",
+     "urls": ["https://dl.secondarymetabolites.org/mibig/mibig_json_4.0.tar.gz"], "doi": "10.1093/nar/gkac1050",
+     "license": "CC0 (MIBiG data, verify at mibig.secondarymetabolites.org)",
+     "role": "characterised secondary-metabolite production: curated BGC to compound records with organism and evidence "
+             "type (positive observations only; no negatives, no titers)",
+     "origin": "MIBiG repository download service"},
     {"id": "monk2017_dataset11_xlsx", "filename": "Monk2017_Supplementary_Data_set_11.xlsx", "expect": "zip",
      "urls": ["https://pmc.ncbi.nlm.nih.gov/articles/instance/6521705/bin/NIHMS1000327-supplement-Supplementary_Data_set_11.xlsx",
-              f"{EPMC}/PMC6521705/supplementaryFiles"],
+              f"{EPMC}/PMC6521705/supplementaryFiles",
+              "https://europepmc.org/articles/PMC6521705/bin/NIHMS1000327-supplement-Supplementary_Data_set_11.xlsx",
+              "https://static-content.springer.com/esm/art%3A10.1038%2Fnbt.3956/MediaObjects/41587_2018_BFnbt3956_MOESM11_ESM.xlsx"],
      "doi": "10.1038/nbt.3956", "pmcid": "PMC6521705", "license": "unknown (author manuscript)",
      "strain": "E. coli K-12 Keio collection (BW25113 parent)",
      "role": "measured_growth_and_knockout_profiles", "origin": "PMC author manuscript supplement",
@@ -116,9 +150,24 @@ UNAVAILABLE = [
      "role": "measured co-culture growth and species ratios (E. coli metB, S. enterica, M. extorquens)",
      "status": "unavailable",
      "reason": "article is not open access in Europe PMC (no supplementary-files service); PMC pages are behind a "
-               "proof-of-work page; no deposited machine-readable measurement table located in the author "
-               "repositories reached. No values are filled in.",
+               "proof-of-work page; Europe PMC supplementary and full-text services answer 'not open access' / HTTP 500 "
+               "(attempts in attempt_log); the Harcombe-lab repositories reached (jeremymchacon/comets_protocols, "
+               "Dryad/Zenodo 10.5061/dryad.5jk4d) hold COMETS model and layout inputs only, not measured growth. "
+               "No values are filled in.",
      "needed": "per-condition growth / species ratios from the paper's figures or source-data files, with units"},
+    {"id": "monk2017_keio_growth_profiles", "doi": "10.1038/nbt.3956", "pmcid": "PMC6521705",
+     "role": "measured Keio growth / knockout profiles on 16 media (Supplementary Data set 11) and the models (data set 1)",
+     "status": "blocked",
+     "reason": "PMC serves a proof-of-work page (not solved or bypassed); Europe PMC lists the manuscript as not open access; "
+               "europepmc.org and static-content.springer.com return HTTP 403; nature.com returns a bot-check page; no author "
+               "mirror located (GitHub, Zenodo, figshare searches empty).",
+     "needed": "Supplementary Data set 11 from a publisher or author repository that serves it without a challenge"},
+    {"id": "secondary_metabolite_negative_or_quantitative_observations", "doi": None, "pmcid": None,
+     "role": "measured non-production or titres of secondary metabolites under stated conditions",
+     "status": "unavailable",
+     "reason": "MIBiG (acquired) records positive characterised production only; no public primary source with measured "
+               "negatives, titres or media was located within the time-box. Absence from MIBiG is not evidence of non-production.",
+     "needed": "organism x compound x condition observations with explicit negatives"},
 ]
 
 
@@ -170,6 +219,8 @@ def classify_payload(body: bytes, expect: str) -> tuple[bool, str]:
     if expect == "xml":
         ok = head.startswith((b"<?xml", b"<sbml", b"<article", b"<!doctype article"))
         return (ok and b"errorbean" not in head[:1500], "xml expected")
+    if expect == "gzip":
+        return (body[:2] == b"\x1f\x8b", "gzip magic missing")
     if expect == "json":
         return (body.lstrip()[:1] in (b"{", b"["), "json expected")
     if expect == "text":
@@ -238,9 +289,31 @@ def fetch_source(src: dict[str, Any], outdir: Path, opener: Opener = default_ope
 
 def acquire(outdir: Path, opener: Opener = default_opener, only: list[str] | None = None, force: bool = False) -> dict[str, Any]:
     outdir = Path(outdir)
-    records = [fetch_source(s, outdir / "raw", opener, force) for s in SOURCES if not only or s["id"] in only]
-    manifest = {"schema": SCHEMA, "generated_utc": utc_now(), "sources": records, "unavailable": UNAVAILABLE}
-    (outdir / "acquisition_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    mpath = outdir / "acquisition_manifest.json"
+    prior = json.loads(mpath.read_text(encoding="utf-8")) if mpath.exists() else {}
+    old = {s["id"]: s for s in prior.get("sources", [])}
+    log = list(prior.get("attempt_log", []))          # every attempt of every run is kept, failed ones included
+    if "attempt_log" not in prior:                    # manifests written before the log existed: seed it
+        log = [{"id": s["id"], "retrieved_utc": s.get("retrieved_utc"), "final_status": s.get("status"), **a}
+               for s in prior.get("sources", []) for a in s.get("attempts", [])]
+    fresh = {}
+    for s in SOURCES:
+        if only and s["id"] not in only:
+            continue
+        rec = fetch_source(s, outdir / "raw", opener, force)
+        if rec.get("cached") and s["id"] in old:      # nothing was fetched this run: keep the original audit trail
+            rec["attempts"], rec["retrieved_utc"] = old[s["id"]].get("attempts", []), old[s["id"]].get("retrieved_utc")
+        else:
+            log += [{"id": s["id"], "retrieved_utc": rec["retrieved_utc"], "final_status": rec["status"], **a}
+                    for a in rec["attempts"]]
+        fresh[s["id"]] = rec
+    order = [s["id"] for s in SOURCES]
+    merged = {**old, **fresh}
+    records = [merged[i] for i in order if i in merged] + [v for k, v in merged.items() if k not in order]
+    manifest = {**{k: v for k, v in prior.items() if k not in ("sources", "unavailable", "attempt_log")},
+                "schema": SCHEMA, "generated_utc": utc_now(), "sources": records, "unavailable": UNAVAILABLE,
+                "attempt_log": log}
+    mpath.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 
 
@@ -568,6 +641,277 @@ def model_meta(idx: dict[str, Any], design: dict[str, Any], model_path: Path) ->
             "units": "mmol/gDW/h"}
 
 
+# --------------------------------------------------------------------------- protocol correction
+
+PROTOCOL_SCHEMA = "gspa.v3.metabolic_protocol/1"
+CONSTRAINT_SCHEMA = "gspa.v3.condition_constraint/1"
+LEGACY_ID, UNREG_ID, REG_ID = "legacy_repository_defaults", "manuscript_unregulated", "manuscript_regulatory"
+PROTOCOL_SOURCES = ["plos2026_fulltext_xml", "aux_design_knockout_utils"]
+RATE_UNITS = "mmol/gDW/h"
+
+
+def _strip_tags(xml_text: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", xml_text)).strip()
+
+
+def extract_manuscript_protocol(fulltext: Path) -> dict[str, Any]:
+    """ATP maintenance, carbon and oxygen uptake as stated in the paper's Methods 2.1 (quoted, never assumed)."""
+    text = _strip_tags(Path(fulltext).read_text(encoding="utf-8"))
+    m = re.search(r"[^.]*non-growth associated ATP maintenance of\s*([\d.]+)[^.]*?carbon substrate uptake of\s*([\d.]+)"
+                  r"[^.]*?oxygen uptake of\s*([\d.]+)[^.]*\.", text)
+    if not m:
+        raise SchemaError("full text no longer states ATP maintenance / carbon uptake / oxygen uptake in one sentence")
+    r = re.search(r"Transcriptional regulatory constraints were incorporated using regulatory flux balance analysis.{0,1800}?"
+                  r"provided in S2 Table\s*\.", text)
+    return {"atpm": float(m.group(1)), "carbon_uptake": float(m.group(2)), "oxygen_uptake": float(m.group(3)),
+            "units": RATE_UNITS, "quote": re.sub(r"\s+", " ", m.group(0)).strip(),
+            "regulatory_methods_quote": r.group(0) if r else None, "section": "Methods 2.1 and 2.2"}
+
+
+def parse_knockout_utils(path: Path) -> dict[str, Any]:
+    """Constants of the authors' knockout stage (the code that applies the closures); read with ast only."""
+    tree = ast.parse(Path(path).read_text(encoding="utf-8"))
+    found: dict[str, Any] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and node.targets[0].id in ("UPTAKE_RATE", "O2_RATE", "ATPM_MAINT", "ALWAYS_OPEN"):
+            found[node.targets[0].id] = ast.literal_eval(node.value)
+    if set(found) != {"UPTAKE_RATE", "O2_RATE", "ATPM_MAINT", "ALWAYS_OPEN"}:
+        raise SchemaError("knockout_utils.py no longer exposes UPTAKE_RATE / O2_RATE / ATPM_MAINT / ALWAYS_OPEN")
+    return {"carbon_uptake": float(found["UPTAKE_RATE"]), "oxygen_uptake": float(found["O2_RATE"]),
+            "atpm": float(found["ATPM_MAINT"]), "always_open": sorted(found["ALWAYS_OPEN"])}
+
+
+def load_regulatory_closures(supp_zip: Path, idx: dict[str, Any]) -> dict[str, Any]:
+    """S1/S2 -> per-substrate closures keyed by the model exchange id.
+
+    Only rows flagged ``applied`` are closed (the authors' ``load_off_reactions`` keeps exactly those); rows
+    flagged ``relaxed_FlagB`` were relaxed to preserve viability and are recorded, not closed."""
+    z = zipfile.ZipFile(supp_zip)
+    s1n = next((n for n in z.namelist() if n.endswith("s001.xlsx")), None)
+    s2n = next((n for n in z.namelist() if n.endswith("s002.xlsx")), None)
+    if not s1n or not s2n:
+        raise SchemaError("S1/S2 workbooks not found in supplement")
+    s1_bytes, s2_bytes = z.read(s1n), z.read(s2n)
+    h1, s1 = read_sheet(s1_bytes)
+    h2, s2 = read_sheet(s2_bytes)
+    for need, have, name in ((["condition", "condition_type", "exchange_id", "wt_growth", "rfba_growth", "n_applied",
+                                "n_relaxed_FlagB"], h1, "S1"),
+                             (["carbon_source", "exchange_id", "reaction_id", "off_genes", "flag"], h2, "S2")):
+        if [c for c in need if c not in have]:
+            raise SchemaError(f"{name} lacks columns {[c for c in need if c not in have]}")
+    subs: dict[str, dict[str, Any]] = {}
+    for r in s2:
+        ex = "R_" + str(r["exchange_id"])
+        e = subs.setdefault(ex, {"exchange": ex, "name": str(r["carbon_source"]), "closed": {}, "relaxed": {}})
+        rid = "R_" + str(r["reaction_id"])
+        target = e["closed"] if r["flag"] == "applied" else e["relaxed"] if r["flag"] == "relaxed_FlagB" else None
+        if target is None:
+            raise SchemaError(f"S2 flag {r['flag']!r} is neither applied nor relaxed_FlagB")
+        target[rid] = [g.strip() for g in str(r.get("off_genes") or "").split(";") if g.strip()]
+    ref = {("R_" + str(r["exchange_id"])): r for r in s1 if r["condition_type"] == "carbon_substrate" and r["exchange_id"]}
+    out: dict[str, Any] = {}
+    for ex, e in sorted(subs.items()):
+        in_model = lambda rids: [x for x in sorted(rids) if x in idx["reactions"]]  # noqa: E731
+        closed, relaxed = sorted(e["closed"]), sorted(e["relaxed"])
+        s1r = ref.get(ex)
+        out[ex] = {
+            "substrate_name": e["name"], "exchange": ex, "exchange_in_model": ex in idx["reactions"],
+            "closed_reactions": in_model(closed), "closed_reactions_missing_from_model": sorted(set(closed) - set(in_model(closed))),
+            "relaxed_not_closed": relaxed, "off_genes": {r: e["closed"][r] for r in in_model(closed)},
+            "s1_n_applied": s1r["n_applied"] if s1r else None, "s1_n_relaxed": s1r["n_relaxed_FlagB"] if s1r else None,
+            "s1_counts_agree_with_s2": bool(s1r and s1r["n_applied"] == len(closed) and s1r["n_relaxed_FlagB"] == len(relaxed)),
+            "paper_reported_growth": {"unregulated": num(s1r["wt_growth"]) if s1r else None,
+                                      "regulated": num(s1r["rfba_growth"]) if s1r else None, "units": "1/h"},
+        }
+    return {"substrates": out, "s1_sha256": sha256_bytes(s1_bytes), "s2_sha256": sha256_bytes(s2_bytes),
+            "unique_closed_reactions": len({r for e in subs.values() for r in e["closed"]}),
+            "unique_relaxed_reactions": len({r for e in subs.values() for r in e["relaxed"]})}
+
+
+def protocol_definitions(paper: dict[str, Any], authors_code: dict[str, Any], design: dict[str, Any],
+                         idx: dict[str, Any], src_sha: dict[str, str]) -> dict[str, Any]:
+    atpm_default = (idx["reactions"].get("R_ATPM") or {}).get("lb")
+    legacy = {"atpm": atpm_default, "oxygen_uptake": abs(design["o2_lower_bound"]),
+              "carbon_uptake": abs(design["carbon_uptake_lower_bound"])}
+    prov_paper = {"source": "plos2026_fulltext_xml", "sha256": src_sha.get("plos2026_fulltext_xml"), "quote": paper["quote"]}
+    prov_code = {"source": "aux_design_knockout_utils", "sha256": src_sha.get("aux_design_knockout_utils"),
+                 "constants": "ATPM_MAINT / O2_RATE / UPTAKE_RATE"}
+    discrepancies = []
+    for k, label in (("atpm", "ATP maintenance"), ("oxygen_uptake", "oxygen uptake"), ("carbon_uptake", "carbon uptake")):
+        if paper[k] != authors_code[k]:
+            discrepancies.append({"parameter": k, "paper_text": paper[k], "authors_knockout_code": authors_code[k],
+                                  "note": f"{label} differs between manuscript text and the authors' knockout code"})
+        if paper[k] != legacy[k]:
+            discrepancies.append({"parameter": k, "manuscript": paper[k], "legacy_repository_default": legacy[k],
+                                  "note": f"the frozen legacy run used {legacy[k]} for {label}; the manuscript specifies {paper[k]}"})
+    return {
+        "schema": PROTOCOL_SCHEMA, "units": RATE_UNITS,
+        "protocols": {
+            LEGACY_ID: {"role": "registered baseline, frozen; NOT the paper configuration", "atpm": legacy["atpm"],
+                        "oxygen_uptake": legacy["oxygen_uptake"], "carbon_uptake": legacy["carbon_uptake"], "regulatory_closures": False,
+                        "provenance": {"oxygen_uptake": "design script 01 set_medium(): EX_o2_e lower bound",
+                                       "carbon_uptake": "design script 01 set_medium(): uptake_rate default",
+                                       "atpm": "iML1515 model default ATPM lower bound (script 01 never sets it)"},
+                        "engine_support": "supported", "case_file": "cases.jsonl"},
+            UNREG_ID: {"role": "manuscript conditions without regulatory closures", "atpm": paper["atpm"],
+                       "oxygen_uptake": paper["oxygen_uptake"], "carbon_uptake": paper["carbon_uptake"], "regulatory_closures": False,
+                       "provenance": {"paper": prov_paper, "authors_code": prov_code},
+                       "engine_support": "supported (media, maintenance bound, gene knockouts)",
+                       "case_file": "cases_manuscript_unregulated.jsonl"},
+            REG_ID: {"role": "manuscript conditions plus substrate-specific regulatory reaction closures (rFBA, S2 Table)",
+                     "atpm": paper["atpm"], "oxygen_uptake": paper["oxygen_uptake"], "carbon_uptake": paper["carbon_uptake"],
+                     "regulatory_closures": True,
+                     "provenance": {"paper": prov_paper, "authors_code": prov_code, "closures": "S2 Table (see regulatory_closures.json)"},
+                     "engine_support": "unsupported_until_wired: baseline-condition reaction closures are not implemented in "
+                                       "scripts/metabolic_experiments.py; records carry typed sidecar constraints and no runnable manifest",
+                     "case_file": "cases_manuscript_regulatory.jsonl"},
+        },
+        "closure_semantics": "reaction lower and upper bound set to 0 (both directions) in the wild-type control AND the knockout "
+                             "under the same substrate (authors' prepare_condition/apply_regulatory_off); only S2 rows flagged "
+                             "'applied'; 'relaxed_FlagB' rows are not closed",
+        "authors_code_constants": authors_code, "design_script_constants": legacy,
+        "closure_derivation_conditions": "S2 was generated by design script 01 under O2 15 and the model-default ATPM, whereas the "
+                                         "manuscript text and the authors' knockout code apply them at O2 20 / ATPM 8.39; that "
+                                         "mismatch is in the primary sources and is not resolved here",
+        "discrepancies": discrepancies,
+        "always_open_script01_vs_knockout_utils": {"script01_only": sorted(set(design["always_open"]) - set(authors_code["always_open"])),
+                                                   "knockout_utils_only": sorted(set(authors_code["always_open"]) - set(design["always_open"]))},
+        "tuning_note": "parameters are transcribed from the paper and the authors' code; none was chosen or adjusted using the "
+                       "measured labels",
+    }
+
+
+def _identity(row: dict[str, Any]) -> dict[str, Any]:
+    """The only fields of a row that may influence a protocol manifest or its constraints (never a label)."""
+    return {k: row[k] for k in ("case_id", "locus_tag", "substrate_exchange")}
+
+
+def protocol_meta(meta: dict[str, Any], proto: dict[str, Any]) -> dict[str, Any]:
+    out = json.loads(json.dumps(meta))
+    out["baseline_medium"][meta["o2_exchange"]] = float(proto["oxygen_uptake"])
+    out["baseline_medium"][meta["glucose_exchange"]] = float(proto["carbon_uptake"])
+    out["carbon_uptake"] = float(proto["carbon_uptake"])
+    out["maintenance"] = {"reaction": "R_ATPM", "lower_bound": float(proto["atpm"])}
+    return out
+
+
+def build_protocol_manifest(ident: dict[str, Any], model_file: str, model_sha256: str, meta: dict[str, Any], protocol_id: str) -> dict[str, Any]:
+    """Label-free experiment manifest; same matched wild-type / knockout structure as the frozen legacy manifests."""
+    hid = "H_" + re.sub(r"[^A-Za-z0-9_]", "_", ident["case_id"])
+    ex = ident["substrate_exchange"]
+    return {
+        "model": model_file, "model_sha256_expected": model_sha256,
+        "config": {"strategy": "fixed", "seed": 0, "max_experiments": 2, "max_solver_calls": 30,
+                   "uptake_rate": meta["carbon_uptake"], "panel": [f"carbon_source:{ex}", f"knockout:{hid}@{ex}"]},
+        "baseline": {"exchanges": meta["exchanges"], "medium": meta["baseline_medium"],
+                     "carbon_exchanges": [meta["glucose_exchange"]], "nitrogen_exchanges": [], "oxygen_exchange": meta["o2_exchange"]},
+        "objectives": {"biomass": meta["biomass"], "maintenance": meta["maintenance"]},
+        "context": {"hypotheses": [{"id": hid, "gene": ident["locus_tag"], "condition": {"carbon_exchange": ex}}],
+                    "evidence": [{"id": "E_" + hid, "type": "transport", "hypothesis_id": None,
+                                  "substrate_exchange": ex, "role": "carbon"}]},
+        "benchmark": {"case_id": ident["case_id"], "protocol": protocol_id, "independent_function_recovery": False,
+                      "note": "phenotype test only; no label is stored in this manifest"},
+    }
+
+
+def build_closure_constraint(ident: dict[str, Any], closure: dict[str, Any] | None, hashes: dict[str, str]) -> dict[str, Any]:
+    """Typed sidecar constraint for the regulatory protocol; ``status`` says what is or is not usable."""
+    base = {"schema": CONSTRAINT_SCHEMA, "type": "regulatory_reaction_closure", "protocol": REG_ID,
+            "substrate_exchange": ident["substrate_exchange"], "applies_to": ["wild_type_control", "knockout"],
+            "bounds": {"lower": 0.0, "upper": 0.0, "units": RATE_UNITS},
+            "engine_support": "unsupported_until_wired",
+            "wiring_requirement": "set lower=upper=0 on every closed reaction in the baseline condition of BOTH matched "
+                                  "experiments before the knockout is applied; do not encode as a gene knockout",
+            "source": {"table": "S2 (PLOS Comput Biol 10.1371/journal.pcbi.1014469, PMC13345470)", **hashes}}
+    if closure is None:
+        return {**base, "status": "excluded", "reason": "no S2 closure set for this substrate exchange",
+                "closed_reactions": []}
+    if closure["closed_reactions_missing_from_model"]:
+        return {**base, "status": "excluded", "reason": "S2 closes reactions that are absent from the model: "
+                + ",".join(closure["closed_reactions_missing_from_model"]), "closed_reactions": []}
+    return {**base, "status": "fully_specified", "closed_reactions": closure["closed_reactions"],
+            "relaxed_not_closed": closure["relaxed_not_closed"], "n_closed": len(closure["closed_reactions"])}
+
+
+def canonical_digest(obj: Any) -> str:
+    return sha256_bytes(json.dumps(obj, sort_keys=True, separators=(",", ":")).encode())
+
+
+def build_protocol_cases(rows: list[dict[str, Any]], model_file: str, meta: dict[str, Any], defs: dict[str, Any],
+                         closures: dict[str, Any], src_sha: dict[str, str]) -> dict[str, list[dict[str, Any]]]:
+    """Case records per protocol.  Inclusion depends only on gene and substrate mapping, never on a label.
+
+    Unregulated: runnable manifest.  Regulatory: sidecar constraint plus ``manifest_without_closures`` under a key the
+    runner does not read, so an unwired runner cannot silently execute it as an unregulated case."""
+    hashes = {"s1_sha256": closures["s1_sha256"], "s2_sha256": closures["s2_sha256"]}   # member hashes: the zip is not byte-stable
+    out: dict[str, list[dict[str, Any]]] = {UNREG_ID: [], REG_ID: []}
+    for row in rows:
+        if not (row["locus_tag"] and row["substrate_exchange"]):
+            continue
+        ident = _identity(row)
+        for pid in (UNREG_ID, REG_ID):
+            proto = defs["protocols"][pid]
+            man = build_protocol_manifest(ident, model_file, meta["model_sha256"], protocol_meta(meta, proto), pid)
+            rec: dict[str, Any] = {"case": row, "protocol": pid,
+                                   "protocol_parameters": {k: proto[k] for k in ("atpm", "oxygen_uptake", "carbon_uptake")}}
+            if pid == UNREG_ID:
+                rec["manifest"] = man
+                rec["inputs_sha256"] = canonical_digest({"manifest": man})
+            else:
+                con = build_closure_constraint(ident, closures["substrates"].get(row["substrate_exchange"]), hashes)
+                rec.update(manifest_without_closures=man, constraints=[con], execution_status="unsupported_until_wired",
+                           inputs_sha256=canonical_digest({"manifest": man, "constraints": [con]}))
+                if con["status"] != "fully_specified":
+                    rec["execution_status"] = "excluded:" + con["reason"]
+            out[pid].append(rec)
+    return out
+
+
+def build_protocols(outdir: Path, manifest: dict[str, Any], idx: dict[str, Any], design: dict[str, Any],
+                    rows: list[dict[str, Any]], meta: dict[str, Any], model_path: Path) -> dict[str, Any]:
+    """Write the manuscript-protocol artifacts next to (never over) the frozen legacy exports."""
+    status = {s["id"]: s for s in manifest["sources"]}
+    absent = [n for n in PROTOCOL_SOURCES if status.get(n, {}).get("status") != "ok"]
+    if absent:
+        return {"status": "not_built", "reason": f"required protocol sources not acquired: {absent}"}
+    out = Path(outdir) / "derived"
+    paper = extract_manuscript_protocol(Path(status["plos2026_fulltext_xml"]["file"]))
+    authors = parse_knockout_utils(Path(status["aux_design_knockout_utils"]["file"]))
+    closures = load_regulatory_closures(Path(status["plos2026_supplement_zip"]["file"]), idx)
+    src_sha = {k: v.get("sha256") for k, v in status.items()}
+    defs = protocol_definitions(paper, authors, design, idx, src_sha)
+    defs["manuscript_methods_quote"] = paper["regulatory_methods_quote"]
+    defs["legacy_cases_sha256"] = sha256_file(out / "cases.jsonl")
+    cases = build_protocol_cases(rows, str(model_path), meta, defs, closures, src_sha)
+    for pid, recs in cases.items():
+        with open(out / defs["protocols"][pid]["case_file"], "w", encoding="utf-8") as fh:
+            for r in recs:
+                fh.write(json.dumps(r) + "\n")
+    (out / "protocol_registry.json").write_text(json.dumps(defs, indent=2), encoding="utf-8")
+    (out / "regulatory_closures.json").write_text(json.dumps(closures, indent=2), encoding="utf-8")
+    reg = cases[REG_ID]
+    return {"status": "built", "parameters": {k: {p: v[p] for p in ("atpm", "oxygen_uptake", "carbon_uptake")}
+                                              for k, v in defs["protocols"].items()},
+            "discrepancies": len(defs["discrepancies"]),
+            "unregulated_cases": len(cases[UNREG_ID]),
+            "regulatory_cases_fully_specified": sum(r["execution_status"] == "unsupported_until_wired" for r in reg),
+            "regulatory_cases_excluded": {r["case"]["case_id"]: r["execution_status"] for r in reg
+                                          if r["execution_status"] != "unsupported_until_wired"},
+            "distinct_closure_sets": len({tuple(r["constraints"][0]["closed_reactions"]) for r in reg}),
+            "closure_counts_agree_with_s1": all(c["s1_counts_agree_with_s2"] for c in closures["substrates"].values()),
+            "unique_closed_reactions_across_substrates": closures["unique_closed_reactions"],
+            "paper_states_unique_off_reactions": 303}
+
+
+def register_derived(outdir: Path) -> None:
+    """Re-hash every file under derived/ into the acquisition manifest (adapters call this after writing)."""
+    mpath = Path(outdir) / "acquisition_manifest.json"
+    manifest = json.loads(mpath.read_text(encoding="utf-8"))
+    manifest["derived_sha256"] = {p.name: sha256_file(p) for p in sorted((Path(outdir) / "derived").iterdir()) if p.is_file()}
+    mpath.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+
 def normalize(outdir: Path) -> dict[str, Any]:
     outdir = Path(outdir)
     raw = outdir / "raw"
@@ -607,6 +951,7 @@ def normalize(outdir: Path) -> dict[str, Any]:
     registry = community_registry(manifest, raw)
     (out / "community_registry.json").write_text(json.dumps(registry, indent=2), encoding="utf-8")
     report = quality_report(manifest, res, rows, meta, idx)
+    report["protocols"] = build_protocols(outdir, manifest, idx, design, rows, meta, model_path)
     report["community"]["registry"] = {k: v for k, v in registry["models"].items()}
     (out / "quality_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     derived = {p.name: sha256_file(p) for p in sorted(out.iterdir())}
@@ -643,6 +988,9 @@ def community_registry(manifest: dict[str, Any], raw: Path) -> dict[str, Any]:
             "measured_phenotypes": {u["id"]: {"status": u["status"], "reason": u["reason"], "needed": u["needed"]}
                                     for u in manifest["unavailable"]},
             "comparable_experimental_phenotypes_registered": 0,
+            "alternative_measured_community_dataset": "Wintermute & Silver 2010 (doi 10.1038/msb.2010.66): measured pairwise "
+                                                      "co-culture growth of 46 Keio auxotrophs in M9 glucose; see "
+                                                      "prepare_wintermute_coculture.py (a different system from Harcombe 2014)",
             "limitation": "a static balanced-growth model cannot validate the spatial / temporal dynamics of the "
                           "published co-culture; only comparable endpoint phenotypes could be registered, and none "
                           "has been acquired"}
