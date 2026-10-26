@@ -88,4 +88,20 @@ class PortalTest(unittest.TestCase):
         self.assertEqual(self.client.get('/examples/ecoli/status.json').status_code,404)
         self.assertEqual(self.client.get('/examples/missing').status_code,404)
 
+    def test_ledger_summary_and_artifact_only_after_completion(self):
+        job = self.upload('>p\nMKT').json()
+        folder = jobs.ROOT/job['id']
+        (folder/'gspa_out').mkdir()
+        (folder/'gspa_out/integrated.tsv.stages.json').write_text(json.dumps({'stages': [{'name': 'dark_matter', 'status': 'skipped', 'reason': 'disabled'}], 'final_changes': []}))
+        self.assertNotIn('ledger', self.client.get('/api/jobs/'+job['id']).json())
+        self.assertEqual(self.client.get('/api/jobs/'+job['id']+'/ledger').status_code,409)
+        jobs.state(folder,status='complete')
+        summary = self.client.get('/api/jobs/'+job['id']).json()['ledger']
+        self.assertTrue(summary['available'])
+        self.assertEqual(summary['net']['functions'],0)
+        self.assertEqual(self.client.get('/api/jobs/'+job['id']+'/ledger').status_code,200)
+        (folder/'gspa_out/integrated.tsv.stages.json').unlink()
+        self.assertFalse(self.client.get('/api/jobs/'+job['id']).json()['ledger']['available'])
+        self.assertEqual(self.client.get('/api/jobs/'+job['id']+'/ledger').status_code,404)
+
 if __name__=='__main__': unittest.main()

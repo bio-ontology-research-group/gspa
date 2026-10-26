@@ -23,6 +23,7 @@ each step see [concepts](../concepts/index.md).
 | Use DeepGO-PlusPlus as the per-protein base predictor | [DeepGO-PlusPlus base predictor](deepgo-plusplus.md) | `annotate --base-predictor light` |
 | Score, compare and report annotation sets | [Evaluate, compare, report](evaluate-compare-report.md) | `evaluate`, `compare`, `report` |
 | Browse one annotated genome in a single HTML file | [Interactive browser](visualize.md) | `visualize` |
+| See what each integration stage changed, with evidence and uncertainty | [Prediction ledger](prediction-ledger.md) | `visualize` |
 | Run predictors and integration on a cluster | [Nextflow and HPC](nextflow-hpc.md) | `nextflow run gspa-nf/main.nf` |
 | Offer genome annotation over HTTP | [Web service](web-service.md) | `POST /annotate` |
 

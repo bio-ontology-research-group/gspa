@@ -559,6 +559,256 @@ def conf_band(p: float) -> str:
     return "spec"
 
 # ---------------------------------------------------------------------------
+# 7b. Prediction ledger read model
+#
+# The shared workflow writes `<integrated.tsv>.stages.json`: per-stage status and
+# the (protein, function) probability changes each stage made. This section turns
+# it into browser rows. Changes describe predictions, never correctness; accuracy
+# needs independent labels. The baseline is the output of evidence integration
+# (priors included), not a sequence-only baseline, unless the ledger says so.
+
+CATALYTIC_ROOT = "GO:0003824"   # catalytic activity
+COMPLEX_ROOT = "GO:0032991"     # protein-containing complex
+ENZYME_CLASSES = ("ec_complete", "ec_partial", "go_catalytic")
+CLASS_LABELS = {
+    "ec_complete": "Complete EC number",
+    "ec_partial": "Partial EC number",
+    "go_catalytic": "GO catalytic activity (by ontology ancestry)",
+    "go_complex": "GO protein-containing complex (not an enzyme)",
+    "go_other": "Other GO term (not catalytic)",
+    "other": "Other function type",
+    "unknown": "Unknown (ontology hierarchy unavailable)",
+}
+STAGE_LABELS = {
+    "evidence_integration": "Evidence integration",
+    "dark_matter": "Dark-matter suggestions",
+    "reaction_context": "Reaction-local context",
+    "cross_genome": "Cross-genome rescoring",
+    "symbolic_enforcement": "Symbolic constraint enforcement",
+    "metabolic_refinement": "Metabolic (FBA) refinement",
+    "agent_completion": "Agent completion",
+}
+STAGE_STATUSES = ("executed", "skipped", "failed", "not_run")
+BASELINE_LABELS = {
+    "after_evidence_integration": "After evidence integration, including priors and context (not a sequence-only baseline)",
+    "sequence_only": "Sequence-only evidence",
+}
+CHANGE_KINDS = ("added", "removed", "increased", "decreased")
+EC_RE = re.compile(r"^EC:(\d+)\.(\d+|-)\.(\d+|-)\.(\d+|-|n\d+)$")
+PLACEHOLDER_PRODUCT = re.compile(
+    r"^\s*(hypothetical|putative uncharacteri[sz]ed|uncharacteri[sz]ed|predicted (cds|protein)|"
+    r"unknown protein|supplied protein|domain of unknown function|duf\d+)", re.I)
+
+
+def load_go_hierarchy(path):
+    """is_a parents, namespaces and alt ids from go.obo; None when no terms were read."""
+    parents, ns, alt = {}, {}, {}
+    cur = None   # None outside a [Term] stanza
+    def flush():
+        if cur and cur.get("id") and not cur.get("obsolete"):
+            parents[cur["id"]] = set(cur["parents"])
+            ns[cur["id"]] = cur.get("ns", "")
+            for a in cur["alts"]: alt[a] = cur["id"]
+    try:
+        fh = open(path)
+    except OSError:
+        return None
+    with fh:
+        for line in fh:
+            line = line.rstrip()
+            if line.startswith("["):
+                flush()
+                cur = {"parents": [], "alts": []} if line == "[Term]" else None
+            elif cur is None:
+                continue
+            elif line.startswith("id: GO:"): cur["id"] = line[4:].strip()
+            elif line.startswith("alt_id: GO:"): cur["alts"].append(line[8:].strip())
+            elif line.startswith("namespace: "): cur["ns"] = line[11:].strip()
+            elif line.startswith("is_a: GO:"): cur["parents"].append(line[6:].split()[0])
+            elif line == "is_obsolete: true": cur["obsolete"] = True
+        flush()
+    return {"parents": parents, "ns": ns, "alt": alt} if parents else None
+
+
+class EnzymeClassifier:
+    """Enzyme status from an explicit EC number or GO ancestry, never from a term's label.
+
+    Without a usable hierarchy a GO term is `unknown`; it is not guessed from its name.
+    """
+    def __init__(self, hierarchy=None):
+        self.h = hierarchy
+        self.usable = bool(hierarchy) and CATALYTIC_ROOT in hierarchy["parents"]
+        self._anc = {}
+
+    def ancestors(self, term):
+        term = self.h["alt"].get(term, term)
+        if term in self._anc: return self._anc[term]
+        seen, todo = {term}, [term]
+        while todo:
+            for parent in self.h["parents"].get(todo.pop(), ()):
+                if parent not in seen: seen.add(parent); todo.append(parent)
+        self._anc[term] = seen
+        return seen
+
+    def classify(self, ftype, fid):
+        fid = (fid or "").strip()
+        if ftype == "EC" or fid.startswith("EC:"):
+            m = EC_RE.match(fid if fid.startswith("EC:") else "EC:" + fid)
+            if not m: return "unknown"
+            return "ec_complete" if "-" not in m.groups() else "ec_partial"
+        if ftype != "GO" and not fid.startswith("GO:"): return "other"
+        if not self.usable: return "unknown"
+        term = self.h["alt"].get(fid, fid)
+        if term not in self.h["parents"]: return "unknown"
+        anc = self.ancestors(term)
+        if CATALYTIC_ROOT in anc: return "go_catalytic"
+        if COMPLEX_ROOT in anc: return "go_complex"
+        return "go_other"
+
+
+def is_placeholder_product(product):
+    """A placeholder product name is the absence of a name, not independent function evidence."""
+    return not (product or "").strip() or bool(PLACEHOLDER_PRODUCT.match(product))
+
+
+def summarize_ledger_rows(rows):
+    """Counts by unique (protein, function) and by protein; shared by exports and the browser."""
+    def count(sub):
+        return {"actions": len(sub), "functions": len({r["k"] for r in sub}), "proteins": len({r["p"] for r in sub})}
+    out = {**count(rows), "by_change": {c: count([r for r in rows if r["c"] == c]) for c in CHANGE_KINDS}}
+    enzyme = [r for r in rows if r["cls"] in ENZYME_CLASSES]
+    out["enzyme"] = {**count(enzyme),
+                     "by_change": {c: count([r for r in enzyme if r["c"] == c]) for c in CHANGE_KINDS},
+                     "by_class": {k: count([r for r in enzyme if r["cls"] == k]) for k in ENZYME_CLASSES}}
+    out["unknown_class"] = count([r for r in rows if r["cls"] == "unknown"])
+    out["complex_not_enzyme"] = count([r for r in rows if r["cls"] == "go_complex"])
+    return out
+
+
+def read_suggestions(run_dir):
+    """Optional suggestion tables next to the run; None means no table was written."""
+    files = sorted(set(run_dir.glob("*suggestions*.tsv")))
+    if not files: return None
+    out = []
+    for path in files:
+        with open(path) as fh:
+            header = fh.readline().rstrip("\n").split("\t")
+            for line in fh:
+                f = line.rstrip("\n").split("\t")
+                if len(f) < len(header): f += [""] * (len(header) - len(f))
+                r = dict(zip(header, f))
+                try: cand = json.loads(r.get("candidate_probabilities") or "{}")
+                except ValueError: cand = {}
+                try: unassigned = float(r["unassigned_probability"]) if r.get("unassigned_probability", "") != "" else None
+                except ValueError: unassigned = None
+                roles = None
+                for col in ("role_scores", "roles"):
+                    if r.get(col):
+                        try: roles = json.loads(r[col])
+                        except ValueError: roles = r[col]
+                out.append({"file": path.name, "kind": r.get("kind", ""), "f": r.get("function_id", ""),
+                            "src": r.get("source", ""), "reaction": r.get("reaction_id", ""),
+                            "pathway": r.get("pathway_id", ""), "prov": r.get("provenance", ""),
+                            "ids": [x for x in (r.get("protein_ids") or "").split(",") if x],
+                            "cand": cand, "unassigned": unassigned, "roles": roles,
+                            "score": float(r["suggestion_score"]) if r.get("suggestion_score") else None})
+    return out
+
+
+def build_ledger(stages_path, integrated_rows, classifier, protein_products, annos, suggestions, predictor_names=None):
+    """Browser payload for the prediction ledger; `status: unavailable` when none was written.
+
+    integrated_rows: rows of integrated.tsv; annos: integrator annotations with their sources/priors;
+    protein_products: {protein_id: product}.
+    """
+    base = {"status": "unavailable", "artifact": Path(str(stages_path)).name}
+    if not Path(stages_path).is_file():
+        return {**base, "reason": "No stage ledger was written for this run (for example, a legacy run). "
+                "Prediction changes are unavailable, not zero."}
+    try:
+        raw = json.loads(Path(stages_path).read_text())
+        if not isinstance(raw, dict) or not isinstance(raw.get("stages"), list): raise ValueError("no stage list")
+    except ValueError as exc:
+        return {**base, "reason": f"The stage ledger could not be read ({exc}). Prediction changes are unavailable."}
+    prov = {}
+    for a in annos:
+        if a.get("tool_only"): continue
+        prov[(a["protein_id"], a["type"], a["term"])] = a
+    row_post = {(r["protein_id"], r["type"], r["function_id"]): r["posterior_prob"] for r in integrated_rows}
+
+    def to_row(stage, ch):
+        key = ch.get("function_key") or "|".join((ch.get("protein_id", ""), ch.get("function_type", ""), ch.get("function_id", "")))
+        pid, ftype, fid = ch.get("protein_id", ""), ch.get("function_type", ""), ch.get("function_id", "")
+        row = {"s": stage, "k": key, "p": pid, "t": ftype, "f": fid, "c": ch.get("change"),
+               "b": ch.get("before_probability"), "a": ch.get("after_probability"),
+               "cls": classifier.classify(ftype, fid)}
+        for opt in ("role", "role_scores", "reason"):
+            if ch.get(opt) is not None: row[opt] = ch[opt]
+        p = prov.get((pid, ftype, fid))
+        if p: row["pri"] = p["priors"]; row["src"] = [(predictor_names or {}).get(i, str(i)) for i, _ in p["src"]]
+        return row
+
+    stages, rows = [], []
+    by_name = {s.get("name"): s for s in raw["stages"] if isinstance(s, dict)}
+    order = list(STAGE_LABELS) + [n for n in by_name if n not in STAGE_LABELS]
+    for name in order:
+        s = by_name.get(name)
+        status = s.get("status") if s else "not_run"
+        rec = {"name": name, "label": STAGE_LABELS.get(name, name),
+               "status": status if status in STAGE_STATUSES else "unknown",
+               "reported_status": status, "reason": (s or {}).get("reason"),
+               "elapsed": (s or {}).get("elapsed_seconds"),
+               "input_candidates": (s or {}).get("input_candidates"),
+               "output_candidates": (s or {}).get("output_candidates"),
+               "notes": {k: v for k, v in (s or {}).items() if k not in (
+                   "name", "status", "reason", "changes", "elapsed_seconds", "input_candidates", "output_candidates")}}
+        if s and s.get("status") == "executed":
+            changes = s.get("changes") or []
+            if name == "evidence_integration":
+                rec["candidates_created"] = len(changes)   # creation of the baseline, not a change to it
+            else:
+                srows = [to_row(name, ch) for ch in changes]
+                rows.extend(srows)
+                rec["summary"] = summarize_ledger_rows(srows)
+        stages.append(rec)
+    final = [to_row("net", ch) for ch in raw.get("final_changes") or []]
+    rows.extend(final)
+
+    kind = raw.get("baseline_kind") or "after_evidence_integration"
+    # Reconcile the ledger against the exported table, row by row.
+    mismatched = []
+    for r in final:
+        exported = row_post.get((r["p"], r["t"], r["f"]))
+        if r["a"] is None:
+            if exported is not None: mismatched.append({"k": r["k"], "ledger": None, "exported": exported})
+        elif exported is None or abs(exported - r["a"]) > 1e-6:
+            mismatched.append({"k": r["k"], "ledger": r["a"], "exported": exported})
+    stage_keys = {r["k"] for r in rows if r["s"] not in ("net",)}
+    recon = {"ledger_final_candidates": raw.get("final_candidates"), "exported_rows": len(integrated_rows),
+             "counts_match": raw.get("final_candidates") == len(integrated_rows),
+             "net_changes_without_stage_action": sorted({r["k"] for r in final} - stage_keys)[:50],
+             "probability_mismatches": mismatched[:50], "n_probability_mismatches": len(mismatched)}
+
+    # Alternatives: other functions of the same protein, plus suggestion candidates joined by protein id.
+    known = set(protein_products)
+    sugg, unmatched = [], 0
+    for s in suggestions or []:
+        joined = sorted(set(s["ids"]) | set(s["cand"]))
+        s = {**s, "joined": [p for p in joined if p in known], "unmatched": [p for p in joined if p not in known]}
+        unmatched += len(s["unmatched"])
+        sugg.append(s)
+    placeholders = sorted(p for p, name in protein_products.items() if is_placeholder_product(name))
+    return {**base, "status": "available", "schema_version": raw.get("schema_version"),
+            "interpretation": raw.get("interpretation") or "Prediction changes are not measurements of accuracy.",
+            "baseline": {"kind": kind, "label": BASELINE_LABELS.get(kind, kind), "sequence_only": kind == "sequence_only",
+                         "candidates": raw.get("baseline_candidates")},
+            "final_candidates": raw.get("final_candidates"), "stages": stages, "rows": rows,
+            "net": summarize_ledger_rows(final), "reconciliation": recon,
+            "suggestions": None if suggestions is None else sugg, "suggestion_ids_unmatched": unmatched,
+            "placeholder_products": placeholders, "class_labels": CLASS_LABELS}
+
+
+# ---------------------------------------------------------------------------
 # 8. Pretty predictor labels
 
 PREDICTOR_LABELS = {
@@ -771,6 +1021,7 @@ def build_browser_payload(proteins_dict, operons, bgcs, amr_rows, fasta_path: Pa
 def main():
     print("Loading go.obo ...", flush=True)
     go = load_go_obo(GO_OBO)
+    classifier = EnzymeClassifier(load_go_hierarchy(GO_OBO))
     print(f"  {len(go)} GO terms (incl. alt_ids)", flush=True)
 
     print("Loading ec2go names ...", flush=True)
@@ -814,6 +1065,8 @@ def main():
                              RUN_DIR / "provenance.json",
                              predictor_dict)
     print(f"  {len(annos)} (protein, function) hypotheses from integrator", flush=True)
+    # Snapshot before sidecar overlays: those add sources but never change an integrated posterior.
+    integrated_snapshot = [dict(a, src=[list(x) for x in a["src"]]) for a in annos]
 
     # ---- Merge sidecar predictor outputs (mDeepFRI, ProteInfer, CLEAN)
     # If (pid, term) is already in the integrator set: append the tool to
@@ -1010,9 +1263,9 @@ def main():
                         p["membrane"] = True
                     if "extracellular" in low or "periplasm" in low or "secreted" in low or "cell surface" in low:
                         p["secreted"] = True
-                if a["aspect"] == "F" and a["term"] not in ("GO:0003674", "GO:0005488", "GO:0003824"):
-                    if "activity" in low and ("catalytic" in low or "ase" in low or "lyase" in low or "transferase" in low or "ligase" in low or "hydrolase" in low or "kinase" in low or "synthase" in low or "reductase" in low or "oxidoreductase" in low or "dehydrogenase" in low or "isomerase" in low):
-                        p["enzyme"] = True
+            # enzyme status: explicit EC number or GO ancestry under catalytic activity, never the label
+            if a["post"] >= 0.5 and classifier.classify(a["type"], a["term"]) in ENZYME_CLASSES:
+                p["enzyme"] = True
             if a["post"] > p["max_post"]:
                 p["max_post"] = a["post"]
             if a["aspect"] in p["aspects"]:
@@ -1081,7 +1334,15 @@ def main():
 
     # ----- Build compact JSON payload
     # Compact GO dictionary: include only terms referenced
-    used_terms = set(a["term"] for a in annos)
+    ledger = build_ledger(
+        Path(str(RUN_DIR / "integrated.tsv") + ".stages.json"),
+        [{"protein_id": a["protein_id"], "type": a["type"], "function_id": a["term"], "posterior_prob": a["post"]}
+         for a in integrated_snapshot],
+        classifier, {pid: p.get("product", "") for pid, p in proteins.items()}, integrated_snapshot,
+        read_suggestions(RUN_DIR), {idx: name for name, idx in predictor_dict.items()})
+    # Removed functions are not in the final table but still need readable names in the ledger.
+    ledger_terms = {r["f"] for r in ledger.get("rows", [])} | {s["f"] for s in ledger.get("suggestions") or []}
+    used_terms = set(a["term"] for a in annos) | ledger_terms
     go_dict = {}
     for t in used_terms:
         if t in go:
@@ -1144,7 +1405,7 @@ def main():
         ])
 
     # Compact EC name dictionary (only for ECs that appear in annotations)
-    used_ecs = set(a["term"] for a in annos if a["term"].startswith("EC:"))
+    used_ecs = {t for t in used_terms if t.startswith("EC:")}
     ec_dict = {ec: ec_name[ec] for ec in used_ecs if ec in ec_name}
 
     def optional_number(value, convert=float):
@@ -1208,6 +1469,7 @@ def main():
         },
         "modules": modules_report,
         "predictors": predictors_data,
+        "ledger": ledger,
         "go": go_dict,
         "ec": ec_dict,
         "proteins": proteins_compact,
@@ -1247,6 +1509,8 @@ def main():
             "n_membrane": sum(1 for p in proteins.values() if p.get("membrane")),
             "n_secreted": sum(1 for p in proteins.values() if p.get("secreted")),
             "n_enzyme": sum(1 for p in proteins.values() if p.get("enzyme")),
+            "enzyme_basis": "explicit EC number or GO ancestry under catalytic activity (GO:0003824)"
+                if classifier.usable else "explicit EC number only; GO ancestry unavailable, so GO terms are not classified",
             "n_with_ipr": sum(1 for p in proteins.values() if p.get("ipr_count", 0) > 0),
         },
         "build": {
@@ -1653,6 +1917,7 @@ TEMPLATE = r"""<!doctype html>
   <button data-tab="pathways">Pathways</button>
   <button data-tab="special">Special features</button>
   <button data-tab="metabolism">Metabolism</button>
+  <button data-tab="ledger">Prediction ledger</button>
   <button data-tab="quality">Quality assessment</button>
   <button data-tab="pipeline">Evidence sources</button>
 </nav>
@@ -1871,6 +2136,7 @@ TEMPLATE = r"""<!doctype html>
   </section>
 
   <section id="tab-metabolism"><div class="panel"><h3>Can the reconstructed network support biomass production?</h3><div id="metabolism-body"></div></div></section>
+  <section id="tab-ledger"><div class="panel"><h3>How did each stage change the predictions?</h3><div id="ledger-body"></div></div></section>
   <section id="tab-quality">
     <div class="grid-2">
       <div class="panel">
@@ -1944,6 +2210,7 @@ TEMPLATE = r"""<!doctype html>
   </div>
   <p class="detail-help">Integrated scores combine the supplied evidence and biological assumptions. Tool-only scores are shown separately. Highlighted annotations match your search.</p>
   <div id="d-annos"></div>
+  <div id="d-ledger"></div>
 </aside>
 
 <script>
@@ -2045,6 +2312,7 @@ document.querySelectorAll("nav.tabs button").forEach((btn, index) => {
     if (btn.dataset.tab === "special" && !sec.dataset.rendered) renderSpecial(sec);
     if (btn.dataset.tab === "metabolism" && !sec.dataset.rendered) renderMetabolism(sec);
     if (btn.dataset.tab === "quality" && !sec.dataset.rendered) renderQuality(sec);
+    if (btn.dataset.tab === "ledger" && !sec.dataset.rendered) renderLedger(sec);
     if (btn.dataset.tab === "pipeline" && !sec.dataset.rendered) renderPipeline(sec);
     if (btn.dataset.tab === "operons" && !sec.dataset.rendered) renderOperons(sec);
     if (btn.dataset.tab === "pathways" && !sec.dataset.rendered) renderPathways(sec);
@@ -2401,6 +2669,7 @@ function openDetail(pid, keepThresh) {
   }
   if (total === 0) h = '<p class="small">' + (DETAIL_THRESH.v > 0 ? 'No integrated annotations meet this threshold. Lower the threshold to inspect the available evidence.' : 'No functional annotations are available for this protein. This does not mean it has no biological function.') + '</p>';
   document.getElementById("d-annos").innerHTML = h;
+  document.getElementById("d-ledger").innerHTML = ledgerTraceHtml(p);
   document.getElementById("detail").classList.add("open");
   document.getElementById("detail").setAttribute("aria-hidden","false");
   document.getElementById("detail").inert = false;
@@ -3098,6 +3367,166 @@ function renderPipeline(sec) {
       '<div style="width:120px; text-align:right;"><b>'+p.n_claims.toLocaleString()+'</b> <span class="small">support hits</span></div>' +
     '</div>').join("");
   document.getElementById("build-date").textContent = DATA.build.generated;
+}
+
+// ----- Prediction ledger
+// LEDGER-CORE-BEGIN
+const LEDGER_ENZYME = ["ec_complete", "ec_partial", "go_catalytic"];
+const LEDGER_CHANGES = ["added", "removed", "increased", "decreased"];
+// Counts by unique (protein, function) and by protein, from the same rows the table lists.
+function ledgerCount(rows) {
+  const c = sub => ({actions: sub.length, functions: new Set(sub.map(r => r.k)).size, proteins: new Set(sub.map(r => r.p)).size});
+  const byChange = sub => Object.fromEntries(LEDGER_CHANGES.map(k => [k, c(sub.filter(r => r.c === k))]));
+  const enzyme = rows.filter(r => LEDGER_ENZYME.includes(r.cls));
+  return Object.assign(c(rows), {
+    by_change: byChange(rows),
+    enzyme: Object.assign(c(enzyme), {by_change: byChange(enzyme),
+      by_class: Object.fromEntries(LEDGER_ENZYME.map(k => [k, c(enzyme.filter(r => r.cls === k))]))}),
+    unknown_class: c(rows.filter(r => r.cls === "unknown")),
+    complex_not_enzyme: c(rows.filter(r => r.cls === "go_complex")),
+  });
+}
+// f: {view: "net" | stage name, change: "" | kind, group: "" | "enzyme" | class, query: text, label: id -> name}
+function ledgerFilter(rows, f) {
+  const q = (f.query || "").trim().toLowerCase();
+  return rows.filter(r => {
+    if (r.s !== (f.view || "net")) return false;
+    if (f.change && r.c !== f.change) return false;
+    if (f.group === "enzyme" ? !LEDGER_ENZYME.includes(r.cls) : (f.group && r.cls !== f.group)) return false;
+    return !q || [r.p, r.f, f.label ? f.label(r.f) : ""].join(" ").toLowerCase().includes(q);
+  });
+}
+// LEDGER-CORE-END
+const LEDGER = DATA.ledger || {status: "unavailable", reason: "This browser was built without a stage ledger. Prediction changes are unavailable, not zero."};
+const LEDGER_ROWS = LEDGER.rows || [];
+const LEDGER_CLASS = LEDGER.class_labels || {};
+const LEDGER_STATUS = {executed: "Executed", skipped: "Skipped", failed: "Failed", not_run: "Not run", unknown: "Unrecognised status"};
+const ledgerName = id => id.indexOf("EC:") === 0 ? ((DATA.ec || {})[id] || "") : ((DATA.go[id] || [""])[0]);
+const ledgerProb = v => v == null ? "—" : Number(v).toFixed(3);
+const ledgerView = {state: {view: "net", change: "", group: "", query: "", page: 0}};
+let ledgerMatches = [], ledgerUrl;
+function ledgerCell(c) { return c.functions.toLocaleString() + " <span class=\"small\">(" + c.proteins.toLocaleString() + " proteins)</span>"; }
+function ledgerFlags(r) {
+  if (r.cls === "go_complex") return "GO complex, not an enzyme";
+  if (r.cls === "ec_partial") return "Partial EC, not a complete enzyme assignment";
+  return LEDGER_CLASS[r.cls] || r.cls;
+}
+function ledgerRoleText(r) {
+  if (r.role == null && r.role_scores == null) return "";
+  return "Role: " + escapeHtml(typeof r.role_scores === "object" ? JSON.stringify(r.role_scores) : String(r.role_scores ?? r.role));
+}
+function ledgerSuggestionHtml(s, onlyProtein) {
+  const ids = onlyProtein ? [onlyProtein] : s.joined;
+  const cand = ids.map(id => '<li><span class="mono">' + escapeHtml(id) + '</span> · ' + ledgerProb(s.cand[id]) + '</li>').join("");
+  const missing = s.unmatched.length ? '<div class="small">Candidate IDs not in this genome (not joined): ' + s.unmatched.map(escapeHtml).join(", ") + '</div>' : "";
+  const unassigned = s.unassigned == null ? "Not reported by this source (a legacy suggestion is not zero probability)" : ledgerProb(s.unassigned);
+  return '<div class="anno"><div class="term-row"><span class="label">' + escapeHtml(ledgerName(s.f) || s.f) + '</span><span class="mono">' + escapeHtml(s.f) + '</span><span class="chip predictor">' + escapeHtml(s.src || s.kind) + '</span></div>' +
+    '<ul class="small" style="margin:4px 0 4px 18px">' + cand + '</ul>' +
+    '<div class="small"><b>Not assigned to any candidate:</b> ' + unassigned + '</div>' + missing +
+    (s.roles != null ? '<div class="small">Role scores: ' + escapeHtml(typeof s.roles === "object" ? JSON.stringify(s.roles) : s.roles) + '</div>' : '') +
+    '<div class="small">' + escapeHtml(s.prov || "") + '</div></div>';
+}
+function ledgerTraceHtml(p) {
+  if (LEDGER.status !== "available") return "";
+  let h = '<div class="aspect-block"><h3>Prediction trace</h3>';
+  const rows = LEDGER_ROWS.filter(r => r.p === p.i && r.s !== "net");
+  if (!rows.length) h += '<p class="small">No later stage changed a prediction for this protein.</p>';
+  for (const r of rows) {
+    const stage = (LEDGER.stages.find(s => s.name === r.s) || {}).label || r.s;
+    h += '<div class="anno"><div class="term-row"><span class="label">' + escapeHtml(ledgerName(r.f) || r.f) + '</span><span class="mono">' + escapeHtml(r.f) + '</span>' +
+      '<span class="chip">' + escapeHtml(r.c) + ' · ' + ledgerProb(r.b) + ' → ' + ledgerProb(r.a) + '</span></div>' +
+      '<div class="small">' + escapeHtml(stage) + ' · ' + escapeHtml(ledgerFlags(r)) + ' ' + ledgerRoleText(r) + '</div>' +
+      '<div class="small">Sources: ' + (r.src && r.src.length ? r.src.map(escapeHtml).join(", ") : 'none recorded') +
+      ' · Priors: ' + (r.pri && Object.keys(r.pri).length ? Object.entries(r.pri).map(([k, v]) => escapeHtml(k) + ' ' + Number(v).toFixed(2)).join(", ") : 'none') + '</div></div>';
+  }
+  const alts = (ANNOS_BY_P[DATA.proteins.indexOf(p)] || []).filter(a => !a[6]).sort((a, b) => b[3] - a[3]);
+  if (alts.length > 1) h += '<p class="small"><b>Function alternatives for this protein:</b> ' + alts.slice(0, 8).map(a => escapeHtml(a[1]) + ' ' + a[3].toFixed(2)).join(" · ") + '</p>';
+  for (const s of LEDGER.suggestions || []) if (s.joined.includes(p.i)) h += ledgerSuggestionHtml(s, p.i);
+  if ((LEDGER.placeholder_products || []).includes(p.i)) h += '<p class="small">The product name is a placeholder. It is not independent evidence of function.</p>';
+  return h + '</div>';
+}
+function renderLedger(sec) {
+  sec.dataset.rendered = "1";
+  const box = document.getElementById("ledger-body");
+  if (LEDGER.status !== "available") {
+    box.innerHTML = '<p role="status"><b>Prediction ledger unavailable.</b> ' + escapeHtml(LEDGER.reason || "") + '</p>';
+    return;
+  }
+  const recon = LEDGER.reconciliation || {};
+  const reconBad = !recon.counts_match || recon.n_probability_mismatches > 0 || (recon.net_changes_without_stage_action || []).length > 0;
+  let h = '<p>' + escapeHtml(LEDGER.interpretation) + ' Changed predictions are not shown to be more correct; that needs independent benchmark truth.</p>' +
+    '<p><b>Baseline:</b> ' + escapeHtml(LEDGER.baseline.label) + '. ' + (LEDGER.baseline.candidates == null ? "" : LEDGER.baseline.candidates.toLocaleString() + ' (protein, function) candidates at baseline; ') +
+    (LEDGER.final_candidates == null ? "" : LEDGER.final_candidates.toLocaleString() + ' in the final export.') + '</p>' +
+    '<p class="small" role="status">' + (reconBad ? '<b>Ledger and exported table disagree:</b> ' + (recon.counts_match ? "" : 'candidate counts differ (' + recon.ledger_final_candidates + ' ledger vs ' + recon.exported_rows + ' exported rows). ') + recon.n_probability_mismatches + ' final probabilities differ; ' + (recon.net_changes_without_stage_action || []).length + ' net changes have no stage action.'
+      : 'Reconciled: the ledger final count equals the ' + recon.exported_rows.toLocaleString() + ' exported rows, and every net final probability matches the export.') + '</p>';
+  h += '<p class="small">Counts are unique (protein, function) pairs with unique proteins in parentheses. A protein with several GO terms counts once per protein. Enzyme-related means an explicit EC number or a GO term below catalytic activity (GO:0003824) in the ontology, not a name match.</p>';
+  h += '<div style="overflow-x:auto"><table class="amr-table"><thead><tr><th>Stage</th><th>Status</th><th>Added</th><th>Removed</th><th>Increased</th><th>Decreased</th><th>Enzyme-related changes</th></tr></thead><tbody>';
+  for (const st of LEDGER.stages) {
+    const executedChanges = st.status === "executed" && st.name !== "evidence_integration";
+    const c = executedChanges ? ledgerCount(LEDGER_ROWS.filter(r => r.s === st.name)) : null;
+    const notes = Object.entries(st.notes || {}).map(([k, v]) => escapeHtml(k + "=" + v)).join("; ");
+    h += '<tr><td>' + escapeHtml(st.label) + '</td><td>' + LEDGER_STATUS[st.status] + (st.status === "unknown" ? " (" + escapeHtml(st.reported_status) + ")" : "") +
+      (st.reason ? '<div class="small">' + escapeHtml(st.reason) + '</div>' : '') + (notes ? '<div class="small">' + notes + '</div>' : '') + '</td>' +
+      (c ? LEDGER_CHANGES.map(k => '<td>' + ledgerCell(c.by_change[k]) + '</td>').join("") + '<td>' + ledgerCell(c.enzyme) +
+        (c.complex_not_enzyme.functions ? '<div class="small">' + c.complex_not_enzyme.functions + ' GO complex term(s), not enzymes</div>' : '') +
+        (c.unknown_class.functions ? '<div class="small">' + c.unknown_class.functions + ' unclassified (ontology unavailable)</div>' : '') + '</td>'
+        : '<td colspan="5" class="small">' + (st.name === "evidence_integration" && st.status === "executed" ? (st.candidates_created || 0).toLocaleString() + ' candidates created; this stage defines the baseline' : 'No changes recorded: stage did not complete') + '</td>') + '</tr>';
+  }
+  h += '</tbody></table></div>';
+  const meta = ((DATA.ledger.stages.find(s => s.name === "metabolic_refinement") || {}).notes) || {};
+  if (Object.keys(meta).length) h += '<p class="small"><b>Metabolic stage assumptions:</b> medium ' + escapeHtml(meta.medium ?? "not recorded") + ', biomass template ' + escapeHtml(meta.gram ?? "not recorded") + '. Feasibility is conditional on these assumptions, not an observation.</p>';
+  const views = [["net", LEDGER.baseline.sequence_only ? "Sequence-only → final" : "Evidence-integrated baseline → final"]].concat(LEDGER.stages.filter(s => s.status === "executed" && s.name !== "evidence_integration").map(s => [s.name, s.label + " only"]));
+  h += '<h3 style="margin-top:20px">Changed predictions</h3><div class="filter-bar">' +
+    '<label for="lg-view">View <select id="lg-view">' + views.map(v => '<option value="' + escapeHtml(v[0]) + '">' + escapeHtml(v[1]) + '</option>').join("") + '</select></label>' +
+    '<label for="lg-change">Change <select id="lg-change"><option value="">All</option>' + LEDGER_CHANGES.map(k => '<option>' + k + '</option>').join("") + '</select></label>' +
+    '<label for="lg-group">Function class <select id="lg-group"><option value="">All</option><option value="enzyme">Enzyme-related (EC or catalytic GO)</option><option value="ec_complete">Complete EC</option><option value="ec_partial">Partial EC</option><option value="go_catalytic">GO catalytic activity</option><option value="go_complex">GO complex (not enzyme)</option><option value="go_other">Other GO</option><option value="unknown">Unknown class</option></select></label>' +
+    '<label for="lg-search">Find <input type="search" id="lg-search" placeholder="Protein or function…"></label>' +
+    '<button class="secondary-button" id="lg-download">Download filtered rows (TSV)</button>' +
+    '<button class="secondary-button" id="lg-json">Download ledger (JSON)</button></div>' +
+    '<p id="lg-count" class="small" role="status" aria-live="polite"></p>' +
+    '<div style="overflow-x:auto"><table class="amr-table"><thead><tr><th>Protein</th><th>Function</th><th>Class</th><th>Change</th><th>Probability</th><th>Evidence</th></tr></thead><tbody id="lg-rows"></tbody></table></div>' +
+    '<div class="results-toolbar"><button class="secondary-button" id="lg-prev">Previous</button><span id="lg-page"></span><button class="secondary-button" id="lg-next">Next</button></div>';
+  if (LEDGER.suggestions == null) h += '<h3 style="margin-top:20px">Function alternatives</h3><p class="small">No suggestion table was written for this run, so candidate alternatives are unavailable.</p>';
+  else {
+    h += '<h3 style="margin-top:20px">Function alternatives and the not-assigned outcome</h3><p class="small">Each suggestion divides probability among candidate proteins and a separate not-assigned outcome. Context ranks candidates; it does not establish enzyme presence.' +
+      (LEDGER.suggestion_ids_unmatched ? ' ' + LEDGER.suggestion_ids_unmatched + ' candidate ID(s) are not genome proteins and were not joined.' : '') + '</p>' +
+      (LEDGER.suggestions.slice(0, 200).map(s => ledgerSuggestionHtml(s)).join("") || '<p class="small">The suggestion table is empty.</p>');
+  }
+  box.innerHTML = h;
+  const read = () => Object.assign(ledgerView.state, {view: document.getElementById("lg-view").value, change: document.getElementById("lg-change").value,
+    group: document.getElementById("lg-group").value, query: document.getElementById("lg-search").value});
+  for (const id of ["lg-view", "lg-change", "lg-group", "lg-search"]) document.getElementById(id).addEventListener(id === "lg-search" ? "input" : "change", () => { read(); ledgerView.state.page = 0; updateLedger(); });
+  document.getElementById("lg-prev").addEventListener("click", () => { ledgerView.state.page--; updateLedger(); });
+  document.getElementById("lg-next").addEventListener("click", () => { ledgerView.state.page++; updateLedger(); });
+  document.getElementById("lg-rows").addEventListener("click", e => { const b = e.target.closest("[data-lg-protein]"); if (b) openDetail(b.dataset.lgProtein); });
+  const save = (text, name, type) => {
+    if (ledgerUrl) URL.revokeObjectURL(ledgerUrl);
+    ledgerUrl = URL.createObjectURL(new Blob([text], {type}));
+    const link = document.createElement("a"); link.href = ledgerUrl; link.download = name; link.click();
+  };
+  document.getElementById("lg-download").addEventListener("click", () => {
+    const lines = [["stage", "protein_id", "function_type", "function_id", "function_class", "change", "before_probability", "after_probability"]];
+    for (const r of ledgerMatches) lines.push([r.s, r.p, r.t, r.f, r.cls, r.c, r.b ?? "", r.a ?? ""]);
+    save(lines.map(l => l.map(v => String(v).replace(/[\t\r\n]/g, " ")).join("\t")).join("\n") + "\n", "prediction-changes.tsv", "text/tab-separated-values;charset=utf-8");
+  });
+  document.getElementById("lg-json").addEventListener("click", () => save(JSON.stringify(DATA.ledger, null, 1), "prediction-ledger.json", "application/json"));
+  updateLedger();
+}
+function updateLedger() {
+  const s = ledgerView.state;
+  ledgerMatches = ledgerFilter(LEDGER_ROWS, Object.assign({label: ledgerName}, s));
+  const pages = Math.max(1, Math.ceil(ledgerMatches.length / 100)); s.page = Math.max(0, Math.min(s.page, pages - 1));
+  const c = ledgerCount(ledgerMatches);
+  document.getElementById("lg-count").textContent = c.functions.toLocaleString() + " unique (protein, function) pairs across " + c.proteins.toLocaleString() + " proteins; " +
+    c.enzyme.functions.toLocaleString() + " enzyme-related (" + c.enzyme.proteins.toLocaleString() + " proteins)" + (c.actions !== c.functions ? "; " + c.actions.toLocaleString() + " ledger actions" : "") + ".";
+  document.getElementById("lg-rows").innerHTML = ledgerMatches.slice(s.page * 100, s.page * 100 + 100).map(r =>
+    '<tr><td><button class="text-button" data-lg-protein="' + escapeHtml(r.p) + '">' + escapeHtml(r.p) + '</button></td>' +
+    '<td>' + escapeHtml(ledgerName(r.f) || r.f) + '<br><span class="mono small">' + escapeHtml(r.f) + '</span></td><td>' + escapeHtml(ledgerFlags(r)) + '</td>' +
+    '<td>' + escapeHtml(r.c) + '</td><td>' + ledgerProb(r.b) + ' → ' + ledgerProb(r.a) + '</td>' +
+    '<td class="small">' + (r.src && r.src.length ? r.src.map(escapeHtml).join(", ") : "—") + (r.pri && Object.keys(r.pri).length ? '<br>Priors: ' + Object.keys(r.pri).map(escapeHtml).join(", ") : "") + (ledgerRoleText(r) ? '<br>' + ledgerRoleText(r) : "") + '</td></tr>').join("") ||
+    '<tr><td colspan="6">No matching changes.</td></tr>';
+  document.getElementById("lg-prev").disabled = s.page === 0; document.getElementById("lg-next").disabled = s.page === pages - 1;
+  document.getElementById("lg-page").textContent = "Page " + (s.page + 1) + " of " + pages;
 }
 
 // ----- Boot

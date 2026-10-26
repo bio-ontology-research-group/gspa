@@ -10,7 +10,7 @@ import uuid
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
-from service import jobs
+from service import jobs, ledger_summary
 
 STATIC = Path(__file__).parent / 'web'
 PRESETS = {'bacteria', 'archaea', 'prokaryote', 'eukaryote', 'mag', 'metagenome', 'virus'}
@@ -119,7 +119,11 @@ def folder_for(job_id):
 
 @app.get('/api/jobs/{job_id}')
 def status(job_id: str):
-    return jobs.state(folder_for(job_id))
+    folder = folder_for(job_id)
+    data = dict(jobs.state(folder))
+    if data.get('status') == 'complete':
+        data['ledger'] = ledger_summary.summarize(folder / 'gspa_out')
+    return data
 
 
 @app.get('/api/jobs/{job_id}/{artifact}')
@@ -130,6 +134,7 @@ def artifact(job_id: str, artifact: str):
              'model': folder / 'gspa_out/metabolism/metabolic_model.xml',
              'fluxes': folder / 'gspa_out/metabolism/reactions.tsv',
              'analyses': folder / 'gspa_out/analyses.json',
+             'ledger': folder / 'gspa_out' / ledger_summary.LEDGER_NAME,
              'annotation': folder / 'sample.gff3', 'sequence': folder / 'sample.fna'}
     if artifact not in paths or not paths[artifact].is_file():
         raise HTTPException(404, 'This result is not available yet.')
