@@ -35,22 +35,48 @@ ROWS = [  # entry, assembly, proteome id, truth
 ]
 
 
-def make_artifact(with_b=True, collide=False):
-    """``collide`` gives assembly B a protein id that also occurs in assembly A (cohort namespacing)."""
+VOCAB = ["1", "1.1", "1.1.1", "1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.n11", "2.7.1.1", "3.1.1.1", "3.1.1.2",
+         "3.1.1.3", "3.3.3.3", "4.1.1.1", "5.5.5.5", "9.9.9.9"]
+EXTRA_WEAK = {"T1": {"1.1.1.3": 5e-7, "1.1.1.n11": 3e-8},        # nonzero in target_full, absent from target_scores
+              "T2": {"1.1": 0.01, "9.9.9.9": 2e-9}}              # '1.1' is a hierarchical class, never a candidate
+
+
+def f32(x):
+    import numpy as np
+    return float(np.float32(x))
+
+
+def full_matrix(target_ids, ta, extra=None):
+    import numpy as np
+    m = np.zeros((len(target_ids), len(VOCAB)), dtype=np.float32)
+    for i, t in enumerate(target_ids):
+        for ec, s in {**ta[t], **((extra or {}).get(t) or {})}.items():
+            m[i, VOCAB.index(ec)] = s
+    return m
+
+
+def make_artifact(with_b=True, collide=False, full=True):
+    """``collide`` gives assembly B a protein id that also occurs in assembly A (cohort namespacing).
+    ``full=False`` mimics an artifact without target_full and keeps the messy truncated lists
+    (EC: prefix duplicates, a hierarchical partial) used to test normalisation."""
     art = {"_meta": {"extraction_version": "test", "created": "x", "slurm_job_id": "0",
-                     "manifest": {"sha256": "x"}, "predictors": {}, "ec_vocab": ["HUGE"]}}
+                     "manifest": {"sha256": "x"}, "predictors": {}, "ec_vocab": list(VOCAB) if full else ["HUGE"]}}
     for p in P.PREDICTORS:
-        art["_meta"]["predictors"][p] = {"label": p, "files": {"GCF_A.1": {"path": f"/raw/{p}/A.pkl", "sha256": "ab", "size": 1}}}
+        art["_meta"]["predictors"][p] = {"label": p, "files": {"GCF_A.1": {"path": f"/raw/{p}/A.pkl", "sha256": "ab", "size": 1,
+                                                                            "mtime": "2026-01-01T00:00:00"}}}
         bare = p == "dpz"  # DeepProZyme drops version suffixes
         v = (lambda s: s.split(".")[0]) if bare else (lambda s: s)
         scale = 6e-5 if p == "clean" else 1.0
         ta = {
             "T1": {"1.1.1.1": 0.9 * scale, "1.1.1.2": 0.4 * scale, "9.9.9.9": 1e-9},
-            "T2": {"EC:2.7.1.1": 0.5 * scale, "2.7.1.1": 0.3 * scale, "1.1.1.-": 0.2 * scale},
+            "T2": ({"2.7.1.1": 0.5 * scale} if full else
+                   {"EC:2.7.1.1": 0.5 * scale, "2.7.1.1": 0.3 * scale, "1.1.1.-": 0.2 * scale}),
             "T3": {"3.3.3.3": 0.7 * scale},
             "T4": {"3.1.1.1": 0.3, "3.1.1.2": 0.3, "3.1.1.3": 0.1} if p == "clean" else {"3.1.1.1": 0.6},
             "T7": {"4.1.1.1": 0.5 * scale},
         }
+        if full:
+            ta = {t: {ec: f32(s) for ec, s in d.items()} for t, d in ta.items()}
         stats = {t: {"matched_id": v(f"P{t[1]}.1"), "n_nonzero_vocab": 5, "n_nonzero_dropped_cols": 0, "max": 1.0}
                  for t in ta}
         if p == "enzbert":
@@ -61,11 +87,16 @@ def make_artifact(with_b=True, collide=False):
                                 "T2": [(1, v("N9.1"), [("7.6.2.10", 0.994)])]},
                "meteor_active_ecs": [], "meteor_muted_ecs": [], "meteor_source": f"/raw/meteor/{p}.pkl",
                "raw_target_stats": stats}
+        if full:
+            rec["target_full"] = full_matrix(rec["target_ids"], ta, EXTRA_WEAK)
         art[p] = {"GCF_A.1": rec}
         if with_b:
-            art[p]["GCA_B.1"] = {"n_proteins": 500, "target_ids": ["T5"], "target_scores": {"T5": {"5.5.5.5": 0.8}},
-                                 "ec_top_scores": {}, "neighbor_ecs": {}, "meteor_active_ecs": [], "meteor_muted_ecs": [],
-                                 "meteor_source": "m", "raw_target_stats": {"T5": {"matched_id": "P1.1" if collide else "B5.1", "max": 0.8}}}
+            b = {"n_proteins": 500, "target_ids": ["T5"], "target_scores": {"T5": {"5.5.5.5": f32(0.8)}},
+                 "ec_top_scores": {}, "neighbor_ecs": {}, "meteor_active_ecs": [], "meteor_muted_ecs": [],
+                 "meteor_source": "m", "raw_target_stats": {"T5": {"matched_id": "P1.1" if collide else "B5.1", "max": 0.8}}}
+            if full:
+                b["target_full"] = full_matrix(["T5"], b["target_scores"])
+            art[p]["GCA_B.1"] = b
     return art
 
 
@@ -171,13 +202,30 @@ class ClaimsContent(Base):
 
     def test_raw_scores_and_weak_candidates_retained_unmodified(self):
         by = {(c["protein_id"], c["function_id"]): c for c in self.clean()}
-        self.assertEqual(by[("P1.1", "1.1.1.1")]["raw_score"], 0.9 * 6e-5)   # tiny CLEAN score kept as raw
-        self.assertEqual(by[("P1.1", "9.9.9.9")]["raw_score"], 1e-9)           # weak candidate not dropped
+        self.assertEqual(by[("P1.1", "1.1.1.1")]["raw_score"], f32(0.9 * 6e-5))   # tiny CLEAN score kept as raw
+        self.assertEqual(by[("P1.1", "9.9.9.9")]["raw_score"], f32(1e-9))          # weak candidate not dropped
         self.assertTrue(all("calibrated_prob" not in c for c in self.clean()))
         self.assertTrue(all(c["evidence_type"] == "SEQUENCE_DEEPLEARNING" for c in self.clean()))
 
+    def test_all_nonzero_full_candidates_are_retained_beyond_target_scores(self):
+        by = {(c["protein_id"], c["function_id"]): c for c in self.clean()}
+        self.assertEqual(by[("P1.1", "1.1.1.3")]["raw_score"], f32(5e-7))         # absent from target_scores
+        self.assertEqual(by[("P1.1", "1.1.1.3")]["metadata"]["origin"], "target_full")
+        self.assertIn(("P1.1", "1.1.1.n11"), by)                                   # preliminary EC is a real output
+        self.assertEqual(by[("P2.1", "9.9.9.9")]["raw_score"], f32(2e-9))
+        self.assertFalse([k for k in by if k[1] in ("1", "1.1", "1.1.1")])         # hierarchical classes never claimed
+        st = self.rep["truncation"]["per_predictor_genome"]["clean"]["GCF_A.1"]
+        tc = st["target_candidates"]
+        self.assertEqual((tc["source"], tc["truncated"], tc["fallback_reason"]), ("target_full", False, None))
+        self.assertEqual(tc["lost_to_artifact_truncation"], 3)                     # T1: 1.1.1.3, 1.1.1.n11; T2: 9.9.9.9
+        self.assertEqual(st["dropped_hierarchical_partial_nonzero"], 1)
+        self.assertTrue(self.rep["candidate_coverage"]["clean"]["full_candidate_coverage"])
+        self.assertEqual(self.rep["candidate_coverage"]["clean"]["candidates_a_truncated_artifact_would_lose"], 3)
+
     def test_ec_prefix_duplicates_merge_to_the_maximum_once(self):
-        two = [c for c in self.clean() if c["protein_id"] == "P2.1" and c["function_id"] == "2.7.1.1"]
+        rep = self.do_export("legacy", art=make_artifact(full=False))              # no target_full: truncated fallback
+        two = [c for c in self.claims(rep["claims"]["clean"]["GCF_A.1"]["path"])
+               if c["protein_id"] == "P2.1" and c["function_id"] == "2.7.1.1"]
         self.assertEqual(len(two), 1)
         self.assertEqual(two[0]["raw_score"], 0.5 * 6e-5)
 
@@ -190,7 +238,7 @@ class ClaimsContent(Base):
 
     def test_non_target_context_is_flagged_and_precedence_is_target_first(self):
         origins = {c["metadata"]["origin"] for c in self.clean()}
-        self.assertEqual(origins, {"target_scores", "neighbor_ecs"})
+        self.assertEqual(origins, {"target_full", "neighbor_ecs"})
         ctx = [c for c in self.clean() if c["metadata"]["origin"] == "neighbor_ecs"]
         self.assertTrue(ctx and all(c["protein_id"].startswith("N") for c in ctx))
 
@@ -209,16 +257,37 @@ class ClaimsContent(Base):
             self.assertFalse({"start", "end", "strand", "contig", "offset"} & (set(c) | set(c["metadata"])))
         self.assertFalse(os.path.exists(os.path.join(self.tmp, "out", "layout")))
 
-    def test_exact_raw_sources_listed(self):
-        src = self.rep["raw_sources_needed_for_full_context"]
-        self.assertEqual(src["clean"]["files"]["GCF_A.1"]["path"], "/raw/clean/A.pkl")
-        self.assertIn("meteor_sources", src)
+    def test_raw_retrieval_manifest_is_concise_and_exact(self):
+        r = self.rep["raw_retrieval_manifest"]
+        self.assertEqual(r["files"], len(P.PREDICTORS))
+        with open(r["path"]) as fh:
+            rows = [l.rstrip("\n").split("\t") for l in fh]
+        self.assertEqual(rows[0], ["predictor", "assembly", "path", "sha256", "size_bytes", "mtime"])
+        self.assertIn(["clean", "GCF_A.1", "/raw/clean/A.pkl", "ab", "1", "2026-01-01T00:00:00"], rows)
+        with open(self.rep["report_path"]) as fh:
+            text = fh.read()
+        self.assertNotIn("HUGE", text)                                             # ec_vocab is never dumped
+        self.assertLess(len(text), 200_000)
+        self.assertIn("GFF", r["also_needed"])
+
+    def test_provisional_calibrator_and_evidence_types_are_documented(self):
+        self.assertIn("not the identity and not learned", self.rep["calibration"])
+        self.assertIn("Provisional", self.rep["evidence_type_provenance"])
+        self.assertIn("unknown", self.rep["evidence_type_provenance"])
+        self.assertNotIn("before any", self.rep["evidence_type_provenance"].lower())
+        over = self.do_export("ov", evidence_types={"graphec": "SEQUENCE_DEEPLEARNING"}, variants=("graphec",))
+        self.assertEqual({c["evidence_type"] for c in self.claims(over["claims"]["graphec"]["GCF_A.1"]["path"])},
+                         {"SEQUENCE_DEEPLEARNING"})
+        self.assertEqual(self.rep["evidence_types"]["graphec"], "STRUCTURE_DEEPLEARNING")
+        with self.assertRaises(P.ExportError):
+            self.do_export("bad", evidence_types={"nope": "X"})
 
 
 class NoTruthInInference(Base):
     def test_build_claims_has_no_truth_inputs(self):
         params = set(inspect.signature(P.build_claims).parameters)
-        self.assertEqual(params, {"artifact", "predictor", "asm", "aliases", "namespaced", "include_ec_top", "idmap"})
+        self.assertEqual(params, {"artifact", "predictor", "asm", "aliases", "namespaced", "include_ec_top", "idmap",
+                                  "use_target_full", "evidence_type"})
 
     def test_claims_are_byte_identical_when_truth_columns_change(self):
         a = self.artifact_file(make_artifact())
@@ -327,6 +396,7 @@ class Determinism(Base):
         for p in P.PREDICTORS:
             rec = shuffled[p]["GCF_A.1"]
             rec["target_ids"] = list(reversed(rec["target_ids"]))
+            rec["target_full"] = rec["target_full"][::-1].copy()                  # rows follow target_ids
             rec["target_scores"] = dict(reversed(list(rec["target_scores"].items())))
         r1 = self.do_export("a", art=art)
         r2 = self.do_export("b", art=shuffled)
@@ -336,17 +406,62 @@ class Determinism(Base):
 
 
 class FullMatrixSchema(Base):
-    def test_matrix_claims_apply_the_artifact_retention_rule(self):
+    VALS = None
+
+    def matrix(self, **kw):
         import numpy as np
         vals = np.array([[0.9, 0.02, 0.005, 0.0], [0.001, 0.0005, 0.0002, 0.0001]])
-        cl = P.matrix_claims("clean", "GCF_A.1", ["P1", "P9.1"], ["EC:1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4"], vals,
-                             top_k=2, idmap={"P1": "P1.1"})
+        return P.matrix_claims("clean", "GCF_A.1", ["P1", "P9.1"], ["EC:1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4"], vals,
+                               idmap={"P1": "P1.1"}, **kw)
+
+    def test_default_retention_keeps_every_nonzero_score_and_is_not_pruned(self):
+        cl, info = self.matrix()
         got = {(c["protein_id"], c["function_id"]): c["raw_score"] for c in cl}
         self.assertEqual(got[("P1.1", "1.1.1.1")], 0.9)               # EC: prefix stripped, id canonicalised
+        self.assertEqual(got[("P1.1", "1.1.1.3")], 0.005)             # below the old 0.01 rule, still kept
+        self.assertEqual(len([k for k in got if k[0] == "P9.1"]), 4)
+        self.assertEqual((info["policy"], info["n_nonzero"], info["n_retained"], info["pruned"]), ("all_nonzero", 7, 7, False))
+        self.assertTrue(all(c["metadata"]["origin"] == "full_matrix" for c in cl))
+
+    def test_lossy_retention_is_explicit_and_marks_pruning(self):
+        cl, info = self.matrix(retention="threshold_topk", top_k=2)
+        got = {(c["protein_id"], c["function_id"]) for c in cl}
         self.assertIn(("P1.1", "1.1.1.2"), got)                       # >= 0.01
         self.assertNotIn(("P1.1", "1.1.1.3"), got)                    # below 0.01 and outside the top 2
         self.assertEqual(len([k for k in got if k[0] == "P9.1"]), 2)  # weak protein keeps its top-k
-        self.assertTrue(all(c["metadata"]["origin"] == "full_matrix" for c in cl))
+        self.assertTrue(info["pruned"])
+        self.assertEqual((info["min_score"], info["top_k"]), (0.01, 2))
+
+    def test_matrix_validation(self):
+        import numpy as np
+        for bad in (np.nan, np.inf, -0.1, 1.5):
+            with self.assertRaises(P.ExportError):
+                P.matrix_claims("clean", "A", ["p"], ["1.1.1.1"], np.array([[bad]]))
+        with self.assertRaises(P.ExportError):
+            P.matrix_claims("clean", "A", ["p", "q"], ["1.1.1.1"], np.array([[0.5]]))
+        with self.assertRaises(P.ExportError):
+            P.matrix_claims("clean", "A", ["p"], ["1.1.1.1"], np.array([[0.5]]), retention="some")
+        cl, info = P.matrix_claims("clean", "A", ["p"], ["1.1", "1.1.1.n3", "1.1.1.1"], np.array([[0.3, 0.2, 0.1]]))
+        self.assertEqual({c["function_id"] for c in cl}, {"1.1.1.n3", "1.1.1.1"})   # class '1.1' dropped, n-EC kept
+        self.assertEqual(info["dropped_hierarchical_partial_nonzero"], 1)
+
+    def test_pruned_matrix_export_does_not_claim_full_coverage(self):
+        import numpy as np
+        path = os.path.join(self.tmp, "c.npz")
+        np.savez(path, index=np.array(["P1", "P2.1"]), columns=np.array(["1.1.1.1", "2.7.1.1", "3.1.1.1"]),
+                 values=np.array([[0.9, 0.002, 0.001], [0.0, 0.5, 0.0]]))
+        a = self.artifact_file(make_artifact(with_b=False))
+        m = self.manifest_file(rows=ROWS[:-1], name="m5.tsv")
+        full = P.export(a, m, os.path.join(self.tmp, "f1"), variants=("clean",), raw_matrix_map={"clean": {"GCF_A.1": path}})
+        self.assertTrue(full["candidate_coverage"]["clean"]["full_candidate_coverage"])
+        self.assertEqual(full["parameters"]["retention"], "all_nonzero")
+        lossy = P.export(a, m, os.path.join(self.tmp, "f2"), variants=("clean",), raw_matrix_map={"clean": {"GCF_A.1": path}},
+                         retention="threshold_topk", top_k=1)
+        self.assertFalse(lossy["candidate_coverage"]["clean"]["full_candidate_coverage"])
+        with open(lossy["manifests"]["clean"]) as fh:
+            self.assertIn("PRUNED", json.load(fh)["description"])
+        with open(full["manifests"]["clean"]) as fh:
+            self.assertIn("all nonzero", json.load(fh)["description"])
 
     def test_npz_and_pickle_loading_rules(self):
         import numpy as np
@@ -381,8 +496,164 @@ class FullMatrixSchema(Base):
             self.assertNotIn("TRUNCATED", json.load(fh)["description"])
 
 
+class FullTargetValidation(Base):
+    def claims_of(self, art):
+        aliases, _, idmaps = P.alias_map(art)
+        return P.build_claims(art, "clean", "GCF_A.1", aliases["GCF_A.1"], False, False, idmaps["GCF_A.1"])
+
+    def test_missing_target_full_falls_back_with_explicit_provenance(self):
+        art = make_artifact()
+        del art["clean"]["GCF_A.1"]["target_full"]
+        claims, st = self.claims_of(art)
+        tc = st["target_candidates"]
+        self.assertEqual((tc["source"], tc["truncated"], tc["fallback_reason"]), ("target_scores", True, "target_full absent"))
+        self.assertIsNone(tc["nonzero_in_target_full"])
+        self.assertEqual({c["metadata"]["origin"] for c in claims if c["protein_id"] == "P1.1"}, {"target_scores"})
+        self.assertNotIn(("P1.1", "1.1.1.3"), {(c["protein_id"], c["function_id"]) for c in claims})
+        rep = self.do_export("fb", art=art)
+        self.assertFalse(rep["candidate_coverage"]["clean"]["full_candidate_coverage"])
+        self.assertTrue(rep["candidate_coverage"]["clean"]["truncation_reasons"]["target_full absent"])
+        self.assertTrue(rep["candidate_coverage"]["mapred"]["full_candidate_coverage"])
+        with open(rep["manifests"]["clean"]) as fh:
+            self.assertIn("PRUNED or truncated", json.load(fh)["description"])
+
+    def test_structural_problems_fall_back_not_crash(self):
+        import numpy as np
+        cases = {"shape": lambda a: a["clean"]["GCF_A.1"].update(target_full=np.zeros((2, len(VOCAB)), dtype=np.float32)),
+                 "dup vocab": lambda a: a["_meta"].update(ec_vocab=VOCAB[:-1] + [VOCAB[0]]),
+                 "no vocab": lambda a: a["_meta"].pop("ec_vocab"),
+                 "1-D": lambda a: a["clean"]["GCF_A.1"].update(target_full=np.zeros(len(VOCAB)))}
+        for name, mutate in cases.items():
+            art = make_artifact()
+            mutate(art)
+            _, st = self.claims_of(art)
+            self.assertTrue(st["target_candidates"]["truncated"], name)
+            self.assertTrue(st["target_candidates"]["fallback_reason"], name)
+
+    def test_inconsistent_values_are_rejected_not_masked(self):
+        import numpy as np
+        for name, mutate in {
+            "altered value": lambda a: a["clean"]["GCF_A.1"]["target_full"].__setitem__((0, VOCAB.index("1.1.1.1")), 0.123),
+            "row order": lambda a: a["clean"]["GCF_A.1"].update(target_full=a["clean"]["GCF_A.1"]["target_full"][::-1].copy()),
+            "wrong vocabulary": lambda a: a["_meta"].update(ec_vocab=list(reversed(VOCAB))),
+            "zeroed candidate": lambda a: a["clean"]["GCF_A.1"]["target_full"].__setitem__((0, VOCAB.index("1.1.1.1")), 0.0),
+            "ec outside vocab": lambda a: a["clean"]["GCF_A.1"]["target_scores"]["T1"].update({"8.8.8.8": 0.5}),
+        }.items():
+            art = make_artifact()
+            mutate(art)
+            with self.assertRaises(P.ExportError, msg=name):
+                self.claims_of(art)
+
+    def test_nan_inf_negative_and_above_one_are_rejected(self):
+        import numpy as np
+        for bad in (np.nan, np.inf, -0.5, 1.5):
+            art = make_artifact()
+            art["clean"]["GCF_A.1"]["target_full"][0, VOCAB.index("1.1.1.3")] = bad
+            with self.assertRaises(P.ExportError, msg=str(bad)):
+                self.claims_of(art)
+
+    def test_float32_rounding_is_tolerated(self):
+        import numpy as np
+        art = make_artifact()
+        ts = art["clean"]["GCF_A.1"]["target_scores"]["T1"]
+        ts["1.1.1.1"] = ts["1.1.1.1"] * (1 + 5e-7)                                 # within float32 rounding
+        claims, _ = self.claims_of(art)
+        self.assertTrue(claims)
+        ts["1.1.1.1"] = ts["1.1.1.1"] * (1 + 1e-3)                                 # a real disagreement
+        with self.assertRaises(P.ExportError):
+            self.claims_of(art)
+
+    def test_partial_vocab_entries_are_not_confused_with_preliminary_ecs(self):
+        self.assertTrue(P.is_hierarchical_partial("1.1"))
+        self.assertTrue(P.is_hierarchical_partial("1.1.1.-"))
+        self.assertFalse(P.is_hierarchical_partial("1.1.1.n11"))
+        self.assertFalse(P.is_hierarchical_partial("EC:1.1.1.1"))
+        self.assertTrue(P.is_preliminary_ec("3.5.1.n2"))
+
+
+class PrecisionRoundTrip(Base):
+    def test_weak_distinct_scores_survive_serialisation(self):
+        import numpy as np
+        lo = np.float32(1.0e-9)
+        vals = [lo, np.nextafter(lo, np.float32(1)), np.nextafter(np.nextafter(lo, np.float32(1)), np.float32(1))]
+        self.assertEqual(len({float(v) for v in vals}), 3)
+        art = make_artifact(with_b=False)
+        rec = art["clean"]["GCF_A.1"]
+        for i, ec in enumerate(("1.1.1.1", "1.1.1.2", "3.1.1.1")):
+            rec["target_scores"]["T1"][ec] = float(vals[i])
+        rec["target_full"][0, VOCAB.index("1.1.1.1")] = vals[0]
+        rec["target_full"][0, VOCAB.index("1.1.1.2")] = vals[1]
+        rec["target_full"][0, VOCAB.index("3.1.1.1")] = vals[2]
+        rep = self.do_export(art=art, variants=("clean",), manifest=self.manifest_file(rows=ROWS[:-1], name="m6.tsv"))
+        got = {c["function_id"]: c["raw_score"] for c in self.claims(rep["claims"]["clean"]["GCF_A.1"]["path"])
+               if c["protein_id"] == "P1.1"}
+        self.assertEqual([got["1.1.1.1"], got["1.1.1.2"], got["3.1.1.1"]], [float(v) for v in vals])  # bit-exact
+        self.assertEqual(len({got["1.1.1.1"], got["1.1.1.2"], got["3.1.1.1"]}), 3)                   # still distinct
+
+    def write_pair(self, raw, post, name):
+        claims = os.path.join(self.tmp, f"{name}.claims.jsonl")
+        with open(claims, "w") as fh:
+            for ec, s in raw.items():
+                fh.write(json.dumps({"protein_id": "p", "function_type": "EC", "function_id": ec, "source": "clean",
+                                     "raw_score": s}) + "\n")
+        out = os.path.join(self.tmp, f"{name}.tsv")
+        with open(out, "w") as fh:
+            fh.write("protein_id\ttype\tfunction_id\tgo_aspect\tposterior_prob\n")
+            for ec, s in post.items():
+                fh.write(f"p\tEC\t{ec}\t\t{s}\n")
+        return claims, out
+
+    def test_six_decimal_posteriors_create_false_ties_and_are_detected(self):
+        raw = {"1.1.1.1": 6.2e-5, "1.1.1.2": 6.1e-5, "1.1.1.3": 1e-9}
+        # the engine's sigmoid(4r-2) maps these to ~0.1192029 apart by ~1e-6/1e-5; %.6f collapses the top two
+        claims, out = self.write_pair(raw, {"1.1.1.1": "0.119203", "1.1.1.2": "0.119203", "1.1.1.3": "0.119203"}, "six")
+        res = P.rank_roundtrip(claims, out)
+        self.assertFalse(res["raw_rank_preserved"])
+        self.assertEqual((res["ties_created"], res["top1_posterior_tied"]), (2, 1))
+
+    def test_full_precision_posteriors_pass_and_inversions_fail(self):
+        raw = {"1.1.1.1": 6.2e-5, "1.1.1.2": 6.1e-5, "1.1.1.3": 1e-9}
+        claims, out = self.write_pair(raw, {"1.1.1.1": "0.11920379", "1.1.1.2": "0.11920355", "1.1.1.3": "0.1192029"}, "full")
+        res = P.rank_roundtrip(claims, out)
+        self.assertTrue(res["raw_rank_preserved"], res)
+        self.assertEqual((res["proteins"], res["adjacent_pairs"]), (1, 2))
+        claims, out = self.write_pair(raw, {"1.1.1.1": "0.3", "1.1.1.2": "0.4", "1.1.1.3": "0.1"}, "inv")
+        res = P.rank_roundtrip(claims, out)
+        self.assertEqual((res["inversions"], res["top1_changed"]), (1, 1))
+        self.assertFalse(res["raw_rank_preserved"])
+
+    def test_raw_ties_carry_no_order_and_pooled_sources_are_refused(self):
+        claims, out = self.write_pair({"1.1.1.1": 0.5, "1.1.1.2": 0.5}, {"1.1.1.1": "0.7", "1.1.1.2": "0.7"}, "tie")
+        self.assertTrue(P.rank_roundtrip(claims, out)["raw_rank_preserved"])
+        with open(claims, "a") as fh:
+            fh.write(json.dumps({"protein_id": "p", "function_type": "EC", "function_id": "1.1.1.9", "source": "dpz",
+                                 "raw_score": 0.1}) + "\n")
+        with self.assertRaises(P.ExportError):
+            P.rank_roundtrip(claims, out)
+
+    def test_cli_check_roundtrip_exit_codes(self):
+        raw = {"1.1.1.1": 6.2e-5, "1.1.1.2": 6.1e-5}
+        c1, o1 = self.write_pair(raw, {"1.1.1.1": "0.119203", "1.1.1.2": "0.119203"}, "cli1")
+        c2, o2 = self.write_pair(raw, {"1.1.1.1": "0.11920379", "1.1.1.2": "0.11920355"}, "cli2")
+        self.assertEqual(P.main(["check-roundtrip", "--claims", c1, "--integrated", o1]), 1)
+        self.assertEqual(P.main(["check-roundtrip", "--claims", c2, "--integrated", o2]), 0)
+
+
 @unittest.skipUnless(os.path.isfile(REAL_ARTIFACT) and os.path.isfile(REAL_MANIFEST), "local Price artifact not present")
 class RealArtifact(Base):
+    def test_real_full_candidates_and_coverage(self):
+        rep = P.export(REAL_ARTIFACT, REAL_MANIFEST, os.path.join(self.tmp, "realfull"), variants=("clean", "topec", "enzbert"))
+        cc = rep["candidate_coverage"]
+        for p in ("clean", "topec", "enzbert"):
+            self.assertTrue(cc[p]["full_candidate_coverage"], p)
+        self.assertEqual(cc["clean"]["nonzero_candidates"], 774954 - 0)             # all nonzero, none pruned
+        self.assertGreater(cc["clean"]["candidates_a_truncated_artifact_would_lose"], 700000)
+        self.assertEqual(cc["topec"]["candidates_a_truncated_artifact_would_lose"], 0)
+        self.assertEqual(cc["enzbert"]["candidates_a_truncated_artifact_would_lose"], 0)
+        self.assertLess(cc["clean"]["min_score_mass_fraction_of_truncated_rule"], 1.0)
+        self.assertEqual(rep["raw_retrieval_manifest"]["files"], 6 * 22)
+        self.assertEqual(sum(f["claims"] for f in rep["claims"]["topec"].values()) > 2000, True)
+
     def test_real_export_counts(self):
         rep = P.export(REAL_ARTIFACT, REAL_MANIFEST, os.path.join(self.tmp, "real"), variants=("clean", "topec"))
         c = rep["counts"]

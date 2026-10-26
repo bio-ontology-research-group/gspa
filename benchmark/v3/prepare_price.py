@@ -35,6 +35,7 @@ import csv
 import gzip
 import hashlib
 import json
+import math
 import os
 import pickle
 import re
@@ -47,8 +48,9 @@ EXPORT_VERSION = "price-export-v1"
 
 # source name = artifact key. evidence_type is given explicitly because the engine's
 # source->type table only knows 'clean'; unresolved claims would be dropped silently.
-# The type is a modelling declaration (sequence vs structure-based network), fixed before
-# any Price result was looked at; it selects the combiner's reliability class.
+# The type is a provisional modelling declaration (sequence vs structure-based network), chosen
+# without using the truth columns but NOT before Price was examined in earlier audits; it selects
+# the combiner's reliability class. See EVIDENCE_TYPE_NOTE.
 PREDICTORS: Dict[str, Dict[str, str]] = {
     "clean":   {"label": "CLEAN (2023)",       "evidence_type": "SEQUENCE_DEEPLEARNING"},
     "dpz":     {"label": "DeepProZyme (2023)", "evidence_type": "SEQUENCE_DEEPLEARNING"},
@@ -224,28 +226,115 @@ def canon_id(asm: str, pid: str, namespaced: bool) -> str:
 
 # -------------------------------------------------------------------- claims
 
-def _claim(pid: str, ec: str, source: str, score: float, origin: str) -> dict:
+def _claim(pid: str, ec: str, source: str, score: float, origin: str, evidence_type: Optional[str] = None) -> dict:
     return {"protein_id": pid, "function_type": "EC", "function_id": ec, "source": source,
-            "evidence_type": PREDICTORS[source]["evidence_type"], "raw_score": float(score),
+            "evidence_type": evidence_type or PREDICTORS[source]["evidence_type"], "raw_score": float(score),
             "metadata": {"origin": origin}}
+
+
+def is_preliminary_ec(value: str) -> bool:
+    """``1.1.1.n11``: a real four-level preliminary EC that predictors (e.g. EnzBERT) emit."""
+    return bool(re.match(r"^\d+\.\d+\.\d+\.n\d+$", norm_ec(value)))
+
+
+def is_hierarchical_partial(value: str) -> bool:
+    """``1``, ``1.1``, ``1.1.1``, ``1.1.1.-``: an EC class, not an enzyme function. Never a candidate."""
+    return not is_complete_ec(value) and not is_preliminary_ec(value)
+
+
+FLOAT_RTOL = 1e-6   # tolerance between float32 matrix values and the stored float scores
+FLOAT_ATOL = 1e-12
+
+
+def validate_vocab(vocab) -> Optional[str]:
+    """None if ``vocab`` can index target_full columns, else the reason it cannot."""
+    if not isinstance(vocab, (list, tuple)) or not vocab:
+        return "ec_vocab missing or empty"
+    if not all(isinstance(v, str) and v for v in vocab):
+        return "ec_vocab contains non-string or empty entries"
+    if len({norm_ec(v) for v in vocab}) != len(vocab):
+        return "ec_vocab has duplicate entries"
+    return None
+
+
+def full_target_matrix(rec: Mapping, vocab) -> Tuple[Optional[object], Optional[str]]:
+    """(matrix, None) if target_full is usable, else (None, reason). Structural problems fall back
+    to the truncated target_scores with the reason on record; they are never silent."""
+    bad = validate_vocab(vocab)
+    if bad:
+        return None, bad
+    tf = rec.get("target_full")
+    if tf is None:
+        return None, "target_full absent"
+    shape = getattr(tf, "shape", None)
+    if shape is None or len(shape) != 2:
+        return None, "target_full is not a 2-D matrix"
+    if shape != (len(rec["target_ids"]), len(vocab)):
+        return None, f"target_full shape {tuple(shape)} != ({len(rec['target_ids'])}, {len(vocab)}) (targets x ec_vocab)"
+    return tf, None
+
+
+def target_candidates(rec: Mapping, t: str, row: int, matrix, vocab_index: Mapping[str, int], vocab: Sequence[str],
+                      stats: dict) -> Dict[str, float]:
+    """All nonzero candidates of target ``t`` from the full matrix (hierarchical partial classes excluded).
+
+    Raises ExportError on NaN/inf/negative/>1 values and on any disagreement with the stored
+    ``target_scores`` beyond float32 rounding (wrong row order, wrong vocabulary, altered values).
+    """
+    import numpy as np
+    vals = np.asarray(matrix[row], dtype=float)
+    if not np.isfinite(vals).all() or (vals < 0).any() or (vals > 1 + FLOAT_RTOL).any():
+        raise ExportError(f"target_full row for {t} has NaN/inf/negative/>1 values")
+    for ec, s in (rec["target_scores"].get(t) or {}).items():
+        j = vocab_index.get(norm_ec(ec))
+        if j is None:
+            raise ExportError(f"target_scores EC {ec} of {t} is not in ec_vocab")
+        if not math.isclose(float(vals[j]), float(s), rel_tol=FLOAT_RTOL, abs_tol=FLOAT_ATOL):
+            raise ExportError(f"target_full and target_scores disagree for {t} {ec}: {vals[j]!r} vs {s!r}")
+    out: Dict[str, float] = {}
+    for j in np.flatnonzero(vals):
+        ec = norm_ec(vocab[int(j)])
+        if is_hierarchical_partial(ec):
+            stats["dropped_hierarchical_partial_nonzero"] += 1
+            continue
+        out[ec] = float(vals[j])
+    return out
 
 
 def build_claims(artifact: Mapping, predictor: str, asm: str, aliases: Mapping[str, str],
                  namespaced: bool = False, include_ec_top: bool = False,
-                 idmap: Optional[Mapping[str, str]] = None) -> Tuple[List[dict], dict]:
+                 idmap: Optional[Mapping[str, str]] = None, use_target_full: bool = True,
+                 evidence_type: Optional[str] = None) -> Tuple[List[dict], dict]:
     """Inference input of one predictor on one assembly. Takes NO truth.
 
-    Precedence per (protein, EC): target_scores (full precision) > ec_top_scores > neighbor_ecs.
-    Scores are the predictor's raw output; nothing is calibrated, thresholded or re-weighted.
+    Target candidates: every nonzero entry of the verified full matrix ``target_full``
+    (origin ``target_full``), so no candidate is dropped by the artifact's own >=0.01/top-100 rule.
+    If the matrix is absent or unusable, or ``use_target_full`` is False, the truncated
+    ``target_scores`` are used and the statistics say so (``truncated: true`` plus the reason).
+    Precedence per (protein, EC): target > ec_top_scores > neighbor_ecs. Scores are the predictor's
+    raw output; nothing is calibrated, thresholded or re-weighted. Coverage is quantified from the
+    artifact alone (counts and score mass), never from labels.
     Returns (claims sorted by protein, EC; coverage statistics).
     """
     rec = artifact[predictor][asm]
     idmap = idmap or {}
+    vocab = artifact["_meta"].get("ec_vocab")
+    matrix, why = full_target_matrix(rec, vocab) if use_target_full else (None, "disabled by caller")
+    vocab_index = {norm_ec(e): i for i, e in enumerate(vocab)} if matrix is not None else {}
     best: Dict[Tuple[str, str], Tuple[float, str]] = {}
     stats = {"n_proteins_in_genome": rec["n_proteins"], "n_targets": 0, "repeated_pair_merges": 0,
-             "non_complete_ec_claims": 0, "neighbor_score_mismatch_gt_1e-3": 0}
+             "non_complete_ec_claims": 0, "neighbor_score_mismatch_gt_1e-3": 0,
+             "dropped_hierarchical_partial_nonzero": 0,
+             "target_candidates": {"source": "target_full" if matrix is not None else "target_scores",
+                                   "truncated": matrix is None, "fallback_reason": why,
+                                   "nonzero_in_target_full": 0 if matrix is not None else None,
+                                   "in_target_scores": 0, "retained": 0,
+                                   "lost_to_artifact_truncation": 0 if matrix is not None else None,
+                                   "score_mass_in_target_scores_fraction": None}}
+    tc = stats["target_candidates"]
+    mass_full = mass_trunc = 0.0
 
-    rank = {"target_scores": 0, "ec_top_scores": 1, "neighbor_ecs": 2}
+    rank = {"target_full": 0, "target_scores": 0, "ec_top_scores": 1, "neighbor_ecs": 2}
 
     def put(pid: str, ec: str, score: float, origin: str) -> None:
         key = (pid, norm_ec(ec))
@@ -260,13 +349,31 @@ def build_claims(artifact: Mapping, predictor: str, asm: str, aliases: Mapping[s
         elif abs(cur[0] - score) > 1e-3:
             stats["neighbor_score_mismatch_gt_1e-3"] += 1
 
+    row_of = {t: i for i, t in enumerate(rec["target_ids"])}
     for t in sorted(rec["target_ids"]):
         pid = aliases.get(t)
         if pid is None:
             continue  # alias conflict: reported by the caller, never exported under a guess
         stats["n_targets"] += 1
-        for ec, s in rec["target_scores"].get(t, {}).items():
-            put(canon_id(asm, pid, namespaced), ec, float(s), "target_scores")
+        trunc: Dict[str, float] = {}
+        for ec, s in (rec["target_scores"].get(t) or {}).items():
+            k = norm_ec(ec)
+            if k in trunc:  # 'EC:1.1.1.1' and '1.1.1.1' both present: keep the larger, count the merge
+                stats["repeated_pair_merges"] += 1
+            trunc[k] = max(trunc.get(k, 0.0), float(s))
+        tc["in_target_scores"] += len(trunc)
+        if matrix is not None:
+            cands = target_candidates(rec, t, row_of[t], matrix, vocab_index, vocab, stats)
+            tc["nonzero_in_target_full"] += len(cands)
+            tc["lost_to_artifact_truncation"] += len(set(cands) - set(trunc))
+            mass_full += sum(cands.values())
+            mass_trunc += sum(s for ec, s in cands.items() if ec in trunc)
+            origin = "target_full"
+        else:
+            cands, origin = trunc, "target_scores"
+        tc["retained"] += len(cands)
+        for ec, s in cands.items():
+            put(canon_id(asm, pid, namespaced), ec, s, origin)
     if include_ec_top:
         for ec, pairs in rec.get("ec_top_scores", {}).items():
             for pid, s in pairs:
@@ -276,7 +383,9 @@ def build_claims(artifact: Mapping, predictor: str, asm: str, aliases: Mapping[s
             for ec, s in ecs:
                 put(canon_id(asm, idmap.get(pid, pid), namespaced), ec, float(s), "neighbor_ecs")
 
-    claims = [_claim(pid, ec, predictor, s, origin) for (pid, ec), (s, origin) in sorted(best.items())]
+    if matrix is not None and mass_full > 0:
+        tc["score_mass_in_target_scores_fraction"] = mass_trunc / mass_full
+    claims = [_claim(pid, ec, predictor, s, origin, evidence_type) for (pid, ec), (s, origin) in sorted(best.items())]
     stats["non_complete_ec_claims"] = sum(1 for c in claims if not is_complete_ec(c["function_id"]))
     by_origin = _count(c["metadata"]["origin"] for c in claims)
     stats["claims_by_origin"] = dict(sorted(by_origin.items()))
@@ -412,38 +521,72 @@ def load_matrix(path: str, trust_pickle: bool = False):
     return [str(i) for i in df.index], [str(c) for c in df.columns], df.values
 
 
+RETENTION_POLICIES = ("all_nonzero", "threshold_topk")
+
+
 def matrix_claims(predictor: str, asm: str, index: Sequence[str], columns: Sequence[str], values,
-                  namespaced: bool = False, min_score: float = MIN_SCORE, top_k: int = TOP_K,
-                  idmap: Optional[Mapping[str, str]] = None) -> List[dict]:
-    """Whole-proteome claims from a full matrix with the artifact's retention rule per protein:
-    every EC with score >= ``min_score`` plus the ``top_k`` highest, raw scores unchanged.
-    Protein ids go through ``idmap`` so they match the canonical ids of the labels."""
+                  namespaced: bool = False, retention: str = "all_nonzero", min_score: float = MIN_SCORE,
+                  top_k: int = TOP_K, idmap: Optional[Mapping[str, str]] = None,
+                  evidence_type: Optional[str] = None) -> Tuple[List[dict], dict]:
+    """Whole-proteome claims from a full score matrix, with an explicit retention policy.
+
+    ``all_nonzero`` (default): every nonzero score, nothing pruned. ``threshold_topk``: per protein every
+    EC with score >= ``min_score`` plus the ``top_k`` highest (the artifact's old rule); it is lossy and
+    the returned info says ``pruned: true`` whenever it actually dropped a candidate, so the caller never
+    claims full candidate coverage after pruning. Hierarchical EC classes (``1.1``) are never candidates.
+    Raises ExportError on NaN/inf/negative/>1 scores or a shape that does not match the labels.
+    Protein ids go through ``idmap`` so they match the canonical ids of the labels.
+    Returns (claims, info).
+    """
     import numpy as np
+    if retention not in RETENTION_POLICIES:
+        raise ExportError(f"retention {retention!r} not in {RETENTION_POLICIES}")
     cols = [norm_ec(c) for c in columns]
+    if getattr(values, "shape", None) != (len(index), len(cols)):
+        raise ExportError(f"matrix shape {getattr(values, 'shape', None)} != ({len(index)}, {len(cols)})")
+    usable = np.array([not is_hierarchical_partial(c) for c in cols])
     idmap = idmap or {}
     claims: Dict[Tuple[str, str], float] = {}
+    info = {"policy": retention, "n_nonzero": 0, "n_retained": 0, "dropped_hierarchical_partial_nonzero": 0}
+    if retention == "threshold_topk":
+        info.update({"min_score": min_score, "top_k": top_k})
     for i, pid in enumerate(index):
         pid = idmap.get(pid, pid)
         row = np.asarray(values[i], dtype=float)
-        keep = set(np.flatnonzero(row >= min_score).tolist())
-        order = np.argsort(-row, kind="stable")[:top_k]
-        keep.update(int(j) for j in order if row[j] > 0)
+        if not np.isfinite(row).all() or (row < 0).any() or (row > 1 + FLOAT_RTOL).any():
+            raise ExportError(f"matrix row {index[i]} has NaN/inf/negative/>1 scores")
+        nz = row != 0
+        info["dropped_hierarchical_partial_nonzero"] += int((nz & ~usable).sum())
+        nz &= usable
+        info["n_nonzero"] += int(nz.sum())
+        if retention == "all_nonzero":
+            keep = set(np.flatnonzero(nz).tolist())
+        else:
+            keep = set(np.flatnonzero(nz & (row >= min_score)).tolist())
+            order = np.argsort(np.where(nz, -row, 1.0), kind="stable")[:top_k]
+            keep.update(int(j) for j in order if nz[j])
+        info["n_retained"] += len(keep)
         for j in keep:
             k = (canon_id(asm, pid, namespaced), cols[j])
             claims[k] = max(claims.get(k, 0.0), float(row[j]))
-    return [_claim(pid, ec, predictor, s, "full_matrix") for (pid, ec), s in sorted(claims.items())]
+    info["pruned"] = info["n_retained"] < info["n_nonzero"]
+    return [_claim(pid, ec, predictor, s, "full_matrix", evidence_type) for (pid, ec), s in sorted(claims.items())], info
 
 
 # -------------------------------------------------------------- manifests
 
 def runner_manifest(variant: str, out: str, genomes: Sequence[str], claims: Mapping[str, str],
-                    labels: Mapping[str, str], truncated: bool) -> dict:
+                    labels: Mapping[str, str], truncated: bool, candidates_complete: bool = False) -> dict:
     desc = (f"Price-148 enzyme identity, variant {variant} ({'+'.join(VARIANTS[variant])}). Real RB-TnSeq-validated "
-            f"EC labels. Every arm reads the same claims file, so evidence is identical across arms. "
+            f"EC labels; development reuse of a dataset already examined in earlier audits, not a blind test. "
+            f"Every arm reads the same claims file, so evidence is identical across arms. "
             + ("Context is TRUNCATED (target neighbourhoods only, no coordinates); arms needing a genome layout "
                "or whole-proteome context are not included. " if truncated else "Whole-proteome claims from original matrices. ")
-            + "Top-1 complete-EC accuracy is the primary metric; engine default calibration sigmoid(4r-2) is "
-              "applied to raw scores, so fixed-threshold numbers are not meaningful until a learned calibration exists.")
+            + ("Target candidates: all nonzero predictor scores. " if candidates_complete
+               else "Target candidates are PRUNED or truncated for at least one predictor (see export report). ")
+            + "Top-1 complete-EC accuracy is the primary metric. The engine's provisional default calibrator "
+              "sigmoid(4r-2) is neither identity nor learned, so fixed-threshold numbers are not meaningful, and raw "
+              "rank preservation must be verified with `check-roundtrip` before a raw-score baseline is claimed.")
     return {
         "schema_version": 1,
         "experiment_id": f"v3-price148-{variant}",
@@ -469,10 +612,17 @@ def runner_manifest(variant: str, out: str, genomes: Sequence[str], claims: Mapp
 
 def export(artifact_path: str, manifest_path: str, outdir: str, variants: Sequence[str] = DEFAULT_VARIANTS,
            namespace: str = "auto", include_ec_top: bool = False,
-           raw_matrix_map: Optional[Mapping[str, Mapping[str, str]]] = None, trust_pickle: bool = False) -> dict:
+           raw_matrix_map: Optional[Mapping[str, Mapping[str, str]]] = None, trust_pickle: bool = False,
+           retention: str = "all_nonzero", min_score: float = MIN_SCORE, top_k: int = TOP_K,
+           use_target_full: bool = True, evidence_types: Optional[Mapping[str, str]] = None) -> dict:
     for v in variants:
         if v not in VARIANTS:
             raise ExportError(f"unknown variant {v}")
+    etypes = {p: PREDICTORS[p]["evidence_type"] for p in PREDICTORS}
+    for p, t in (evidence_types or {}).items():
+        if p not in PREDICTORS:
+            raise ExportError(f"evidence type given for unknown predictor {p}")
+        etypes[p] = t
     art = load_artifact(artifact_path)
     rows = read_manifest(manifest_path)
     aliases, conflicts, idmaps = alias_map(art)
@@ -497,15 +647,17 @@ def export(artifact_path: str, manifest_path: str, outdir: str, variants: Sequen
             if raw_matrix_map and p in raw_matrix_map and asm in raw_matrix_map[p]:
                 idx, cols, vals = load_matrix(raw_matrix_map[p][asm], trust_pickle)
                 im = idmaps.get(asm, {})
-                cl = matrix_claims(p, asm, idx, cols, vals, namespaced, idmap=im)
+                cl, info = matrix_claims(p, asm, idx, cols, vals, namespaced, retention, min_score, top_k, im, etypes[p])
                 st = {"n_proteins_in_genome": len(idx), "n_claim_proteins": len({c["protein_id"] for c in cl}),
-                      "source": raw_matrix_map[p][asm]}
+                      "source": raw_matrix_map[p][asm], "retention": info,
+                      "target_candidates": {"source": "full_matrix", "truncated": info["pruned"]}}
                 have_ids = {im.get(i, i) for i in idx}
                 missing_t = [aliases[asm][t] for t in art[p][asm]["target_ids"]
                              if t in aliases.get(asm, {}) and aliases[asm][t] not in have_ids]
                 st["targets_absent_from_matrix"] = missing_t
             else:
-                cl, st = build_claims(art, p, asm, aliases.get(asm, {}), namespaced, include_ec_top, idmaps.get(asm))
+                cl, st = build_claims(art, p, asm, aliases.get(asm, {}), namespaced, include_ec_top, idmaps.get(asm),
+                                      use_target_full, etypes[p])
             per_pred[p][asm] = cl
             coverage[p][asm] = st
 
@@ -515,10 +667,12 @@ def export(artifact_path: str, manifest_path: str, outdir: str, variants: Sequen
             claims = merge_variant([per_pred[p][asm] for p in VARIANTS[v]])
             files[v][asm] = write_jsonl(os.path.join(outdir, "claims", v, f"{asm}.claims.jsonl"), claims)
 
+    cand = candidate_coverage(coverage)
     mpaths: Dict[str, str] = {}
     for v in variants:
         man = runner_manifest(v, outdir, genomes, {g: files[v][g]["path"] for g in genomes},
-                              {g: label_files[g]["path"] for g in genomes}, truncated=not full)
+                              {g: label_files[g]["path"] for g in genomes}, truncated=not full,
+                              candidates_complete=all(cand[p]["full_candidate_coverage"] for p in VARIANTS[v]))
         mp = os.path.join(outdir, "manifests", f"v3_price_{v}.json")
         os.makedirs(os.path.dirname(mp), exist_ok=True)
         with open(mp, "w", encoding="utf-8") as fh:
@@ -534,7 +688,11 @@ def export(artifact_path: str, manifest_path: str, outdir: str, variants: Sequen
                                 "slurm_job_id": meta.get("slurm_job_id"), "manifest_recorded": meta.get("manifest")},
                    "manifest": {"path": manifest_path, "sha256": sha256_file(manifest_path), "rows": len(rows)}},
         "parameters": {"variants": list(variants), "namespace": namespace, "namespaced": namespaced,
-                       "include_ec_top": include_ec_top, "retention_rule": "score >= 0.01 or top 100 per protein",
+                       "include_ec_top": include_ec_top, "use_target_full": use_target_full,
+                       "target_candidate_rule": ("all nonzero entries of target_full (verified against target_scores)"
+                                                 if use_target_full else "target_scores only (score >= 0.01 or top 100)"),
+                       "retention": retention if full else None,
+                       "retention_params": {"min_score": min_score, "top_k": top_k} if retention == "threshold_topk" else {},
                        "mode": "full_matrix" if full else "compact"},
         "counts": {"manifest_rows": len(rows), "labelled_targets": sum(1 for a in audit if a["included"]),
                    "excluded_rows": len(excluded), "genomes": len(genomes),
@@ -558,14 +716,17 @@ def export(artifact_path: str, manifest_path: str, outdir: str, variants: Sequen
                           "genome-layout-dependent arms need the original raw files."
                           if not full else "Whole-proteome claims from the supplied full matrices."),
             "per_predictor_genome": coverage},
-        "calibration": "raw model scores exported unchanged (no calibrated_prob). The engine applies its default "
-                       "sigmoid(4*raw-2); CLEAN scores for some targets peak at ~6e-5, so their posteriors stay low. "
-                       "Learned calibration is future work and was not fitted on Price.",
-        "evidence_types": {p: PREDICTORS[p]["evidence_type"] for p in have},
+        "candidate_coverage": cand,
+        "calibration": "raw model scores exported unchanged (no calibrated_prob). The engine's provisional default "
+                       "calibrator is sigmoid(4*raw-2), not the identity and not learned: it maps raw 0 to 0.12 and "
+                       "compresses small scores (CLEAN peaks at ~6e-5 for some targets, so their posteriors stay near "
+                       "0.12). A learned calibration is future work and was not fitted on Price.",
+        "evidence_types": {p: etypes[p] for p in have},
+        "evidence_type_provenance": EVIDENCE_TYPE_NOTE,
         "selection_note": "Targets in the artifact were chosen from the Price manifest; the claim files therefore contain "
                           "only enzymes with known EC, and a protein's presence is itself a design property, not a feature.",
         "claims": files, "labels": label_files, "manifests": mpaths,
-        "raw_sources_needed_for_full_context": raw_sources(art),
+        "raw_retrieval_manifest": write_raw_retrieval(art, outdir),
     }
     rp = os.path.join(outdir, "export_report.json")
     with open(rp, "w", encoding="utf-8") as fh:
@@ -575,17 +736,111 @@ def export(artifact_path: str, manifest_path: str, outdir: str, variants: Sequen
     return report
 
 
-def raw_sources(artifact: Mapping) -> dict:
-    """Exact original files (path, sha256, size) the artifact was extracted from, per predictor and assembly."""
+EVIDENCE_TYPE_NOTE = ("Provisional architecture assumption, not verified against the models' sources: the repository holds no "
+                      "model cards and this task had no network access. CLEAN, DeepProZyme, EnzBERT and MAPred are treated as "
+                      "sequence-based; GraphEC and TopEC as structure-based. The labels chosen without using the truth "
+                      "columns; they select the combiner's reliability class. Override with --evidence-types and re-export. "
+                      "Whether any endpoint's training data overlaps the Price enzymes is unknown.")
+
+
+def candidate_coverage(coverage: Mapping[str, Mapping[str, dict]]) -> Dict[str, dict]:
+    """Per predictor, from artifact statistics only (no labels): how many nonzero target candidates exist
+    and how many were exported. ``full_candidate_coverage`` is true only if every genome exported all of them."""
     out: Dict[str, dict] = {}
-    for p, info in artifact["_meta"].get("predictors", {}).items():
-        out[p] = {"label": info.get("label"), "files": info.get("files", {})}
-    out["meteor_sources"] = {asm: rec.get("meteor_source") for p in predictors_in(artifact)[:1]
-                             for asm, rec in artifact[p].items()}
-    out["shared_inputs_listed_in_P08_README"] = [
-        "/ibex/scratch/projects/c2014/kexin/funcarve/meteor_v8/data/all_ancestors.txt",
-        "/ibex/scratch/projects/c2014/kexin/funcarve/meteor_v8/data/enzymeobsolete.pkl",
-        "/ibex/scratch/projects/c2014/hohndor/suite6_price149_manifest.tsv"]
+    for p, per_asm in coverage.items():
+        nz = kept = lost = 0
+        full = True
+        reasons: Dict[str, int] = defaultdict(int)
+        mass = []
+        for st in per_asm.values():
+            tc = st["target_candidates"]
+            if tc.get("truncated"):
+                full = False
+                reasons[str(tc.get("fallback_reason") or "pruned by retention policy")] += 1
+            if "nonzero_in_target_full" in tc and tc["nonzero_in_target_full"] is not None:
+                nz += tc["nonzero_in_target_full"]
+                kept += tc["retained"]
+                lost += tc["lost_to_artifact_truncation"]
+                if tc["score_mass_in_target_scores_fraction"] is not None:
+                    mass.append(tc["score_mass_in_target_scores_fraction"])
+            elif "retention" in st:
+                nz += st["retention"]["n_nonzero"]
+                kept += st["retention"]["n_retained"]
+        out[p] = {"genomes": len(per_asm), "nonzero_candidates": nz or None, "exported_candidates": kept,
+                  "full_candidate_coverage": full, "truncation_reasons": dict(reasons),
+                  "candidates_a_truncated_artifact_would_lose": lost,
+                  "min_score_mass_fraction_of_truncated_rule": min(mass) if mass else None}
+    return out
+
+
+def write_raw_retrieval(artifact: Mapping, outdir: str) -> dict:
+    """Write ``raw_files_needed.tsv`` (exact ibex paths from the artifact metadata) and return a short summary."""
+    rows: List[Tuple[str, str, str, object, object, object]] = []
+    for p, info in sorted(artifact["_meta"].get("predictors", {}).items()):
+        for asm, f in sorted((info.get("files") or {}).items()):
+            rows.append((p, asm, f.get("path", ""), f.get("sha256", ""), f.get("size", ""), f.get("mtime", "")))
+    path = os.path.join(outdir, "raw_files_needed.tsv")
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write("predictor\tassembly\tpath\tsha256\tsize_bytes\tmtime\n")
+        for r in rows:
+            fh.write("\t".join(str(x) for x in r) + "\n")
+    sizes = [int(r[4]) for r in rows if str(r[4]).isdigit()]
+    return {"path": path, "sha256": sha256_file(path), "files": len(rows), "total_bytes": sum(sizes),
+            "predictors": sorted({r[0] for r in rows}),
+            "host_dirs": sorted({os.path.dirname(os.path.dirname(r[2])) for r in rows if r[2]})[:6],
+            "also_needed": "genome annotation (GFF) for gene coordinates; not in the artifact or on the listed paths",
+            "meteor_archive": "not needed (METEOR is not used)"}
+
+
+def rank_roundtrip(claims_path: str, integrated_path: str) -> dict:
+    """Did the engine preserve the order of a SINGLE source's raw scores? (no labels involved)
+
+    For every protein, complete-EC candidates are ordered by raw score and compared with the order of the
+    integrated posterior. Counts adjacent raw-distinct pairs whose posteriors tie (``ties_created``) or reverse
+    (``inversions``) and proteins whose unique raw top-1 is no longer the unique posterior top-1.
+    ``raw_rank_preserved`` is true only if there are no ties, no inversions and no changed top-1; until this is
+    true for the engine build in use, "stage0 equals the unmodified raw ranking" must not be claimed.
+    """
+    raw: Dict[str, Dict[str, float]] = defaultdict(dict)
+    sources = set()
+    with open(claims_path, encoding="utf-8") as fh:
+        for ln in fh:
+            c = json.loads(ln)
+            sources.add(c["source"])
+            if is_complete_ec(c["function_id"]):
+                raw[c["protein_id"]][c["function_id"]] = float(c["raw_score"])
+    if len(sources) != 1:
+        raise ExportError(f"rank round trip is defined for one source, found {sorted(sources)}")
+    post: Dict[str, Dict[str, float]] = defaultdict(dict)
+    with open(integrated_path, encoding="utf-8") as fh:
+        head = next(fh).rstrip("\n").split("\t")
+        ip, it, ifn, ipr = (head.index(c) for c in ("protein_id", "type", "function_id", "posterior_prob"))
+        for ln in fh:
+            f = ln.rstrip("\n").split("\t")
+            if f[it] == "EC" and is_complete_ec(f[ifn]):
+                post[f[ip]][norm_ec(f[ifn])] = float(f[ipr])
+    out = {"proteins": 0, "adjacent_pairs": 0, "ties_created": 0, "inversions": 0, "top1_changed": 0,
+           "top1_posterior_tied": 0, "missing_in_output": 0}
+    for pid, cand in raw.items():
+        out["proteins"] += 1
+        order = sorted(cand, key=lambda e: (-cand[e], e))
+        miss = [e for e in order if e not in post.get(pid, {})]
+        out["missing_in_output"] += len(miss)
+        order = [e for e in order if e not in miss]
+        for a, b in zip(order, order[1:]):
+            if cand[a] == cand[b]:
+                continue  # a raw tie carries no order to preserve
+            out["adjacent_pairs"] += 1
+            pa, pb = post[pid][a], post[pid][b]
+            out["ties_created"] += pa == pb
+            out["inversions"] += pa < pb
+        if len(order) > 1 and cand[order[0]] != cand[order[1]]:
+            top = max(post[pid][e] for e in order)
+            winners = [e for e in order if post[pid][e] == top]
+            out["top1_posterior_tied"] += len(winners) > 1
+            out["top1_changed"] += winners != [order[0]]
+    out["raw_rank_preserved"] = (out["ties_created"] == 0 and out["inversions"] == 0 and out["top1_changed"] == 0
+                                 and out["missing_in_output"] == 0)
     return out
 
 
@@ -601,12 +856,27 @@ def main(argv: Optional[List[str]] = None) -> int:
     e.add_argument("--include-ec-top", action="store_true")
     e.add_argument("--raw-matrix-map", help="JSON {predictor: {assembly: matrix path}} for whole-proteome export")
     e.add_argument("--trust-pickle", action="store_true")
+    e.add_argument("--retention", default="all_nonzero", choices=RETENTION_POLICIES,
+                   help="full-matrix export: keep all nonzero scores (default) or the lossy >=min-score + top-k rule")
+    e.add_argument("--min-score", type=float, default=MIN_SCORE)
+    e.add_argument("--top-k", type=int, default=TOP_K)
+    e.add_argument("--no-target-full", action="store_true", help="use only the truncated target_scores (not recommended)")
+    e.add_argument("--evidence-types", help='JSON {"graphec": "SEQUENCE_DEEPLEARNING", ...} overriding the provisional types')
+    r = sub.add_parser("check-roundtrip", help="verify that the engine kept the raw score order of a single-source claims file")
+    r.add_argument("--claims", required=True)
+    r.add_argument("--integrated", required=True)
     a = ap.parse_args(argv)
+    if a.cmd == "check-roundtrip":
+        res = rank_roundtrip(a.claims, a.integrated)
+        print(json.dumps(res, indent=2, sort_keys=True))
+        return 0 if res["raw_rank_preserved"] else 1
     rmm = None
     if a.raw_matrix_map:
         with open(a.raw_matrix_map, encoding="utf-8") as fh:
             rmm = json.load(fh)
-    rep = export(a.artifact, a.manifest, a.out, tuple(a.variants.split(",")), a.namespace, a.include_ec_top, rmm, a.trust_pickle)
+    ets = json.loads(a.evidence_types) if a.evidence_types else None
+    rep = export(a.artifact, a.manifest, a.out, tuple(a.variants.split(",")), a.namespace, a.include_ec_top, rmm,
+                 a.trust_pickle, a.retention, a.min_score, a.top_k, not a.no_target_full, ets)
     c = rep["counts"]
     print(f"labelled targets {c['labelled_targets']}/{c['manifest_rows']}, excluded {c['excluded_rows']}, "
           f"genomes {c['genomes']}; report {rep['report_path']}")
