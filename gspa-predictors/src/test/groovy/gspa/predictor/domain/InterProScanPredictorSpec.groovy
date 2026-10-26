@@ -44,12 +44,19 @@ protein_003\tmd5hash\t150\tCDD\tcd00001\tABC_transporter\t1\t150\t1.0e-20\tT\t20
         outputDir.deleteDir()
     }
 
-    def "should handle empty output"() {
+    def "empty TSV means no matches; a missing TSV is a failed run"() {
         given:
         def predictor = new InterProScanPredictor()
         def outputDir = File.createTempDir("ips_test_", "")
 
+        when: "InterProScan always creates the TSV, even with zero signature matches"
+        predictor.parseOutput(outputDir)
+
+        then:
+        thrown(IllegalStateException)
+
         when:
+        new File(outputDir, "interproscan_results.tsv").text = ''
         def results = predictor.parseOutput(outputDir)
 
         then:

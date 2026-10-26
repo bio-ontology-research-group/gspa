@@ -1,8 +1,12 @@
 package gspa.predictor
 
 import gspa.integration.EvidenceType
+import gspa.io.FastaWriter
 import gspa.model.Annotation
 import gspa.model.AnnotationType
+import gspa.model.Contig
+import gspa.model.Genome
+import gspa.model.Protein
 
 /**
  * Base class for predictors that delegate to
@@ -32,7 +36,7 @@ import gspa.model.AnnotationType
  * (PhiSpy). The {@link #buildCommand} method writes the manifest
  * accordingly.
  */
-abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredictor {
+abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredictor implements GenomePredictor {
 
     /** Absolute path to {@code run_genomic_predictors.py}. */
     String sidecarScript
@@ -63,9 +67,13 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
     @Override
     String getExecutable() { pythonExecutable }
 
+    /** Missing mandatory configuration (e.g. a model database path), or null when complete. */
+    protected String configurationProblem() { null }
+
     @Override
     boolean isAvailable() {
         if (!sidecarScript || !(new File(sidecarScript).exists())) return false
+        if (configurationProblem()) return false
         try {
             def proc = [pythonExecutable, '--version'].execute()
             proc.waitForOrKill(10000)
@@ -73,6 +81,109 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
         } catch (Exception ignored) {
             return false
         }
+    }
+
+    @Override
+    String unavailableReason() {
+        if (!sidecarScript) return 'sidecarScript (run_genomic_predictors.py) is not configured'
+        if (!new File(sidecarScript).exists()) return "sidecar script not found: ${sidecarScript}"
+        configurationProblem() ?: super.unavailableReason()
+    }
+
+    /** Region predictors need contig sequences and coordinates: they run on a Genome. */
+    @Override
+    Map<String, List<Annotation>> predictBatch(List<Protein> proteins) {
+        throw new UnsupportedOperationException(
+            "${name} is a genome-level predictor; call predictGenome(Genome) with nucleotide contigs")
+    }
+
+    /** File name the nucleotide (or tool-specific) input is written under. */
+    protected String inputFileName() { 'genome.fna' }
+
+    /**
+     * Write the tool input from the genome's contigs. Default: nucleotide FASTA of
+     * every contig that carries a sequence (contig ids are the FASTA ids, so the
+     * region TSV's contig column joins back to {@link Genome#findContig}).
+     */
+    protected File writeGenomeInput(Genome genome, File dir) {
+        def f = new File(dir, inputFileName())
+        f.withWriter { w ->
+            genome.contigs.findAll { it.sequence }.each { Contig c ->
+                FastaWriter.writeEntry(w, c.id, c.sequence)
+            }
+        }
+        f
+    }
+
+    @Override
+    Map<String, List<Annotation>> predictGenome(Genome genome) {
+        long t0 = System.currentTimeMillis()
+        if (!genome.contigs.any { it.sequence }) {
+            recordStatus(PredictorRunStatus.failed(name,
+                'no contig carries nucleotide sequence (protein-only input cannot be scanned for genomic regions)'), t0)
+            return [:]
+        }
+        def tmpDir = File.createTempDir("gspa_${name}_", '')
+        try {
+            File input = writeGenomeInput(genome, tmpDir)
+            def command = buildCommand(input, tmpDir)
+            log.info("Running ${name}: ${command.join(' ')}")
+            def result = execute(command, tmpDir)
+            if (result.exitCode != 0) {
+                log.error("${name} failed with exit code ${result.exitCode}: ${result.stderr}")
+                recordStatus(PredictorRunStatus.failed(name,
+                    "exit code ${result.exitCode}: ${result.stderr?.trim()?.take(500)}", result.exitCode), t0)
+                return [:]
+            }
+            // The sidecar exits 0 even when the wrapped tool failed; it then writes
+            // no TSV. A header-only TSV is the genuine "no regions" result.
+            def tsv = new File(tmpDir, "${tag}.${predictorName}.genomic.tsv")
+            if (!tsv.exists()) {
+                recordStatus(PredictorRunStatus.failed(name,
+                    "sidecar wrote no ${tsv.name}; wrapped tool failed (see sidecar log)", result.exitCode), t0)
+                return [:]
+            }
+            Map<String, List<Annotation>> regions = parseOutput(tmpDir)
+            // Full contig-level records stay available even where no CDS overlaps.
+            genome.metadata["genomic_regions:${name}".toString()] = regions.values().flatten()
+            Map<String, List<Annotation>> byProtein = mapRegionsToProteins(genome, regions)
+            recordStatus(PredictorRunStatus.completed(name, countAnnotations(regions), result.exitCode), t0)
+            byProtein
+        } catch (Exception e) {
+            recordStatus(PredictorRunStatus.failed(name, "${e.class.simpleName}: ${e.message}"), t0)
+            throw e
+        } finally {
+            tmpDir.deleteDir()
+        }
+    }
+
+    /**
+     * Project contig-keyed regions onto the proteins whose CDS overlaps them
+     * (same contig, 1-based inclusive coordinates). Each protein receives a copy
+     * of the region annotation tagged with how much of the CDS lies in the region.
+     */
+    static Map<String, List<Annotation>> mapRegionsToProteins(Genome genome, Map<String, List<Annotation>> regions) {
+        Map<String, List<Annotation>> out = [:]
+        regions.each { String contigId, List<Annotation> anns ->
+            Contig contig = genome.findContig(contigId)
+            if (contig == null) return
+            anns.each { Annotation region ->
+                contig.proteins.each { Protein p ->
+                    int s = p.start, e = p.end
+                    if (e == 0 || e < region.genomicStart || s > region.genomicEnd) return
+                    boolean contained = s >= region.genomicStart && e <= region.genomicEnd
+                    Map<String, Object> meta = new LinkedHashMap<>(region.metadata ?: [:])
+                    meta.cdsOverlap = contained ? 'contained' : 'partial'
+                    (out.computeIfAbsent(p.id) { [] } as List<Annotation>) << new Annotation(
+                        type: region.type, value: region.value, score: region.score,
+                        source: region.source, evidence: region.evidence,
+                        evidenceType: region.evidenceType, contigId: region.contigId,
+                        genomicStart: region.genomicStart, genomicEnd: region.genomicEnd,
+                        regionType: region.regionType, metadata: meta)
+                }
+            }
+        }
+        out
     }
 
     @Override

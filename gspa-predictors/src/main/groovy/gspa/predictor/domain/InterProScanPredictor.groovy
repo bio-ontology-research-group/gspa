@@ -6,7 +6,7 @@ import gspa.predictor.AbstractToolPredictor
 
 /**
  * InterProScan domain annotation predictor.
- * Runs InterProScan to identify protein domains and assign GO/EC annotations
+ * Runs InterProScan to identify protein domains and report InterPro-curated GO terms
  * via domain signatures from Pfam, TIGRFAM, CDD, SUPERFAMILY, etc.
  *
  * InterProScan is the most reliable automated annotation method
@@ -32,10 +32,16 @@ class InterProScanPredictor extends AbstractToolPredictor {
     @Override
     String getName() { 'interproscan' }
 
+    /**
+     * EC is deliberately absent: the InterProScan TSV schema (15 columns: accession,
+     * MD5, length, analysis, signature, description, start, stop, score, status, date,
+     * InterPro accession/description, GO, pathways) has no EC column, and EC must not
+     * be inferred from domain signatures. The pathways column is not parsed.
+     */
     @Override
     Set<AnnotationType> getOutputTypes() {
-        [AnnotationType.GO, AnnotationType.EC, AnnotationType.PFAM,
-         AnnotationType.INTERPRO, AnnotationType.TIGRFAM] as Set
+        [AnnotationType.GO, AnnotationType.PFAM, AnnotationType.INTERPRO, AnnotationType.TIGRFAM,
+         AnnotationType.CDD, AnnotationType.SUPERFAMILY] as Set
     }
 
     @Override
@@ -65,7 +71,10 @@ class InterProScanPredictor extends AbstractToolPredictor {
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
         def outputFile = new File(outputDir, 'interproscan_results.tsv')
-        if (!outputFile.exists()) return [:]
+        // InterProScan creates the TSV even when no signature matched.
+        if (!outputFile.exists()) {
+            throw new IllegalStateException("interproscan produced no ${outputFile.name}")
+        }
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
@@ -84,10 +93,10 @@ class InterProScanPredictor extends AbstractToolPredictor {
             double evalue = safeDouble(fields[8])
             // fields[9] = status (T/?)
             // fields[10] = date
-            String iprId = fields.length > 11 ? fields[11] : ''        // InterPro ID
-            String iprDesc = fields.length > 12 ? fields[12] : ''      // InterPro desc
-            String goTerms = fields.length > 13 ? fields[13] : ''      // GO terms
-            String pathwayAnns = fields.length > 14 ? fields[14] : ''  // Pathway annotations
+            // InterProScan writes '-' for "no value" in the optional columns
+            String iprId = unset(fields, 11)        // InterPro ID
+            String iprDesc = unset(fields, 12)      // InterPro desc
+            String goTerms = unset(fields, 13)      // GO terms, e.g. GO:0005524(InterPro)|GO:0016887(PANTHER)
 
             double score = evalue > 0 ? Math.min(1.0, -Math.log10(evalue) / 20.0) : 0.9
 
@@ -118,7 +127,7 @@ class InterProScanPredictor extends AbstractToolPredictor {
             // GO terms (pipe-separated: GO:0006412|GO:0003735)
             if (goTerms) {
                 goTerms.split('\\|').each { goTerm ->
-                    goTerm = goTerm.trim()
+                    goTerm = goTerm.trim().replaceAll(/\(.*\)$/, '')
                     if (goTerm.startsWith('GO:')) {
                         results[proteinId] << new Annotation(
                             type: AnnotationType.GO, value: goTerm,
@@ -141,6 +150,11 @@ class InterProScanPredictor extends AbstractToolPredictor {
             case 'SUPERFAMILY': return AnnotationType.SUPERFAMILY
             default: return null
         }
+    }
+
+    private static String unset(String[] fields, int idx) {
+        String v = idx < fields.length ? fields[idx].trim() : ''
+        v == '-' ? '' : v
     }
 
     private static double safeDouble(String s) {

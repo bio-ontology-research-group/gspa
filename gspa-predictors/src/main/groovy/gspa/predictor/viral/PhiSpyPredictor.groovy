@@ -1,6 +1,8 @@
 package gspa.predictor.viral
 
+import gspa.io.GenbankWriter
 import gspa.model.AnnotationType
+import gspa.model.Genome
 import gspa.predictor.AbstractGenomicRegionSidecarPredictor
 
 /**
@@ -28,6 +30,25 @@ class PhiSpyPredictor extends AbstractGenomicRegionSidecarPredictor {
 
     @Override
     AnnotationType getOutputAnnotationType() { AnnotationType.PROPHAGE }
+
+    @Override
+    protected String inputFileName() { 'genome.gbk' }
+
+    /**
+     * PhiSpy reads GenBank, not FASTA: emit one LOCUS per sequence-bearing contig
+     * with its CDS features, so PhiSpy's contig column equals the GSPA contig id.
+     * Requires gene models; without CDS features PhiSpy has nothing to classify.
+     */
+    @Override
+    protected File writeGenomeInput(Genome genome, File dir) {
+        def withSeq = genome.contigs.findAll { it.sequence }
+        if (!withSeq.any { it.cdsFeatures() }) {
+            throw new IllegalStateException("${name}: no CDS features on any contig; PhiSpy needs gene models")
+        }
+        def f = new File(dir, inputFileName())
+        GenbankWriter.writeGenbank(new Genome(id: genome.id, contigs: withSeq), f)
+        f
+    }
 
     @Override
     protected List<String> extraSidecarArgs() {

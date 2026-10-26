@@ -10,9 +10,12 @@ import org.slf4j.LoggerFactory
  * Handles common patterns: tool availability checking, temp directory management,
  * FASTA file writing, process execution with timeout, and output parsing.
  */
-abstract class AbstractToolPredictor implements Predictor {
+abstract class AbstractToolPredictor implements Predictor, StatusReportingPredictor {
 
     protected final Logger log = LoggerFactory.getLogger(getClass())
+
+    /** Completion status of the most recent run (null before the first run). */
+    volatile PredictorRunStatus lastRunStatus
 
     /** Working directory for temp files */
     File workDir
@@ -55,6 +58,12 @@ abstract class AbstractToolPredictor implements Predictor {
         }
     }
 
+    /** Generic reason; subclasses with configuration prerequisites refine it. */
+    @Override
+    String unavailableReason() {
+        isAvailable() ? null : "executable '${executablePath ?: executable}' not found or not runnable"
+    }
+
     @Override
     String getVersion() {
         try {
@@ -74,9 +83,13 @@ abstract class AbstractToolPredictor implements Predictor {
 
     @Override
     Map<String, List<Annotation>> predictBatch(List<Protein> proteins) {
-        if (proteins.isEmpty()) return [:]
+        if (proteins.isEmpty()) {
+            lastRunStatus = PredictorRunStatus.completed(name, 0)
+            return [:]
+        }
 
         def tmpDir = createTempDir()
+        long t0 = System.currentTimeMillis()
         try {
             // Write input FASTA
             def inputFasta = new File(tmpDir, 'input.faa')
@@ -89,14 +102,30 @@ abstract class AbstractToolPredictor implements Predictor {
 
             if (result.exitCode != 0) {
                 log.error("${name} failed with exit code ${result.exitCode}: ${result.stderr}")
+                recordStatus(PredictorRunStatus.failed(name,
+                    "exit code ${result.exitCode}: ${result.stderr?.trim()?.take(500)}", result.exitCode), t0)
                 return [:]
             }
 
             // Parse output
-            return parseOutput(tmpDir)
+            def parsed = parseOutput(tmpDir)
+            recordStatus(PredictorRunStatus.completed(name, countAnnotations(parsed), result.exitCode), t0)
+            return parsed
+        } catch (Exception e) {
+            recordStatus(PredictorRunStatus.failed(name, "${e.class.simpleName}: ${e.message}"), t0)
+            throw e
         } finally {
             tmpDir.deleteDir()
         }
+    }
+
+    protected void recordStatus(PredictorRunStatus status, long startMillis) {
+        status.elapsedMillis = System.currentTimeMillis() - startMillis
+        lastRunStatus = status
+    }
+
+    protected static int countAnnotations(Map<String, List<Annotation>> results) {
+        results ? (results.values().sum { it.size() } as Integer ?: 0) : 0
     }
 
     /**

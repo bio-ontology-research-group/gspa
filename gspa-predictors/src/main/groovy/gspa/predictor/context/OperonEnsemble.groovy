@@ -164,7 +164,8 @@ class OperonEnsemble {
         Set<String> out = []
         if (p.annotations == null) return out
         for (def ann : p.annotations.goAnnotations()) {
-            if (ann.goAspect != 'BP' && ann.goAspect != null) continue
+            // Aspect-less terms are of unknown ontology, never assumed BP.
+            if (ann.goAspect != 'BP') continue
             if (ann.value == null) continue
             if (BP_DENYLIST.contains(ann.value)) continue
             out << ann.value

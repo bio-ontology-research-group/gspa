@@ -48,6 +48,19 @@ class AnnotationPipeline {
     /** Run protein-level predictors in parallel threads */
     boolean parallel = true
 
+    /**
+     * Typed completion status of every registered predictor from the last
+     * {@link #annotate} call (unavailable / failed / successful-zero / successful).
+     * Disabled predictors are not registered and therefore not listed.
+     */
+    final List<PredictorRunStatus> runStatuses = Collections.synchronizedList([])
+
+    /** Explicit Pfam-A HMM file for {@code domains.tool: hmmer}; set before {@link #configure}. */
+    String hmmerDatabase
+
+    /** Environment variable naming the Pfam-A HMM file for the direct HMMER domain tool. */
+    static final String PFAM_HMM_ENV = 'GSPA_PFAM_HMM'
+
     AnnotationPipeline(GspaConfig config) {
         this.config = config
     }
@@ -109,10 +122,23 @@ class AnnotationPipeline {
             boolean disabled = config.predictors.disable.contains(name)
             if (disabled) {
                 log.debug("Predictor ${name} explicitly disabled")
+                genomePredictors.removeAll { it.name == name }
                 return
             }
             registry.register(predictor)
         }
+    }
+
+    /**
+     * Pfam-A HMM path for the direct HMMER tool. Precedence: the explicit
+     * {@link #hmmerDatabase} override, then an optional {@code domains.database}
+     * config property (the shared config has no such field yet), then
+     * {@link #PFAM_HMM_ENV}.
+     */
+    private String resolveHmmerDatabase() {
+        def domains = config.predictors.domains
+        String fromConfig = domains.hasProperty('database') ? domains.getProperty('database') as String : null
+        hmmerDatabase ?: fromConfig ?: System.getenv(PFAM_HMM_ENV)
     }
 
     private List<Predictor> createAllPredictors() {
@@ -167,7 +193,9 @@ class AnnotationPipeline {
                     predictors << p
                     break
                 case 'hmmer':
-                    predictors << new gspa.predictor.domain.HmmerPredictor()
+                    predictors << new gspa.predictor.domain.HmmerPredictor(
+                        hmmDatabase: resolveHmmerDatabase(),
+                    )
                     break
             }
         }
@@ -397,8 +425,11 @@ class AnnotationPipeline {
 
         // v1.3 viral / prophage predictors (genome-level)
         def viral = config.predictors.viral
+        // These consume contig nucleotide sequence + coordinates, so they are
+        // GenomePredictors and run in the genome stage, never on protein FASTA.
+        List<AbstractGenomicRegionSidecarPredictor> regionPredictors = []
         if (viral.genomad.enabled) {
-            predictors << new gspa.predictor.viral.GenomadPredictor(
+            regionPredictors << new gspa.predictor.viral.GenomadPredictor(
                 sidecarScript: viral.genomicSidecar,
                 pythonExecutable: viral.pythonExecutable,
                 dbPath: viral.genomad.dbPath,
@@ -407,7 +438,7 @@ class AnnotationPipeline {
             )
         }
         if (viral.checkv.enabled) {
-            predictors << new gspa.predictor.viral.CheckVPredictor(
+            regionPredictors << new gspa.predictor.viral.CheckVPredictor(
                 sidecarScript: viral.genomicSidecar,
                 pythonExecutable: viral.pythonExecutable,
                 dbPath: viral.checkv.dbPath,
@@ -417,7 +448,7 @@ class AnnotationPipeline {
             )
         }
         if (viral.phispy.enabled) {
-            predictors << new gspa.predictor.viral.PhiSpyPredictor(
+            regionPredictors << new gspa.predictor.viral.PhiSpyPredictor(
                 sidecarScript: viral.genomicSidecar,
                 pythonExecutable: viral.pythonExecutable,
                 phispySif: viral.phispy.sif,
@@ -425,6 +456,7 @@ class AnnotationPipeline {
                 minScore: viral.phispy.minScore,
             )
         }
+        regionPredictors.each { predictors << it; genomePredictors << it }
 
         predictors
     }
@@ -456,8 +488,16 @@ class AnnotationPipeline {
         }
 
         // 3. Run protein-level predictors (in parallel if multiple available)
-        def availablePredictors = registry.getAvailable()
-            .findAll { !(it instanceof GenomePredictor) }
+        runStatuses.clear()
+        // Probe availability once; tools that are not runnable are recorded as
+        // UNAVAILABLE so "never ran" is never confused with "ran and found nothing".
+        def (List<Predictor> runnable, List<Predictor> missing) = registry.getAll().split { it.isAvailable() }
+        missing.each { Predictor p ->
+            String why = (p instanceof StatusReportingPredictor ? p.unavailableReason() : null) ?: 'tool not available'
+            log.warn("  ${p.name} unavailable: ${why}")
+            runStatuses << PredictorRunStatus.unavailable(p.name, why)
+        }
+        def availablePredictors = runnable.findAll { !(it instanceof GenomePredictor) }
         log.info("Running ${availablePredictors.size()} protein-level predictors...")
 
         // Phase 10: optional intra-genome clustering — predictors see only
@@ -482,11 +522,8 @@ class AnnotationPipeline {
             def threads = availablePredictors.collect { predictor ->
                 Thread.start {
                     log.info("  [parallel] Running ${predictor.name}...")
-                    try {
-                        results[predictor.name] = predictor.predictBatch(predictorInput)
-                    } catch (Exception e) {
-                        log.error("  ${predictor.name} failed: ${e.message}")
-                    }
+                    def annotations = runTracked(predictor) { predictor.predictBatch(predictorInput) }
+                    if (annotations != null) results[predictor.name] = annotations
                 }
             }
             threads.each { it.join() }
@@ -496,12 +533,8 @@ class AnnotationPipeline {
         } else {
             availablePredictors.each { predictor ->
                 log.info("  Running ${predictor.name}...")
-                try {
-                    def annotations = predictor.predictBatch(predictorInput)
-                    applyAnnotations(genome, annotations, predictor.name)
-                } catch (Exception e) {
-                    log.error("  ${predictor.name} failed: ${e.message}")
-                }
+                def annotations = runTracked(predictor) { predictor.predictBatch(predictorInput) }
+                if (annotations != null) applyAnnotations(genome, annotations, predictor.name)
             }
         }
 
@@ -512,17 +545,25 @@ class AnnotationPipeline {
         }
 
         // 4. Run genome-level predictors (sequential — they may depend on protein annotations)
-        def availableGenomePredictors = genomePredictors.findAll { it.isAvailable() }
+        // Availability was probed above; genome-stage tools are the runnable
+        // GenomePredictors (registered ones, plus any manually added and not disabled).
+        List<GenomePredictor> availableGenomePredictors = runnable.findAll { it instanceof GenomePredictor } as List<GenomePredictor>
+        genomePredictors.each { GenomePredictor gp ->
+            if (registry.get(gp.name) == null && !config.predictors.disable.contains(gp.name) &&
+                    !availableGenomePredictors.contains(gp)) {
+                if (gp.isAvailable()) {
+                    availableGenomePredictors << gp
+                } else {
+                    runStatuses << PredictorRunStatus.unavailable(gp.name, 'tool not available')
+                }
+            }
+        }
         if (availableGenomePredictors) {
             log.info("Running ${availableGenomePredictors.size()} genome-level predictors...")
             availableGenomePredictors.each { predictor ->
                 log.info("  Running ${predictor.name}...")
-                try {
-                    def annotations = predictor.predictGenome(genome)
-                    applyAnnotations(genome, annotations, predictor.name)
-                } catch (Exception e) {
-                    log.error("  ${predictor.name} failed: ${e.message}")
-                }
+                def annotations = runTracked(predictor) { predictor.predictGenome(genome) }
+                if (annotations != null) applyAnnotations(genome, annotations, predictor.name)
             }
         }
 
@@ -538,6 +579,35 @@ class AnnotationPipeline {
             "${totalAnnotations} total annotations")
 
         genome
+    }
+
+    /**
+     * Execute one predictor and record its typed completion status. Returns the
+     * annotations, or null when the predictor threw (status FAILED). A status the
+     * predictor reported itself (exit code, tool diagnostics) takes precedence;
+     * otherwise it is derived from the result: empty = SUCCESS_ZERO.
+     */
+    private Map<String, List<Annotation>> runTracked(Predictor predictor, Closure<Map<String, List<Annotation>>> body) {
+        PredictorRunStatus before = predictor instanceof StatusReportingPredictor ? predictor.lastRunStatus : null
+        long t0 = System.currentTimeMillis()
+        try {
+            Map<String, List<Annotation>> result = body.call() ?: [:]
+            PredictorRunStatus reported = predictor instanceof StatusReportingPredictor ? predictor.lastRunStatus : null
+            PredictorRunStatus status = (reported != null && !reported.is(before)) ? reported :
+                PredictorRunStatus.completed(predictor.name, result.values().sum { it.size() } as Integer ?: 0)
+            if (status.elapsedMillis == 0L) status.elapsedMillis = System.currentTimeMillis() - t0
+            runStatuses << status
+            if (status.outcome == PredictorOutcome.FAILED) {
+                log.error("  ${predictor.name} failed: ${status.detail}")
+                return null
+            }
+            return result
+        } catch (Exception e) {
+            log.error("  ${predictor.name} failed: ${e.message}")
+            runStatuses << PredictorRunStatus.failed(predictor.name, "${e.class.simpleName}: ${e.message}")
+                .with { it.elapsedMillis = System.currentTimeMillis() - t0; it }
+            return null
+        }
     }
 
     /**
@@ -730,6 +800,9 @@ class AnnotationPipeline {
      */
     void writeOutput(Genome genome, File outputDir) {
         outputDir.mkdirs()
+        def manifestFile = new File(outputDir, "${genome.id}_predictor_status.json")
+        PredictorRunManifest.write(genome.id, runStatuses, manifestFile)
+        log.info("Predictor status manifest written: ${manifestFile}")
         gspa.io.FastaWriter.writeProteins(genome.proteins, new File(outputDir, "${genome.id}.faa"))
         new File(outputDir, "${genome.id}_proteins.tsv").withWriter { w ->
             w.writeLine('protein_id\tcontig\tstart\tend\tstrand\tlocus_tag\tgene\tproduct\tproduct_source\thomology_accession\tidentity\tquery_coverage\tsubject_coverage\tlength_aa')

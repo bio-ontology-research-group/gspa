@@ -30,8 +30,24 @@ class HmmerPredictor extends AbstractToolPredictor {
     @Override
     String getExecutable() { 'hmmsearch' }
 
+    /** hmmsearch needs a Pfam-A HMM file; without one the tool cannot run. */
+    @Override
+    boolean isAvailable() {
+        hmmDatabase && new File(hmmDatabase).isFile() && super.isAvailable()
+    }
+
+    @Override
+    String unavailableReason() {
+        if (!hmmDatabase) return 'no HMM database configured (hmmDatabase / GSPA_PFAM_HMM)'
+        if (!new File(hmmDatabase).isFile()) return "HMM database not found: ${hmmDatabase}"
+        super.unavailableReason()
+    }
+
     @Override
     List<String> buildCommand(File inputFasta, File outputDir) {
+        if (!hmmDatabase) {
+            throw new IllegalStateException("${name}: hmmDatabase is unset (path to Pfam-A.hmm)")
+        }
         def outputFile = new File(outputDir, 'hmmer_domtbl.tsv')
         [
             executablePath ?: executable,
@@ -48,7 +64,10 @@ class HmmerPredictor extends AbstractToolPredictor {
     @Override
     Map<String, List<Annotation>> parseOutput(File outputDir) {
         def outputFile = new File(outputDir, 'hmmer_domtbl.tsv')
-        if (!outputFile.exists()) return [:]
+        // hmmsearch writes the domtblout (header/footer only when nothing hit).
+        if (!outputFile.exists()) {
+            throw new IllegalStateException("hmmsearch produced no ${outputFile.name}")
+        }
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 

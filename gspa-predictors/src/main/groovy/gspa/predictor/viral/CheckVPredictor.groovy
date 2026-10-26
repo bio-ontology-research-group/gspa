@@ -28,6 +28,11 @@ class CheckVPredictor extends AbstractGenomicRegionSidecarPredictor {
     AnnotationType getOutputAnnotationType() { AnnotationType.VIRAL_CONTIG }
 
     @Override
+    protected String configurationProblem() {
+        dbPath ? null : 'dbPath (CheckV database) is not configured'
+    }
+
+    @Override
     protected List<String> extraSidecarArgs() {
         if (!dbPath) {
             throw new IllegalStateException("${name}: dbPath required (CheckV DB)")

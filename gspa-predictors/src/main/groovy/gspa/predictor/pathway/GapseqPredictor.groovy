@@ -3,6 +3,7 @@ package gspa.predictor.pathway
 import gspa.model.*
 import gspa.predictor.AbstractToolPredictor
 import gspa.predictor.GenomePredictor
+import gspa.predictor.PredictorRunStatus
 
 /**
  * Pathway/gap predictor wrapping gapsmith (default) or gapseq.
@@ -151,6 +152,7 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
         }
 
         def tmpDir = File.createTempDir("gspa_gapseq_", '')
+        long t0 = System.currentTimeMillis()
         try {
             File inputFasta = writeTargetFasta(genome, tmpDir)
 
@@ -160,10 +162,14 @@ class GapseqPredictor extends AbstractToolPredictor implements GenomePredictor {
 
             if (result.exitCode != 0) {
                 log.error("${tool} failed: ${result.stderr}")
+                recordStatus(PredictorRunStatus.failed(name,
+                    "exit code ${result.exitCode}: ${result.stderr?.trim()?.take(500)}", result.exitCode), t0)
                 return [:]
             }
 
-            return parseOutput(tmpDir)
+            def parsed = parseOutput(tmpDir)
+            recordStatus(PredictorRunStatus.completed(name, countAnnotations(parsed), result.exitCode), t0)
+            return parsed
         } finally {
             tmpDir.deleteDir()
         }

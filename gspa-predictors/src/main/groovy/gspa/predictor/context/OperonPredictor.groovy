@@ -140,6 +140,7 @@ class OperonPredictor implements GenomePredictor {
      */
     Map<String, List<Annotation>> transferAnnotations(List<Operon> operons) {
         Map<String, List<Annotation>> transfers = [:].withDefault { [] }
+        int skippedAspectless = 0
 
         operons.each { operon ->
             // Collect all GO BP annotations in the operon
@@ -147,8 +148,13 @@ class OperonPredictor implements GenomePredictor {
             Map<String, Set<String>> proteinTerms = [:]
 
             operon.genes.each { protein ->
-                def bpTerms = protein.annotations.goAnnotations()
-                    .findAll { it.goAspect == 'BP' || it.goAspect == null }
+                // Only terms explicitly labelled BP are process evidence. A GO term
+                // with no aspect is of unknown ontology: it may be a cellular
+                // component (cytoplasm) or molecular function (an enzyme activity),
+                // which co-transcription says nothing about, so it is never copied.
+                def goAnns = protein.annotations.goAnnotations()
+                skippedAspectless += goAnns.count { it.goAspect == null }
+                def bpTerms = goAnns.findAll { it.goAspect == 'BP' }
                     .collect { it.value } as Set
                 proteinTerms[protein.id] = bpTerms
                 operonBPTerms.addAll(bpTerms)
@@ -182,6 +188,10 @@ class OperonPredictor implements GenomePredictor {
             }
         }
 
+        if (skippedAspectless > 0) {
+            log.warn("Operon transfer ignored ${skippedAspectless} GO annotation(s) without a GO aspect " +
+                "(cannot be confirmed as biological process)")
+        }
         transfers
     }
 

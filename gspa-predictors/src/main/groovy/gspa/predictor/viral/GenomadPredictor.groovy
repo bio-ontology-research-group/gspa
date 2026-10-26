@@ -33,6 +33,11 @@ class GenomadPredictor extends AbstractGenomicRegionSidecarPredictor {
     AnnotationType getOutputAnnotationType() { AnnotationType.PROPHAGE }
 
     @Override
+    protected String configurationProblem() {
+        dbPath ? null : 'dbPath (geNomad model database) is not configured'
+    }
+
+    @Override
     protected List<String> extraSidecarArgs() {
         if (!dbPath) {
             throw new IllegalStateException("${name}: dbPath required (geNomad model DB)")
