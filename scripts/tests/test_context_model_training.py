@@ -9,7 +9,7 @@ Two kinds of test live here and are kept apart:
   signals it is meant to learn (negative context weights, interactions for trees, a non-zero
   null outcome). They are not evidence that the model is accurate on real genomes.
 
-Run:  /tmp/gspa-v3-testenv/bin/python -m unittest discover -s scripts/tests -v
+Run:  $HOME/tmp/gspa-v3-testenv/bin/python -m unittest discover -s scripts/tests -v
 """
 import argparse
 import copy
@@ -88,6 +88,17 @@ class ProtocolProvenance(unittest.TestCase):
             del r[field]
             with self.assertRaises(tcm.ProvenanceError, msg=field):
                 tcm.read_table(self.write([r]), self.c)
+
+    def test_quality_observations_cannot_be_silently_discarded_by_training_reader(self):
+        r = self.good(quality_evidence=[{'model_id': 'ANF00021'}])
+        with self.assertRaisesRegex(tcm.ProvenanceError, 'gene-model quality'):
+            tcm.read_table(self.write([r]), self.c)
+        p = self.tmp / 'quality.tsv'
+        p.write_text('example_id\tgenome_id\tgroup\tsplit\tlabel\ta\tb\tc\tquality_evidence\n'
+                     'e1\tg1\tf1\ttrain\t1\t.1\t.2\t.3\t[{"model_id":"ANF00021"}]\n')
+        with self.assertRaisesRegex(tcm.ProvenanceError, 'gene-model quality'):
+            tcm.read_table(p, self.c)
+        self.assertEqual(len(tcm.read_table(self.write([self.good(quality_evidence=[])]), self.c)), 1)
 
     def test_invalid_values_are_rejected(self):
         bad = [self.good(split="validation"), self.good(label=2), self.good(label="maybe"),
@@ -330,6 +341,71 @@ class ProtocolLocusLayer(unittest.TestCase):
         p0b, pcb = tcm.assign_locus(art, [x, x * 0.2])
         self.assertAlmostEqual(p0b + sum(pcb), 1.0)
 
+    def test_same_locus_name_in_different_genomes_is_not_one_competition(self):
+        rows = [row(0, 'train', 'f1', 'g1', 1, np.zeros(len(self.names)), locus='shared_name'),
+                row(1, 'train', 'f2', 'g2', 1, np.zeros(len(self.names)), locus='shared_name')]
+        groups, multi = tcm.build_locus_groups(rows, [0.2, 0.3], self.names)
+        self.assertEqual(len(groups), 2)
+        self.assertEqual(multi, 0)
+
+    def certified_rows(self):
+        rows = [row(i, 'train', 'f1', 'g1', 1 - i, np.zeros(len(self.names)), locus='L') for i in range(2)]
+        for r in rows:
+            r.update(locus_members=['e0', 'e1'], locus_truth_source='fixture:complete-assay',
+                     function_type='EC', function_id='EC:1.1.1.1', role='CATALYTIC',
+                     label_basis='positive_truth' if r['label'] else 'explicit_negative_truth',
+                     label_references=['fixture:direct-assay'])
+        return rows
+
+    def test_complete_certificate_is_checked_after_any_filtering(self):
+        rows = self.certified_rows()
+        tcm.validate_locus_truth(rows)
+        with self.assertRaisesRegex(tcm.ProvenanceError, 'incomplete locus_members'):
+            tcm.validate_locus_truth(rows[1:])
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / 'rows.jsonl'
+            tcm.write_rows_jsonl(rows[1:], self.names, path)
+            with self.assertRaisesRegex(tcm.ProvenanceError, 'incomplete locus_members'):
+                tcm.read_table(path, self.c)
+
+    def test_production_locus_validation_requires_explicit_truth_and_uniform_identity(self):
+        mutations = [lambda r: r[0].pop('locus_members'),
+                     lambda r: r[0].update(locus_truth_source=''),
+                     lambda r: r[1].update(label_basis='closed_world_unconfirmed'),
+                     lambda r: r[1].update(label_references=[]),
+                     lambda r: r[1].update(role='ACCESSORY'),
+                     lambda r: r[1].update(function_id='EC:2.2.2.2'),
+                     lambda r: r[1].update(split='test')]
+        for mutate in mutations:
+            rows = self.certified_rows()
+            mutate(rows)
+            with self.assertRaises(tcm.ProvenanceError):
+                tcm.validate_locus_truth(rows)
+
+    def test_locus_truth_source_and_membership_enter_training_digest(self):
+        rows = self.certified_rows()
+        before = tcm.training_data_digest(rows, [])
+        rows[0]['locus_truth_source'] = 'fixture:changed-assay'
+        self.assertNotEqual(before, tcm.training_data_digest(rows, []))
+
+    def test_direct_production_training_cannot_bypass_locus_completeness(self):
+        rows = tcm.synthetic_rows(self.c, n_groups=60)
+        tr, ca = self.split_rows(rows)
+        kw = self.train_kw(rows)
+        kw.update(intended_use='production', synthetic=False)
+        with self.assertRaisesRegex(tcm.ProvenanceError, 'locus_members'):
+            tcm.train(tr, ca, self.c, 'logistic', **kw)
+
+    def test_label_fraction_or_boolean_is_not_silently_coerced_to_binary_truth(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / 'rows.jsonl'
+            for value in (0.5, True):
+                rows = self.certified_rows()
+                rows[0]['label'] = value
+                tcm.write_rows_jsonl(rows, self.names, path)
+                with self.assertRaisesRegex(tcm.ProvenanceError, 'label must be 0/1'):
+                    tcm.read_table(path, self.c)
+
     def test_multi_positive_groups_are_excluded_from_the_locus_layer_not_forced_exclusive(self):
         names = self.names
         rows = []
@@ -459,7 +535,7 @@ class FixtureConsistency(unittest.TestCase):
     def test_contract_json_in_resources_is_consistent(self):
         c = json.loads(CONTRACT_PATH.read_text())
         self.assertEqual(c["fingerprint"], tcm.contract_fingerprint(c["id"], c["features"]))
-        self.assertEqual(c["id"], "gspa.context-features/2")
+        self.assertEqual(c["id"], "gspa.context-features/3")
 
 
 class ExportedRowsAgreeWithTrainer(unittest.TestCase):

@@ -114,6 +114,14 @@ class CohortInput {
         boolean directed
     }
 
+    /** One named-pathway reaction group, whose reaction mappings are alternatives. */
+    static class PathwayGroup {
+        String pathwayId
+        String groupId
+        String source
+        Set<String> reactionIds = new LinkedHashSet<>()
+    }
+
     /** Identifier of the pre-cohort snapshot the baseline confidences were drawn from. */
     String baselineSnapshotId
 
@@ -124,6 +132,8 @@ class CohortInput {
     final Map<String, RoleEvidence> roleEvidence = new LinkedHashMap<>()
     final List<InteractionEdge> interactionEdges = new ArrayList<>()
     final Map<String, ReactionDirection> reactionDirections = new LinkedHashMap<>()
+    /** Null = unavailable; [] = supplied, known-empty pathway membership. */
+    List<PathwayGroup> pathwayGroups = null
     /**
      * Per-genome plausible reaction sets. A genome absent from the map has an
      * UNKNOWN set; a genome mapped to an empty set has a known empty set.
@@ -265,6 +275,16 @@ class CohortInput {
         }
         for (InteractionEdge e : interactionEdges) {
             if (!e.reactionA || !e.reactionB) throw new IllegalArgumentException('Interaction edge needs both reactions')
+        }
+        Set<List<String>> pathwayKeys = new HashSet<>()
+        for (PathwayGroup group : pathwayGroups ?: Collections.<PathwayGroup>emptyList()) {
+            if (!group.pathwayId?.trim() || !group.groupId?.trim() || !group.source?.trim() ||
+                !group.reactionIds || group.reactionIds.any { String r -> !r?.trim() }) {
+                throw new IllegalArgumentException('Pathway group requires pathwayId, groupId, source and reaction alternatives')
+            }
+            if (!pathwayKeys.add([group.pathwayId, group.groupId])) {
+                throw new IllegalArgumentException("Duplicate pathway group ${group.pathwayId}/${group.groupId}")
+            }
         }
         organismReactions.keySet().each { String g ->
             if (!genomes.containsKey(g)) throw new IllegalArgumentException("Organism reaction set refers to unknown genome ${g}")

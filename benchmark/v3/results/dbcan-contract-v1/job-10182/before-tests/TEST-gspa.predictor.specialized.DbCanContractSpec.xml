@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.specialized.DbCanContractSpec" tests="15" skipped="0" failures="12" errors="0" timestamp="2026-10-27T16:33:05" hostname="node002" time="1.294">
+  <properties/>
+  <testcase name="upstream formatter output preserves distinct families without treating ECs or tool counts as confidence" classname="gspa.predictor.specialized.DbCanContractSpec" time="1.061">
+    <failure message="Condition not satisfied:&#10;&#10;results.collectEntries { id, annotations -&gt; [id, annotations*.value as Set] } == [p_a: ['GH1', 'CBM48'] as Set, p_b: ['GH5'] as Set, p_c: ['GT2'] as Set]&#10;|       |                                                                     |&#10;|       [p_a:[3.2.1.21:4], p_b:[3.2.1.4:2]]                                   false&#10;[p_a:[gspa.model.Annotation(CAZYME, 3.2.1.21:4, 0.95, dbcan, null, [], [toolsAgreeing:3], null, null, null, null, null, null, null, null, null, false, false, false)], p_b:[gspa.model.Annotation(CAZYME, 3.2.1.4:2, 0.6, dbcan, null, [], [toolsAgreeing:1], null, null, null, null, null, null, null, null, null, false, false, false)]]&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+results.collectEntries { id, annotations -&gt; [id, annotations*.value as Set] } == [p_a: ['GH1', 'CBM48'] as Set, p_b: ['GH5'] as Set, p_c: ['GT2'] as Set]
+|       |                                                                     |
+|       [p_a:[3.2.1.21:4], p_b:[3.2.1.4:2]]                                   false
+[p_a:[gspa.model.Annotation(CAZYME, 3.2.1.21:4, 0.95, dbcan, null, [], [toolsAgreeing:3], null, null, null, null, null, null, null, null, null, false, false, false)], p_b:[gspa.model.Annotation(CAZYME, 3.2.1.4:2, 0.6, dbcan, null, [], [toolsAgreeing:1], null, null, null, null, null, null, null, null, null, false, false, false)]]
+
+	at gspa.predictor.specialized.DbCanContractSpec.upstream formatter output preserves distinct families without treating ECs or tool counts as confidence(DbCanContractSpec.groovy:22)
+</failure>
+  </testcase>
+  <testcase name="optional signal peptide output does not become a tool count or CAZyme family" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.008">
+    <failure message="java.lang.NumberFormatException: For input string: &quot;Y(1-25)&quot;" type="java.lang.NumberFormatException">java.lang.NumberFormatException: For input string: &quot;Y(1-25)&quot;
+	at java.base/java.lang.NumberFormatException.forInputString(NumberFormatException.java:67)
+	at java.base/java.lang.Integer.parseInt(Integer.java:662)
+	at java.base/java.lang.Integer.valueOf(Integer.java:989)
+	at gspa.predictor.specialized.DbCanPredictor.parseOutput_closure2(DbCanPredictor.groovy:57)
+	at gspa.predictor.specialized.DbCanPredictor.parseOutput(DbCanPredictor.groovy:49)
+	at gspa.predictor.specialized.DbCanContractSpec.optional signal peptide output does not become a tool count or CAZyme family(DbCanContractSpec.groovy:36)
+</failure>
+  </testcase>
+  <testcase name="column names determine fields and supported domain ranges survive as raw evidence" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.006">
+    <failure message="java.lang.NumberFormatException: For input string: &quot;-&quot;" type="java.lang.NumberFormatException">java.lang.NumberFormatException: For input string: &quot;-&quot;
+	at java.base/java.lang.NumberFormatException.forInputString(NumberFormatException.java:67)
+	at java.base/java.lang.Integer.parseInt(Integer.java:652)
+	at java.base/java.lang.Integer.valueOf(Integer.java:989)
+	at gspa.predictor.specialized.DbCanPredictor.parseOutput_closure2(DbCanPredictor.groovy:57)
+	at gspa.predictor.specialized.DbCanPredictor.parseOutput(DbCanPredictor.groovy:49)
+	at gspa.predictor.specialized.DbCanContractSpec.column names determine fields and supported domain ranges survive as raw evidence(DbCanContractSpec.groovy:51)
+</failure>
+  </testcase>
+  <testcase name="malformed or unknown overview is a failed contract, never successful zero hits [content: , #0]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.033"/>
+  <testcase name="malformed or unknown overview is a failed contract, never successful zero hits [content: p&#9;GH1&#9;-&#9;GH1&#9;-&#9;2&#10;, #1]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.007">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.specialized.DbCanContractSpec.malformed or unknown overview is a failed contract, never successful zero hits(DbCanContractSpec.groovy:66)
+</failure>
+  </testcase>
+  <testcase name="malformed or unknown overview is a failed contract, never successful zero hits [content: Gene ID&#9;HMMER&#9;HMMER&#9;DIAMOND&#9;#ofTools&#10;, #2]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.008">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.specialized.DbCanContractSpec.malformed or unknown overview is a failed contract, never successful zero hits(DbCanContractSpec.groovy:66)
+</failure>
+  </testcase>
+  <testcase name="malformed or unknown overview is a failed contract, never successful zero hits [content: Gene ID&#9;HMMER&#9;dbCAN_sub&#9;DIAMOND&#9;#ofTools&#10;p&#9;GH1&#9;-&#10;, #3]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.003">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.specialized.DbCanContractSpec.malformed or unknown overview is a failed contract, never successful zero hits(DbCanContractSpec.groovy:66)
+</failure>
+  </testcase>
+  <testcase name="malformed or unknown overview is a failed contract, never successful zero hits [content: Gene ID&#9;HMMER&#9;dbCAN_sub&#9;DIAMOND&#9;#ofTools&#10;p&#9;3.2.1.4&#9;-&#9;-&#9;1&#10;, #4]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.002">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.specialized.DbCanContractSpec.malformed or unknown overview is a failed contract, never successful zero hits(DbCanContractSpec.groovy:66)
+</failure>
+  </testcase>
+  <testcase name="malformed or unknown overview is a failed contract, never successful zero hits [content: Gene ID&#9;HMMER&#9;dbCAN_sub&#9;DIAMOND&#9;#ofTools&#10;p&#9;GH1&#9;-&#9;-&#9;4&#10;, #5]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.002">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.specialized.DbCanContractSpec.malformed or unknown overview is a failed contract, never successful zero hits(DbCanContractSpec.groovy:66)
+</failure>
+  </testcase>
+  <testcase name="malformed or unknown overview is a failed contract, never successful zero hits [content: Gene ID&#9;HMMER&#9;dbCAN_sub&#9;DIAMOND&#9;#ofTools&#10;p&#9;GH1&#9;-&#9;-&#9;2&#10;, #6]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.005">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.specialized.DbCanContractSpec.malformed or unknown overview is a failed contract, never successful zero hits(DbCanContractSpec.groovy:66)
+</failure>
+  </testcase>
+  <testcase name="malformed or unknown overview is a failed contract, never successful zero hits [content: Gene ID&#9;HMMER&#9;dbCAN_sub&#9;DIAMOND&#9;#ofTools&#10;p&#9;GH1&#9;-&#9;-&#9;1&#10;p&#9;GT2&#9;-&#9;-&#9;1&#10;, #7]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.005">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.specialized.DbCanContractSpec.malformed or unknown overview is a failed contract, never successful zero hits(DbCanContractSpec.groovy:66)
+</failure>
+  </testcase>
+  <testcase name="valid header-only and explicit no-hit rows remain successful empty results [data: , #0]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.01"/>
+  <testcase name="valid header-only and explicit no-hit rows remain successful empty results [data: p&#9;-&#9;-&#9;-&#9;-&#9;0&#10;, #1]" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.002"/>
+  <testcase name="all three legacy command engines receive the configured CPU limit" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.062">
+    <failure message="Condition not satisfied:&#10;&#10;['--hmm_cpu', '--dia_cpu', '--dbcan_thread'].every { command.contains(it) &amp;&amp; command[command.indexOf(it) + 1] == '3' }&#10;                                             |&#10;                                             false&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+['--hmm_cpu', '--dia_cpu', '--dbcan_thread'].every { command.contains(it) &amp;&amp; command[command.indexOf(it) + 1] == '3' }
+                                             |
+                                             false
+
+	at gspa.predictor.specialized.DbCanContractSpec.all three legacy command engines receive the configured CPU limit(DbCanContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="legacy help contract is available even though bare version is a usage error" classname="gspa.predictor.specialized.DbCanContractSpec" time="0.034">
+    <failure message="Condition not satisfied:&#10;&#10;new DbCanPredictor(executablePath: executable.absolutePath).isAvailable()&#10;|                                  |          |             |&#10;|                                  |          |             false&#10;|                                  |          /home/leechuck/tmp/spock_legacy_help_contrac_0_directory5708774489641167116/run_dbcan&#10;|                                  /home/leechuck/tmp/spock_legacy_help_contrac_0_directory5708774489641167116/run_dbcan&#10;&lt;gspa.predictor.specialized.DbCanPredictor@4d96250 dbDir=null threads=4 log=Logger[gspa.predictor.specialized.DbCanPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=/home/leechuck/tmp/spock_legacy_help_contrac_0_directory5708774489641167116/run_dbcan&gt;&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+new DbCanPredictor(executablePath: executable.absolutePath).isAvailable()
+|                                  |          |             |
+|                                  |          |             false
+|                                  |          /home/leechuck/tmp/spock_legacy_help_contrac_0_directory5708774489641167116/run_dbcan
+|                                  /home/leechuck/tmp/spock_legacy_help_contrac_0_directory5708774489641167116/run_dbcan
+&lt;gspa.predictor.specialized.DbCanPredictor@4d96250 dbDir=null threads=4 log=Logger[gspa.predictor.specialized.DbCanPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=/home/leechuck/tmp/spock_legacy_help_contrac_0_directory5708774489641167116/run_dbcan&gt;
+
+	at gspa.predictor.specialized.DbCanContractSpec.legacy help contract is available even though bare version is a usage error(DbCanContractSpec.groovy:113)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@553f1d75]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@6e1d8f9e]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@553f1d75]
+]]></system-err>
+</testsuite>

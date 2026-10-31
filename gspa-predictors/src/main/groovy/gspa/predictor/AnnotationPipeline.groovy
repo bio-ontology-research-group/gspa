@@ -9,6 +9,7 @@ import gspa.integration.workflow.IntegrationWorkflow
 import gspa.integration.workflow.IntegrationWorkflowConfig
 import gspa.io.CdsTranslator
 import gspa.io.FastaReader
+import gspa.io.GeneModelReader
 import gspa.io.GffReader
 import gspa.io.GffWriter
 import gspa.model.*
@@ -40,6 +41,7 @@ class AnnotationPipeline {
     GspaConfig config
     PredictorRegistry registry = new PredictorRegistry()
     GeneCaller geneCaller
+    private String geneCallerUnavailable
     List<GenomePredictor> genomePredictors = []
 
     /** Run protein-level predictors in parallel threads */
@@ -59,6 +61,8 @@ class AnnotationPipeline {
     File integrationOutputDir
 
     /** Claims of the last {@link #annotate} call, captured before integration or filtering. */
+    final Map<String, Map> pathwaySearchReports = [:]
+
     List<EvidenceClaim> rawClaims
 
     /** Outcome of the last {@link #integrate} call (null when integration is off or failed). */
@@ -100,7 +104,13 @@ class AnnotationPipeline {
             "${registry.getAll().size()} predictors registered")
     }
 
+    protected List<GeneCaller> geneCallerCandidates(boolean meta) {
+        [new PyrodigalCaller(metaMode: meta), new ProdigalCaller(metaMode: meta)]
+    }
+
     private void configureGeneCaller() {
+        geneCaller = null
+        geneCallerUnavailable = null
         if (config.input.requireExistingGenes || config.input.proteinsOnly || config.input.proteinFasta || config.input.gff3) return
         def domain = config.resolveOrganismDomain()
 
@@ -109,15 +119,16 @@ class AnnotationPipeline {
         // For eukaryotes, Augustus would be preferred but we fall back to Prodigal
         // (works for intron-poor eukaryotes like microsporidia, fungi)
         // Try pyrodigal first (faster), fall back to prodigal
-        def pyrodigal = new PyrodigalCaller(metaMode: isMeta)
-        if (pyrodigal.isAvailable()) {
-            geneCaller = pyrodigal
-        } else {
-            def prodigal = new ProdigalCaller(metaMode: isMeta)
-            if (prodigal.isAvailable()) {
-                geneCaller = prodigal
+        List<String> missing = []
+        for (GeneCaller candidate : geneCallerCandidates(isMeta)) {
+            if (candidate.isAvailable()) {
+                geneCaller = candidate
+                break
             }
+            String detail = candidate instanceof StatusReportingPredictor ? candidate.unavailableReason() : null
+            missing << "${candidate.name}: ${detail ?: 'tool unavailable'}"
         }
+        if (geneCaller == null) geneCallerUnavailable = missing.join('; ') ?: 'no gene caller configured'
 
         if (domain.isEukaryote() && geneCaller != null) {
             log.warn("Using ${geneCaller.name} for eukaryote gene calling — " +
@@ -204,12 +215,15 @@ class AnnotationPipeline {
                 case 'interproscan':
                     def p = new gspa.predictor.domain.InterProScanPredictor(
                         applications: config.predictors.domains.applications,
+                        threads: config.predictors.domains.threads,
+                        disablePrecalc: config.predictors.domains.disablePrecalc,
                     )
                     predictors << p
                     break
                 case 'hmmer':
                     predictors << new gspa.predictor.domain.HmmerPredictor(
                         hmmDatabase: resolveHmmerDatabase(),
+                        threads: config.predictors.domains.threads,
                     )
                     break
             }
@@ -220,6 +234,7 @@ class AnnotationPipeline {
             def antifamCfg = config.predictors.antifam
             predictors << new gspa.predictor.domain.AntiFamPredictor(
                 hmmDatabase : antifamCfg.database,
+                threads     : antifamCfg.threads,
                 useCutGa    : antifamCfg.useCutGa,
                 domainEvalue: antifamCfg.evalue,
             )
@@ -237,7 +252,12 @@ class AnnotationPipeline {
 
         // Pathway
         if (config.predictors.pathway.enabled) {
-            def gp = new gspa.predictor.pathway.GapseqPredictor()
+            def pathway = config.predictors.pathway
+            def gp = new gspa.predictor.pathway.GapseqPredictor(
+                tool: pathway.tool, target: pathway.target, dataDir: pathway.dataDir,
+                executablePath: pathway.executablePath, taxonomy: pathway.taxonomy,
+                threads: pathway.threads,
+            )
             predictors << gp
             genomePredictors << gp
         }
@@ -256,7 +276,31 @@ class AnnotationPipeline {
 
         // eggNOG-mapper
         if (config.predictors.enable.contains('eggnog-mapper')) {
-            predictors << new gspa.predictor.function.EggNogMapperPredictor()
+            def eggnog = config.predictors.eggnog
+            predictors << new gspa.predictor.function.EggNogMapperPredictor(
+                threads: eggnog.threads, dataDir: eggnog.dataDir,
+                executablePath: eggnog.executablePath, searchMode: eggnog.searchMode)
+        }
+
+        if (config.predictors.enable.contains('amrfinder')) {
+            def amr = config.predictors.amrfinder
+            predictors << new gspa.predictor.specialized.AmrFinderPredictor(
+                database: amr.database, executablePath: amr.executablePath,
+                organism: amr.organism, threads: amr.threads)
+        }
+
+        if (config.predictors.enable.contains('dbcan')) {
+            def cazy = config.predictors.dbcan
+            predictors << new gspa.predictor.specialized.DbCanPredictor(
+                dbDir: cazy.database, executablePath: cazy.executablePath,
+                interfaceVersion: cazy.interfaceVersion, threads: cazy.threads)
+        }
+
+        if (config.predictors.enable.contains('antismash')) {
+            def bgc = config.predictors.antismash
+            predictors << new gspa.predictor.specialized.AntiSmashPredictor(
+                database: bgc.database, executablePath: bgc.executablePath,
+                strictness: bgc.strictness, threads: bgc.threads)
         }
 
         // Disorder (Metapredict)
@@ -301,6 +345,7 @@ class AnnotationPipeline {
                 sidecarScript: neural.sidecarScript,
                 pythonExecutable: neural.pythonExecutable,
                 modelDir: neural.clean.modelDir,
+                scoreKind: neural.clean.scoreKind,
                 batchSize: neural.clean.batchSize,
                 minScore: neural.clean.minScore,
             )
@@ -483,6 +528,10 @@ class AnnotationPipeline {
         log.info("=== GSPA Annotation Pipeline ===")
         log.info("Input: ${inputFile}")
         runStatuses.clear()
+        pathwaySearchReports.clear()
+        rawClaims = null
+        lastIntegration = null
+        lastIntegrationAudit = null
 
         // 1. Load genome
         Genome genome = loadGenome(inputFile)
@@ -494,21 +543,29 @@ class AnnotationPipeline {
         }
         if (genome.proteinCount == 0 && geneCaller != null) {
             log.info("Calling genes with ${geneCaller.name}...")
-            geneCaller.callGenes(genome)
-            log.info("Called ${genome.proteinCount} genes")
-            // GeneCaller reports failure only by logging and returning no genes, so the exit
-            // status of the caller is not observable here: zero genes is recorded as FAILED
-            // (a gene caller that runs on a genome with sequence but finds no ORF is not a
-            // result worth annotating on), with that limitation stated.
-            runStatuses << (genome.proteinCount > 0 ?
-                PredictorRunStatus.completed("gene-caller:${geneCaller.name}", genome.proteinCount) :
-                PredictorRunStatus.failed("gene-caller:${geneCaller.name}",
-                    'no genes called; caller failure vs genuinely gene-free input is not distinguishable (unverified)'))
+            PredictorRunStatus before = geneCaller instanceof StatusReportingPredictor ? geneCaller.lastRunStatus : null
+            long started = System.currentTimeMillis()
+            PredictorRunStatus status
+            try {
+                geneCaller.callGenes(genome)
+                PredictorRunStatus reported = geneCaller instanceof StatusReportingPredictor ? geneCaller.lastRunStatus : null
+                status = (reported != null && !reported.is(before)) ? reported :
+                    (genome.proteinCount > 0 ?
+                        PredictorRunStatus.completed("gene-caller:${geneCaller.name}", genome.proteinCount) :
+                        PredictorRunStatus.failed("gene-caller:${geneCaller.name}",
+                            'no genes called; caller failure vs genuinely gene-free input is not distinguishable (unverified)'))
+            } catch (Exception e) {
+                status = PredictorRunStatus.failed("gene-caller:${geneCaller.name}", "${e.class.simpleName}: ${e.message}")
+            }
+            if (!status.elapsedMillis) status.elapsedMillis = System.currentTimeMillis() - started
+            runStatuses << status
+            log.info("Gene calling: ${status.outcome}; ${genome.proteinCount} proteins")
+        } else if (genome.proteinCount == 0 && geneCallerUnavailable != null) {
+            runStatuses << PredictorRunStatus.unavailable('gene-caller', geneCallerUnavailable)
         }
 
         if (genome.proteinCount == 0) {
-            log.warn("No proteins found. Check input format or install a gene caller.")
-            return genome
+            log.warn("No proteins found. Protein predictors will be skipped; nucleotide predictors and requested integration can still run.")
         }
 
         // 3. Run protein-level predictors (in parallel if multiple available)
@@ -521,6 +578,12 @@ class AnnotationPipeline {
             runStatuses << PredictorRunStatus.unavailable(p.name, why)
         }
         def availablePredictors = runnable.findAll { !(it instanceof GenomePredictor) }
+        if (genome.proteinCount == 0) {
+            availablePredictors.each { Predictor p ->
+                runStatuses << PredictorRunStatus.skipped(p.name, 'no protein sequences available; predictor was not executed')
+            }
+            availablePredictors = []
+        }
         log.info("Running ${availablePredictors.size()} protein-level predictors...")
 
         // Phase 10: optional intra-genome clustering — predictors see only
@@ -530,7 +593,7 @@ class AnnotationPipeline {
         def clusterCfg = config.integration?.intragenomeCluster
         def clusterSet = null
         List<Protein> predictorInput = genome.proteins
-        if (clusterCfg?.enabled) {
+        if (clusterCfg?.enabled && predictorInput) {
             log.info("Clustering proteome at identity=${clusterCfg.identity}, coverage=${clusterCfg.coverage}...")
             clusterSet = new IntragenomeClusterer().cluster([genome], clusterCfg.identity, clusterCfg.coverage)
             Set<String> repIds = clusterSet.representatives()*.proteinId as Set
@@ -586,6 +649,15 @@ class AnnotationPipeline {
             availableGenomePredictors.each { predictor ->
                 log.info("  Running ${predictor.name}...")
                 def annotations = runTracked(predictor) { predictor.predictGenome(genome) }
+                if (predictor instanceof gspa.predictor.pathway.GapseqPredictor && predictor.reactionTableSha256) {
+                    pathwaySearchReports[predictor.name] = [schema:'gspa.pathway-search-observations/1',
+                        genome_id:genome.id, source:predictor.name, target:predictor.target,
+                        outcome:runStatuses.last().outcome.name(),
+                        reaction_table_sha256:predictor.reactionTableSha256,
+                        pathway_table_sha256:predictor.pathwayTableSha256,
+                        pathway_rows:predictor.pathwayObservations?.collect { new LinkedHashMap(it) },
+                        reaction_rows:predictor.reactionObservations.collect { new LinkedHashMap(it) }]
+                }
                 if (annotations != null) applyAnnotations(genome, annotations, predictor.name)
             }
         }
@@ -646,7 +718,8 @@ class AnnotationPipeline {
      * its annotations. A requested stage whose data or tool is unavailable fails the
      * call; the outcome of every stage is in {@code lastIntegration.audit}.
      */
-    IntegrationWorkflow.Result integrate(Genome genome, List<EvidenceClaim> claims = null) {
+    IntegrationWorkflow.Result integrate(Genome genome, List<EvidenceClaim> claims = null, String observedAntiFamStatus = null,
+                                         List<Map> observedPathways = null) {
         log.info("=== Evidence integration (shared workflow) ===")
         List<EvidenceClaim> input = claims != null ? claims : new ClaimExtractor().fromGenome(genome)
         log.info("  ${input.size()} claims from ${genome.proteinCount} proteins")
@@ -657,6 +730,8 @@ class AnnotationPipeline {
             workflowConfig.outFile = new File(integrationOutputDir, "${genome.id}_integrated.tsv")
         }
         def workflow = new IntegrationWorkflow(workflowConfig)
+        workflow.antiFamScanStatus = observedAntiFamStatus
+        workflow.pathwaySearchObservations = observedPathways
         workflow.sharedReferences = sharedIntegrationReferences
         workflow.info = { String m -> log.info(m) } as Closure<Void>
         lastIntegration = null
@@ -674,7 +749,8 @@ class AnnotationPipeline {
     }
 
     private void runIntegration(Genome genome) {
-        integrate(genome, rawClaims)
+        integrate(genome, rawClaims, runStatuses.find { it.predictor == 'antifam' }?.outcome?.name(),
+            pathwaySearchReports ? pathwaySearchReports.values().toList() : null)
     }
 
     /**
@@ -751,7 +827,7 @@ class AnnotationPipeline {
                 attachContigSequences(genome, seqFile)
             }
             if (proteinFile) {
-                mapProteinsToContigs(genome, FastaReader.readProteins(proteinFile))
+                mapProteinsToContigs(genome, proteinFile)
             } else {
                 int n = CdsTranslator.populateProteins(genome, config.input.translateAltStart)
                 log.info("Translated ${n} proteins from ${genome.features.count { it.type == FeatureType.CDS }} CDS features")
@@ -797,37 +873,69 @@ class AnnotationPipeline {
     }
 
     /**
-     * Join pre-called proteins to contigs using the GFF3 CDS attributes
-     * (protein_id / ID / locus_tag). Proteins with no matching feature land on
-     * a synthetic 'unplaced' contig so they are still annotated.
+     * Join supplied proteins by CDS aliases and, when present, native Prodigal
+     * header coordinates. Incomplete inputs remain usable for sequence annotation;
+     * ambiguous or conflicting joins receive no genomic context. Ordinary multi-row
+     * CDS groups retain the same primary-feature convention as CdsTranslator.
      */
-    private void mapProteinsToContigs(Genome genome, List<Protein> proteins) {
-        Map<String, Feature> featureById = [:]
-        genome.contigs.each { Contig c ->
-            c.cdsFeatures().each { Feature f ->
-                [f.attributes['protein_id']?.first(), f.id, f.locusTag].findAll { it }.each { String key ->
-                    featureById.putIfAbsent(key, f)
+    private void mapProteinsToContigs(Genome genome, File proteinFile) {
+        Map<String, String> headers = GeneModelReader.readHeaders(proteinFile)
+        List<Protein> proteins = FastaReader.readProteins(proteinFile)
+        Map<String, List<Feature>> aliases = GeneModelReader.indexAliases(
+            genome.contigs.collectMany { it.cdsFeatures() })
+        Map<Protein, Feature> proposed = new IdentityHashMap<>()
+        Map<Protein, Set<Feature>> segments = new IdentityHashMap<>()
+        Map<Feature, List<Protein>> owners = new IdentityHashMap<>()
+        int ambiguous = 0
+        proteins.each { Protein p ->
+            Set<Feature> matches = GeneModelReader.matchingFeatures(p.id, headers[p.id], aliases)
+            Feature feature = null
+            if (matches.size() == 1) {
+                feature = matches.first()
+            } else if (matches.size() > 1) {
+                // A declared multi-segment protein on one contig/strand is not
+                // a duplicate alias between different loci or isoforms. Keep
+                // the existing representative-CDS convention; do not assemble
+                // transcripts or infer a gene from a shared locus_tag.
+                if (matches.every { CdsTranslator.proteinKey(it) == p.id } &&
+                        matches*.seqId.unique().size() == 1 && matches*.strand.unique().size() == 1 &&
+                        matches.collect { [it.start, it.end] }.unique().size() == matches.size()) {
+                    feature = matches.toList().sort { a, b -> a.start <=> b.start ?: a.end <=> b.end }.first()
+                } else {
+                    ambiguous++
+                }
+            }
+            if (feature) {
+                proposed[p] = feature
+                segments[p] = matches
+                matches.each { segment ->
+                    if (!owners.containsKey(segment)) owners[segment] = []
+                    owners[segment] << p
                 }
             }
         }
         Contig unplaced = null
-        int placed = 0
+        int placed = 0, conflicting = 0
         proteins.each { Protein p ->
-            Feature f = featureById[p.id]
-            if (f) {
+            Feature f = proposed[p]
+            if (f && segments[p].every { owners[it].size() == 1 }) {
                 p.sourceFeature = f
-                genome.findContig(f.seqId)?.addProtein(p)
+                genome.findContig(f.seqId).addProtein(p)
                 placed++
             } else {
+                if (f) conflicting++
                 if (unplaced == null) {
-                    unplaced = new Contig(id: 'unplaced')
+                    String id = 'unplaced'
+                    int suffix = 1
+                    while (genome.findContig(id)) id = "unplaced_${suffix++}"
+                    unplaced = new Contig(id: id)
                     genome.addContig(unplaced)
                 }
                 unplaced.addProtein(p)
             }
         }
-        log.info("Joined ${placed}/${proteins.size()} proteins to contigs via GFF3 attributes" +
-            (unplaced ? "; ${unplaced.proteins.size()} unplaced" : ''))
+        log.info("Joined ${placed}/${proteins.size()} proteins to contigs using CDS identity" +
+            (unplaced ? "; ${unplaced.proteins.size()} unplaced (${ambiguous} ambiguous, ${conflicting} conflicting)" : ''))
     }
 
     /**
@@ -838,6 +946,18 @@ class AnnotationPipeline {
         def manifestFile = new File(outputDir, "${genome.id}_predictor_status.json")
         PredictorRunManifest.write(genome.id, runStatuses, manifestFile)
         log.info("Predictor status manifest written: ${manifestFile}")
+        // Reusing this genome's output directory must not certify an earlier
+        // successful search when the current tool is unavailable or has failed.
+        for (String source : ['gapsmith', 'gapseq']) {
+            File previous = new File(outputDir, "${genome.id}_${source}_observations.json")
+            if (!pathwaySearchReports.containsKey(source) && previous.exists() && !previous.delete()) {
+                throw new IOException("Cannot remove stale pathway observations: ${previous}")
+            }
+        }
+        pathwaySearchReports.each { source, report ->
+            new File(outputDir, "${genome.id}_${source}_observations.json").text =
+                groovy.json.JsonOutput.toJson(report) + '\n'
+        }
         gspa.io.FastaWriter.writeProteins(genome.proteins, new File(outputDir, "${genome.id}.faa"))
         new File(outputDir, "${genome.id}_proteins.tsv").withWriter { w ->
             w.writeLine('protein_id\tcontig\tstart\tend\tstrand\tlocus_tag\tgene\tproduct\tproduct_source\thomology_accession\tidentity\tquery_coverage\tsubject_coverage\tlength_aa')

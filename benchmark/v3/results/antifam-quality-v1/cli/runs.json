@@ -1,0 +1,147 @@
+[
+  {
+    "arm": "before",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/94db839ff7c8eaf1bcb03b9d28d710d2cdbe45342f5941dfc520fe3809b0469c.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/Public/software/gspa/gspa-predictors/src/test/resources/observed-output/hmmer/input.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/before",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/before/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics",
+      "--integration-config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/workflow.json"
+    ],
+    "exit_code": 0
+  },
+  {
+    "arm": "after_plain",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/cb74fc910024c3d199a38e94a1a5d24466cb9740fc11fd88ff72071b67579122.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/Public/software/gspa/gspa-predictors/src/test/resources/observed-output/hmmer/input.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/after_plain",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/after_plain/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "arm": "after_integrated",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/cb74fc910024c3d199a38e94a1a5d24466cb9740fc11fd88ff72071b67579122.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/Public/software/gspa/gspa-predictors/src/test/resources/observed-output/hmmer/input.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/after_integrated",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/after_integrated/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics",
+      "--integration-config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/workflow.json"
+    ],
+    "exit_code": 0
+  },
+  {
+    "arm": "direct_known",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/cb74fc910024c3d199a38e94a1a5d24466cb9740fc11fd88ff72071b67579122.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/after_integrated/raw.jsonl",
+      "--workflow-config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/known-workflow.json",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/direct_known.tsv"
+    ],
+    "exit_code": 0
+  },
+  {
+    "arm": "direct_unknown",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/cb74fc910024c3d199a38e94a1a5d24466cb9740fc11fd88ff72071b67579122.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/after_integrated/raw.jsonl",
+      "--workflow-config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/workflow.json",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/direct_unknown.tsv"
+    ],
+    "exit_code": 0
+  },
+  {
+    "arm": "zero",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/cb74fc910024c3d199a38e94a1a5d24466cb9740fc11fd88ff72071b67579122.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/negative.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/zero",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/zero/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics",
+      "--integration-config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/workflow.json"
+    ],
+    "exit_code": 0
+  },
+  {
+    "arm": "failure",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/cb74fc910024c3d199a38e94a1a5d24466cb9740fc11fd88ff72071b67579122.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/Public/software/gspa/gspa-predictors/src/test/resources/observed-output/hmmer/input.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/missing-ga-config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/failure",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/failure/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics",
+      "--integration-config",
+      "/home/leechuck/.cache/gspa-v3-data/antifam-quality-v1-final/workflow.json"
+    ],
+    "exit_code": 0
+  }
+]

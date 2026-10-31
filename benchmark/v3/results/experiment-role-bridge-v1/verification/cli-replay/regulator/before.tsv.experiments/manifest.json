@@ -1,0 +1,59 @@
+{
+  "baseline" : {
+    "carbon_exchanges" : [ "EX_glc_e" ],
+    "exchanges" : [ "EX_glc_e", "EX_ac_e", "EX_o2_e", "EX_vit_e", "EX_sec_e", "EX_nh4_e", "EX_lac_e" ],
+    "medium" : {
+      "EX_glc_e" : 10,
+      "EX_nh4_e" : 10,
+      "EX_o2_e" : 10,
+      "EX_vit_e" : 10
+    },
+    "nitrogen_exchanges" : [ "EX_nh4_e" ],
+    "oxygen_exchange" : "EX_o2_e"
+  },
+  "config" : { },
+  "objectives" : {
+    "biomass" : "BIOMASS",
+    "maintenance" : {
+      "lower_bound" : 1.0,
+      "reaction" : "ATPM"
+    }
+  },
+  "model" : "/home/leechuck/tmp/gspa-experiment-roles-v1/cli-replay/models/xref/xref.xml",
+  "assignment_recovery" : {
+    "mask_gene" : "pD",
+    "hypotheses" : [ {
+      "id" : "H0",
+      "assignments" : { }
+    }, {
+      "id" : "H1",
+      "assignments" : {
+        "ACS" : [ [ "MASKED_TARGET", "gB" ] ]
+      },
+      "evidence" : {
+        "domain" : 0.6,
+        "sequence" : 0.001
+      }
+    } ],
+    "conditions" : [ {
+      "id" : "C0",
+      "mods" : [ ],
+      "evidence_channels" : [ ]
+    }, {
+      "id" : "C1",
+      "mods" : [ {
+        "op" : "carbon_swap",
+        "exchange" : "EX_ac_e"
+      } ],
+      "evidence_channels" : [ "domain", "sequence" ]
+    }, {
+      "id" : "C2",
+      "mods" : [ {
+        "op" : "knockout",
+        "reactions" : [ ],
+        "genes" : [ "gB" ]
+      } ],
+      "evidence_channels" : [ "domain", "sequence" ]
+    } ]
+  }
+}

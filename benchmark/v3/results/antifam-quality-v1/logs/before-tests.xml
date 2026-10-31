@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.QualityEvidenceSpec" tests="3" skipped="0" failures="3" errors="0" timestamp="2026-10-26T21:51:27" hostname="lc-dell" time="0.4">
+  <properties/>
+  <testcase name="AntiFam observations survive the raw contract without an invented probability" classname="gspa.integration.QualityEvidenceSpec" time="0.218">
+    <failure message="Condition not satisfied:&#10;&#10;claim != null&#10;|     |&#10;null  false&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+claim != null
+|     |
+null  false
+
+	at gspa.integration.QualityEvidenceSpec.AntiFam observations survive the raw contract without an invented probability(QualityEvidenceSpec.groovy:18)
+</failure>
+  </testcase>
+  <testcase name="legacy pseudogene records cannot become positive functional support" classname="gspa.integration.QualityEvidenceSpec" time="0.144">
+    <failure message="Condition not satisfied:&#10;&#10;result.provenance.keySet() == baseline.provenance.keySet()&#10;|      |          |        |  |        |          |&#10;|      |          |        |  |        |          [p|EC|1.1.1.1]&#10;|      |          |        |  |        [p|EC|1.1.1.1:gspa.integration.ClaimProvenance(p|EC|1.1.1.1, p, [gspa.integration.EvidenceClaim(p, EC, 1.1.1.1, null, SEQUENCE_SIMILARITY, diamond, 0.8, 0.8, [:], null, null)], [:], 0.24116205681688788, 0.24116205681688788, 0.5599999999999999, 1)]&#10;|      |          |        |  IntegratedAnnotationSet(1 annotations, 1 provenance entries, 0 suggestions)&#10;|      |          |        false&#10;|      |          |        1 difference (50% similarity, 0 missing, 1 extra)&#10;|      |          |        missing: []&#10;|      |          |        extra: [p|PSEUDOGENE|ANF00021]&#10;|      |          [p|EC|1.1.1.1, p|PSEUDOGENE|ANF00021]&#10;|      [p|EC|1.1.1.1:gspa.integration.ClaimProvenance(p|EC|1.1.1.1, p, [gspa.integration.EvidenceClaim(p, EC, 1.1.1.1, null, SEQUENCE_SIMILARITY, diamond, 0.8, 0.8, [:], null, null)], [:], 0.24116205681688788, 0.24116205681688788, 0.5599999999999999, 1), p|PSEUDOGENE|ANF00021:gspa.integration.ClaimProvenance(p|PSEUDOGENE|ANF00021, p, [gspa.integration.EvidenceClaim(p, PSEUDOGENE, ANF00021, null, SEQUENCE_DOMAIN, antifam, 1.0, 0.99, [:], null, null)], [:], 1.0590031505730635, 1.0590031505730635, 0.7424999999999999, 1)]&#10;IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+result.provenance.keySet() == baseline.provenance.keySet()
+|      |          |        |  |        |          |
+|      |          |        |  |        |          [p|EC|1.1.1.1]
+|      |          |        |  |        [p|EC|1.1.1.1:gspa.integration.ClaimProvenance(p|EC|1.1.1.1, p, [gspa.integration.EvidenceClaim(p, EC, 1.1.1.1, null, SEQUENCE_SIMILARITY, diamond, 0.8, 0.8, [:], null, null)], [:], 0.24116205681688788, 0.24116205681688788, 0.5599999999999999, 1)]
+|      |          |        |  IntegratedAnnotationSet(1 annotations, 1 provenance entries, 0 suggestions)
+|      |          |        false
+|      |          |        1 difference (50% similarity, 0 missing, 1 extra)
+|      |          |        missing: []
+|      |          |        extra: [p|PSEUDOGENE|ANF00021]
+|      |          [p|EC|1.1.1.1, p|PSEUDOGENE|ANF00021]
+|      [p|EC|1.1.1.1:gspa.integration.ClaimProvenance(p|EC|1.1.1.1, p, [gspa.integration.EvidenceClaim(p, EC, 1.1.1.1, null, SEQUENCE_SIMILARITY, diamond, 0.8, 0.8, [:], null, null)], [:], 0.24116205681688788, 0.24116205681688788, 0.5599999999999999, 1), p|PSEUDOGENE|ANF00021:gspa.integration.ClaimProvenance(p|PSEUDOGENE|ANF00021, p, [gspa.integration.EvidenceClaim(p, PSEUDOGENE, ANF00021, null, SEQUENCE_DOMAIN, antifam, 1.0, 0.99, [:], null, null)], [:], 1.0590031505730635, 1.0590031505730635, 0.7424999999999999, 1)]
+IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions)
+
+	at gspa.integration.QualityEvidenceSpec.legacy pseudogene records cannot become positive functional support(QualityEvidenceSpec.groovy:42)
+</failure>
+  </testcase>
+  <testcase name="projection preserves quality annotations and their regional provenance" classname="gspa.integration.QualityEvidenceSpec" time="0.037">
+    <failure message="Condition not satisfied:&#10;&#10;p.annotations.byType(AnnotationType.PSEUDOGENE) == [ann]&#10;| |           |      |                          |   |&#10;| |           []     |                          |   gspa.model.Annotation(PSEUDOGENE, ANF00021, 1.0, antifam, null, [], [alignmentStart:1, alignmentEnd:30], null, null, null, null, null, null, null, null, null, false, false, false)&#10;| |                  |                          false&#10;| |                  class gspa.model.AnnotationType&#10;| &lt;gspa.model.AnnotationSet@379ce046 annotations=[gspa.model.Annotation(EC, 1.1.1.1, 0.8, null, null, [], [protein_id:p, function_key:p|EC|1.1.1.1], null, null, null, null, null, null, null, null, null, false, true, false)]&gt;&#10;Protein(p, 0aa, 1 annotations)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+p.annotations.byType(AnnotationType.PSEUDOGENE) == [ann]
+| |           |      |                          |   |
+| |           []     |                          |   gspa.model.Annotation(PSEUDOGENE, ANF00021, 1.0, antifam, null, [], [alignmentStart:1, alignmentEnd:30], null, null, null, null, null, null, null, null, null, false, false, false)
+| |                  |                          false
+| |                  class gspa.model.AnnotationType
+| &lt;gspa.model.AnnotationSet@379ce046 annotations=[gspa.model.Annotation(EC, 1.1.1.1, 0.8, null, null, [], [protein_id:p, function_key:p|EC|1.1.1.1], null, null, null, null, null, null, null, null, null, false, true, false)]&gt;
+Protein(p, 0aa, 1 annotations)
+
+	at gspa.integration.QualityEvidenceSpec.projection preserves quality annotations and their regional provenance(QualityEvidenceSpec.groovy:58)
+</failure>
+  </testcase>
+  <system-out><![CDATA[00:51:27.872 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+00:51:27.905 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+00:51:27.908 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+00:51:27.919 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+00:51:27.920 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+00:51:27.921 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+00:51:27.965 [Test worker] INFO gspa.integration.IntegrationWriter -- Integration writer: updated 1 proteins with 1 integrated annotations
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@7a799159]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@40ab8a8]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@7a799159]
+]]></system-err>
+</testsuite>

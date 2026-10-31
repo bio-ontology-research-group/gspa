@@ -1,6 +1,6 @@
 {
-    "id": "gspa.context-features/2",
-    "fingerprint": "7106d884d3225a04724ef589ca15a99c4ced7ea7864e3677f0c7c82be0f1a7e2",
+    "id": "gspa.context-features/3",
+    "fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
     "features": [
         {
             "name": "fn.type_ec",
@@ -398,36 +398,6 @@
             "description": "supplied: reaction-graph distance to the nearest supported neighbour reaction (0 if unavailable)"
         },
         {
-            "name": "cohort.available",
-            "group": "CONTEXT_COHORT",
-            "description": "1 if cohort recurrence was supplied for this candidate"
-        },
-        {
-            "name": "cohort.log_n_genomes",
-            "group": "CONTEXT_COHORT",
-            "description": "log(1 + genomes in the cohort); a count, never normalised to certainty"
-        },
-        {
-            "name": "cohort.frac_with_orthogroup",
-            "group": "CONTEXT_COHORT",
-            "description": "fraction of cohort genomes with the candidate's orthogroup (0 if unavailable)"
-        },
-        {
-            "name": "cohort.frac_with_function_seq",
-            "group": "CONTEXT_COHORT",
-            "description": "fraction of those with baseline sequence support for the function (not posteriors)"
-        },
-        {
-            "name": "cohort.frac_with_context",
-            "group": "CONTEXT_COHORT",
-            "description": "fraction of those where the function is also supported by neighbourhood context"
-        },
-        {
-            "name": "cohort.n_genomes_incomplete",
-            "group": "CONTEXT_COHORT",
-            "description": "supplied count of cohort genomes with incomplete assembly (absence uninformative)"
-        },
-        {
             "name": "cohort.w.available",
             "group": "CONTEXT_COHORT",
             "description": "1 if a joint (phylogeny-weighted, background-matched) cohort analysis supplied features for this candidate"
@@ -525,12 +495,7 @@
         {
             "name": "cohort.w.phylogeny_known_fraction",
             "group": "CONTEXT_COHORT",
-            "description": "share of the peer set with real clade/strain metadata (1 = all known; unknown never counts as independent)"
-        },
-        {
-            "name": "cohort.w.n_peer_genomes",
-            "group": "CONTEXT_COHORT",
-            "description": "log(1 + peer genomes after holding out the target and its non-independent relatives)"
+            "description": "clade/strain-weighted share of peers with resolved clade metadata (1 = all known; unknown never counts as independent)"
         },
         {
             "name": "cohort.w.coverage",
@@ -545,7 +510,7 @@
         {
             "name": "cohort.w.peer_organism_set_known_fraction",
             "group": "CONTEXT_COHORT",
-            "description": "share of peers with a known organism-specific reaction set"
+            "description": "clade/strain-weighted share of peers with a known organism-specific reaction set"
         },
         {
             "name": "cohort.w.membership_weight",
@@ -626,11 +591,6 @@
             "name": "cohort.w.bg_rate",
             "group": "CONTEXT_COHORT",
             "description": "rate of the signature in matched same-genome background windows (never total genome presence) [group bg]"
-        },
-        {
-            "name": "cohort.w.bg_windows",
-            "group": "CONTEXT_COHORT",
-            "description": "log(1 + matched background windows) [group bg]"
         },
         {
             "name": "cohort.w.enrichment_log",

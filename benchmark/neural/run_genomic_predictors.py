@@ -50,7 +50,9 @@ import argparse
 import csv
 import json
 import logging
+import math
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -115,6 +117,73 @@ def fmt_attrs(d: dict[str, str]) -> str:
 
 # ---------- geNomad -------------------------------------------------------
 
+def genomad_summary_rows(path: Path, required: set[str]) -> Iterator[dict[str, str]]:
+    """Read a completed native summary; malformed rows are never negative calls."""
+    if not path.is_file():
+        raise RuntimeError(f"geNomad missing native summary: {path.name}")
+    with path.open() as stream:
+        reader = csv.DictReader(stream, delimiter="\t")
+        fields = reader.fieldnames
+        if not fields or len(fields) != len(set(fields)) or not required.issubset(fields):
+            raise ValueError(f"geNomad invalid header in {path.name}; required: {sorted(required)}")
+        for number, row in enumerate(reader, 2):
+            if None in row or any(v is None for v in row.values()):
+                raise ValueError(f"geNomad malformed row in {path.name}:{number}")
+            yield row
+
+
+def genomad_regions(virus_tsv: Path, plasmid_tsv: Path, min_score: float) -> list[list]:
+    """Validate both native result tables before publishing any sidecar output."""
+    regions = []
+    for path, score_key in [(virus_tsv, "virus_score"), (plasmid_tsv, "plasmid_score")]:
+        required = {"seq_name", "length", score_key}
+        if score_key == "virus_score":
+            required.add("coordinates")
+        for row in genomad_summary_rows(path, required):
+            seqid = row["seq_name"]
+            score = float(row[score_key])
+            if not seqid or not math.isfinite(score) or not 0 <= score <= 1:
+                raise ValueError(f"geNomad invalid sequence ID or score in {path.name}: {seqid!r}")
+            length = int(row["length"])
+            if length < 1:
+                raise ValueError(f"geNomad invalid length in {path.name}: {seqid}")
+            contig, start, end = seqid, 1, length
+            region_type = "viral_contig" if score_key == "virus_score" else "plasmid"
+            if score_key == "virus_score" and row["coordinates"] != "NA":
+                coords = re.fullmatch(r"(\d+)-(\d+)", row["coordinates"])
+                suffix = re.fullmatch(r"(.+)\|provirus_(\d+)_(\d+)", seqid)
+                if not coords or not suffix:
+                    raise ValueError(f"geNomad invalid provirus coordinates or name: {seqid}")
+                start, end = map(int, coords.groups())
+                if start < 1 or end < start or end - start + 1 != length or \
+                        (start, end) != tuple(map(int, suffix.groups()[1:])):
+                    raise ValueError(f"geNomad inconsistent provirus coordinates: {seqid}")
+                contig, region_type = suffix.group(1), "prophage"
+            if score < min_score:
+                continue
+            attrs = {"topology": row.get("topology", ""), "length": row["length"]}
+            if score_key == "virus_score":
+                attrs["taxonomy"] = row.get("taxonomy", "")
+            regions.append([contig, start, end, region_type, f"{score:.4f}", fmt_attrs(attrs)])
+    return regions
+
+
+def publish_genomic_regions(out: Path, regions: list[list]) -> None:
+    """Replace the result only after a complete validated table is written."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", newline="", dir=out.parent,
+                                         prefix=out.name + ".", suffix=".partial", delete=False) as stream:
+            temporary = Path(stream.name)
+            writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
+            writer.writerow(OUTPUT_HEADER)
+            writer.writerows(regions)
+        os.replace(temporary, out)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 def run_genomad(rows: list[ManifestRow], args: argparse.Namespace) -> None:
     """Run geNomad end-to-end mode and parse its provirus + plasmid summaries.
 
@@ -135,6 +204,7 @@ def run_genomad(rows: list[ManifestRow], args: argparse.Namespace) -> None:
 
     for row in rows:
         out = output_path(row, "genomad")
+        out.unlink(missing_ok=True)
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             if args.genomad_sif:
@@ -159,78 +229,16 @@ def run_genomad(rows: list[ManifestRow], args: argparse.Namespace) -> None:
                             row.tag, r.returncode, r.stderr[-3000:])
                 LOG.warning("%s genomad stdout tail: %s",
                             row.tag, r.stdout[-2000:])
-                continue
+                raise RuntimeError(f"{row.tag}: geNomad exited {r.returncode}; {r.stderr[-3000:]}")
 
             stem = row.genome_fasta.stem
             summary = tmp_path / f"{stem}_summary"
             virus_tsv = summary / f"{stem}_virus_summary.tsv"
             plas_tsv  = summary / f"{stem}_plasmid_summary.tsv"
 
-            fh, w = open_output(out)
-            n = 0
-            if virus_tsv.exists():
-                with virus_tsv.open() as fin:
-                    header = fin.readline().rstrip("\n").split("\t")
-                    h = {c: i for i, c in enumerate(header)}
-                    for line in fin:
-                        f = line.rstrip("\n").split("\t")
-                        if len(f) < len(header):
-                            continue
-                        seqid = f[h.get("seq_name", 0)]
-                        score = float(f[h["virus_score"]]) if "virus_score" in h else 0.0
-                        topo = f[h.get("topology", -1)] if "topology" in h else ""
-                        coords = f[h.get("coordinates", -1)] if "coordinates" in h else ""
-                        length = f[h.get("length", -1)] if "length" in h else ""
-                        taxonomy = f[h.get("taxonomy", -1)] if "taxonomy" in h else ""
-                        # If ``coordinates`` is set we have an integrated provirus
-                        # (e.g. "12345-67890"); otherwise the whole contig is viral.
-                        if coords and "-" in coords:
-                            try:
-                                start, end = (int(x) for x in coords.split("-", 1))
-                                contig = seqid.rsplit("|", 1)[0]
-                            except ValueError:
-                                continue
-                            region_type = "prophage"
-                        else:
-                            try:
-                                start = 1
-                                end = int(length) if length else 0
-                            except ValueError:
-                                continue
-                            contig = seqid
-                            region_type = "viral_contig"
-                        attrs = fmt_attrs({
-                            "topology": topo,
-                            "taxonomy": taxonomy,
-                            "length": length,
-                        })
-                        if score >= args.min_score:
-                            w.writerow([contig, start, end, region_type,
-                                        f"{score:.4f}", attrs])
-                            n += 1
-            if plas_tsv.exists():
-                with plas_tsv.open() as fin:
-                    header = fin.readline().rstrip("\n").split("\t")
-                    h = {c: i for i, c in enumerate(header)}
-                    for line in fin:
-                        f = line.rstrip("\n").split("\t")
-                        if len(f) < len(header):
-                            continue
-                        seqid = f[h.get("seq_name", 0)]
-                        score = float(f[h["plasmid_score"]]) if "plasmid_score" in h else 0.0
-                        topo = f[h.get("topology", -1)] if "topology" in h else ""
-                        length = f[h.get("length", -1)] if "length" in h else ""
-                        if score < args.min_score:
-                            continue
-                        try:
-                            end = int(length) if length else 0
-                        except ValueError:
-                            end = 0
-                        attrs = fmt_attrs({"topology": topo, "length": length})
-                        w.writerow([seqid, 1, end, "plasmid",
-                                    f"{score:.4f}", attrs])
-                        n += 1
-            fh.close()
+            regions = genomad_regions(virus_tsv, plas_tsv, args.min_score)
+            publish_genomic_regions(out, regions)
+            n = len(regions)
         LOG.info("%s genomad: %d genomic regions -> %s", row.tag, n, out)
 
 

@@ -1,0 +1,72 @@
+# Review: `audit_clean_cohort.py` vs `observe_clean_cohort.py` and `clean_contract.py`
+
+I read the four files and ran nothing. The core join is sound. Every native token, typed row and claim is matched exactly, with no extra or missing keys. Duplicate and non-finite JSON, FASTA order, the native-ID namespace and the per-genome attempt census all fail closed. I found no way to drop a protein, or a native call, from a passing audit. The real defects are below, ordered by severity.
+
+## Real bugs
+
+**1. Medium: extra metadata keys are accepted, so a falsified confidence can pass.**
+- Location: `audit_clean_cohort.py:133-146` and `:153`.
+- The auditor checks a fixed list of metadata keys, but it never checks that the key set is exact. It then builds `rows[key]` from the typed metadata and requires `claim == rows[key]`. Any extra key therefore satisfies both checks.
+- Scenario: the typed TSV and its claim carry `"calibrated_probability": 0.97`. The receipt hash is resealed, which is easy because the check compares the receipt against the auditor's own `sha(typed)`. The audit passes.
+- The test `test_calibration_invention_rejected` only mutates `claims.jsonl`, so it doesn't cover this.
+- Fix: require `set(metadata) == EXPECTED_KEYS`. The set is the `rewrite` common keys plus `native_*`, `native_adapter_contract` and `genome_id`.
+- Related: comparisons use `==`, so `0 == False` and `1 == True` pass. Examples are `score_calibrated: 0`, `min_score: false` and `raw_score: true`. Add `type(x) is bool` and `type(x) is float` checks for the confidence fields.
+
+**2. Medium: the genome list and contract digests are not independently verified.**
+- Location: `audit()` at `:163-193`.
+- The genome list comes only from `plan.json`, which is bound by hash alone. `plan['parent_cohort_sha256']` is never checked against the parent cohort file. The parent genome list is never re-read and compared to `plan['genomes']`.
+- `plan['predictor_contract']` is copied into every claim, but `tool_sha256`, `reference_sha256`, `parameters_sha256` and `adapter_sha256` are never recomputed from `plan['inputs']`, `staged_app_files` and `parameters`. The driver's score kind is trusted from the receipt string `driver_score_kind`.
+- Scenario: an observer bug, or an edited plan whose hash was pinned, ships a contract that doesn't match its inputs. The audit passes.
+- Fix:
+  - Require that `plan['parent_cohort_sha256']` is among the `plan['inputs']` hashes.
+  - Load the parent cohort and require `genomes == plan['genomes']`.
+  - Recompute the four digests.
+  - Call `clean_contract.validate_mode` on the hash-verified `plan['app']/CLEAN_infer_fasta.py`. Check its `gmm_path` and `driver_sha256`.
+
+**3. Medium: a killed attempt blocks the audit permanently.**
+- Location: `:179-185`.
+- An attempt killed by OOM, a Slurm timeout or `scancel` never reaches the `except` block in `observe_clean_cohort.py:221`. It has `started.json` but neither `completed.json` nor `failed.json`.
+- The auditor raises `unfinished attempt`, so a genome with a valid completed retry can never pass. The acquisition is frozen, so the marker can't be added afterwards.
+- Fix: record such a directory in `failed_attempts` with status `unfinished` and a hash of its file inventory. Still require exactly one completed attempt. The audit must run only after the jobs have stopped.
+
+**4. Low-Medium: the typed TSV parsing is looser than it looks.**
+- Location: `:124-146`.
+- `csv.DictReader` silently puts extra columns under the key `None`, so a row with trailing fields passes. The `score` text is only compared as `float(row['score']) == value`, so `' 0.3456 '` or `0.34560` passes.
+- The receipt `output_sha256` can't catch this, because the expected value is computed from the very file being audited.
+- Fix: reject rows where `None in row`. Require `row['score'] == repr(value)`.
+
+**5. Low-Medium: run evidence is hashed but not interpreted.**
+- `command.json`, `manifest.tsv`, `started.json` and `native.log` are in the inventory, but the auditor never checks their contents. The plan's own `plan['sidecar']` and `plan['python']` are not compared to what ran.
+- The in-run recheck of the staged tree and weights is not recorded in `completed.json`. Only the driver hash is attested per attempt.
+- Fix: require `command.json == [plan['python'], plan['sidecar'], '--predictor', 'clean', '--manifest', <folder>/manifest.tsv, '--model-dir', <any>, '--clean-score-kind', 'gmm_confidence', '--min-score', '0', '--seed', '0']`. Check that the manifest equals the single expected row.
+
+**6. Low: report provenance and write safety.**
+- `completed_sha256` is computed after the reads (`:160`), not from the bytes that were parsed.
+- The final check re-hashes only `plan.json`, not the attempt trees.
+- The report is written with mode `'x'` straight into `json.dump` (`:209-211`). If `allow_nan=False` raises mid-write, a truncated report is left behind, and it can't be re-run because `'x'` refuses to overwrite it.
+- Fix: serialize to a string first. Write to a temporary file, then link or rename it. Hash `completed.json` once from its bytes. Re-verify the inventory hashes at the end, or emit a tree hash.
+
+**7. Low: the failed-attempt and overlap checks are shallow.**
+- Failed attempts are only hashed. Their `started.json` identity is not checked, so a failure from a different plan hash is accepted.
+- `reference-overlap.json` is validated only by its hash. The auditor doesn't check that `by_genome` has exactly the 18 genome IDs, that the totals match the rows, or that the row protein IDs are in the proteomes.
+- The report's `interpretation` field correctly says this is not a leakage audit.
+
+## Test gaps
+
+All nine tests drive `O.C.rewrite` and `O.audit_native`, the code the auditor is supposed to check independently. Most of the checks above have no test:
+- two completed attempts for one genome;
+- an unfinished attempt;
+- a reseal that moves a typed row's `score`, or a typed-metadata extra key that also appears in the claim;
+- a native ID, mapping or order mutation;
+- a dropped native row, typed row or claim;
+- a changed FASTA;
+- an overlap or plan hash mismatch;
+- the 18-genome and 49,463-protein totals;
+- a case where the combined audit is clean only because the genome list was altered.
+
+## Not bugs
+
+- The `0 <= value <= 1` check and the `score_calibrated: False` expectation are correct. The report's `interpretation` correctly disclaims calibration and accuracy.
+- A native row with no calls fails the audit. That matches `rewrite`, so it is consistent and intended.
+- The mismatch between `str.splitlines` in `read_proteins` and file-line iteration in `proteins()` only matters for exotic separators such as U+2028. It is hypothetical.
+- Symlinks, path traversal through genome tags, and `KeyError` or `TypeError` in place of `ValueError` are hardening or style. They all fail closed.

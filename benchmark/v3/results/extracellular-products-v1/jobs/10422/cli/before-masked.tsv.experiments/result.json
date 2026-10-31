@@ -1,0 +1,861 @@
+{
+  "schema": "gspa.masked_assignment_experiments/1",
+  "model": {
+    "sha256": "b8c8f58cb24032dba4998baaecd65f3914bc507b10ee0122ced43c2776296a39",
+    "path": "masked:b8c8f58cb24032dba4998baaecd65f3914bc507b10ee0122ced43c2776296a39"
+  },
+  "input_model_sha256": "fb8b7e5fe498f1b2545638a9f77e6c57cafbdbe522709d258a00fcd2dbfd4995",
+  "public_problem": {
+    "baseline": {
+      "carbon_exchanges": [
+        "EX_glc_e"
+      ],
+      "exchanges": [
+        "EX_glc_e",
+        "EX_ac_e",
+        "EX_o2_e",
+        "EX_vit_e",
+        "EX_sec_e",
+        "EX_coup_e",
+        "EX_nh4_e",
+        "EX_lac_e"
+      ],
+      "medium": {
+        "EX_glc_e": 10,
+        "EX_nh4_e": 10,
+        "EX_o2_e": 10,
+        "EX_vit_e": 10
+      },
+      "nitrogen_exchanges": [
+        "EX_nh4_e"
+      ],
+      "oxygen_exchange": "EX_o2_e"
+    },
+    "objectives": {
+      "biomass": "BIOMASS",
+      "maintenance": {
+        "lower_bound": 1.0,
+        "reaction": "ATPM"
+      }
+    },
+    "model": "masked:b8c8f58cb24032dba4998baaecd65f3914bc507b10ee0122ced43c2776296a39",
+    "hypotheses": [
+      {
+        "id": "H0",
+        "assignments": {}
+      },
+      {
+        "id": "H1",
+        "assignments": {
+          "ACS": [
+            [
+              "MASKED_TARGET"
+            ]
+          ]
+        },
+        "evidence": {
+          "sequence": 0.6
+        }
+      },
+      {
+        "id": "H2",
+        "assignments": {
+          "SEC": [
+            [
+              "MASKED_TARGET"
+            ]
+          ]
+        },
+        "evidence": {
+          "sequence": 0.6
+        }
+      }
+    ],
+    "conditions": [
+      {
+        "id": "C0",
+        "mods": [],
+        "evidence_channels": []
+      },
+      {
+        "id": "C1",
+        "mods": [
+          {
+            "op": "carbon_swap",
+            "exchange": "EX_ac_e"
+          }
+        ],
+        "evidence_channels": [
+          "transport"
+        ]
+      },
+      {
+        "id": "C2",
+        "mods": [],
+        "product_exchange": "EX_sec_e",
+        "evidence_channels": [
+          "bgc"
+        ]
+      }
+    ]
+  },
+  "public_problem_sha256": "7deeee6a7fd632d77d97f19ad3e28b017a9b4b7861313dbf8005026ffbc82ec5",
+  "strategy": "fixed",
+  "config": {
+    "strategy": "fixed",
+    "seed": 0,
+    "max_experiments": 30,
+    "max_solver_calls": 200,
+    "uptake_rate": 10.0,
+    "default_bound": 1000.0,
+    "growth_threshold": 1e-06,
+    "flux_tol": 1e-07,
+    "residual_tol": 1e-06,
+    "relative_tol": 0.05,
+    "growth_fraction": 0.95,
+    "product_requirement": "maintenance_only",
+    "max_focus_reactions": 0,
+    "max_baseline_focus_reactions": 0,
+    "panel": null,
+    "qwen": {
+      "model": "qwen3.8-27b",
+      "api_base": null,
+      "max_invalid": 2,
+      "max_tokens": 300
+    }
+  },
+  "visited_conditions": [
+    "C0",
+    "C1",
+    "C2"
+  ],
+  "selection": [
+    {
+      "status": "selected",
+      "condition_id": "C0"
+    },
+    {
+      "status": "selected",
+      "condition_id": "C1"
+    },
+    {
+      "status": "selected",
+      "condition_id": "C2"
+    }
+  ],
+  "cells": [
+    {
+      "hypothesis_id": "H0",
+      "condition_id": "C0",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        0,
+        1
+      ],
+      "contrast": "both_grow",
+      "status": "completed"
+    },
+    {
+      "hypothesis_id": "H1",
+      "condition_id": "C0",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {
+            "ACS": {
+              "minimum": 0.0,
+              "maximum": -0.0,
+              "statuses": [
+                "optimal",
+                "optimal"
+              ]
+            }
+          }
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "contrast": "both_grow",
+      "status": "completed"
+    },
+    {
+      "hypothesis_id": "H2",
+      "condition_id": "C0",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {
+            "SEC": {
+              "minimum": 0.0,
+              "maximum": 7.222222222222222,
+              "statuses": [
+                "optimal",
+                "optimal"
+              ]
+            }
+          }
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [
+            "SEC"
+          ],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "contrast": "both_grow",
+      "status": "completed"
+    },
+    {
+      "hypothesis_id": "H0",
+      "condition_id": "C1",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 5.75,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 5.75,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        10,
+        11
+      ],
+      "contrast": "both_grow",
+      "status": "completed"
+    },
+    {
+      "hypothesis_id": "H1",
+      "condition_id": "C1",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 5.75,
+          "knocked_out_reactions": [],
+          "flux_intervals": {
+            "ACS": {
+              "minimum": 9.507142857142856,
+              "maximum": 10.0,
+              "statuses": [
+                "optimal",
+                "optimal"
+              ]
+            }
+          }
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 5.75,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "contrast": "both_grow",
+      "status": "completed"
+    },
+    {
+      "hypothesis_id": "H2",
+      "condition_id": "C1",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 5.75,
+          "knocked_out_reactions": [],
+          "flux_intervals": {
+            "SEC": {
+              "minimum": 0.0,
+              "maximum": 0.38333333333333464,
+              "statuses": [
+                "optimal",
+                "optimal"
+              ]
+            }
+          }
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 5.75,
+          "knocked_out_reactions": [
+            "SEC"
+          ],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        16,
+        17,
+        18,
+        19
+      ],
+      "contrast": "both_grow",
+      "status": "completed"
+    },
+    {
+      "hypothesis_id": "H0",
+      "condition_id": "C2",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {},
+          "product_target": {
+            "reaction": "EX_sec_e",
+            "kind": "extracellular_secretion",
+            "metabolite": "sec_e",
+            "compartment": "e"
+          },
+          "product_interval": {
+            "minimum": 0.0,
+            "maximum": 19.88888888888889,
+            "statuses": [
+              "optimal",
+              "optimal"
+            ]
+          }
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {},
+          "product_target": {
+            "reaction": "EX_sec_e",
+            "kind": "extracellular_secretion",
+            "metabolite": "sec_e",
+            "compartment": "e"
+          },
+          "product_interval": {
+            "minimum": 0.0,
+            "maximum": 19.88888888888889,
+            "statuses": [
+              "optimal",
+              "optimal"
+            ]
+          }
+        }
+      },
+      "solver_calls": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25
+      ],
+      "contrast": "both_grow",
+      "status": "completed",
+      "growth_status": "completed",
+      "product_contrast": "secretion_capacity_retained",
+      "product_status": "completed"
+    },
+    {
+      "hypothesis_id": "H1",
+      "condition_id": "C2",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {
+            "ACS": {
+              "minimum": 0.0,
+              "maximum": -0.0,
+              "statuses": [
+                "optimal",
+                "optimal"
+              ]
+            }
+          },
+          "product_target": {
+            "reaction": "EX_sec_e",
+            "kind": "extracellular_secretion",
+            "metabolite": "sec_e",
+            "compartment": "e"
+          },
+          "product_interval": {
+            "minimum": 0.0,
+            "maximum": 19.88888888888889,
+            "statuses": [
+              "optimal",
+              "optimal"
+            ]
+          }
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {},
+          "product_target": {
+            "reaction": "EX_sec_e",
+            "kind": "extracellular_secretion",
+            "metabolite": "sec_e",
+            "compartment": "e"
+          },
+          "product_interval": {
+            "minimum": 0.0,
+            "maximum": 19.88888888888889,
+            "statuses": [
+              "optimal",
+              "optimal"
+            ]
+          }
+        }
+      },
+      "solver_calls": [
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      "contrast": "both_grow",
+      "status": "completed",
+      "growth_status": "completed",
+      "product_contrast": "secretion_capacity_retained",
+      "product_status": "completed"
+    },
+    {
+      "hypothesis_id": "H2",
+      "condition_id": "C2",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {
+            "SEC": {
+              "minimum": 0.0,
+              "maximum": 7.222222222222222,
+              "statuses": [
+                "optimal",
+                "optimal"
+              ]
+            }
+          },
+          "product_target": {
+            "reaction": "EX_sec_e",
+            "kind": "extracellular_secretion",
+            "metabolite": "sec_e",
+            "compartment": "e"
+          },
+          "product_interval": {
+            "minimum": 0.0,
+            "maximum": 19.88888888888889,
+            "statuses": [
+              "optimal",
+              "optimal"
+            ]
+          }
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [
+            "SEC"
+          ],
+          "flux_intervals": {},
+          "product_target": {
+            "reaction": "EX_sec_e",
+            "kind": "extracellular_secretion",
+            "metabolite": "sec_e",
+            "compartment": "e"
+          },
+          "product_interval": {
+            "minimum": 0.0,
+            "maximum": -0.0,
+            "statuses": [
+              "optimal",
+              "optimal"
+            ]
+          }
+        }
+      },
+      "solver_calls": [
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41
+      ],
+      "contrast": "both_grow",
+      "status": "completed",
+      "growth_status": "completed",
+      "product_contrast": "secretion_capacity_lost",
+      "product_status": "completed"
+    }
+  ],
+  "solver_calls": [
+    {
+      "call": 0,
+      "label": "C0:H0:wild_type",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 1,
+      "label": "C0:H0:target_knockout",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 2,
+      "label": "C0:H1:wild_type",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 3,
+      "label": "C0:H1:wild_type:ACS:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 4,
+      "label": "C0:H1:wild_type:ACS:max",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 5,
+      "label": "C0:H1:target_knockout",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 6,
+      "label": "C0:H2:wild_type",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 7,
+      "label": "C0:H2:wild_type:SEC:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 8,
+      "label": "C0:H2:wild_type:SEC:max",
+      "status": "optimal",
+      "objective": -7.222222222222222,
+      "note": ""
+    },
+    {
+      "call": 9,
+      "label": "C0:H2:target_knockout",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 10,
+      "label": "C1:H0:wild_type",
+      "status": "optimal",
+      "objective": -5.75,
+      "note": ""
+    },
+    {
+      "call": 11,
+      "label": "C1:H0:target_knockout",
+      "status": "optimal",
+      "objective": -5.75,
+      "note": ""
+    },
+    {
+      "call": 12,
+      "label": "C1:H1:wild_type",
+      "status": "optimal",
+      "objective": -5.75,
+      "note": ""
+    },
+    {
+      "call": 13,
+      "label": "C1:H1:wild_type:ACS:min",
+      "status": "optimal",
+      "objective": 9.507142857142856,
+      "note": ""
+    },
+    {
+      "call": 14,
+      "label": "C1:H1:wild_type:ACS:max",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 15,
+      "label": "C1:H1:target_knockout",
+      "status": "optimal",
+      "objective": -5.75,
+      "note": ""
+    },
+    {
+      "call": 16,
+      "label": "C1:H2:wild_type",
+      "status": "optimal",
+      "objective": -5.75,
+      "note": ""
+    },
+    {
+      "call": 17,
+      "label": "C1:H2:wild_type:SEC:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 18,
+      "label": "C1:H2:wild_type:SEC:max",
+      "status": "optimal",
+      "objective": -0.38333333333333464,
+      "note": ""
+    },
+    {
+      "call": 19,
+      "label": "C1:H2:target_knockout",
+      "status": "optimal",
+      "objective": -5.75,
+      "note": ""
+    },
+    {
+      "call": 20,
+      "label": "C2:H0:wild_type",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 21,
+      "label": "C2:H0:wild_type:product:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 22,
+      "label": "C2:H0:wild_type:product:max",
+      "status": "optimal",
+      "objective": -19.88888888888889,
+      "note": ""
+    },
+    {
+      "call": 23,
+      "label": "C2:H0:target_knockout",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 24,
+      "label": "C2:H0:target_knockout:product:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 25,
+      "label": "C2:H0:target_knockout:product:max",
+      "status": "optimal",
+      "objective": -19.88888888888889,
+      "note": ""
+    },
+    {
+      "call": 26,
+      "label": "C2:H1:wild_type",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 27,
+      "label": "C2:H1:wild_type:ACS:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 28,
+      "label": "C2:H1:wild_type:ACS:max",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 29,
+      "label": "C2:H1:wild_type:product:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 30,
+      "label": "C2:H1:wild_type:product:max",
+      "status": "optimal",
+      "objective": -19.88888888888889,
+      "note": ""
+    },
+    {
+      "call": 31,
+      "label": "C2:H1:target_knockout",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 32,
+      "label": "C2:H1:target_knockout:product:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 33,
+      "label": "C2:H1:target_knockout:product:max",
+      "status": "optimal",
+      "objective": -19.88888888888889,
+      "note": ""
+    },
+    {
+      "call": 34,
+      "label": "C2:H2:wild_type",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 35,
+      "label": "C2:H2:wild_type:SEC:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 36,
+      "label": "C2:H2:wild_type:SEC:max",
+      "status": "optimal",
+      "objective": -7.222222222222222,
+      "note": ""
+    },
+    {
+      "call": 37,
+      "label": "C2:H2:wild_type:product:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 38,
+      "label": "C2:H2:wild_type:product:max",
+      "status": "optimal",
+      "objective": -19.88888888888889,
+      "note": ""
+    },
+    {
+      "call": 39,
+      "label": "C2:H2:target_knockout",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 40,
+      "label": "C2:H2:target_knockout:product:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 41,
+      "label": "C2:H2:target_knockout:product:max",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    }
+  ],
+  "agent_usage": null,
+  "unvisited_conditions": [],
+  "max_solver_calls": 200,
+  "wall_seconds": 0.16191962198354304,
+  "promotion": "none",
+  "calibrated_probability": null,
+  "assumptions": [
+    "Only the target annotation is masked; network reactions remain available.",
+    "Candidate GPR clauses are added as alternatives to surviving non-target clauses.",
+    "Exactly one null assignment is included.",
+    "Growth and flux ranges are conditional on the model, medium and maintenance.",
+    "Feasible product flux is not evidence of observed production or expression.",
+    "No hidden function truth or measured outcome is supplied to the planner.",
+    "Independent phenotypes and function truth must be joined in a separate evaluation."
+  ]
+}

@@ -32,11 +32,12 @@ from typing import Dict, List, Mapping, Optional, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import v3_metrics as M  # noqa: E402
+import stage_ledger as L  # noqa: E402
 
 SCHEMA_VERSION = 1
 SPLITS = ("train", "calibration", "test")
 FORBIDDEN_CLAIM_KEYS = {"label", "labels", "truth", "is_true", "y_true", "ground_truth"}
-CODE_FILES = ("v3_runner.py", "v3_metrics.py")
+CODE_FILES = ("v3_runner.py", "v3_metrics.py", "stage_ledger.py")
 # Column order of `gspa integrate --batch-manifest` (IntegrateCommand.groovy,
 # "Manifest TSV columns"); '-' selects the CLI default. Each entry is
 # (header, genome-manifest key or None). Columns without a key are always '-'.
@@ -56,6 +57,18 @@ SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 RUN_RECORD = "run_record.json"
 ARM_OUTPUT_GLOBS = ("*.integrated.tsv", "*.integrated.tsv.*", "batch_manifest.tsv", "batch_stats.tsv",
                     "stdout.log", "stderr.log", RUN_RECORD)
+INPUT_FLAGS = {
+    "-jar", "--theta", "--go-owl", "--essential-functions", "--ec2go", "--pathways",
+    "--module-defs", "--modules", "--taxonomy", "--taxon-constraints", "--complex-terms",
+    "--operons", "--gaps", "--pathway-observations", "--orthogroups", "--cluster-consensus", "--reaction-graph",
+    "--diffusion-mets", "--reaction-ec-aliases", "--genome-layout", "--rxn-locus-catalog",
+    "--learned-model", "--external-context", "--cohort-manifest", "--cohort-metadata",
+    "--cohort-orthogroups", "--cohort-role-evidence", "--cohort-interaction-edges",
+    "--cohort-reaction-directions", "--fba-data-dir", "--fba-sidecar", "--agent-sidecar",
+    "--cohort-pathways",
+    "--experiment-manifest", "--experiment-evidence", "--experiment-sidecar",
+    "--community-manifest", "--community-sidecar",
+}
 
 Pair = Tuple[str, str]
 
@@ -89,6 +102,69 @@ def hash_record(path: Optional[str]) -> Dict[str, object]:
 def code_hashes() -> Dict[str, str]:
     here = os.path.dirname(os.path.abspath(__file__))
     return {f: sha256_file(os.path.join(here, f)) for f in CODE_FILES}
+
+
+def inference_identity(man: dict, arm: dict, genomes: List[dict]) -> dict:
+    """Snapshot declared inference dependencies before launch, without opening labels.
+
+    Wrappers and manifests that load further files must declare them through
+    ``gspa.input_files``. Gradle launches also hash build sources/resources, so a
+    second uncommitted edit cannot masquerade as the same dirty revision.
+    """
+    launch = man["gspa"]
+    cwd = os.path.abspath(launch.get("cwd") or os.getcwd())
+    tokens = list(launch["command"]) + list(launch.get("shared_args", [])) + list(arm.get("args", []))
+    files = {}
+
+    def resolve(path):
+        return os.path.realpath(path if os.path.isabs(path) else os.path.join(cwd, path))
+
+    def add(path):
+        path = resolve(path)
+        if os.path.isdir(path):
+            files[path] = {"status": "directory", "files": {
+                os.path.relpath(p, path): sha256_file(p)
+                for p in sorted(glob.glob(os.path.join(path, "**", "*"), recursive=True))
+                if os.path.isfile(p)}}
+        else:
+            files[path] = hash_record(path)
+
+    executable = launch["command"][0]
+    add(resolve(executable) if os.sep in executable else (shutil.which(executable) or executable))
+    for i, token in enumerate(tokens):
+        flag, sep, value = token.partition("=")
+        if flag in INPUT_FLAGS:
+            if not sep:
+                if i + 1 == len(tokens):
+                    raise ManifestError(f"missing value for {flag}")
+                value = tokens[i + 1]
+            for path in value.split(",") if flag == "--modules" else [value]:
+                add(path)
+    # Includes interpreted launch scripts and explicit binary overrides.
+    for token in launch["command"][1:]:
+        if os.path.isfile(resolve(token)):
+            add(token)
+    for path in launch.get("input_files", []):
+        add(path)
+    if launch.get("binary"):
+        add(launch["binary"])
+    if launch.get("args_style") == "gradle" or "gradlew" in os.path.basename(executable):
+        for pattern in ("*.gradle*", "gradle.properties", "gradle/**", "gspa-*/src/main/**"):
+            for path in sorted(glob.glob(os.path.join(cwd, pattern), recursive=True)):
+                if os.path.isfile(path):
+                    add(path)
+    context = []
+    for genome in genomes:
+        row = {key: genome.get(key) for _, key in BATCH_COLUMNS if key}
+        context.append(row)
+        for key in ("claims",) + AUX_FILE_KEYS:
+            if genome.get(key):
+                # Batch files are resolved by the runner, not by the child's cwd.
+                add(os.path.abspath(genome[key]))
+    return {"schema": 1, "cwd": cwd, "launch": launch, "arm": arm,
+            "genomes": context, "files": files, "runner_sha256": sha256_file(__file__),
+            "code": code_hashes(), "ledger_parser": {**L.parser_identity(),
+                "sources": {str(p.resolve()): sha256_file(str(p)) for p in L.streaming_parser_sources()}}}
 
 
 def git_commit(repo: str) -> Optional[str]:
@@ -401,6 +477,33 @@ def write_batch_manifest(arm: dict, genomes: List[dict], outdir: str) -> Tuple[s
     return path, outs
 
 
+def stage_artifacts(gid: str, out: str, man: dict, arm: dict) -> dict:
+    """A successful process is not proof that a requested ablation executed."""
+    ledger = L.ledger_metadata(out + ".stages.json")
+    if ledger.get("schema_version") != 2 or ledger.get("genome_id") != gid:
+        raise ValueError("missing or mismatched schema-2 stage ledger")
+    rows = ledger.get("stages", [])
+    stages = {row["name"]: row for row in rows}
+    if len(stages) != len(rows):
+        raise ValueError("duplicate stage records")
+    tokens = list(man["gspa"].get("shared_args", [])) + list(arm.get("args", []))
+    flags = {t.split("=", 1)[0] for i, t in enumerate(tokens)
+             if not t.endswith("=false") and not (i + 1 < len(tokens) and tokens[i + 1] == "false")}
+    required = {"reference_preparation", "evidence_integration"}
+    for flag, stage in {"--rlc-suggester": "reaction_context", "--cohort": "cohort_context",
+                        "--cohort-manifest": "cohort_context", "--cohort-metadata": "cohort_context",
+                        "--learned-model": "learned_integration", "--learned-stage": "learned_integration"}.items():
+        if flag in flags:
+            required.add(stage)
+    for name in sorted(required):
+        if stages.get(name, {}).get("status") != "executed":
+            raise ValueError(f"required stage {name} did not execute")
+    if any(row.get("status") in ("failed", "not_run") for row in rows):
+        raise ValueError("incomplete stage ledger")
+    # Include all emitted sidecars, so changed provenance cannot accompany an old score.
+    return {p: hash_record(p) for p in sorted(glob.glob(out + ".*")) if os.path.isfile(p)}
+
+
 def run_arm(man: dict, arm: dict, outdir: str, genomes: List[dict], dry_run: bool = False) -> dict:
     """Invoke the production engine for one arm. Never raises for engine failure."""
     if not SAFE_ID.match(arm["name"]):
@@ -417,7 +520,7 @@ def run_arm(man: dict, arm: dict, outdir: str, genomes: List[dict], dry_run: boo
                                        else "declared input missing: " + ",".join(absent))
         else:
             runnable.append(g)
-    record = {"arm": arm["name"], "status": "skipped", "genomes": {}, "skipped": skipped, "failed": {}}
+    record = {"arm": arm["name"], "status": "skipped", "genomes": {}, "skipped": skipped, "failed": {}, "artifacts": {}}
     if not runnable:
         record["reason"] = "no runnable genomes"
         write_run_record(outdir, record, genomes)
@@ -432,6 +535,7 @@ def run_arm(man: dict, arm: dict, outdir: str, genomes: List[dict], dry_run: boo
     if dry_run:
         record["status"] = "dry_run"
         return record
+    record["inference_identity"] = inference_identity(man, arm, genomes)
     t0 = time.time()
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True,
@@ -441,6 +545,7 @@ def run_arm(man: dict, arm: dict, outdir: str, genomes: List[dict], dry_run: boo
         rc, so, se = -1, "", f"{type(e).__name__}: {e}"
     record["runtime_sec"] = round(time.time() - t0, 3)
     record["returncode"] = rc
+    inputs_changed = record["inference_identity"] != inference_identity(man, arm, genomes)
     with open(os.path.join(outdir, "stdout.log"), "w", encoding="utf-8") as fh:
         fh.write(so)
     with open(os.path.join(outdir, "stderr.log"), "w", encoding="utf-8") as fh:
@@ -448,8 +553,14 @@ def run_arm(man: dict, arm: dict, outdir: str, genomes: List[dict], dry_run: boo
     if rc != 0:
         clean_arm_dir(outdir, keep_logs=True)  # partial output of a failed attempt is not a result
     for gid, out in outs.items():
-        if rc == 0 and os.path.isfile(out):
-            record["genomes"][gid] = hash_record(out)
+        if inputs_changed:
+            record["failed"][gid] = "inference inputs changed during execution; results not certified"
+        elif rc == 0 and os.path.isfile(out):
+            try:
+                record["artifacts"][gid] = stage_artifacts(gid, out, man, arm)
+                record["genomes"][gid] = hash_record(out)
+            except (OSError, ValueError, KeyError, TypeError) as e:
+                record["failed"][gid] = f"invalid execution evidence: {e}"
         else:
             record["failed"][gid] = f"no output (returncode {rc})" if rc != 0 else "integrate exited 0 but wrote no output"
     record["status"] = "executed" if record["genomes"] else "failed"
@@ -474,18 +585,20 @@ def write_run_record(outdir: str, record: dict, genomes: List[dict]) -> None:
     """Persist what ``evaluate`` needs to trust these outputs later: exit status, launch args,
     output hashes, and the hashes of the claims they were computed from."""
     os.makedirs(outdir, exist_ok=True)
-    rec = {k: record.get(k) for k in ("arm", "status", "returncode", "command", "runtime_sec", "genomes", "skipped", "failed")}
+    rec = {k: record.get(k) for k in ("arm", "status", "returncode", "command", "runtime_sec", "genomes", "skipped", "failed", "inference_identity", "artifacts")}
     rec["claims_sha256"] = {g["genome_id"]: hash_record(g["claims"]).get("sha256") for g in genomes}
     with open(os.path.join(outdir, RUN_RECORD), "w", encoding="utf-8") as fh:
         json.dump(rec, fh, indent=2, sort_keys=True)
 
 
-def load_run_record(outdir: str, genomes: List[dict]) -> dict:
+def load_run_record(outdir: str, genomes: List[dict], man: dict, arm: dict) -> dict:
     """Rebuild an arm record for ``evaluate`` from disk, trusting only verified successes.
 
     A genome counts as executed only if the recorded run exited 0, its output
     file still has the recorded hash, and its claims file still has the hash it
-    was run on. Anything else is reported as failed with the reason.
+    was run on. The declared command, executable, references, model, auxiliary
+    inputs and genome context must also match. Legacy receipts cannot certify
+    these dependencies. Anything else is reported as failed with the reason.
     """
     path = os.path.join(outdir, RUN_RECORD)
     rec = {"arm": os.path.basename(outdir), "status": "reused", "genomes": {}, "skipped": {}, "failed": {}}
@@ -496,6 +609,7 @@ def load_run_record(outdir: str, genomes: List[dict]) -> dict:
         rec["failed"] = {g["genome_id"]: "no run record (arm was not run by this runner)" for g in genomes}
         return rec
     rec.update({k: old.get(k) for k in ("command", "returncode", "runtime_sec")})
+    same_inputs = old.get("inference_identity") == inference_identity(man, arm, genomes)
     for g in genomes:
         gid = g["genome_id"]
         info = (old.get("genomes") or {}).get(gid)
@@ -508,8 +622,16 @@ def load_run_record(outdir: str, genomes: List[dict]) -> dict:
             rec["failed"][gid] = "output missing or modified since the recorded run"
         elif (old.get("claims_sha256") or {}).get(gid) != hash_record(g["claims"]).get("sha256"):
             rec["failed"][gid] = "claims changed since the recorded run (stale output)"
+        elif not same_inputs:
+            rec["failed"][gid] = "inference identity missing or changed (command, engine, model, references or genome context)"
         else:
-            rec["genomes"][gid] = hash_record(out)
+            try:
+                artifacts = stage_artifacts(gid, out, man, arm)
+                if artifacts != (old.get("artifacts") or {}).get(gid):
+                    raise ValueError("stage ledger or sidecars changed since execution")
+                rec["genomes"][gid] = hash_record(out)
+            except (OSError, ValueError, KeyError, TypeError) as e:
+                rec["failed"][gid] = f"invalid execution evidence: {e}"
     return rec
 
 
@@ -790,7 +912,7 @@ def run_experiment(man: dict, manifest_path: str, outdir: str, phases=("run", "e
         if "run" in phases:
             runs[arm["name"]] = run_arm(man, arm, armdir, test_genomes, dry_run)
         else:  # evaluate only: reuse outputs whose recorded run succeeded and whose hashes still match
-            runs[arm["name"]] = load_run_record(armdir, test_genomes)
+            runs[arm["name"]] = load_run_record(armdir, test_genomes, man, arm)
     result["runs"] = runs
     result["status"] = "ran"
     if dry_run:

@@ -5,6 +5,15 @@ import spock.lang.Specification
 
 class ClaimKeySpec extends Specification {
 
+    def 'protein identifiers containing pipes round-trip without confusing the function type'() {
+        given:
+        def key = new ClaimKey(proteinId: protein, functionType: AnnotationType.GO, functionId: 'GO:0006412')
+        expect:
+        ClaimKey.parse(key.toFunctionKey()) == key
+        where:
+        protein << ['sp|P00956|SYI_ECOLI', 'prefix|GO|suffix', 'protein|']
+    }
+
     def "round-trips with legacy function-key string"() {
         given:
         def k = new ClaimKey(proteinId: 'p1', functionType: AnnotationType.GO, functionId: 'GO:0006412')

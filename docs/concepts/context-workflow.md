@@ -1,9 +1,10 @@
 # Learned, cohort and metabolic context in the production workflow
 
-Status: **wired, not validated.** The stages below run through the shared `IntegrationWorkflow` (so
-`gspa integrate`, batch runs and `AnnotationPipeline.integrate` agree), with a ledger entry for each. No trained
-learned-context model exists in the repository: the learned stage refuses to run without a production artifact
-and nothing here supports an accuracy statement. Every test uses explicitly synthetic data. Background:
+Status: **production wiring is tested; independent biological acceptance remains incomplete.** The stages below
+run through the shared `IntegrationWorkflow`, with a ledger entry for each. Development models fitted to
+reference-support labels exist; their input-support guard withholds unsupported predictions and their null layer
+remains untrained. Mechanism tests and matched real-input CLI replays establish specific execution properties,
+not broad prediction accuracy. Background:
 [learned-stage.md](learned-stage.md), [learned-context.md](learned-context.md), [cohort-context.md](cohort-context.md),
 [metabolic experiments](../scenarios/metabolic-experiments.md), [community cross-feeding](../scenarios/community-metabolism.md).
 
@@ -19,6 +20,29 @@ The ledger declares `scoring_mode`: `legacy_heuristic` (the evidence combiner an
 `learned` (a frozen model replaced them). It also names the two baselines, which must not be confused:
 `stage0_raw_max_score` (strongest raw predictor score per function; the cohort engine's baseline) and
 `legacy_prior_baseline` (the posterior after `evidence_integration`; the ledger's `final_changes` are measured from it).
+
+## Observed pathway gaps
+
+Annotation passes current gapsmith/gapseq observations into shared reference preparation.
+Both reaction and pathway prediction tables must be observed, and the supplied proteome
+search must have completed, before automatic candidate gaps are available. Partial,
+representative-only and nucleotide searches do not certify this input. Standalone
+integration accepts the exported observation through `--pathway-observations`
+(`pathwayObservationsFile`); observations are bound to the run's genome ID.
+
+The builder aggregates all hits per pathway/reaction and excludes strong-hit, complex,
+spontaneous and unknown-reference groups. Optional `--ec2go` mapping preserves all GO
+alternatives. Explicit `--gaps` takes precedence. `<out>.gap-context.json` records the
+source, availability and eligibility counts; `<out>.gaps.jsonl` permits replay through
+the existing gap-input routes. An available empty set differs from missing input in
+`ctx.gap.available`. See [the observed-gap verification](../benchmarks/v3-pathway-gap-bridge.md)
+for complete behavior, real-output parity and remaining calibration requirements.
+
+The RLC suggester also uses `--ec2go` independently of pathway definitions. It
+retains all GO associations, shares an immutable map across genomes, and groups
+correlated labels so one EC does not gain extra diversity merely through multiple
+GO mappings. Empty/missing mappings supply no anchors. RLC remains a heuristic
+suggestion channel; see [mapping behavior and validation](../benchmarks/v3-rlc-mapping.md).
 
 ## Learned stage
 
@@ -79,8 +103,14 @@ coordinate; accepted in claims/orthogroups, family present, local context unknow
 status, a complete assembly with a fragment contig, or `familySearchComplete` with coverage below one are errors.
 Absent facts stay absent: a genome without metadata joins one **unresolved block** with one clade's weight, never an
 independent peer; adjusted intervals and permutation p are then withheld. With no metadata at all every genome shares
-the block, so nobody has an independent peer. **A genome with no peers gets no cohort entry** (`cohort.w.available = 0`,
-`no_peers` in the report): the learned model sees "unavailable", not "recurrence negative". Absence is `TRUE_ABSENT` only
+the block, so nobody has an independent peer. **A genome with no peers retains local reaction evidence** in a
+`localOnly` entry. Peer statistics remain null, `cohort.w.available = 0`, and `no_peers` stays true in the report;
+the learned model sees unavailable recurrence, not negative recurrence. Local-window availability is independent
+(`cohort.w.local_available`), and a missing layout still withholds those features. The representative reaction
+without peers uses highest local anchor weight, then reaction id; alternatives are reported without peer statistics.
+Exports include `available_contexts.local_reaction`, and stage reports separately count keys with local and cohort
+features. Existing models may abstain on this new availability profile; retaining context does not establish its
+calibration. See [the production check](../benchmarks/v3-local-reaction-context.md). Absence is `TRUE_ABSENT` only
 for a complete assembly with a certified all-protein family search; otherwise it is unknown. The complementary
 missing-function share is an UNANNOTATED label, never evidence of loss.
 
@@ -170,19 +200,38 @@ See the scenario pages for the models. Production wiring (`--experiment-manifest
 
 ## Remaining gaps
 
-* No trained production model; the root owner trains it from exported rows and benchmarks it. Until then the learned
-  stage cannot run on real data and `scoring_mode` stays `legacy_heuristic`.
-* The Stage 2B refiner still updates posteriors before the learned stage; a learned run replaces them from raw
-  evidence, so the refiner reaches the model only through the conditional experiment features.
-* Nextflow has no batch cohort process and stages no experiment files; the web service wiring is separate work.
-* No neighbourhood producer fills `ExternalContext.Neighborhood`; the cohort engine's window features
-  (`cohort.w.local_*`) are the neighbourhood information the model receives, and `ctx.nbr.*` stays unavailable unless an
-  explicit context file supplies it.
+Status on 2026-10-30. The acceptance record (`tasks/v3-acceptance.md`) is authoritative; no acceptance item is met yet.
+
+Closed since the previous version of this list:
+
+* Trained models exist: the `diamond_homology` logistic and gradient-boosted models (contract v3) and their role-fenced
+  refits. With a supplied model the learned stage runs on real data; without one `scoring_mode` stays `legacy_heuristic`.
+* Nextflow runs the cohort as one joint batch (`gspa-nf/modules/cohort.nf`, `integrate --batch-manifest`), matching the
+  command line on 18 genomes.
+* The cohort permutation seed no longer depends on the hold-out grouping (`permutationSeed: content:v2`; earlier cohort
+  results used the old seed and are not re-verified).
+
+Still open:
+
+* Benefit is not shown. On held-out genomes the context and learned layers do not beat sequence-only annotation
+  (`docs/benchmarks/v3-source-context-comparison.md`), close relatives add no recovery
+  (`docs/benchmarks/v3-wp4-cohort-recurrence.md`), and no experiment-design strategy recovers masked functions at the
+  required precision (`docs/benchmarks/v3-wp5-masked-recovery.md`).
+* The no-candidate (null) outcome is still untrained, and gene roles (catalytic, accessory, transporter, regulator,
+  paralog, subunit) have no labelled training or test set.
+* The Stage 2B refiner still updates posteriors before the learned stage; a learned run replaces them from raw evidence,
+  so the refiner reaches the model only through the conditional experiment features.
+* No neighbourhood producer fills `ExternalContext.Neighborhood`; the cohort window features (`cohort.w.local_*`) are the
+  neighbourhood information the model receives, and `ctx.nbr.*` stays unavailable unless a context file supplies it.
 * Per-genome plausible reaction sets exist only if the metadata file lists them.
-* No predictor in the repository emits `substrate_exchange` / `product_exchange` metadata, so transport and BGC evidence
-  for experiments must still be supplied explicitly. Automatic condition choice needs a `condition_menu` in the template
-  and compound cross-references on the model's species; a model without them gets only the baseline control.
-* Empirical function recovery is not established: all experiment output is model-conditional, the reaction graph's compound
-  ids are not yet used for matching, the same EC on several proteins cannot be separated by the model, and no held-out
-  benchmark has compared the conditional features with measured phenotypes.
-* Community features for candidates are undefined; the community result is exported, not consumed.
+* No predictor emits `substrate_exchange` / `product_exchange` metadata, so transport and BGC evidence for experiments must
+  still be supplied explicitly. Automatic condition choice needs a `condition_menu` and compound cross-references.
+* Experiments only see what growth on the assigned medium needs. Enzymes off that path (alternative substrates, salvage,
+  detoxification, secondary metabolism) are invisible to biomass gap-filling; the targeted gap-filling experiment in
+  `tasks/v3-offgrowth-discovery-design-2026-10-30.md` tests whether sole-source, unblocking and dead-end tests recover them.
+* The reaction graph's compound ids are not yet used for matching, and the same EC on several proteins cannot be separated
+  by the model.
+* Community features for candidates are undefined; the community result is exported, not consumed. The coculture
+  benchmark underperforms a constant baseline on one organism and gives no community signal on the other.
+* The Price enzyme matrix has not yet been rerun under the release-candidate JAR (running on Shaheen), and the web service
+  wiring of the context stages is separate work.

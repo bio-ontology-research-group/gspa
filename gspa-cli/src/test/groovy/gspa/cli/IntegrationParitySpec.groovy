@@ -125,7 +125,7 @@ class IntegrationParitySpec extends Specification {
         }
 
         then:
-        probabilities['2.7.1.1'] > probabilities['1.1.1.1']
-        probabilities['2.7.1.1'] - probabilities['1.1.1.1'] < 0.000001d
+        probabilities['EC:2.7.1.1'] > probabilities['EC:1.1.1.1']
+        probabilities['EC:2.7.1.1'] - probabilities['EC:1.1.1.1'] < 0.000001d
     }
 }

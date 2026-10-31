@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.IterativeRefinerSpec" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-27T02:12:09" hostname="lc-dell" time="0.447">
+  <properties/>
+  <testcase name="adding unrelated candidates across the old 100-candidate boundary cannot change a score" classname="gspa.integration.IterativeRefinerSpec" time="0.398"/>
+  <testcase name="count-independent weak-evidence cap preserves strong positive and negative context behavior [probability: 0.8, boost: 4.0, #0]" classname="gspa.integration.IterativeRefinerSpec" time="0.016"/>
+  <testcase name="count-independent weak-evidence cap preserves strong positive and negative context behavior [probability: 0.2, boost: -4.0, #1]" classname="gspa.integration.IterativeRefinerSpec" time="0.011"/>
+  <testcase name="count-independent weak-evidence cap preserves strong positive and negative context behavior [probability: 0.8, boost: -4.0, #2]" classname="gspa.integration.IterativeRefinerSpec" time="0.011"/>
+  <testcase name="single-pass refine emits one annotation per (protein, function)" classname="gspa.integration.IterativeRefinerSpec" time="0.002"/>
+  <testcase name="posterior probability for independent sources reflects Noisy-OR" classname="gspa.integration.IterativeRefinerSpec" time="0.001"/>
+  <testcase name="correlated sources in same group do not double-count" classname="gspa.integration.IterativeRefinerSpec" time="0.001"/>
+  <testcase name="state receives all posterior log-odds after refinement" classname="gspa.integration.IterativeRefinerSpec" time="0.002"/>
+  <testcase name="pinned floor protects a DM-promoted claim from downward clipping" classname="gspa.integration.IterativeRefinerSpec" time="0.002"/>
+  <testcase name="refined annotations carry the integrated source tag" classname="gspa.integration.IterativeRefinerSpec" time="0.001"/>
+  <system-out><![CDATA[05:12:10.086 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.088 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.14680
+05:12:10.088 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.08941
+05:12:10.088 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.04673
+05:12:10.089 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 3: mean |Δp| = 0.02353
+05:12:10.089 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 4: mean |Δp| = 0.01176
+05:12:10.089 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 5: mean |Δp| = 0.00587
+05:12:10.093 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 99 claims across 99 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.100 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.14680
+05:12:10.105 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.08941
+05:12:10.107 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.04673
+05:12:10.110 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 3: mean |Δp| = 0.02353
+05:12:10.112 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 4: mean |Δp| = 0.01176
+05:12:10.115 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 5: mean |Δp| = 0.00587
+05:12:10.123 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 100 claims across 100 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.132 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.14680
+05:12:10.135 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.08941
+05:12:10.137 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.04673
+05:12:10.139 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 3: mean |Δp| = 0.02353
+05:12:10.141 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 4: mean |Δp| = 0.01176
+05:12:10.143 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 5: mean |Δp| = 0.00587
+05:12:10.152 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 101 claims across 101 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.167 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.14680
+05:12:10.169 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.08941
+05:12:10.171 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.04673
+05:12:10.173 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 3: mean |Δp| = 0.02353
+05:12:10.175 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 4: mean |Δp| = 0.01176
+05:12:10.177 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 5: mean |Δp| = 0.00587
+05:12:10.202 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1000 claims across 1000 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.247 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.14680
+05:12:10.260 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.08941
+05:12:10.274 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.04673
+05:12:10.292 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 3: mean |Δp| = 0.02353
+05:12:10.308 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 4: mean |Δp| = 0.01176
+05:12:10.323 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 5: mean |Δp| = 0.00587
+05:12:10.361 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.362 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.16727
+05:12:10.362 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.02043
+05:12:10.362 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.00480
+05:12:10.363 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 2 (Δp=0.00480 < 0.005)
+05:12:10.365 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 100 claims across 100 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.370 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.16727
+05:12:10.370 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.02043
+05:12:10.371 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.00480
+05:12:10.371 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 2 (Δp=0.00480 < 0.005)
+05:12:10.377 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.377 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.16727
+05:12:10.377 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.02043
+05:12:10.377 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.00480
+05:12:10.377 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 2 (Δp=0.00480 < 0.005)
+05:12:10.379 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 100 claims across 100 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.383 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.16727
+05:12:10.383 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.02043
+05:12:10.384 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.00480
+05:12:10.384 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 2 (Δp=0.00480 < 0.005)
+05:12:10.387 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.387 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.44879
+05:12:10.388 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.18514
+05:12:10.388 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.05830
+05:12:10.388 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 3: mean |Δp| = 0.02179
+05:12:10.388 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 4: mean |Δp| = 0.00933
+05:12:10.388 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 5: mean |Δp| = 0.00431
+05:12:10.388 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 5 (Δp=0.00431 < 0.005)
+05:12:10.390 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 100 claims across 100 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.393 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.44879
+05:12:10.394 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 1: mean |Δp| = 0.18514
+05:12:10.394 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 2: mean |Δp| = 0.05830
+05:12:10.394 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 3: mean |Δp| = 0.02179
+05:12:10.395 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 4: mean |Δp| = 0.00933
+05:12:10.395 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 5: mean |Δp| = 0.00431
+05:12:10.395 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 5 (Δp=0.00431 < 0.005)
+05:12:10.400 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 3 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.400 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:12:10.400 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+05:12:10.401 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.402 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:12:10.402 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+05:12:10.403 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 3 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.403 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:12:10.403 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+05:12:10.404 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.404 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:12:10.404 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+05:12:10.406 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.406 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.85257
+05:12:10.407 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+05:12:10.407 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:12:10.407 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

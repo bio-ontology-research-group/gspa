@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.workflow.LocalReactionContextSpec" tests="4" skipped="0" failures="4" errors="0" timestamp="2026-10-26T23:18:48" hostname="lc-dell" time="1.383">
+  <properties/>
+  <testcase name="single genome preserves measured local anchors with peer evidence unavailable" classname="gspa.integration.workflow.LocalReactionContextSpec" time="1.029">
+    <failure message="Condition not satisfied:&#10;&#10;f.get('cohort.w.local_available') == 1d&#10;| |                               |&#10;| 0.0                             false&#10;CandidateFeatures(p3|EC|EC:2.2.2.2|CATALYTIC)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+f.get('cohort.w.local_available') == 1d
+| |                               |
+| 0.0                             false
+CandidateFeatures(p3|EC|EC:2.2.2.2|CATALYTIC)
+
+	at gspa.integration.workflow.LocalReactionContextSpec.single genome preserves measured local anchors with peer evidence unavailable(LocalReactionContextSpec.groovy:40)
+</failure>
+  </testcase>
+  <testcase name="missing layout stays unavailable while direct EC alternatives survive" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.146">
+    <failure message="Condition failed with Exception:&#10;&#10;r.result.contexts.g1.cohort[KEY].localOnly&#10;| |      |        |  |&#10;| |      [:]      |  java.lang.NullPointerException: Cannot get property 'cohort' on null object&#10;| |               |  &#9;at gspa.integration.workflow.LocalReactionContextSpec.missing layout stays unavailable while direct EC alternatives survive(LocalReactionContextSpec.groovy:60)&#10;| |               null&#10;| &lt;gspa.integration.contextbridge.CohortContextBuilder$Result@7a388990 snapshotId=stage0_raw_max_score:76cfc9654da4eddf5d46101c contexts=[:] reports=[g1:[schema:gspa.cohort-context/1, genome_id:g1, baseline:[label:stage0_raw_max_score, snapshot_id:stage0_raw_max_score:76cfc9654da4eddf5d46101c, note:Stage 0 raw predictor scores only; not the legacy prior baseline (posteriors after heuristic priors)], engine:[engine:cohort-v3, baselineSnapshotId:stage0_raw_max_score:76cfc9654da4eddf5d46101c, config:[halfWidthBp:5000, anchorMinConfidence:0.5, minAnchors:1, maxHops:1, hopAlpha:0.5, densityTolerance:1, minMembershipWeight:0.05, cladeCap:1.0, jointMinEffective:0.5, permutations:200, seed:20261026, holdout:STRAIN_CLUSTER, treeCutDistance:0.05], phylogenySource:explicit-ids, nGenomes:1, nClaims:5, duplicateEvidencePolicy:complete-observed-input-within-strain/1], cohort_genomes:[g1], held_out_genomes:[g1], n_peer_genomes:0, metadata:[supplied_for_this_genome:false, genomes_without_metadata:[g1], phylogeny_supplied:false, note:Genomes without metadata are read as unknown: one unresolved block, never independent; adjusted intervals and permutation p are withheld when no peer has a resolved clade.], candidates:[ec_calls:4, ec_calls_without_reaction:0, candidates:5, keys_with_cohort_features:0, keys_without_peers:4, keys_with_unknown_family:0, keys_with_reaction_alternatives:0], no_peers:true, reaction_ambiguity:[], orthogroup_input:[source:per_genome_orthogroups_file, rows_in_file:3, rows_of_other_genomes:0, proteins_with_family:3], unplaced_proteins:[declared:0, with_ec_calls:0, in_families:0, note:Declared unplaced proteins are real proteins without a usable coordinate: family PRESENT, local context UNKNOWN (no window, no anchor, no coordinate invented). Family-search completeness (familySearchComplete) is independent of location completeness.], interpretation:Features for the learned stage, not evidence that a function is correct. A genome without peers has no cohort features (unavailable, not negative). Complementary-unannotated is an unsupported label, never evidence of loss.]] provenance=[engine:cohort-v3, baselineSnapshotId:stage0_raw_max_score:76cfc9654da4eddf5d46101c, config:[halfWidthBp:5000, anchorMinConfidence:0.5, minAnchors:1, maxHops:1, hopAlpha:0.5, densityTolerance:1, minMembershipWeight:0.05, cladeCap:1.0, jointMinEffective:0.5, permutations:200, seed:20261026, holdout:STRAIN_CLUSTER, treeCutDistance:0.05], phylogenySource:explicit-ids, nGenomes:1, nClaims:5, duplicateEvidencePolicy:complete-observed-input-within-strain/1]&gt;&#10;[result:gspa.integration.contextbridge.CohortContextBuilder$Result@7a388990, features:CandidateFeatures(p3|EC|EC:2.2.2.2|CATALYTIC), files:[claims:/home/leechuck/tmp/spock_missing_layout_stay_0_dir8988785151175422265/g1.claims.jsonl, layout:null, orthogroups:/home/leechuck/tmp/spock_missing_layout_stay_0_dir8988785151175422265/g1.orthogroups.tsv], base:gspa.integration.workflow.IntegrationWorkflowConfig@13213f26]&#10;" type="org.spockframework.runtime.ConditionFailedWithExceptionError">Condition failed with Exception:
+
+r.result.contexts.g1.cohort[KEY].localOnly
+| |      |        |  |
+| |      [:]      |  java.lang.NullPointerException: Cannot get property 'cohort' on null object
+| |               |  	at gspa.integration.workflow.LocalReactionContextSpec.missing layout stays unavailable while direct EC alternatives survive(LocalReactionContextSpec.groovy:60)
+| |               null
+| &lt;gspa.integration.contextbridge.CohortContextBuilder$Result@7a388990 snapshotId=stage0_raw_max_score:76cfc9654da4eddf5d46101c contexts=[:] reports=[g1:[schema:gspa.cohort-context/1, genome_id:g1, baseline:[label:stage0_raw_max_score, snapshot_id:stage0_raw_max_score:76cfc9654da4eddf5d46101c, note:Stage 0 raw predictor scores only; not the legacy prior baseline (posteriors after heuristic priors)], engine:[engine:cohort-v3, baselineSnapshotId:stage0_raw_max_score:76cfc9654da4eddf5d46101c, config:[halfWidthBp:5000, anchorMinConfidence:0.5, minAnchors:1, maxHops:1, hopAlpha:0.5, densityTolerance:1, minMembershipWeight:0.05, cladeCap:1.0, jointMinEffective:0.5, permutations:200, seed:20261026, holdout:STRAIN_CLUSTER, treeCutDistance:0.05], phylogenySource:explicit-ids, nGenomes:1, nClaims:5, duplicateEvidencePolicy:complete-observed-input-within-strain/1], cohort_genomes:[g1], held_out_genomes:[g1], n_peer_genomes:0, metadata:[supplied_for_this_genome:false, genomes_without_metadata:[g1], phylogeny_supplied:false, note:Genomes without metadata are read as unknown: one unresolved block, never independent; adjusted intervals and permutation p are withheld when no peer has a resolved clade.], candidates:[ec_calls:4, ec_calls_without_reaction:0, candidates:5, keys_with_cohort_features:0, keys_without_peers:4, keys_with_unknown_family:0, keys_with_reaction_alternatives:0], no_peers:true, reaction_ambiguity:[], orthogroup_input:[source:per_genome_orthogroups_file, rows_in_file:3, rows_of_other_genomes:0, proteins_with_family:3], unplaced_proteins:[declared:0, with_ec_calls:0, in_families:0, note:Declared unplaced proteins are real proteins without a usable coordinate: family PRESENT, local context UNKNOWN (no window, no anchor, no coordinate invented). Family-search completeness (familySearchComplete) is independent of location completeness.], interpretation:Features for the learned stage, not evidence that a function is correct. A genome without peers has no cohort features (unavailable, not negative). Complementary-unannotated is an unsupported label, never evidence of loss.]] provenance=[engine:cohort-v3, baselineSnapshotId:stage0_raw_max_score:76cfc9654da4eddf5d46101c, config:[halfWidthBp:5000, anchorMinConfidence:0.5, minAnchors:1, maxHops:1, hopAlpha:0.5, densityTolerance:1, minMembershipWeight:0.05, cladeCap:1.0, jointMinEffective:0.5, permutations:200, seed:20261026, holdout:STRAIN_CLUSTER, treeCutDistance:0.05], phylogenySource:explicit-ids, nGenomes:1, nClaims:5, duplicateEvidencePolicy:complete-observed-input-within-strain/1]&gt;
+[result:gspa.integration.contextbridge.CohortContextBuilder$Result@7a388990, features:CandidateFeatures(p3|EC|EC:2.2.2.2|CATALYTIC), files:[claims:/home/leechuck/tmp/spock_missing_layout_stay_0_dir8988785151175422265/g1.claims.jsonl, layout:null, orthogroups:/home/leechuck/tmp/spock_missing_layout_stay_0_dir8988785151175422265/g1.orthogroups.tsv], base:gspa.integration.workflow.IntegrationWorkflowConfig@13213f26]
+
+	at gspa.integration.workflow.LocalReactionContextSpec.missing layout stays unavailable while direct EC alternatives survive(LocalReactionContextSpec.groovy:60)
+Caused by: java.lang.NullPointerException: Cannot get property 'cohort' on null object
+	... 1 more
+</failure>
+  </testcase>
+  <testcase name="curated local edges and intrinsic roles survive without peers" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.124">
+    <failure message="Condition not satisfied:&#10;&#10;r.features.get('cohort.w.local_anchor_curated') == Math.log(2d)&#10;| |        |                                    |  |    |&#10;| |        0.0                                  |  |    0.6931471805599453&#10;| CandidateFeatures(p3|EC|EC:2.2.2.2|CATALYTIC) |  class java.lang.Math&#10;|                                               false&#10;[result:gspa.integration.contextbridge.CohortContextBuilder$Result@32507479, features:CandidateFeatures(p3|EC|EC:2.2.2.2|CATALYTIC), files:[claims:/home/leechuck/tmp/spock_curated_local_edges_0_dir1008786957808326565/g1.claims.jsonl, layout:/home/leechuck/tmp/spock_curated_local_edges_0_dir1008786957808326565/g1.layout.tsv, orthogroups:/home/leechuck/tmp/spock_curated_local_edges_0_dir1008786957808326565/g1.orthogroups.tsv], base:gspa.integration.workflow.IntegrationWorkflowConfig@632383b9]&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+r.features.get('cohort.w.local_anchor_curated') == Math.log(2d)
+| |        |                                    |  |    |
+| |        0.0                                  |  |    0.6931471805599453
+| CandidateFeatures(p3|EC|EC:2.2.2.2|CATALYTIC) |  class java.lang.Math
+|                                               false
+[result:gspa.integration.contextbridge.CohortContextBuilder$Result@32507479, features:CandidateFeatures(p3|EC|EC:2.2.2.2|CATALYTIC), files:[claims:/home/leechuck/tmp/spock_curated_local_edges_0_dir1008786957808326565/g1.claims.jsonl, layout:/home/leechuck/tmp/spock_curated_local_edges_0_dir1008786957808326565/g1.layout.tsv, orthogroups:/home/leechuck/tmp/spock_curated_local_edges_0_dir1008786957808326565/g1.orthogroups.tsv], base:gspa.integration.workflow.IntegrationWorkflowConfig@632383b9]
+
+	at gspa.integration.workflow.LocalReactionContextSpec.curated local edges and intrinsic roles survive without peers(LocalReactionContextSpec.groovy:80)
+</failure>
+  </testcase>
+  <testcase name="local-only context survives strict JSON round trip and merge" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.083">
+    <failure message="java.lang.NullPointerException: Cannot invoke method validate() on null object" type="java.lang.NullPointerException">java.lang.NullPointerException: Cannot invoke method validate() on null object
+	at gspa.integration.contextbridge.ExternalContextSupport.read(ExternalContextSupport.groovy:26)
+	at gspa.integration.workflow.LocalReactionContextSpec.local-only context survives strict JSON round trip and merge(LocalReactionContextSpec.groovy:93)
+</failure>
+  </testcase>
+  <system-out><![CDATA[02:18:49.479 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:18:49.582 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:18:50.071 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:18:50.128 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:18:50.213 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:18:50.251 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:18:50.318 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:18:50.347 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@17a703f5]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@5ff2b8ca]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@17a703f5]
+]]></system-err>
+</testsuite>

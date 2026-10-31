@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.ClaimKeySpec" tests="6" skipped="0" failures="3" errors="0" timestamp="2026-10-26T18:53:00" hostname="lc-dell" time="0.172">
+  <properties/>
+  <testcase name="protein identifiers containing pipes round-trip without confusing the function type [protein: sp|P00956|SYI_ECOLI, #0]" classname="gspa.integration.ClaimKeySpec" time="0.154">
+    <failure message="Condition not satisfied:&#10;&#10;ClaimKey.parse(key.toFunctionKey()) == key&#10;|        |     |   |                |  |&#10;|        null  |   |                |  gspa.integration.ClaimKey(sp|P00956|SYI_ECOLI, GO, GO:0006412)&#10;|              |   |                false&#10;|              |   sp|P00956|SYI_ECOLI|GO|GO:0006412&#10;|              gspa.integration.ClaimKey(sp|P00956|SYI_ECOLI, GO, GO:0006412)&#10;class gspa.integration.ClaimKey&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+ClaimKey.parse(key.toFunctionKey()) == key
+|        |     |   |                |  |
+|        null  |   |                |  gspa.integration.ClaimKey(sp|P00956|SYI_ECOLI, GO, GO:0006412)
+|              |   |                false
+|              |   sp|P00956|SYI_ECOLI|GO|GO:0006412
+|              gspa.integration.ClaimKey(sp|P00956|SYI_ECOLI, GO, GO:0006412)
+class gspa.integration.ClaimKey
+
+	at gspa.integration.ClaimKeySpec.protein identifiers containing pipes round-trip without confusing the function type(ClaimKeySpec.groovy:12)
+</failure>
+  </testcase>
+  <testcase name="protein identifiers containing pipes round-trip without confusing the function type [protein: prefix|GO|suffix, #1]" classname="gspa.integration.ClaimKeySpec" time="0.004">
+    <failure message="Condition not satisfied:&#10;&#10;ClaimKey.parse(key.toFunctionKey()) == key&#10;|        |     |   |                |  |&#10;|        |     |   |                |  gspa.integration.ClaimKey(prefix|GO|suffix, GO, GO:0006412)&#10;|        |     |   |                false&#10;|        |     |   prefix|GO|suffix|GO|GO:0006412&#10;|        |     gspa.integration.ClaimKey(prefix|GO|suffix, GO, GO:0006412)&#10;|        gspa.integration.ClaimKey(prefix, GO, suffix|GO|GO:0006412)&#10;class gspa.integration.ClaimKey&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+ClaimKey.parse(key.toFunctionKey()) == key
+|        |     |   |                |  |
+|        |     |   |                |  gspa.integration.ClaimKey(prefix|GO|suffix, GO, GO:0006412)
+|        |     |   |                false
+|        |     |   prefix|GO|suffix|GO|GO:0006412
+|        |     gspa.integration.ClaimKey(prefix|GO|suffix, GO, GO:0006412)
+|        gspa.integration.ClaimKey(prefix, GO, suffix|GO|GO:0006412)
+class gspa.integration.ClaimKey
+
+	at gspa.integration.ClaimKeySpec.protein identifiers containing pipes round-trip without confusing the function type(ClaimKeySpec.groovy:12)
+</failure>
+  </testcase>
+  <testcase name="protein identifiers containing pipes round-trip without confusing the function type [protein: protein|, #2]" classname="gspa.integration.ClaimKeySpec" time="0.002">
+    <failure message="Condition not satisfied:&#10;&#10;ClaimKey.parse(key.toFunctionKey()) == key&#10;|        |     |   |                |  |&#10;|        null  |   |                |  gspa.integration.ClaimKey(protein|, GO, GO:0006412)&#10;|              |   |                false&#10;|              |   protein||GO|GO:0006412&#10;|              gspa.integration.ClaimKey(protein|, GO, GO:0006412)&#10;class gspa.integration.ClaimKey&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+ClaimKey.parse(key.toFunctionKey()) == key
+|        |     |   |                |  |
+|        null  |   |                |  gspa.integration.ClaimKey(protein|, GO, GO:0006412)
+|              |   |                false
+|              |   protein||GO|GO:0006412
+|              gspa.integration.ClaimKey(protein|, GO, GO:0006412)
+class gspa.integration.ClaimKey
+
+	at gspa.integration.ClaimKeySpec.protein identifiers containing pipes round-trip without confusing the function type(ClaimKeySpec.groovy:12)
+</failure>
+  </testcase>
+  <testcase name="round-trips with legacy function-key string" classname="gspa.integration.ClaimKeySpec" time="0.002"/>
+  <testcase name="rejects malformed keys" classname="gspa.integration.ClaimKeySpec" time="0.002"/>
+  <testcase name="equal keys hash the same" classname="gspa.integration.ClaimKeySpec" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

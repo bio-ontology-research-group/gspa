@@ -1,0 +1,1447 @@
+{
+  "schema": "gspa.metabolic_experiments/1",
+  "disclaimer": "Conditional model predictions under the stated medium, bounds and maintenance constraint. Not observed phenotypes, not independent proof of gene function, no calibrated probabilities, no automatic gap-fill promotion.",
+  "strategy": "fixed",
+  "seed": 0,
+  "model": {
+    "path": "/home/leechuck/tmp/product-diagnostic/cli/toy.xml",
+    "sha256": "a21677772f399c438525b1c1fc34874482664e684789eb2719ee35347fc6cacf",
+    "n_metabolites": 17,
+    "n_reactions": 24,
+    "biomass_reaction": "BIOMASS",
+    "maintenance": {
+      "lower_bound": 1.0,
+      "reaction": "ATPM"
+    },
+    "objective_source": "manifest",
+    "n_infinite_bounds_replaced": 0
+  },
+  "budget_policy": {
+    "applies_to": "all strategies (fixed, random, evidence, qwen) identically",
+    "baseline": "1 LP (maximise biomass); always run first when the menu is non-empty",
+    "per_experiment_mandatory": "1 growth LP, plus 2 LPs (max and min secretion) for product experiments",
+    "per_focus_reaction": "3 LPs (FVA min, FVA max, knockout growth) for up to config.max_focus_reactions reactions of the linked hypotheses that the experiment does not itself knock out",
+    "skip_rule": "an experiment is skipped (skipped_budget) if remaining calls < its mandatory calls",
+    "focus_truncation": "focus checks run for floor((remaining - product_LPs) / 3) reactions after the growth LP; any shortfall is recorded as focus_checks_truncated_by_budget",
+    "no_planner_reserve": "no calls are held back for any planner; qwen requests do not consume solver calls",
+    "experiment_limit": "config.max_experiments counts every attempted menu item, skipped_budget included"
+  },
+  "assumptions": [
+    "external exchanges (trusted, declared): ['EX_ac_e', 'EX_coup_e', 'EX_glc_e', 'EX_lac_e', 'EX_nh4_e', 'EX_o2_e', 'EX_sec_e', 'EX_vit_e']",
+    "medium uptake limits: {'EX_glc_e': 10, 'EX_nh4_e': 10, 'EX_o2_e': 10, 'EX_vit_e': 10}; all other declared exchanges closed to uptake",
+    "undeclared single-metabolite reactions with uptake closed: ['ATPM', 'DM_sec']",
+    "opened exchanges use uptake_rate=10.0",
+    "maintenance constraint: {'lower_bound': 1.0, 'reaction': 'ATPM'}",
+    "biomass objective BIOMASS (source: manifest); maximised, growth counted above growth_threshold",
+    "product checks require maintenance_only; maintenance-only checks retain all original model bounds but impose no additional biomass floor",
+    "0 infinite SBML bounds replaced by +-1000.0; finite bounds unchanged",
+    "all outcomes are model-conditional and not observations of growth, expression or production"
+  ],
+  "config": {
+    "strategy": "fixed",
+    "seed": 0,
+    "max_experiments": 30,
+    "max_solver_calls": 200,
+    "uptake_rate": 10.0,
+    "default_bound": 1000.0,
+    "growth_threshold": 1e-06,
+    "flux_tol": 1e-07,
+    "residual_tol": 1e-06,
+    "relative_tol": 0.05,
+    "growth_fraction": 0.95,
+    "product_requirement": "maintenance_only",
+    "max_focus_reactions": 0,
+    "max_baseline_focus_reactions": 0,
+    "panel": null,
+    "qwen": {
+      "model": "qwen3.8-27b",
+      "api_base": null,
+      "max_invalid": 2,
+      "max_tokens": 300
+    }
+  },
+  "hashes": {
+    "model_sha256": "a21677772f399c438525b1c1fc34874482664e684789eb2719ee35347fc6cacf",
+    "config_sha256": "96e4dcf840e96d9ac1e6104178085245dc598cafd045541ecbd94f076bfc3fb3",
+    "context_sha256": "c8ba4854e7984c84f30a615b161ecae64a4aa6863cb51f68ff49de7c7f22325b",
+    "manifest_sha256": "07a5bd87e705fb2f7c6142e9175d46f66fb8299116da0e905686d96e4b29281a"
+  },
+  "menu": [
+    {
+      "id": "carbon_source:EX_ac_e",
+      "kind": "carbon_source",
+      "description": "replace baseline carbon sources by EX_ac_e",
+      "evidence_ids": [
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "focus_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "carbon_swap",
+          "exchange": "EX_ac_e"
+        }
+      ]
+    },
+    {
+      "id": "knockout:auto:locus_g6|EC|EC:4.4.4.4",
+      "kind": "knockout",
+      "description": "knock out SEC",
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "sequence:locus_g6|EC|EC:4.4.4.4",
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4"
+      ],
+      "focus_reactions": [
+        "SEC"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "SEC"
+          ],
+          "genes": []
+        }
+      ]
+    },
+    {
+      "id": "knockout:auto:locus_g6|EC|EC:6.2.1.1",
+      "kind": "knockout",
+      "description": "knock out ACS",
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "sequence:locus_g6|EC|EC:6.2.1.1",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "focus_reactions": [
+        "ACS"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "ACS"
+          ],
+          "genes": []
+        }
+      ]
+    },
+    {
+      "id": "synthesis:DM_sec",
+      "kind": "product",
+      "description": "intracellular synthesis capacity through DM_sec; no secretion inference",
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "focus_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "product_demand": "DM_sec",
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "min_calls": 3,
+      "max_calls": 3,
+      "mods": []
+    },
+    {
+      "id": "synthesis:DM_sec@carbon_source:EX_ac_e",
+      "kind": "product",
+      "description": "intracellular synthesis capacity through DM_sec; no secretion inference; replace baseline carbon sources by EX_ac_e",
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "focus_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "product_demand": "DM_sec",
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "min_calls": 3,
+      "max_calls": 3,
+      "mods": [
+        {
+          "op": "carbon_swap",
+          "exchange": "EX_ac_e"
+        }
+      ]
+    },
+    {
+      "id": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:4.4.4.4",
+      "kind": "product",
+      "description": "intracellular synthesis capacity through DM_sec; no secretion inference; knock out SEC",
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "sequence:locus_g6|EC|EC:4.4.4.4",
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "focus_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "product_demand": "DM_sec",
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "min_calls": 3,
+      "max_calls": 3,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "SEC"
+          ],
+          "genes": []
+        }
+      ]
+    },
+    {
+      "id": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:6.2.1.1",
+      "kind": "product",
+      "description": "intracellular synthesis capacity through DM_sec; no secretion inference; knock out ACS",
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "sequence:locus_g6|EC|EC:6.2.1.1",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "focus_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "product_demand": "DM_sec",
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "min_calls": 3,
+      "max_calls": 3,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "ACS"
+          ],
+          "genes": []
+        }
+      ]
+    }
+  ],
+  "menu_rejections": [],
+  "selection_log": [
+    {
+      "source": "fixed",
+      "experiment_id": "carbon_source:EX_ac_e"
+    },
+    {
+      "source": "fixed",
+      "experiment_id": "knockout:auto:locus_g6|EC|EC:4.4.4.4"
+    },
+    {
+      "source": "fixed",
+      "experiment_id": "knockout:auto:locus_g6|EC|EC:6.2.1.1"
+    },
+    {
+      "source": "fixed",
+      "experiment_id": "synthesis:DM_sec"
+    },
+    {
+      "source": "fixed",
+      "experiment_id": "synthesis:DM_sec@carbon_source:EX_ac_e"
+    },
+    {
+      "source": "fixed",
+      "experiment_id": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:4.4.4.4"
+    },
+    {
+      "source": "fixed",
+      "experiment_id": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:6.2.1.1"
+    }
+  ],
+  "experiments": [
+    {
+      "experiment_id": "baseline",
+      "kind": "baseline",
+      "description": "baseline medium with maintenance",
+      "mods": [],
+      "evidence_ids": [],
+      "hypothesis_ids": [],
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [],
+      "perturbation": {},
+      "status": "completed",
+      "outcome": "growth",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 10.0
+      },
+      "solver_calls": [
+        0
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "uninformative",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth",
+        "hypothesis_ids": [],
+        "evidence_ids": [],
+        "candidate_genes": [],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "carbon_source:EX_ac_e",
+      "kind": "carbon_source",
+      "description": "replace baseline carbon sources by EX_ac_e",
+      "mods": [
+        {
+          "op": "carbon_swap",
+          "exchange": "EX_ac_e"
+        }
+      ],
+      "evidence_ids": [
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 5.75,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 0.575
+      },
+      "solver_calls": [
+        1
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "uninformative",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_reduced",
+        "hypothesis_ids": [
+          "auto:locus_g6|EC|EC:4.4.4.4",
+          "auto:locus_g6|EC|EC:6.2.1.1"
+        ],
+        "evidence_ids": [
+          "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+          "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+        ],
+        "candidate_genes": [
+          "locus_g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "ACS",
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:auto:locus_g6|EC|EC:4.4.4.4",
+      "kind": "knockout",
+      "description": "knock out SEC",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "SEC"
+          ],
+          "genes": []
+        }
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "sequence:locus_g6|EC|EC:4.4.4.4",
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "SEC"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0
+      },
+      "solver_calls": [
+        2
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "auto:locus_g6|EC|EC:4.4.4.4"
+        ],
+        "evidence_ids": [
+          "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+          "sequence:locus_g6|EC|EC:4.4.4.4",
+          "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e"
+        ],
+        "candidate_genes": [
+          "locus_g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:auto:locus_g6|EC|EC:6.2.1.1",
+      "kind": "knockout",
+      "description": "knock out ACS",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "ACS"
+          ],
+          "genes": []
+        }
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "sequence:locus_g6|EC|EC:6.2.1.1",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "ACS"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0
+      },
+      "solver_calls": [
+        3
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "auto:locus_g6|EC|EC:6.2.1.1"
+        ],
+        "evidence_ids": [
+          "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+          "sequence:locus_g6|EC|EC:6.2.1.1",
+          "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+        ],
+        "candidate_genes": [
+          "locus_g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "ACS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "synthesis:DM_sec",
+      "kind": "product",
+      "description": "intracellular synthesis capacity through DM_sec; no secretion inference",
+      "mods": [],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0,
+        "product": {
+          "growth_floor": 0.0,
+          "requirement": "maintenance_only",
+          "maintenance": {
+            "lower_bound": 1.0,
+            "reaction": "ATPM"
+          },
+          "max_synthesis": 19.88888888888889,
+          "min_synthesis_at_required_state": 0.0,
+          "conditional_feasibility": true,
+          "synthesis_unavoidable_in_model": false,
+          "class": "synthesis_feasible_not_unavoidable",
+          "demand": "DM_sec",
+          "target_kind": "intracellular_synthesis_capacity",
+          "metabolite": "sec_c",
+          "compartment": "c",
+          "lp_status": {
+            "max": "optimal",
+            "min": "optimal"
+          },
+          "reporter_drain_bounds": [
+            0.0,
+            1000.0
+          ],
+          "capacity_at_reporter_bound": false
+        }
+      },
+      "solver_calls": [
+        4,
+        5,
+        6
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "uninformative",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "auto:locus_g6|EC|EC:4.4.4.4",
+          "auto:locus_g6|EC|EC:6.2.1.1"
+        ],
+        "evidence_ids": [
+          "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+          "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec"
+        ],
+        "candidate_genes": [
+          "locus_g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "ACS",
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "synthesis:DM_sec@carbon_source:EX_ac_e",
+      "kind": "product",
+      "description": "intracellular synthesis capacity through DM_sec; no secretion inference; replace baseline carbon sources by EX_ac_e",
+      "mods": [
+        {
+          "op": "carbon_swap",
+          "exchange": "EX_ac_e"
+        }
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 5.75,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 0.575,
+        "product": {
+          "growth_floor": 0.0,
+          "requirement": "maintenance_only",
+          "maintenance": {
+            "lower_bound": 1.0,
+            "reaction": "ATPM"
+          },
+          "max_synthesis": 7.666666666666666,
+          "min_synthesis_at_required_state": 0.0,
+          "conditional_feasibility": true,
+          "synthesis_unavoidable_in_model": false,
+          "class": "synthesis_feasible_not_unavoidable",
+          "demand": "DM_sec",
+          "target_kind": "intracellular_synthesis_capacity",
+          "metabolite": "sec_c",
+          "compartment": "c",
+          "lp_status": {
+            "max": "optimal",
+            "min": "optimal"
+          },
+          "reporter_drain_bounds": [
+            0.0,
+            1000.0
+          ],
+          "capacity_at_reporter_bound": false
+        }
+      },
+      "solver_calls": [
+        7,
+        8,
+        9
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "uninformative",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_reduced",
+        "hypothesis_ids": [
+          "auto:locus_g6|EC|EC:4.4.4.4",
+          "auto:locus_g6|EC|EC:6.2.1.1"
+        ],
+        "evidence_ids": [
+          "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+          "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+          "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+          "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+        ],
+        "candidate_genes": [
+          "locus_g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "ACS",
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:4.4.4.4",
+      "kind": "product",
+      "description": "intracellular synthesis capacity through DM_sec; no secretion inference; knock out SEC",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "SEC"
+          ],
+          "genes": []
+        }
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "sequence:locus_g6|EC|EC:4.4.4.4",
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "SEC"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0,
+        "product": {
+          "growth_floor": 0.0,
+          "requirement": "maintenance_only",
+          "maintenance": {
+            "lower_bound": 1.0,
+            "reaction": "ATPM"
+          },
+          "max_synthesis": 0.0,
+          "min_synthesis_at_required_state": 0.0,
+          "conditional_feasibility": false,
+          "synthesis_unavoidable_in_model": false,
+          "class": "no_synthesis_possible_in_model_at_maintenance",
+          "demand": "DM_sec",
+          "target_kind": "intracellular_synthesis_capacity",
+          "metabolite": "sec_c",
+          "compartment": "c",
+          "lp_status": {
+            "max": "optimal",
+            "min": "optimal"
+          },
+          "reporter_drain_bounds": [
+            0.0,
+            1000.0
+          ],
+          "capacity_at_reporter_bound": false
+        }
+      },
+      "solver_calls": [
+        10,
+        11,
+        12
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "uninformative",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "auto:locus_g6|EC|EC:4.4.4.4",
+          "auto:locus_g6|EC|EC:6.2.1.1"
+        ],
+        "evidence_ids": [
+          "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+          "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+          "sequence:locus_g6|EC|EC:4.4.4.4",
+          "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e"
+        ],
+        "candidate_genes": [
+          "locus_g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "ACS",
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:6.2.1.1",
+      "kind": "product",
+      "description": "intracellular synthesis capacity through DM_sec; no secretion inference; knock out ACS",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "ACS"
+          ],
+          "genes": []
+        }
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "sequence:locus_g6|EC|EC:6.2.1.1",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "perturbation": {
+        "auto:locus_g6|EC|EC:4.4.4.4": "reaction",
+        "auto:locus_g6|EC|EC:6.2.1.1": "reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "ACS"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0,
+        "product": {
+          "growth_floor": 0.0,
+          "requirement": "maintenance_only",
+          "maintenance": {
+            "lower_bound": 1.0,
+            "reaction": "ATPM"
+          },
+          "max_synthesis": 19.88888888888889,
+          "min_synthesis_at_required_state": 0.0,
+          "conditional_feasibility": true,
+          "synthesis_unavoidable_in_model": false,
+          "class": "synthesis_feasible_not_unavoidable",
+          "demand": "DM_sec",
+          "target_kind": "intracellular_synthesis_capacity",
+          "metabolite": "sec_c",
+          "compartment": "c",
+          "lp_status": {
+            "max": "optimal",
+            "min": "optimal"
+          },
+          "reporter_drain_bounds": [
+            0.0,
+            1000.0
+          ],
+          "capacity_at_reporter_bound": false
+        }
+      },
+      "solver_calls": [
+        13,
+        14,
+        15
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "uninformative",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "auto:locus_g6|EC|EC:4.4.4.4",
+          "auto:locus_g6|EC|EC:6.2.1.1"
+        ],
+        "evidence_ids": [
+          "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+          "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+          "sequence:locus_g6|EC|EC:6.2.1.1",
+          "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+        ],
+        "candidate_genes": [
+          "locus_g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "ACS",
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    }
+  ],
+  "outcome": "completed",
+  "solver": {
+    "max_calls": 200,
+    "used": 16,
+    "calls": [
+      {
+        "call": 0,
+        "label": "baseline:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 1,
+        "label": "carbon_source:EX_ac_e:max_growth",
+        "status": "optimal",
+        "objective": -5.75,
+        "note": ""
+      },
+      {
+        "call": 2,
+        "label": "knockout:auto:locus_g6|EC|EC:4.4.4.4:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 3,
+        "label": "knockout:auto:locus_g6|EC|EC:6.2.1.1:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 4,
+        "label": "synthesis:DM_sec:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 5,
+        "label": "synthesis:DM_sec:product_max",
+        "status": "optimal",
+        "objective": -19.88888888888889,
+        "note": ""
+      },
+      {
+        "call": 6,
+        "label": "synthesis:DM_sec:product_min",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 7,
+        "label": "synthesis:DM_sec@carbon_source:EX_ac_e:max_growth",
+        "status": "optimal",
+        "objective": -5.75,
+        "note": ""
+      },
+      {
+        "call": 8,
+        "label": "synthesis:DM_sec@carbon_source:EX_ac_e:product_max",
+        "status": "optimal",
+        "objective": -7.666666666666666,
+        "note": ""
+      },
+      {
+        "call": 9,
+        "label": "synthesis:DM_sec@carbon_source:EX_ac_e:product_min",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 10,
+        "label": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:4.4.4.4:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 11,
+        "label": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:4.4.4.4:product_max",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 12,
+        "label": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:4.4.4.4:product_min",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 13,
+        "label": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:6.2.1.1:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 14,
+        "label": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:6.2.1.1:product_max",
+        "status": "optimal",
+        "objective": -19.88888888888889,
+        "note": ""
+      },
+      {
+        "call": 15,
+        "label": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:6.2.1.1:product_min",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      }
+    ]
+  },
+  "evidence": {
+    "used": [
+      "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+      "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+      "sequence:locus_g6|EC|EC:4.4.4.4",
+      "sequence:locus_g6|EC|EC:6.2.1.1",
+      "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+      "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+    ],
+    "not_used": []
+  },
+  "conditional_evidence": [
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "uninformative",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "evidence_ids": [
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "carbon_source:EX_ac_e",
+      "kind": "carbon_source",
+      "model_sha256": "a21677772f399c438525b1c1fc34874482664e684789eb2719ee35347fc6cacf",
+      "config_sha256": "96e4dcf840e96d9ac1e6104178085245dc598cafd045541ecbd94f076bfc3fb3",
+      "solver_calls": [
+        1
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4"
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "sequence:locus_g6|EC|EC:4.4.4.4",
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e"
+      ],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:auto:locus_g6|EC|EC:4.4.4.4",
+      "kind": "knockout",
+      "model_sha256": "a21677772f399c438525b1c1fc34874482664e684789eb2719ee35347fc6cacf",
+      "config_sha256": "96e4dcf840e96d9ac1e6104178085245dc598cafd045541ecbd94f076bfc3fb3",
+      "solver_calls": [
+        2
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "sequence:locus_g6|EC|EC:6.2.1.1",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:auto:locus_g6|EC|EC:6.2.1.1",
+      "kind": "knockout",
+      "model_sha256": "a21677772f399c438525b1c1fc34874482664e684789eb2719ee35347fc6cacf",
+      "config_sha256": "96e4dcf840e96d9ac1e6104178085245dc598cafd045541ecbd94f076bfc3fb3",
+      "solver_calls": [
+        3
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "uninformative",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec"
+      ],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "synthesis:DM_sec",
+      "kind": "product",
+      "model_sha256": "a21677772f399c438525b1c1fc34874482664e684789eb2719ee35347fc6cacf",
+      "config_sha256": "96e4dcf840e96d9ac1e6104178085245dc598cafd045541ecbd94f076bfc3fb3",
+      "solver_calls": [
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "uninformative",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "synthesis:DM_sec@carbon_source:EX_ac_e",
+      "kind": "product",
+      "model_sha256": "a21677772f399c438525b1c1fc34874482664e684789eb2719ee35347fc6cacf",
+      "config_sha256": "96e4dcf840e96d9ac1e6104178085245dc598cafd045541ecbd94f076bfc3fb3",
+      "solver_calls": [
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "uninformative",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "sequence:locus_g6|EC|EC:4.4.4.4",
+        "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e"
+      ],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:4.4.4.4",
+      "kind": "product",
+      "model_sha256": "a21677772f399c438525b1c1fc34874482664e684789eb2719ee35347fc6cacf",
+      "config_sha256": "96e4dcf840e96d9ac1e6104178085245dc598cafd045541ecbd94f076bfc3fb3",
+      "solver_calls": [
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "uninformative",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "auto:locus_g6|EC|EC:4.4.4.4",
+        "auto:locus_g6|EC|EC:6.2.1.1"
+      ],
+      "evidence_ids": [
+        "bgc:locus_g6|EC|EC:4.4.4.4:DM_sec",
+        "bgc:locus_g6|EC|EC:6.2.1.1:DM_sec",
+        "sequence:locus_g6|EC|EC:6.2.1.1",
+        "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e"
+      ],
+      "candidate_genes": [
+        "locus_g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS",
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "synthesis:DM_sec@knockout:auto:locus_g6|EC|EC:6.2.1.1",
+      "kind": "product",
+      "model_sha256": "a21677772f399c438525b1c1fc34874482664e684789eb2719ee35347fc6cacf",
+      "config_sha256": "96e4dcf840e96d9ac1e6104178085245dc598cafd045541ecbd94f076bfc3fb3",
+      "solver_calls": [
+        13,
+        14,
+        15
+      ]
+    }
+  ],
+  "promotion": "none"
+}

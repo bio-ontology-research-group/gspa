@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.pathway.PathwayObservationSpec" tests="4" skipped="0" failures="4" errors="0" timestamp="2026-10-26T22:47:46" hostname="lc-dell" time="0.058">
+  <properties/>
+  <testcase name="pipeline retains raw pathway observations, sequence claims and clears them between genomes" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.043">
+    <failure message="groovy.json.JsonException: Unable to process file: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp9985798114068207235/first/proteins_gapsmith_observations.json" type="groovy.json.JsonException">groovy.json.JsonException: Unable to process file: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp9985798114068207235/first/proteins_gapsmith_observations.json
+	at org.apache.groovy.json.internal.BaseJsonParser.parse(BaseJsonParser.java:167)
+	at groovy.json.JsonSlurper.parseFile(JsonSlurper.java:386)
+	at groovy.json.JsonSlurper.parse(JsonSlurper.java:369)
+	at gspa.predictor.pathway.PathwayObservationSpec.pipeline retains raw pathway observations, sequence claims and clears them between genomes(PathwayObservationSpec.groovy:41)
+Caused by: java.io.FileNotFoundException: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp9985798114068207235/first/proteins_gapsmith_observations.json (No such file or directory)
+	at java.base/java.io.FileInputStream.open(FileInputStream.java:213)
+	at java.base/java.io.FileInputStream.&lt;init&gt;(FileInputStream.java:152)
+	at groovy.util.CharsetToolkit.&lt;init&gt;(CharsetToolkit.java:78)
+	at org.apache.groovy.json.internal.BaseJsonParser.parse(BaseJsonParser.java:161)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="unknown output protein fails the actual run contract rather than being silently dropped" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.003">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but got 'groovy.lang.MissingMethodException'" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but got 'groovy.lang.MissingMethodException'
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.PathwayObservationSpec.unknown output protein fails the actual run contract rather than being silently dropped(PathwayObservationSpec.groovy:62)
+Caused by: groovy.lang.MissingMethodException: No signature of method: gspa.predictor.pathway.PathwayObservationSpec$Replay.flag() is applicable for argument types: (String) values: [FALSE]
+Possible solutions: find(), find(groovy.lang.Closure), tap(groovy.lang.Closure), wait(), any(), dump()
+	at gspa.predictor.pathway.GapseqPredictor.parseOutput_closure2(GapseqPredictor.groovy:153)
+	at app//gspa.predictor.pathway.GapseqPredictor.parseOutput(GapseqPredictor.groovy:139)
+	at gspa.predictor.pathway.GapseqPredictor.predictGenome_closure9(GapseqPredictor.groovy:291)
+	at gspa.predictor.pathway.GapseqPredictor.predictGenome_closure9(GapseqPredictor.groovy)
+	at app//gspa.predictor.AbstractToolPredictor.parseGuarded(AbstractToolPredictor.groovy:151)
+	at app//gspa.predictor.pathway.GapseqPredictor.predictGenome(GapseqPredictor.groovy:290)
+	at gspa.predictor.pathway.PathwayObservationSpec.unknown output protein fails the actual run contract rather than being silently dropped(PathwayObservationSpec.groovy:60)
+</failure>
+  </testcase>
+  <testcase name="nucleotide hits cannot be asserted as protein annotations without coordinate attribution" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.004">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but got 'groovy.lang.MissingMethodException'" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but got 'groovy.lang.MissingMethodException'
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.PathwayObservationSpec.nucleotide hits cannot be asserted as protein annotations without coordinate attribution(PathwayObservationSpec.groovy:74)
+Caused by: groovy.lang.MissingMethodException: No signature of method: gspa.predictor.pathway.PathwayObservationSpec$Replay.flag() is applicable for argument types: (String) values: [FALSE]
+Possible solutions: find(), find(groovy.lang.Closure), tap(groovy.lang.Closure), wait(), any(), dump()
+	at gspa.predictor.pathway.GapseqPredictor.parseOutput_closure2(GapseqPredictor.groovy:153)
+	at app//gspa.predictor.pathway.GapseqPredictor.parseOutput(GapseqPredictor.groovy:139)
+	at gspa.predictor.pathway.GapseqPredictor.predictGenome_closure9(GapseqPredictor.groovy:291)
+	at gspa.predictor.pathway.GapseqPredictor.predictGenome_closure9(GapseqPredictor.groovy)
+	at app//gspa.predictor.AbstractToolPredictor.parseGuarded(AbstractToolPredictor.groovy:151)
+	at app//gspa.predictor.pathway.GapseqPredictor.predictGenome(GapseqPredictor.groovy:290)
+	at gspa.predictor.pathway.PathwayObservationSpec.nucleotide hits cannot be asserted as protein annotations without coordinate attribution(PathwayObservationSpec.groovy:72)
+</failure>
+  </testcase>
+  <testcase name="failed repeated protein batch clears the previous observations" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.008">
+    <failure message="groovy.lang.MissingMethodException: No signature of method: gspa.predictor.pathway.PathwayObservationSpec$Replay.flag() is applicable for argument types: (String) values: [FALSE]&#10;Possible solutions: find(), find(groovy.lang.Closure), tap(groovy.lang.Closure), wait(), any(), dump()" type="groovy.lang.MissingMethodException">groovy.lang.MissingMethodException: No signature of method: gspa.predictor.pathway.PathwayObservationSpec$Replay.flag() is applicable for argument types: (String) values: [FALSE]
+Possible solutions: find(), find(groovy.lang.Closure), tap(groovy.lang.Closure), wait(), any(), dump()
+	at gspa.predictor.pathway.GapseqPredictor.parseOutput_closure2(GapseqPredictor.groovy:153)
+	at app//gspa.predictor.pathway.GapseqPredictor.parseOutput(GapseqPredictor.groovy:139)
+	at gspa.predictor.AbstractToolPredictor.predictBatch_closure1(AbstractToolPredictor.groovy:103)
+	at gspa.predictor.AbstractToolPredictor.predictBatch_closure1(AbstractToolPredictor.groovy)
+	at app//gspa.predictor.AbstractToolPredictor.parseGuarded(AbstractToolPredictor.groovy:151)
+	at app//gspa.predictor.AbstractToolPredictor.predictBatch(AbstractToolPredictor.groovy:103)
+	at app//gspa.predictor.pathway.GapseqPredictor.predictBatch(GapseqPredictor.groovy:246)
+	at gspa.predictor.pathway.PathwayObservationSpec.failed repeated protein batch clears the previous observations(PathwayObservationSpec.groovy:82)
+</failure>
+  </testcase>
+  <system-out><![CDATA[01:47:46.097 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+01:47:46.098 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp9985798114068207235/proteins.faa
+01:47:46.104 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded 5 proteins (protein-only input)
+01:47:46.105 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(proteins, 1 contigs, 5 proteins, 0bp)
+01:47:46.105 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+01:47:46.109 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 1 genome-level predictors...
+01:47:46.110 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running gapsmith...
+01:47:46.111 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapseq_4932264693134927511 /home/leechuck/tmp/gspa_gapseq_4932264693134927511/proteins.faa
+01:47:46.116 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith output rejected: No signature of method: gspa.predictor.pathway.PathwayObservationSpec$Replay.flag() is applicable for argument types: (String) values: [FALSE]
+Possible solutions: find(), find(groovy.lang.Closure), tap(groovy.lang.Closure), wait(), any(), dump()
+01:47:46.118 [Test worker] ERROR gspa.predictor.AnnotationPipeline --   gapsmith failed: No signature of method: gspa.predictor.pathway.PathwayObservationSpec$Replay.flag() is applicable for argument types: (String) values: [FALSE]
+Possible solutions: find(), find(groovy.lang.Closure), tap(groovy.lang.Closure), wait(), any(), dump()
+01:47:46.120 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/5 proteins annotated, 0 total annotations
+01:47:46.126 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Predictor status manifest written: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp9985798114068207235/first/proteins_predictor_status.json
+01:47:46.135 [Test worker] INFO gspa.predictor.AnnotationPipeline -- GFF3 written: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp9985798114068207235/first/proteins.gff3
+01:47:46.136 [Test worker] INFO gspa.predictor.AnnotationPipeline -- TSV written: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp9985798114068207235/first/proteins_annotations.tsv
+01:47:46.139 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapseq_3789472311053722960 /home/leechuck/tmp/gspa_gapseq_3789472311053722960/proteins.faa
+01:47:46.140 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith output rejected: No signature of method: gspa.predictor.pathway.PathwayObservationSpec$Replay.flag() is applicable for argument types: (String) values: [FALSE]
+Possible solutions: find(), find(groovy.lang.Closure), tap(groovy.lang.Closure), wait(), any(), dump()
+01:47:46.143 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapseq: gapseq find -p all -t Bacteria -M nucl -K 1 -f /home/leechuck/tmp/gspa_gapseq_9533147552641741206 /home/leechuck/tmp/gspa_gapseq_9533147552641741206/genome.fna
+01:47:46.143 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapseq output rejected: No signature of method: gspa.predictor.pathway.PathwayObservationSpec$Replay.flag() is applicable for argument types: (String) values: [FALSE]
+Possible solutions: find(), find(groovy.lang.Closure), tap(groovy.lang.Closure), wait(), any(), dump()
+01:47:46.146 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapsmith_4678345751592172079 /home/leechuck/tmp/gspa_gapsmith_4678345751592172079/input.faa
+01:47:46.150 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith output rejected: No signature of method: gspa.predictor.pathway.PathwayObservationSpec$Replay.flag() is applicable for argument types: (String) values: [FALSE]
+Possible solutions: find(), find(groovy.lang.Closure), tap(groovy.lang.Closure), wait(), any(), dump()
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.specialized.DbCanRouteSpec" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-10-27T16:52:41" hostname="node002" time="2.049">
+  <properties/>
+  <testcase name="requested dbCAN is registered with explicit database interface and thread settings" classname="gspa.predictor.specialized.DbCanRouteSpec" time="1.29"/>
+  <testcase name="explicit disable wins over dbCAN enable" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.03"/>
+  <testcase name="modern execution preserves unscored families through pipeline raw claims" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.703">
+    <failure message="Condition not satisfied:&#10;&#10;pipeline.rawClaims.size() == 4&#10;|        |         |      |&#10;|        []        0      false&#10;&lt;gspa.predictor.AnnotationPipeline@f1f7db2 config=gspa.config.GspaConfig@765d55d5 registry=gspa.predictor.PredictorRegistry@2513a118 geneCaller=null genomePredictors=[] parallel=true runStatuses=[gspa.predictor.PredictorRunStatus(dbcan, SKIPPED, 0, no protein sequences available; predictor was not executed, null, 0, [])] integrationOutputDir=null pathwaySearchReports=[:] rawClaims=[] lastIntegration=null lastIntegrationAudit=null sharedIntegrationReferences=null hmmerDatabase=null&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+pipeline.rawClaims.size() == 4
+|        |         |      |
+|        []        0      false
+&lt;gspa.predictor.AnnotationPipeline@f1f7db2 config=gspa.config.GspaConfig@765d55d5 registry=gspa.predictor.PredictorRegistry@2513a118 geneCaller=null genomePredictors=[] parallel=true runStatuses=[gspa.predictor.PredictorRunStatus(dbcan, SKIPPED, 0, no protein sequences available; predictor was not executed, null, 0, [])] integrationOutputDir=null pathwaySearchReports=[:] rawClaims=[] lastIntegration=null lastIntegrationAudit=null sharedIntegrationReferences=null hmmerDatabase=null&gt;
+
+	at gspa.predictor.specialized.DbCanRouteSpec.modern execution preserves unscored families through pipeline raw claims(DbCanRouteSpec.groovy:81)
+</failure>
+  </testcase>
+  <testcase name="unsupported interfaces and missing v5 databases fail before tool execution [version: unknown, #0]" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.012"/>
+  <testcase name="unsupported interfaces and missing v5 databases fail before tool execution [version: 5, #1]" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.001"/>
+  <system-out><![CDATA[19:52:42.297 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+19:52:42.717 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: diamond
+19:52:42.719 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+19:52:42.721 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: operon
+19:52:42.723 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: gapsmith
+19:52:42.724 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: dbcan
+19:52:42.733 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 5 predictors registered
+19:52:42.796 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+19:52:42.801 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: diamond
+19:52:42.802 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+19:52:42.803 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: operon
+19:52:42.804 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: gapsmith
+19:52:42.805 [Test worker] DEBUG gspa.predictor.AnnotationPipeline -- Predictor dbcan explicitly disabled
+19:52:42.816 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 4 predictors registered
+19:52:42.917 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+19:52:42.925 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: dbcan
+19:52:42.926 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 1 predictors registered
+19:52:42.927 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+19:52:42.927 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_modern_execution_pr_0_directory9721961658236521346/q.faa
+19:52:43.026 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(q.faa, 3 contigs, 0 proteins, 15bp)
+19:52:43.029 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Protein predictors will be skipped; nucleotide predictors and requested integration can still run.
+19:52:43.099 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+19:52:43.197 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/0 proteins annotated, 0 total annotations
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@73ba6fe6]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@79ab34c1]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@73ba6fe6]
+]]></system-err>
+</testsuite>

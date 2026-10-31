@@ -1,0 +1,167 @@
+{
+  "status": "observed_replay_route_parity_verified",
+  "limitation": "Captured antiSMASH and CDS replay; no fresh native inference or biological accuracy claim.",
+  "commands": [
+    {
+      "name": "before-import",
+      "command": [
+        "java",
+        "-jar",
+        "/home/leechuck/tmp/antismash-cli/before.jar",
+        "antismash-claims",
+        "--results",
+        "/home/leechuck/tmp/antismash-cli/results/q.json",
+        "--genome",
+        "/home/leechuck/tmp/antismash-cli/results/q.fna",
+        "--gff3",
+        "/home/leechuck/tmp/antismash-cli/results/q.gff",
+        "--proteins",
+        "/home/leechuck/tmp/antismash-cli/results/q.faa",
+        "--output",
+        "/home/leechuck/tmp/antismash-cli/results/before.jsonl"
+      ],
+      "exit_code": 2
+    },
+    {
+      "name": "import",
+      "command": [
+        "java",
+        "-XX:ActiveProcessorCount=3",
+        "-jar",
+        "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+        "antismash-claims",
+        "--results",
+        "/home/leechuck/tmp/antismash-cli/results/q.json",
+        "--genome",
+        "/home/leechuck/tmp/antismash-cli/results/q.fna",
+        "--gff3",
+        "/home/leechuck/tmp/antismash-cli/results/q.gff",
+        "--proteins",
+        "/home/leechuck/tmp/antismash-cli/results/q.faa",
+        "--output",
+        "/home/leechuck/tmp/antismash-cli/results/import.jsonl"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "annotate",
+      "command": [
+        "java",
+        "-XX:ActiveProcessorCount=3",
+        "-jar",
+        "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+        "annotate",
+        "--genome",
+        "/home/leechuck/tmp/antismash-cli/results/q.fna",
+        "--gff3",
+        "/home/leechuck/tmp/antismash-cli/results/q-annotation.gff",
+        "--proteins",
+        "/home/leechuck/tmp/antismash-cli/results/q.faa",
+        "--config",
+        "/home/leechuck/tmp/antismash-cli/results/annotation.json",
+        "--output",
+        "/home/leechuck/tmp/antismash-cli/results/annotate",
+        "--claims-out",
+        "/home/leechuck/tmp/antismash-cli/results/annotation.jsonl",
+        "--threads",
+        "1",
+        "--no-metrics"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "nextflow",
+      "command": [
+        "/home/leechuck/bin/nextflow",
+        "-c",
+        "/home/leechuck/tmp/antismash-cli/results/nextflow.config",
+        "run",
+        "/home/leechuck/Public/software/gspa/gspa-nf/main.nf",
+        "-work-dir",
+        "/home/leechuck/tmp/antismash-cli/results/nf-work",
+        "-with-trace",
+        "/home/leechuck/tmp/antismash-cli/results/trace.tsv",
+        "--input",
+        "/home/leechuck/tmp/antismash-cli/results/samples.csv",
+        "--antismash_db",
+        "/home/leechuck/tmp/antismash-cli/results/database",
+        "--gspa_jar",
+        "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+        "--goa",
+        "/home/leechuck/tmp/antismash-cli/results/goa.gaf",
+        "--go_owl",
+        "/home/leechuck/tmp/antismash-cli/results/go.owl",
+        "--ec2go",
+        "/home/leechuck/tmp/antismash-cli/results/ec2go",
+        "--pathways",
+        "/home/leechuck/tmp/antismash-cli/results/pathways.tsv",
+        "--outdir",
+        "/home/leechuck/tmp/antismash-cli/results/nextflow-output"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "integrate",
+      "command": [
+        "java",
+        "-XX:ActiveProcessorCount=3",
+        "-jar",
+        "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+        "integrate",
+        "--claims",
+        "/home/leechuck/tmp/antismash-cli/results/import.jsonl",
+        "--out",
+        "/home/leechuck/tmp/antismash-cli/results/direct.tsv",
+        "--lite",
+        "--enable-priors",
+        "none"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "nextflow-missing",
+      "command": [
+        "/home/leechuck/bin/nextflow",
+        "-c",
+        "/home/leechuck/tmp/antismash-cli/results/nextflow.config",
+        "run",
+        "/home/leechuck/Public/software/gspa/gspa-nf/main.nf",
+        "-work-dir",
+        "/home/leechuck/tmp/antismash-cli/results/nf-missing-work",
+        "-with-trace",
+        "/home/leechuck/tmp/antismash-cli/results/missing-trace.tsv",
+        "--input",
+        "/home/leechuck/tmp/antismash-cli/results/samples.csv",
+        "--antismash_db",
+        "/home/leechuck/tmp/antismash-cli/results/database",
+        "--gspa_jar",
+        "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+        "--goa",
+        "/home/leechuck/tmp/antismash-cli/results/goa.gaf",
+        "--go_owl",
+        "/home/leechuck/tmp/antismash-cli/results/go.owl",
+        "--ec2go",
+        "/home/leechuck/tmp/antismash-cli/results/ec2go",
+        "--pathways",
+        "/home/leechuck/tmp/antismash-cli/results/pathways.tsv",
+        "--outdir",
+        "/home/leechuck/tmp/antismash-cli/results/missing-output"
+      ],
+      "exit_code": 1
+    }
+  ],
+  "jar_sha256": "069263f7b876222815928a637d02106b9c3b31a756edd1cf692432acc2e52303",
+  "native_sha256": "423d21fab26bfcfacb0dafd4a21f10a7172c659ee0dc3bd36c2b4cfcbc2ec9a6",
+  "checker_sha256": "9a5cd91ce489535a652d82accb8ff4bd89cb1f40ab0bbab9ca15ecc86be3ac53",
+  "protein_counts": {
+    "q": 4915,
+    "zero": 6
+  },
+  "memberships": {
+    "q": 70,
+    "zero": 0
+  },
+  "independent_oracle": "native region SeqFeatures, not areas",
+  "annotated_imported_nextflow_bytes_equal": true,
+  "functional_predictions": 0
+}

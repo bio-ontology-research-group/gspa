@@ -34,8 +34,16 @@ class HmmerPredictor extends AbstractToolPredictor {
     /** hmmsearch needs a Pfam-A HMM file; without one the tool cannot run. */
     @Override
     boolean isAvailable() {
-        hmmDatabase && new File(hmmDatabase).isFile() && super.isAvailable()
+        hmmDatabase && new File(hmmDatabase).isFile() && probeVersion() != null
     }
+
+    /** hmmsearch has no --version option; -h reports both program and version. */
+    private String probeVersion() {
+        HmmerToolProbe.version(executablePath ?: executable, environment)
+    }
+
+    @Override
+    String getVersion() { probeVersion() ?: 'unknown' }
 
     @Override
     String unavailableReason() {
@@ -87,13 +95,25 @@ class HmmerPredictor extends AbstractToolPredictor {
             String proteinId = fields[0]
             String pfamAcc = fields[4]       // PF00001.21 (query accession)
             String pfamName = fields[3]      // HMM name
-            double domEvalue = fields[12] as double
-            double domScore = fields[13] as double
+            double domEvalue
+            double domScore
+            try {
+                domEvalue = Double.parseDouble(fields[12])
+                domScore = Double.parseDouble(fields[13])
+            } catch (NumberFormatException ignored) {
+                throw new ToolOutputContractException("hmmer: invalid domain E-value/bit score for ${proteinId}")
+            }
+            if (!Double.isFinite(domEvalue) || domEvalue < 0.0d || !Double.isFinite(domScore)) {
+                throw new ToolOutputContractException("hmmer: non-finite statistic or negative domain E-value for ${proteinId}")
+            }
+            if (pfamAcc == '-') {
+                throw new ToolOutputContractException("hmmer: model '${pfamName}' lacks a query accession for ${proteinId}")
+            }
 
             // Normalize accession (remove version)
             String acc = pfamAcc.replaceAll(/\.\d+$/, '')
 
-            double score = Math.min(1.0, domScore / 100.0)
+            double score = Math.max(0.0d, Math.min(1.0d, domScore / 100.0d))
 
             results[proteinId] << new Annotation(
                 type: AnnotationType.PFAM,

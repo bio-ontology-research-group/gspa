@@ -8,6 +8,55 @@ import spock.lang.Specification
 
 class IterativeRefinerSpec extends Specification {
 
+    private static ClaimProvenance independentTarget(int candidates, double probability, double boost) {
+        def reliability = new EnumMap<EvidenceType, Double>(EvidenceType)
+        EvidenceType.values().each { reliability[it] = 1.0d }
+        def refiner = new IterativeRefiner(new EvidenceCombiner(reliability))
+        refiner.priorEngine.register([
+            name: { 'fixed-target-context' },
+            beginIteration: { IntegrationState ignored -> },
+            inputs: { Collections.emptySet() },
+            logOddsBoost: { String protein, String key, IntegrationState ignored -> protein == 'target' ? boost : 0.0d }
+        ] as Prior)
+        def claims = [claim('target', 'GO:0006412', 'diamond', EvidenceType.SEQUENCE_SIMILARITY, probability)]
+        for (int i = 1; i < candidates; i++) {
+            claims << claim("unrelated_$i".toString(), 'GO:0003735', 'diamond', EvidenceType.SEQUENCE_SIMILARITY, 0.8d)
+        }
+        refiner.refine(claims, new IntegrationState(new Genome(id: 'independent')))
+            .provenance['target|GO|GO:0006412']
+    }
+
+    def "adding unrelated candidates across the old 100-candidate boundary cannot change a score"() {
+        when:
+        def results = [1, 99, 100, 101, 1000].collect { independentTarget(it, 0.2d, 4.0d) }
+
+        then:
+        results.every { Math.abs(it.finalProbability - results[0].finalProbability) < 1e-12d }
+        results.every { it.convergenceIter == results[0].convergenceIter }
+        // Preserve the conservative weak-evidence rule used in existing whole-genome runs.
+        results.every { it.finalLogOdds <= 0.12d }
+        results.every { it.finalProbability > 0.2d }
+        // Recorded for the 100/101/1000-candidate cases before the repair.
+        Math.abs(results[-1].finalProbability - 0.5240973543916296d) < 1e-12d
+    }
+
+    def "count-independent weak-evidence cap preserves strong positive and negative context behavior"() {
+        when:
+        def single = independentTarget(1, probability, boost)
+        def large = independentTarget(100, probability, boost)
+
+        then:
+        Math.abs(single.finalProbability - large.finalProbability) < 1e-12d
+        (boost > 0) ? single.finalProbability > probability : single.finalProbability < probability
+        probability > 0.5d && boost > 0 ? single.finalLogOdds > 0.12d : true
+
+        where:
+        probability | boost
+        0.8d        | 4.0d
+        0.2d        | -4.0d
+        0.8d        | -4.0d
+    }
+
     private static EvidenceClaim claim(String protein, String funcId, String source,
                                        EvidenceType type, double prob, String aspect = 'BP') {
         new EvidenceClaim(

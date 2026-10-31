@@ -274,6 +274,8 @@ def main():
                    help='InterProScan TSV output file (optional)')
     p.add_argument('--output', required=True,
                    help='Output claims.jsonl path')
+    p.add_argument('--allow-empty', action='store_true',
+                   help='Allow an empty claims stream when composing independently executed predictors.')
     p.add_argument('--test-accs', default=None,
                    help='Optional: file with test protein accessions (one per line) to exclude '
                         'from similarity targets so we never transfer GO from the query itself.')
@@ -326,7 +328,7 @@ def main():
             n_total += n
 
     print(f'Wrote {n_total:,} claims to {args.output}', flush=True)
-    if n_total == 0:
+    if n_total == 0 and not args.allow_empty:
         print('ERROR: no claims produced. Check predictor result files exist.', file=sys.stderr)
         sys.exit(1)
 

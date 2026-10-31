@@ -12,7 +12,7 @@ SCRIPT = Path(__file__).resolve().parents[2] / 'gspa-cli/src/main/resources/visu
 
 
 class OptionalQualityTest(unittest.TestCase):
-    def render(self, quality=None, fasta=None, sidecar=False, analyses=None):
+    def render(self, quality=None, fasta=None, sidecar=False, analyses=None, integrated_source="diamond"):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root/'prokka_out').mkdir()
@@ -20,7 +20,7 @@ class OptionalQualityTest(unittest.TestCase):
             (root/'prokka_out/sample.tsv').write_text('locus_tag\tftype\tlength_bp\tproduct\np1\tCDS\t300\tTest protein\n')
             (root/'prokka_out/sample.gff').write_text('##gff-version 3\nctg\ttest\tCDS\t1\t300\t.\t+\t0\tID=p1;locus_tag=p1\n')
             (root/'gspa_out/integrated.tsv').write_text('protein_id\ttype\tfunction_id\tgo_aspect\tposterior_prob\tn_supporting\np1\tGO\tGO:0003824\tMF\t0.8\t1\n')
-            (root/'gspa_out/provenance.json').write_text('[{"supporting_sources":["diamond"]}]')
+            (root/'gspa_out/provenance.json').write_text(json.dumps([{'supporting_sources':[integrated_source]}]))
             (root/'go.obo').write_text('format-version: 1.2\n')
             (root/'ec2go').write_text('! no mappings\n')
             if analyses is not None:
@@ -30,8 +30,9 @@ class OptionalQualityTest(unittest.TestCase):
             if fasta is not None:
                 (root/'genome.fna').write_text(fasta)
             if sidecar:
-                (root/'clean_out').mkdir()
-                (root/'clean_out/sample.clean.tsv').write_text('protein_id\tterm\tscore\tannotation_type\np1\tEC:1.2.3.4\t0.99\tEC\n')
+                tool='clean' if sidecar=='clean' else 'mdf'
+                (root/(tool+'_out')).mkdir()
+                (root/(tool+'_out')/('sample.'+tool+'.tsv')).write_text('protein_id\tterm\tscore\tannotation_type\np1\tGO:0008150\t0.99\tGO\n')
             output = root/'browser.html'
             subprocess.run([sys.executable,str(SCRIPT)], check=True,capture_output=True,text=True,env={
                 **os.environ,'GSPA_WORKDIR':str(root),'GSPA_GENOME_ID':'sample','GSPA_OUT':str(output),
@@ -84,6 +85,17 @@ class OptionalQualityTest(unittest.TestCase):
         self.assertEqual(sum(data['stats']['posterior_hist']), 1)
         self.assertEqual([term['term'] for term in data['stats']['top_terms']], ['GO:0003824'])
         self.assertEqual(data['proteins'][0]['nt'], 1)
+
+    def test_unverified_clean_sidecar_does_not_create_visual_confidence(self):
+        data=self.render(sidecar='clean')
+        self.assertEqual(len(data['annotations']),1)
+        self.assertEqual(data['build']['predictors_run'],['diamond'])
+
+    def test_integrated_clean_support_remains_visible(self):
+        data=self.render(integrated_source='clean')
+        self.assertEqual(len(data['annotations']),1)
+        self.assertEqual(data['build']['predictors_run'],['clean'])
+        self.assertEqual(data['stats']['n_high'],1)
 
 
 if __name__ == '__main__': unittest.main()

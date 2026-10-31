@@ -1,0 +1,804 @@
+{
+  "schema": "gspa.absence_experiments/1",
+  "input_model_sha256": "f839af7351751ade13066199f997a7f42561541740c6031c7d695f82b06629f7",
+  "problem": {
+    "baseline": {
+      "medium": {
+        "EX_glc_e": 10,
+        "EX_nh4_e": 10,
+        "EX_o2_e": 10,
+        "EX_vit_e": 0
+      },
+      "exchanges": [
+        "EX_glc_e",
+        "EX_ac_e",
+        "EX_o2_e",
+        "EX_vit_e",
+        "EX_sec_e",
+        "EX_nh4_e",
+        "EX_lac_e"
+      ],
+      "carbon_exchanges": [
+        "EX_glc_e"
+      ],
+      "nitrogen_exchanges": [
+        "EX_nh4_e"
+      ],
+      "oxygen_exchange": "EX_o2_e"
+    },
+    "objectives": {
+      "biomass": "BIOMASS",
+      "maintenance": {
+        "reaction": "ATPM",
+        "lower_bound": 1.0
+      }
+    },
+    "absence_comparison": {
+      "reaction": "VITS",
+      "candidate_function_key": "pE|EC|EC:2.3.3.3",
+      "assembly": {
+        "status": "COMPLETE",
+        "completeness_fraction": 1.0,
+        "source": "synthetic closed genome"
+      },
+      "function_search": {
+        "status": "COMPLETE",
+        "source": "synthetic function search"
+      },
+      "external_supply": {
+        "exchange": "EX_vit_e",
+        "uptake_limit": 2,
+        "transport_reactions": [
+          "T_vit"
+        ],
+        "source": "synthetic medium"
+      },
+      "conditions": [
+        {
+          "id": "control",
+          "mods": [
+            {
+              "op": "knockout",
+              "reactions": [
+                "T_vit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "withdrawal",
+          "mods": [
+            {
+              "op": "close",
+              "exchange": "EX_vit_e"
+            }
+          ]
+        },
+        {
+          "id": "transport_ko",
+          "mods": [
+            {
+              "op": "knockout",
+              "reactions": [
+                "T_vit"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "problem_sha256": "aecd0ba08f371973672dd98d3550f1aa7e80f69b08218e6e7f79959391eda310",
+  "strategy": "fixed",
+  "config": {
+    "strategy": "fixed",
+    "seed": 0,
+    "max_experiments": 3,
+    "max_solver_calls": 24,
+    "uptake_rate": 10.0,
+    "default_bound": 1000.0,
+    "growth_threshold": 1e-06,
+    "flux_tol": 1e-07,
+    "residual_tol": 1e-06,
+    "relative_tol": 0.05,
+    "growth_fraction": 0.95,
+    "product_requirement": "growth_fraction",
+    "max_focus_reactions": 2,
+    "max_baseline_focus_reactions": 6,
+    "panel": null,
+    "qwen": {
+      "model": "qwen3.8-27b",
+      "api_base": null,
+      "max_invalid": 2,
+      "max_tokens": 300
+    }
+  },
+  "hypotheses": [
+    "missing_annotation",
+    "missing_sequence",
+    "pathway_loss",
+    "external_supply"
+  ],
+  "cells": [
+    {
+      "condition_id": "control",
+      "hypothesis": "missing_annotation",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 8.523809523809524,
+          "class": "growth",
+          "disabled_reactions": [
+            "T_vit"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        }
+      },
+      "solver_calls": [
+        0,
+        1
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "control",
+      "hypothesis": "missing_sequence",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 8.523809523809524,
+          "class": "growth",
+          "disabled_reactions": [
+            "T_vit"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 8.523809523809524,
+          "class": "growth",
+          "disabled_reactions": [
+            "T_vit"
+          ]
+        }
+      },
+      "solver_calls": [
+        2,
+        3
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "control",
+      "hypothesis": "pathway_loss",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        }
+      },
+      "solver_calls": [
+        4,
+        5
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "control",
+      "hypothesis": "external_supply",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        }
+      },
+      "solver_calls": [
+        6,
+        7
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "withdrawal",
+      "hypothesis": "missing_annotation",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 8.523809523809524,
+          "class": "growth",
+          "disabled_reactions": []
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "VITS"
+          ]
+        }
+      },
+      "solver_calls": [
+        8,
+        9
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "withdrawal",
+      "hypothesis": "missing_sequence",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 8.523809523809524,
+          "class": "growth",
+          "disabled_reactions": []
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 8.523809523809524,
+          "class": "growth",
+          "disabled_reactions": []
+        }
+      },
+      "solver_calls": [
+        10,
+        11
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "withdrawal",
+      "hypothesis": "pathway_loss",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "VITS"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "VITS"
+          ]
+        }
+      },
+      "solver_calls": [
+        12,
+        13
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "withdrawal",
+      "hypothesis": "external_supply",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "VITS"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "VITS"
+          ]
+        }
+      },
+      "solver_calls": [
+        14,
+        15
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "transport_ko",
+      "hypothesis": "missing_annotation",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 8.523809523809524,
+          "class": "growth",
+          "disabled_reactions": [
+            "T_vit"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        }
+      },
+      "solver_calls": [
+        16,
+        17
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "transport_ko",
+      "hypothesis": "missing_sequence",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 8.523809523809524,
+          "class": "growth",
+          "disabled_reactions": [
+            "T_vit"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 8.523809523809524,
+          "class": "growth",
+          "disabled_reactions": [
+            "T_vit"
+          ]
+        }
+      },
+      "solver_calls": [
+        18,
+        19
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "transport_ko",
+      "hypothesis": "pathway_loss",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        }
+      },
+      "solver_calls": [
+        20,
+        21
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    },
+    {
+      "condition_id": "transport_ko",
+      "hypothesis": "external_supply",
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        },
+        "candidate_assignment_knockout": {
+          "status": "optimal",
+          "growth": 0.0,
+          "class": "no_growth",
+          "disabled_reactions": [
+            "T_vit",
+            "VITS"
+          ]
+        }
+      },
+      "solver_calls": [
+        22,
+        23
+      ],
+      "active_constraints": [],
+      "status": "completed"
+    }
+  ],
+  "comparisons": [
+    {
+      "hypotheses": [
+        "missing_annotation",
+        "missing_sequence"
+      ],
+      "comparable_phenotypes": 6,
+      "status": "distinguishable_under_assumptions",
+      "distinguishing_interventions": [
+        {
+          "condition_id": "control",
+          "perturbation": "candidate_assignment_knockout"
+        },
+        {
+          "condition_id": "withdrawal",
+          "perturbation": "candidate_assignment_knockout"
+        },
+        {
+          "condition_id": "transport_ko",
+          "perturbation": "candidate_assignment_knockout"
+        }
+      ]
+    },
+    {
+      "hypotheses": [
+        "missing_annotation",
+        "pathway_loss"
+      ],
+      "comparable_phenotypes": 6,
+      "status": "distinguishable_under_assumptions",
+      "distinguishing_interventions": [
+        {
+          "condition_id": "control",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "withdrawal",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "transport_ko",
+          "perturbation": "wild_type"
+        }
+      ]
+    },
+    {
+      "hypotheses": [
+        "missing_annotation",
+        "external_supply"
+      ],
+      "comparable_phenotypes": 6,
+      "status": "distinguishable_under_assumptions",
+      "distinguishing_interventions": [
+        {
+          "condition_id": "control",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "withdrawal",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "transport_ko",
+          "perturbation": "wild_type"
+        }
+      ]
+    },
+    {
+      "hypotheses": [
+        "missing_sequence",
+        "pathway_loss"
+      ],
+      "comparable_phenotypes": 6,
+      "status": "distinguishable_under_assumptions",
+      "distinguishing_interventions": [
+        {
+          "condition_id": "control",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "control",
+          "perturbation": "candidate_assignment_knockout"
+        },
+        {
+          "condition_id": "withdrawal",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "withdrawal",
+          "perturbation": "candidate_assignment_knockout"
+        },
+        {
+          "condition_id": "transport_ko",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "transport_ko",
+          "perturbation": "candidate_assignment_knockout"
+        }
+      ]
+    },
+    {
+      "hypotheses": [
+        "missing_sequence",
+        "external_supply"
+      ],
+      "comparable_phenotypes": 6,
+      "status": "distinguishable_under_assumptions",
+      "distinguishing_interventions": [
+        {
+          "condition_id": "control",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "control",
+          "perturbation": "candidate_assignment_knockout"
+        },
+        {
+          "condition_id": "withdrawal",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "withdrawal",
+          "perturbation": "candidate_assignment_knockout"
+        },
+        {
+          "condition_id": "transport_ko",
+          "perturbation": "wild_type"
+        },
+        {
+          "condition_id": "transport_ko",
+          "perturbation": "candidate_assignment_knockout"
+        }
+      ]
+    },
+    {
+      "hypotheses": [
+        "pathway_loss",
+        "external_supply"
+      ],
+      "comparable_phenotypes": 6,
+      "status": "same_evaluated_growth_classes",
+      "distinguishing_interventions": []
+    }
+  ],
+  "visited_conditions": [
+    "control",
+    "withdrawal",
+    "transport_ko"
+  ],
+  "unvisited_conditions": [],
+  "solver_calls": [
+    {
+      "call": 0,
+      "label": "control:missing_annotation:wild_type",
+      "status": "optimal",
+      "objective": -8.523809523809524,
+      "note": ""
+    },
+    {
+      "call": 1,
+      "label": "control:missing_annotation:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 2,
+      "label": "control:missing_sequence:wild_type",
+      "status": "optimal",
+      "objective": -8.523809523809524,
+      "note": ""
+    },
+    {
+      "call": 3,
+      "label": "control:missing_sequence:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": -8.523809523809524,
+      "note": ""
+    },
+    {
+      "call": 4,
+      "label": "control:pathway_loss:wild_type",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 5,
+      "label": "control:pathway_loss:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 6,
+      "label": "control:external_supply:wild_type",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 7,
+      "label": "control:external_supply:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 8,
+      "label": "withdrawal:missing_annotation:wild_type",
+      "status": "optimal",
+      "objective": -8.523809523809524,
+      "note": ""
+    },
+    {
+      "call": 9,
+      "label": "withdrawal:missing_annotation:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 10,
+      "label": "withdrawal:missing_sequence:wild_type",
+      "status": "optimal",
+      "objective": -8.523809523809524,
+      "note": ""
+    },
+    {
+      "call": 11,
+      "label": "withdrawal:missing_sequence:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": -8.523809523809524,
+      "note": ""
+    },
+    {
+      "call": 12,
+      "label": "withdrawal:pathway_loss:wild_type",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 13,
+      "label": "withdrawal:pathway_loss:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 14,
+      "label": "withdrawal:external_supply:wild_type",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 15,
+      "label": "withdrawal:external_supply:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 16,
+      "label": "transport_ko:missing_annotation:wild_type",
+      "status": "optimal",
+      "objective": -8.523809523809524,
+      "note": ""
+    },
+    {
+      "call": 17,
+      "label": "transport_ko:missing_annotation:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 18,
+      "label": "transport_ko:missing_sequence:wild_type",
+      "status": "optimal",
+      "objective": -8.523809523809524,
+      "note": ""
+    },
+    {
+      "call": 19,
+      "label": "transport_ko:missing_sequence:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": -8.523809523809524,
+      "note": ""
+    },
+    {
+      "call": 20,
+      "label": "transport_ko:pathway_loss:wild_type",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 21,
+      "label": "transport_ko:pathway_loss:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 22,
+      "label": "transport_ko:external_supply:wild_type",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 23,
+      "label": "transport_ko:external_supply:candidate_assignment_knockout",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    }
+  ],
+  "max_solver_calls": 24,
+  "closed_undeclared_transport_reactions": [],
+  "objective_source": "manifest",
+  "wall_seconds": 0.03243557899259031,
+  "gene_attribution": "unverified",
+  "selected_explanation": null,
+  "promotion": "none",
+  "calibrated_probability": null,
+  "independent_proof_of_function": false,
+  "assumptions": [
+    "The focal reaction is available at the supplied model bounds for missing annotation and missing sequence, and disabled for pathway loss and external supply.",
+    "Candidate-assignment knockout removes only the proposed focal activity, not all activities of a biological gene. Original GPRs are not consulted.",
+    "Missing sequence assumes activity in the organism without a retained sequence; assembly and search metadata alone cannot establish or exclude it.",
+    "External supply assumes pathway loss plus the declared bounded supply. These explanations overlap; they are not exclusive probability classes.",
+    "Undeclared direct transport of the proposed supplied species is closed in every scenario; declared transport remains a model assumption.",
+    "Condition interventions follow the supply assumption, including withdrawal and transport knockout.",
+    "Growth classes are conditional on topology, biomass, bounds, maintenance and medium. Identical classes do not establish identical biology.",
+    "No measured phenotype or function truth selects a hypothesis. Gene attribution requires independent evaluation."
+  ]
+}

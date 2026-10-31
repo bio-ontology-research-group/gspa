@@ -8,6 +8,8 @@ package gspa.predictor
  * the proteins/contigs it did not cover.
  */
 enum PredictorOutcome {
+    /** Requested tool was not executed because this input has no eligible records. */
+    SKIPPED,
     /** Tool/database not installed or not configured; it never ran. */
     UNAVAILABLE,
     /** Tool started but crashed, timed out, threw, or produced output that violates its schema. */

@@ -1,7 +1,7 @@
 """Tests for the manuscript-protocol correction (prepare_metabolic_benchmarks) and the Wintermute adapter.
 
 Fixtures follow the real schemas (S1/S2 workbooks, the Methods sentence, knockout_utils constants) but are tiny.
-No test touches the network.  Run:  /tmp/gspa-v3-testenv/bin/python -m unittest discover -s benchmark/v3/tests
+No test touches the network. Run with the configured Python test environment.
 """
 import copy
 import io
@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import openpyxl
@@ -58,7 +59,14 @@ def workbook(header, rows):
         for info in sorted(zin.infolist(), key=lambda x: x.filename):
             zi = zipfile.ZipInfo(info.filename, date_time=(2026, 1, 1, 0, 0, 0))
             zi.compress_type = zipfile.ZIP_DEFLATED
-            zout.writestr(zi, zin.read(info.filename))
+            payload = zin.read(info.filename)
+            if info.filename == 'docProps/core.xml':
+                # openpyxl.save_workbook overwrites properties.modified with wall time.
+                # Normalize the serialized property as well as the ZIP timestamps.
+                core = ET.fromstring(payload)
+                core.find('{http://purl.org/dc/terms/}modified').text = '2026-01-01T00:00:00Z'
+                payload = ET.tostring(core, encoding='utf-8')
+            zout.writestr(zi, payload)
     return buf.getvalue()
 
 
@@ -108,6 +116,11 @@ class Protocol(T.Model):
 
 
 class TestExtraction(unittest.TestCase):
+    def test_workbook_fixture_serialized_modified_time_is_fixed(self):
+        with zipfile.ZipFile(io.BytesIO(workbook(['column'], [['value']]))) as z:
+            core = ET.fromstring(z.read('docProps/core.xml'))
+            self.assertEqual(core.find('{http://purl.org/dc/terms/}modified').text, '2026-01-01T00:00:00Z')
+
     def test_methods_sentence_is_quoted_and_parsed(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "f.xml"

@@ -220,12 +220,11 @@ class AllPredictorParsingSpec extends Specification {
 
         then:
         results.size() > 0
-        // NRPS/T1PKS cluster
-        results['gene_010']?.any { it.type == AnnotationType.SECONDARY_METABOLITE && it.value.contains('NRPS') }
-        results['gene_011']?.any { it.type == AnnotationType.SECONDARY_METABOLITE }
-        results['gene_012']?.any { it.type == AnnotationType.SECONDARY_METABOLITE }
-        // Terpene cluster
-        results['gene_025']?.any { it.type == AnnotationType.SECONDARY_METABOLITE && it.value == 'terpene' }
+        // Regions are keyed by contig until they are projected onto GSPA CDS coordinates.
+        results['contig_1']?.any { it.type == AnnotationType.SECONDARY_METABOLITE && it.value.contains('NRPS') }
+        results['contig_1'][0].metadata.products == ['NRPS', 'T1PKS']
+        results['contig_2']?.any { it.type == AnnotationType.SECONDARY_METABOLITE && it.value == 'terpene' }
+        results.values().flatten().every { it.metadata.score_available == false }
     }
 
     // --- CRISPR/minced ---
@@ -272,7 +271,7 @@ class AllPredictorParsingSpec extends Specification {
             new SignalPPredictor(),
             new DeepTmhmmPredictor(),
             new gspa.predictor.specialized.AmrFinderPredictor(),
-            new gspa.predictor.specialized.DbCanPredictor(),
+            new gspa.predictor.specialized.DbCanPredictor(dbDir: '/db/dbcan'),
             new CrisprPredictor(),
             new gspa.predictor.specialized.VfdbPredictor(database: '/tmp/vfdb'),
         ]

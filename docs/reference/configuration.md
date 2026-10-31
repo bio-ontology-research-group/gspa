@@ -169,8 +169,12 @@ Sub-configs within `predictors.neural`:
 - `clean`:
   - `enabled` (boolean, default `false`): Run CLEAN contrastive EC number predictor.
   - `modelDir` (string): Directory containing CLEAN checkpoints and scripts.
-  - `batchSize` (integer, default `16`): Batch size.
-  - `minScore` (float, default `0.1`): Minimum score threshold.
+  - `scoreKind` (required string): `gmm_confidence` when the native driver supplies a GMM file to `infer_maxsep`; `distance` when it supplies no GMM. The sidecar checks that declaration against the driver and rejects unsupported dynamic arguments.
+  - `batchSize` (integer, default `16`): Retained shared sidecar option; the native CLEAN driver controls ESM extraction batching.
+  - `minScore` (float, default `0`): GMM confidence cutoff. Distance mode requires zero and retains native distances as unscored observations. Only native max-separation selections are available; this does not recover the complete EC matrix.
+
+  Existing CLEAN configurations must add `scoreKind`; old four-column CLEAN TSVs cannot be imported as typed output. The installed driver must be inspected before choosing the mode. The pinned upstream driver uses `gmm_confidence`. CLEAN uses ESM-1b and truncates sequences beyond 1,022 residues. GMM values are preserved, but are not asserted to be calibrated probabilities in GSPA.
+
 - `esm2Centroid`:
   - `enabled` (boolean, default `false`): Run ESM-2 embedding distance to precomputed functional centroids.
   - `db` (string): NPZ database containing centroid vectors and GO terms.

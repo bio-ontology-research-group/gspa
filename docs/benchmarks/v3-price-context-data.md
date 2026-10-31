@@ -103,10 +103,10 @@ of every input, the MMseqs2 version and command (from `--mmseqs-log`, or
 
 ```bash
 python benchmark/v3/prepare_price_cohort.py \
-  --layout /tmp/gspa-v3-price-layout-v3 \
-  --clusters /tmp/gspa-v3-price-families/id30_cov80_cluster.tsv \
-  --taxonomy /tmp/gspa-v3-price-families/taxonomy.xml \
-  --mmseqs-log /tmp/gspa-v3-price-families/id30_cov80-retry.log \
+  --layout "$TMPDIR/gspa-v3-price-layout-v3" \
+  --clusters "$TMPDIR/gspa-v3-price-families/id30_cov80_cluster.tsv" \
+  --taxonomy "$TMPDIR/gspa-v3-price-families/taxonomy.xml" \
+  --mmseqs-log "$TMPDIR/gspa-v3-price-families/id30_cov80-retry.log" \
   --out <fresh directory>
 ```
 
@@ -151,6 +151,20 @@ present with unknown neighborhood context; it is never counted as absent because
 its coordinate is missing. A placed unsupported paralog plus an unresolved paralog
 also has unknown context. Arbitrary undeclared protein IDs still fail validation.
 
-## Completed 7-Variant × 6-Arm Production Execution
+## Historical 7-variant × 6-arm execution: not a full-matrix benchmark
 
-Using the verified layouts (`115,263` placed proteins + `279` `unplacedProteins`), MMseqs2 30%-identity/80%-coverage families (`35,298` clusters, `familySearchComplete: true`), and NCBI genus/species metadata (`18` taxa), all 7 predictor variants (`clean`, `dpz`, `enzbert`, `graphec`, `mapred`, `topec`, `ensemble_pool4`) were run end-to-end through `gspa integrate` across all 6 inference arms (`stage0`, `stage1`, `stage1_rlc`, `stage1_rlc_cohort`, `learned_logistic`, `learned_gbdt`) on Unimatrix (`benchmark/v3/results/price-context-ablation/`). Full results, SHA-256 digests, and locus-decoy metrics are reported in [`docs/benchmarks/v3-price-development.md`](v3-price-development.md).
+The historical runner `run_price_context_remote.py` reads
+`/data/hohndor/gspa-v3/price-development-e2303a9/inputs`. The follow-up audit found
+that its 154 claim-file hashes match the earlier compact/truncated evaluation.
+The acquired whole-genome layouts and families do not make those claims
+whole-proteome predictions. Its RLC requests had no eligible gaps, and its learned
+artifacts did not establish supported predictor distributions. The old reports
+remain historical development results; their blanket full-context completion
+claim is rejected. See [the current acceptance record](../../tasks/v3-acceptance.md).
+
+A fresh lossless export of all 132 original matrices is being verified under
+`/data/hohndor/gspa-v3/price-full-matrix-v2/`. Its frozen plan includes 1,526,919,081
+nonzero complete **and preliminary** EC scores, with no score threshold or top-k
+filter. Publication requires independent comparison of every claim to its matrix
+and a hash-verified persistent copy. This ongoing acquisition is not inference or
+accuracy evidence. See [the full export protocol](v3-price-streaming-export.md).

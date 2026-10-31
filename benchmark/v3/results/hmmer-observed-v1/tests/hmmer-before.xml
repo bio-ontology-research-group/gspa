@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.domain.HmmerObservedSpec" tests="8" skipped="0" failures="2" errors="0" timestamp="2026-10-26T18:24:40" hostname="lc-dell" time="0.41">
+  <properties/>
+  <testcase name="HMMER availability and version use its supported help probe" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.248">
+    <failure message="Condition not satisfied:&#10;&#10;p.isAvailable()&#10;| |&#10;| false&#10;&lt;gspa.predictor.domain.HmmerPredictor@61799544 hmmDatabase=/home/leechuck/Public/software/gspa/gspa-predictors/build/resources/test/observed-output/hmmer/profile.hmm domainEvalue=1.0E-5 threads=16 log=Logger[gspa.predictor.domain.HmmerPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=/home/leechuck/tmp/spock_HMMER_availability__0_tmp9280052263049185121/hmmsearch with spaces&gt;&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+p.isAvailable()
+| |
+| false
+&lt;gspa.predictor.domain.HmmerPredictor@61799544 hmmDatabase=/home/leechuck/Public/software/gspa/gspa-predictors/build/resources/test/observed-output/hmmer/profile.hmm domainEvalue=1.0E-5 threads=16 log=Logger[gspa.predictor.domain.HmmerPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=/home/leechuck/tmp/spock_HMMER_availability__0_tmp9280052263049185121/hmmsearch with spaces&gt;
+
+	at gspa.predictor.domain.HmmerObservedSpec.HMMER availability and version use its supported help probe(HmmerObservedSpec.groovy:36)
+</failure>
+  </testcase>
+  <testcase name="a failed or wrong-program help response is not an available HMMER tool [output: # hmmsearch :: search&#10;# HMMER 3.4 (fixture version), exitCode: 2, #0]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.011"/>
+  <testcase name="a failed or wrong-program help response is not an available HMMER tool [output: # hmmbuild :: build&#10;# HMMER 3.4 (fixture version), exitCode: 0, #1]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.004"/>
+  <testcase name="a failed or wrong-program help response is not an available HMMER tool [output: unrelated program, exitCode: 0, #2]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.002"/>
+  <testcase name="observed domtblout retains the query accession and independent domain statistics" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.067"/>
+  <testcase name="installed HMMER is available with a configured model and reports its version" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.006">
+    <failure message="Condition not satisfied:&#10;&#10;p.isAvailable()&#10;| |&#10;| false&#10;&lt;gspa.predictor.domain.HmmerPredictor@49a26d19 hmmDatabase=/home/leechuck/Public/software/gspa/gspa-predictors/build/resources/test/observed-output/hmmer/profile.hmm domainEvalue=1.0E-5 threads=16 log=Logger[gspa.predictor.domain.HmmerPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=/usr/bin/hmmsearch&gt;&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+p.isAvailable()
+| |
+| false
+&lt;gspa.predictor.domain.HmmerPredictor@49a26d19 hmmDatabase=/home/leechuck/Public/software/gspa/gspa-predictors/build/resources/test/observed-output/hmmer/profile.hmm domainEvalue=1.0E-5 threads=16 log=Logger[gspa.predictor.domain.HmmerPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=/usr/bin/hmmsearch&gt;
+
+	at gspa.predictor.domain.HmmerObservedSpec.installed HMMER is available with a configured model and reports its version(HmmerObservedSpec.groovy:82)
+</failure>
+  </testcase>
+  <testcase name="real hmmsearch executes through predictBatch for matching and no-hit proteins" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.057"/>
+  <testcase name="real hmmsearch failure on a malformed model is FAILED rather than no-hit" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.009"/>
+  <system-out><![CDATA[21:24:40.484 [Test worker] INFO gspa.predictor.domain.HmmerPredictor -- Running hmmer: /usr/bin/hmmsearch --domtblout /home/leechuck/tmp/spock_real_hmmsearch_exec_0_tmp7150947399090416794/gspa_hmmer_1793039080472/hmmer_domtbl.tsv --noali -E 1 --domE 1.0E-5 --cpu 1 /home/leechuck/Public/software/gspa/gspa-predictors/build/resources/test/observed-output/hmmer/profile.hmm /home/leechuck/tmp/spock_real_hmmsearch_exec_0_tmp7150947399090416794/gspa_hmmer_1793039080472/input.faa
+21:24:40.514 [Test worker] INFO gspa.predictor.domain.HmmerPredictor -- Running hmmer: /usr/bin/hmmsearch --domtblout /home/leechuck/tmp/spock_real_hmmsearch_exec_0_tmp7150947399090416794/gspa_hmmer_1793039080514/hmmer_domtbl.tsv --noali -E 1 --domE 1.0E-5 --cpu 1 /home/leechuck/Public/software/gspa/gspa-predictors/build/resources/test/observed-output/hmmer/profile.hmm /home/leechuck/tmp/spock_real_hmmsearch_exec_0_tmp7150947399090416794/gspa_hmmer_1793039080514/input.faa
+21:24:40.523 [Test worker] INFO gspa.predictor.domain.HmmerPredictor -- Running hmmer: /usr/bin/hmmsearch --domtblout /home/leechuck/tmp/spock_real_hmmsearch_fail_0_tmp4706119233673729877/gspa_hmmer_1793039080523/hmmer_domtbl.tsv --noali -E 1 --domE 1.0E-5 --cpu 1 /home/leechuck/tmp/spock_real_hmmsearch_fail_0_tmp4706119233673729877/invalid.hmm /home/leechuck/tmp/spock_real_hmmsearch_fail_0_tmp4706119233673729877/gspa_hmmer_1793039080523/input.faa
+21:24:40.526 [Test worker] ERROR gspa.predictor.domain.HmmerPredictor -- hmmer failed with exit code 1: 
+Error: File format problem in trying to open HMM file /home/leechuck/tmp/spock_real_hmmsearch_fail_0_tmp4706119233673729877/invalid.hmm.
+Format tag is 'not': unrecognized.
+Current H3 format is 'HMMER3/f'. Previous H2/H3 formats also supported.
+
+
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@26b894bd]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@287f94b1]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@26b894bd]
+]]></system-err>
+</testsuite>

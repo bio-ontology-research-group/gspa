@@ -21,6 +21,16 @@ class StoichiometricLocusRefiner {
     double alphaBio = 0.10d
     int topM = 3
     double tauSub = 0.25d
+    /**
+     * Follow-up options (2026-10-31), all off by default so the original Stage 2B behaviour is unchanged:
+     * a synteny covariate computed by the sidecar from the genome layout and KEGG module table, and a candidate
+     * floor / top-k limit for the responsibility attribution of dense predictors.
+     */
+    File layoutFile
+    File keggModulesFile
+    int syntenyWindow = 10
+    Double candidateMinScore
+    Integer candidateTopK
 
     SparseRoleAggregator aggregator = new SparseRoleAggregator()
     LocusResponsibilityUpdater updater = new LocusResponsibilityUpdater()
@@ -138,6 +148,13 @@ class StoichiometricLocusRefiner {
             top_m                          : topM,
             tau_sub                        : tauSub
         ]
+        if (layoutFile != null && layoutFile.isFile()) {
+            payload.layout_tsv = layoutFile.absolutePath
+            payload.synteny_window = syntenyWindow
+            if (keggModulesFile != null && keggModulesFile.isFile()) payload.kegg_modules_tsv = keggModulesFile.absolutePath
+        }
+        if (candidateMinScore != null) payload.candidate_min_score = candidateMinScore
+        if (candidateTopK != null) payload.candidate_top_k = candidateTopK
         mapper.writeValue(inJson, payload)
 
         List<String> cmd = [

@@ -105,6 +105,10 @@ class FeatureExporter {
                 sb.append(',"function_key":').append(JsonOutput.toJson(f.functionKey()))
                 sb.append(',"role":').append(JsonOutput.toJson(f.role.name()))
                 sb.append(',"candidate_key":').append(JsonOutput.toJson(f.candidateKey()))
+                sb.append(',"sequence_sources":').append(JsonOutput.toJson(f.sequenceSources))
+                sb.append(',"sequence_contracts":').append(JsonOutput.toJson(f.sequenceContracts))
+                sb.append(',"cohort_context_mode":').append(JsonOutput.toJson(f.cohortContextMode.name()))
+                if (f.qualityEvidence) sb.append(',"quality_evidence":').append(JsonOutput.toJson(f.qualityEvidence))
                 sb.append(',"features":{')
                 for (int i = 0; i < names.size(); i++) {
                     if (i > 0) sb.append(',')
@@ -113,17 +117,23 @@ class FeatureExporter {
                 sb.append('},"available_contexts":').append(contexts(f))
                 sb.append(',"notes":').append(JsonOutput.toJson(f.provenance))
                 if (model != null) {
-                    CandidateScore sc
-                    try { sc = model.score(f) } catch (IllegalArgumentException e) {
+                    CandidateScore sc = null
+                    String unsupported
+                    try {
+                        unsupported = model.unsupportedReason(f)
+                        if (!unsupported) sc = model.score(f)
+                    } catch (IllegalArgumentException e) {
                         throw new LearnedStageException("cannot score ${f.candidateKey()} for export: ${e.message}", e)
                     }
                     sb.append(',"model":{"id":').append(JsonOutput.toJson(model.modelId))
                     sb.append(',"sha256":').append(JsonOutput.toJson(model.sha256))
                     sb.append(',"kind":').append(JsonOutput.toJson(model.kind))
-                    sb.append(',"margin":').append(Double.toString(sc.margin))
-                    sb.append(',"probability":').append(Double.toString(sc.probability))
-                    sb.append(',"display_threshold":').append(Double.toString(sc.displayThreshold))
-                    sb.append(',"above_display_threshold":').append(sc.aboveDisplayThreshold).append('}')
+                    sb.append(',"score_status":').append(JsonOutput.toJson(unsupported ? 'unsupported' : 'scored'))
+                    sb.append(',"unsupported_reason":').append(JsonOutput.toJson(unsupported))
+                    sb.append(',"margin":').append(JsonOutput.toJson(sc?.margin))
+                    sb.append(',"probability":').append(JsonOutput.toJson(sc?.probability))
+                    sb.append(',"display_threshold":').append(Double.toString(model.displayThreshold))
+                    sb.append(',"above_display_threshold":').append(JsonOutput.toJson(sc?.aboveDisplayThreshold)).append('}')
                 }
                 sb.append("}\n")
                 out.write(sb.toString())
@@ -144,7 +154,8 @@ class FeatureExporter {
         m.layout = f.get('ctx.layout.available') > 0
         m.gap = f.get('ctx.gap.available') > 0
         m.neighborhood = f.get('ctx.nbr.available') > 0
-        m.cohort = f.get('cohort.available') > 0 || f.get(CohortFeatureColumns.AVAILABLE) > 0
+        m.cohort = f.get(CohortFeatureColumns.AVAILABLE) > 0
+        m.local_reaction = f.get(CohortFeatureColumns.groupColumn('local')) > 0
         m.assembly = f.get('asm.available') > 0
         m.assembly_completeness = f.get('asm.completeness_available') > 0
         m.fba = f.get('fba.available') > 0

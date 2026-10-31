@@ -8,14 +8,14 @@ import spock.lang.TempDir
 
 /**
  * A real export, written by the command from claims we supply, is read by the Python trainer's own
- * reader in a subprocess. Needs numpy; set GSPA_TEST_PYTHON or provide /tmp/gspa-v3-testenv. Rows carry
+ * reader in a subprocess. Needs numpy; set GSPA_TEST_PYTHON or provide ~/tmp/gspa-v3-testenv. Rows carry
  * no labels, and the trainer refuses them until a (test-only) truth join supplies them.
  */
 @IgnoreIf({ !FeatureExportTrainerSpec.pythonPath().exists() })
 class FeatureExportTrainerSpec extends Specification {
     @TempDir File dir
 
-    static File pythonPath() { new File(System.getenv('GSPA_TEST_PYTHON') ?: '/tmp/gspa-v3-testenv/bin/python') }
+    static File pythonPath() { new File(System.getenv('GSPA_TEST_PYTHON') ?: new File(System.getProperty('user.home'), 'tmp/gspa-v3-testenv/bin/python').path) }
 
     def 'rows exported from the production route are readable by the trainer, bit-exact, and carry no labels'() {
         given:
@@ -40,6 +40,6 @@ class FeatureExportTrainerSpec extends Specification {
         def summary = new ObjectMapper().readValue(output.readLines().last(), Map)
         summary.rows > 0
         summary.cohort_rows > 0
-        summary.contract_id == 'gspa.context-features/2'
+        summary.contract_id == 'gspa.context-features/3'
     }
 }

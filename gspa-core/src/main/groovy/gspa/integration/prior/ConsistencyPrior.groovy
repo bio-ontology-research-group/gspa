@@ -101,11 +101,21 @@ class ConsistencyPrior implements Prior {
     double logOddsBoost(String proteinId, String functionKey, IntegrationState state) {
         if (conflictingTerms.isEmpty()) return 0.0d
         String[] parts = IntegrationState.splitFunctionKey(functionKey)
-        if (parts == null || parts[1] != 'GO') return 0.0d
-        String goId = parts[2]
-        if (!isTermForbidden(goId, state)) return 0.0d
-        double penalty = hardFilter ? -1000.0d : -alphaCons
-        return penalty
+        if (parts == null) return 0.0d
+        if (parts[1] == 'GO') {
+            String goId = parts[2]
+            if (!isTermForbidden(goId, state)) return 0.0d
+            return hardFilter ? -1000.0d : -alphaCons
+        }
+        if (parts[1] == 'EC') {
+            Map<String, List<String>> ecMap = state?.ecToGoAlternatives ?: state?.satConsistencyChecker?.ecToGoAlternatives
+            if (!ecMap) return 0.0d
+            List<String> mappedGos = SatConsistencyChecker.lookupEcToGo(ecMap, parts[2])
+            if (mappedGos.isEmpty()) return 0.0d
+            if (!mappedGos.any { String goId -> isTermForbidden(goId, state) }) return 0.0d
+            return hardFilter ? -1000.0d : -alphaCons
+        }
+        return 0.0d
     }
 
     private boolean isTermForbidden(String goId, IntegrationState state) {

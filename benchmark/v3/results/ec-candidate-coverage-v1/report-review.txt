@@ -1,0 +1,19 @@
+No blocking defects. I found no label leakage into thresholds, no change to the original metrics and no loss of provenance. I only read the code and ran nothing, so the points below come from reading it.
+
+**Checked and clean**
+- **Leakage:** cutoffs come only from `select_thresholds` on calibration rows. `thresholds.json` is saved before any test metric, and the panel reuses those cutoffs or 0.5 with no refit. `EC.load_references` reads test-genome labels only, and only to count references, not to fit anything.
+- **Original metrics:** `full_ec_reference` is added to each policy summary after `evaluate_rows` returns. `arms` and `comparisons` are untouched. The schema bump to `/2` makes old protocols fail with "analysis policy changed", which is intended.
+- **Denominator:** `refs` comes from the split-registered test genomes with `ECO:0000269` labels, not from emitted candidates. The score filter keeps only reference-locus EC rows and does not filter by score.
+- **Provenance:** reference labels and splits are bound through `R.supervision_inputs` and `reg['inputs']`, and `run` re-checks that they are registered. `verification.json` hashes every output file.
+
+**Residual risks, none verified against real data**
+1. **Genome-set equality** (`ec_reference_panel.py:37`): `load_references` requires the splits registry's genome set to equal `plan['genomes']` exactly. The test fixtures coincide, but a real registry that also lists genomes outside the replay set would raise a `ValueError`. It would fail safely, before `thresholds.json` is written. Check the real splits file against `protocol['genomes']` before the real run.
+2. **Protein-id mismatch is silent** (`ec_reference_panel.py:69`): a reference protein whose id doesn't match the score keys gets zero candidates and counts as `missed_reference`. That looks the same as "never proposed". Your 5 `no_matching_search_hit` cases show the join works for this data. Still, add a guard that each reference protein appears in the scored protein set under any type, or at least report that count.
+3. **Lexical tie-break inflates top-k** (`ec_reference_panel.py:71`): `ranked[:1]`, `[:3]` and `[:5]` break exact score ties by lowest EC string. That favours low EC classes. `top1_tied` is reported and the policy says so, but treat top-k as an upper bound when ties are common.
+4. **Partial-run lockout** (`analyze_observed_gap_context_models.py:132`, `:151-157`): if `EC.evaluate` raises after `thresholds.json` is saved, a rerun hits `FileExistsError`. The output directory has to be deleted. That is operational, not a correctness problem.
+5. **Register key assumption** (`analyze_observed_gap_context_models.py:94`): register indexes `s['labels']` and `s['splits']`. `fit_observed_gap_models.py:41` adds those keys only if `old.get(key)` is set. If they are absent, register fails with a `KeyError` instead of a clear message.
+
+**Test gaps**
+- The `run` test gives identical results for the selected cutoff (.9) and 0.5, so it can't tell whether the panel received the right cutoff for each policy.
+- No test checks that reference proteins missing from the scores are flagged (item 2).
+- No test covers reference/replay genome-set mismatch through `run`.

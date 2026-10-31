@@ -1,0 +1,17 @@
+{
+  "conclusion": "No blocker found in initial 414-LP comparison; improve failure reporting before reusing benchmark.",
+  "implemented": [
+    "Validate supported/unsupported result states against retained production records.",
+    "Separate unsupported, failed and executed-but-inconclusive rows in summaries.",
+    "Record health counts, Python/NumPy/SciPy/COBRApy versions and fail execution exit status on unsuccessful cases.",
+    "Register observation hash without exposing labels to planning or simulation.",
+    "Eight additional fault-injection tests; real-model oracle remains separate.",
+    "Two no-sulfur controls validate sulfur restriction."
+  ],
+  "clarifications": [
+    "Evaluation remains available after failures; it explicitly reports incomplete execution and requires a separate oracle report for acceptance.",
+    "Do not hardcode 216 supported cases in general runner; the frozen archive verifier checks all expected case counts.",
+    "Existing independent oracle checks numerical solution and GPR knockout, not scientific correctness of supplied chemical/gene mapping.",
+    "Source receipts protect against accidental mismatch; they are not cryptographic attestations from an external authority."
+  ]
+}

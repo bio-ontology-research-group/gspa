@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.PipelineEmptyInputSpec" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-28T06:37:22" hostname="node004" time="1.873">
+  <properties/>
+  <testcase name="nucleotide tools still scan a genome without proteins while protein tools explicitly skip" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.018"/>
+  <testcase name="missing protein executable remains unavailable rather than being called on empty input" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.005"/>
+  <testcase name="zero gene-caller output does not suppress independent nucleotide tools" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.096"/>
+  <testcase name="a new empty input cannot retain old claims or integration results" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.019"/>
+  <testcase name="a rejected input also clears state from the previous genome" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.005"/>
+  <testcase name="protein input still executes protein predictors and resets disabled integration state" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.008"/>
+  <testcase name="requested integration records the new empty genome instead of silently returning" classname="gspa.predictor.PipelineEmptyInputSpec" time="1.722"/>
+  <system-out><![CDATA[09:37:22.913 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: protein-tool
+09:37:22.913 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: genome-tool
+09:37:22.915 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+09:37:22.915 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_nucleotide_tools_st_0_tmp15472909214181844633/input.fna
+09:37:22.915 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 8bp)
+09:37:22.916 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Protein predictors will be skipped; nucleotide predictors and requested integration can still run.
+09:37:22.916 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+09:37:22.917 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 1 genome-level predictors...
+09:37:22.917 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running genome-tool...
+09:37:22.917 [Test worker] INFO gspa.predictor.AnnotationPipeline --   genome-tool: 0 annotations assigned
+09:37:22.919 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/0 proteins annotated, 0 total annotations
+09:37:22.925 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Predictor status manifest written: /home/leechuck/tmp/spock_nucleotide_tools_st_0_tmp15472909214181844633/output/input_predictor_status.json
+09:37:22.926 [Test worker] INFO gspa.predictor.AnnotationPipeline -- GFF3 written: /home/leechuck/tmp/spock_nucleotide_tools_st_0_tmp15472909214181844633/output/input.gff3
+09:37:22.926 [Test worker] INFO gspa.predictor.AnnotationPipeline -- TSV written: /home/leechuck/tmp/spock_nucleotide_tools_st_0_tmp15472909214181844633/output/input_annotations.tsv
+09:37:22.930 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: protein-tool
+09:37:22.930 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+09:37:22.930 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_missing_protein_exe_0_tmp4941117140518762704/input.fna
+09:37:22.931 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 4bp)
+09:37:22.931 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Protein predictors will be skipped; nucleotide predictors and requested integration can still run.
+09:37:22.931 [Test worker] WARN gspa.predictor.AnnotationPipeline --   protein-tool unavailable: tool not available
+09:37:22.932 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+09:37:22.932 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/0 proteins annotated, 0 total annotations
+09:37:22.935 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: genome-tool
+09:37:23.016 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+09:37:23.016 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_zero_gene-caller_ou_0_tmp16771338378138935539/input.fna
+09:37:23.017 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 4bp)
+09:37:23.023 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Calling genes with zero-caller...
+09:37:23.025 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Gene calling: FAILED; 0 proteins
+09:37:23.025 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Protein predictors will be skipped; nucleotide predictors and requested integration can still run.
+09:37:23.025 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+09:37:23.025 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 1 genome-level predictors...
+09:37:23.025 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running genome-tool...
+09:37:23.026 [Test worker] INFO gspa.predictor.AnnotationPipeline --   genome-tool: 0 annotations assigned
+09:37:23.027 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/0 proteins annotated, 0 total annotations
+09:37:23.045 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+09:37:23.045 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_a_new_empty_input_c_0_tmp10325736754088171224/input.fna
+09:37:23.046 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 4bp)
+09:37:23.046 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Protein predictors will be skipped; nucleotide predictors and requested integration can still run.
+09:37:23.046 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+09:37:23.047 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/0 proteins annotated, 0 total annotations
+09:37:23.050 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+09:37:23.050 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_a_rejected_input_al_0_tmp7300911890615615007/input.fna
+09:37:23.051 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 4bp)
+09:37:23.055 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: protein-tool
+09:37:23.055 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+09:37:23.056 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_protein_input_still_0_tmp3272368237466080011/input.faa
+09:37:23.056 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded 1 proteins (protein-only input)
+09:37:23.056 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 1 proteins, 0bp)
+09:37:23.057 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 1 protein-level predictors...
+09:37:23.057 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running protein-tool...
+09:37:23.059 [Test worker] INFO gspa.predictor.AnnotationPipeline --   protein-tool: 0 annotations assigned
+09:37:23.060 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/1 proteins annotated, 0 total annotations
+09:37:23.064 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+09:37:23.064 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_requested_integrati_0_tmp14508382670301474223/input.fna
+09:37:23.065 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 4bp)
+09:37:23.065 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Protein predictors will be skipped; nucleotide predictors and requested integration can still run.
+09:37:23.065 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+09:37:23.068 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+09:37:23.069 [Test worker] INFO gspa.predictor.AnnotationPipeline --   0 claims from 0 proteins
+09:37:23.703 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+09:37:24.393 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+09:37:24.629 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+09:37:24.639 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Complex classification: 158 GO complex terms
+09:37:24.653 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_9270514885741963953.tsv (profile: bacteria)
+09:37:24.662 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Essential functions (preset=bacteria): 32 GO terms
+09:37:24.664 [Test worker] INFO gspa.predictor.AnnotationPipeline --   SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+09:37:24.703 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 0 claims across 0 (protein, function) groups (maxIter=6, damping=0.5)
+09:37:24.711 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+09:37:24.712 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+09:37:24.728 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Produced 0 integrated annotations
+09:37:24.763 [Test worker] INFO gspa.integration.IntegrationWriter -- Integration writer: updated 0 proteins with 0 integrated annotations
+09:37:24.775 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Wrote: /home/leechuck/tmp/spock_requested_integrati_0_tmp14508382670301474223/integrated/input_integrated.tsv
+09:37:24.780 [Test worker] INFO gspa.predictor.AnnotationPipeline --   IntegratedAnnotationSet(0 annotations, 0 provenance entries, 0 suggestions)
+09:37:24.780 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/0 proteins annotated, 0 total annotations
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

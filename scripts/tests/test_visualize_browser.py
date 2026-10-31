@@ -4,6 +4,7 @@ Requires Playwright and its Chromium installation. Uses synthetic biological
 annotations; verifies reporting and interactions, not annotation accuracy.
 """
 import os
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -62,6 +63,25 @@ class PredictionLedgerBrowserTests(unittest.TestCase):
         self.assertIn("unavailable", text)
         self.assertIn("not zero", text)
         self.assertEqual(self.page.locator("#lg-count").count(), 0)
+        self.assertFalse(self.errors)
+
+    def test_nested_stage_assumptions_and_unknown_outcomes_are_readable_and_escaped(self):
+        ledger = fixtures.ledger_fixture()
+        details = {'assembly': {'status': 'UNKNOWN', 'completeness_fraction': None},
+                   'comparisons': [{'status': 'inconclusive', 'hypotheses': ['missing_sequence', 'external_supply']}],
+                   'conditions_unvisited': [],
+                   'source': {'note': '<script>window.stageInjected=true</script>'}}
+        ledger['stages'].append(fixtures.stage('metabolic_experiments', 'executed', **details))
+        self.open_ledger(ledger=ledger)
+        stage = self.page.locator('#ledger-body table').first.locator('tr').filter(has_text='Metabolic experiments')
+        self.assertNotIn('[object Object]', stage.inner_text())
+        stage.locator('summary').click()
+        recorded = stage.locator('pre').all_text_contents()
+        self.assertEqual([json.loads(t) for t in recorded], list(details.values()))
+        self.assertIn('UNKNOWN', stage.inner_text())
+        self.assertIn('inconclusive', stage.inner_text())
+        self.assertIn('does not edit predictions', stage.inner_text())
+        self.assertIsNone(self.page.evaluate('window.stageInjected'))
         self.assertFalse(self.errors)
 
 
@@ -145,6 +165,30 @@ class LearnedReportBrowserTests(PredictionLedgerBrowserTests):
         self.assertIn("mismatch", text)
         self.assertEqual(self.page.locator("#ln-rows").count(), 0)
         self.assertFalse(self.errors)
+
+    def test_unsupported_candidate_is_not_rendered_as_below_threshold(self):
+        from scripts.tests import test_visualize_learned as learned_fixtures
+        for mode, status in [('mixed', 'executed'), ('legacy_heuristic', 'skipped')]:
+            ledger = learned_fixtures.v2_ledger()
+            ledger['scoring_mode'] = mode
+            stage = next(s for s in ledger['stages'] if s['name'] == 'learned_integration')
+            stage.update(status=status, candidates_scored=0 if status == 'skipped' else 4)
+            report = learned_fixtures.learned_report()
+            affected = report['candidates'] if status == 'skipped' else report['candidates'][:1]
+            for candidate in affected:
+                candidate.update(score_status='unsupported', probability=None, margin=None,
+                                 above_display_threshold=None, locus_probability=None,
+                                 locus_null_probability=None,
+                                 unsupported_reason='unseen_source_function_role_or_availability_profile')
+            self.open_learned(ledger=ledger, learned=report)
+            self.page.locator('#ln-search').fill('p_hexokinase')
+            self.page.locator('#ln-role').select_option('CATALYTIC')
+            text = self.page.locator('#ln-rows').inner_text()
+            self.assertIn('unsupported', text.lower())
+            self.assertIn('unseen_source', text)
+            self.assertNotIn('below', text.lower())
+            self.assertNotIn('0.900', text)
+            self.assertFalse(self.errors)
 
     def test_missing_report_is_unavailable_not_zero(self):
         self.open_learned(learned=None)

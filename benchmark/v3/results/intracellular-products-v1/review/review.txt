@@ -1,0 +1,60 @@
+I made no code edits; the review is written to `/home/leechuck/.claude/plans/read-only-architecture-review-no-luminous-kahan.md`. I didn't run any tests, models or LPs. I couldn't call `ExitPlanMode` because it isn't available in this session.
+
+**Ownership**
+- `scripts/metabolic_experiments.py` should own all demand validation, sign handling, LPs and budget. `scripts/masked_assignment_experiments.py` should only reuse it.
+- The Groovy builders (`ExperimentManifestBuilder`, `MaskedAssignmentBuilder`) should only pass ids. Python must re-validate against the actual `Model` object, including the masked and assigned model.
+- The COBRA oracle (`benchmark/v3/check_masked_assignment_cobra.py`) must re-derive everything from the SBML and must not call `ME.*`.
+- There is already a precedent for the LP shape: `production()` in `benchmark/v3/run_germicidin_diagnostic.py:96`.
+
+**Pitfalls and recommendations**
+1. **Allowlist and object-bound validation.**
+   - Make each `baseline.product_demands` entry `{reaction, metabolite, compartment}`.
+   - Add one `validate_product_demands` next to `validate_boundary` (`metabolic_experiments.py:312`), called from `Runner.__init__` and from masked `validate`.
+   - It should require exactly one S entry with |coeff| = 1, a matching metabolite and a non-extracellular compartment.
+   - It should reject any reaction in `exchanges`, `medium` or the carbon/nitrogen/oxygen lists, which gives the exchange/demand mutual exclusion.
+   - It should reject the biomass or maintenance reaction, or a metabolite in either of their columns.
+   - It should reject a demand that has a GPR or that a knockout kills.
+   - It should reject a demand with no drain bound left after `baseline_bounds`.
+2. **Sign convention.**
+   - Reuse `secretion_sign`, which is `-sign(coeff)`. `M_c ->` drains at v>0, and a reversed `-> M_c` drains at v<0.
+   - `baseline_bounds` (`:342`) already closes uptake on undeclared single-metabolite reactions. Assert that the minimum is at least 0 and flag a violation rather than clamping it.
+3. **Typed output.**
+   - Add `measurements.synthesis` with `max_synthesis`, `min_synthesis` and `synthesis_*` classes, separate from `secretion_*`.
+   - Emit the key only when a demand is set. Don't add `product_demand: None` to `add()` (`:488`) or `baseline_item`, so exchange-only JSON stays byte-identical.
+4. **Growth 0 plus maintenance.**
+   - `run()` currently writes `not_assessed_no_growth` when growth is below threshold. That hides the main secondary-metabolism case.
+   - Give demands an explicit per-item requirement. I recommend `maintenance_only` as the default, and it is recorded in the output.
+   - Report an infeasible maintenance constraint as `not_assessed`, never as zero.
+   - The masked `simulate_cell` silently omits `product_interval` when it can't assess. Add an explicit `synthesis.status` and a separate `synthesis_contrast`, and leave `contrast` untouched.
+5. **Solver budget.**
+   - Keep the mandatory cost at 1+2 LPs, as for products. If you measure both requirements it becomes 1+4, so pick one.
+   - The masked `condition_cost` (`:196`) already reserves +4. Extend its predicate to cover demands.
+   - Update the Groovy budget counts and `BUDGET_POLICY` to match.
+   - Add a `demand` entry to `KIND_ORDER`, and use a `demand:` id prefix so it can't collide with `product:{ex}`.
+6. **Standard menu.**
+   - Add a `product_demand` field to `bgc` evidence, checked against the allowlist by exact id.
+   - Variants combine only the mods attached to the same `hypothesis_id`: its condition, its `model_condition` records and its knockout.
+   - The item id must include the mod signature, because `add()` merges by id and would otherwise merge evidence across conditions.
+   - Cap the variants per hypothesis and report the truncation count.
+7. **Masked.**
+   - Add `product_demand` in four places: the evidence whitelist (`MaskedAssignmentBuilder.groovy:102`), the hint branch (`:147`), the condition whitelist (`:169`) and the merge key (`:175`). The merge key becomes `[mods, product_exchange, product_demand]`.
+   - Python `validate` (`:113`) needs the same field, and it must enforce exchange XOR demand.
+   - WT/targetKO pairing stays automatic.
+8. **Evidence leakage (the main risk).**
+   - `public['baseline']` is copied verbatim, so `product_demands` is public. If it lists only the true product's demand, the allowlist is the label.
+   - Require a decoy-inclusive allowlist that comes from the template and not from candidates or truth.
+   - `public_problem.check` (`:68`) scans only aliases and key names. Add a test that the allowlist is identical with and without the true target, and that demand ids don't contain the masked gene.
+   - Never derive a demand from a metabolite name.
+9. **Planner projection.**
+   - In `qwen_prompt` (`:1014`), add `product_demand` to the menu and evidence fields, and add a `synthesis` projection worded as capacity rather than secretion or expression.
+   - Update the system text to match.
+10. **Verification and promotion.**
+    - `ExperimentStage.verify` and `verifyMasked` already compare the baseline to the request. Add a check that each `synthesis` reaction is in the allowlist, with `promotion: none` and no probability.
+    - Keep `conditional_record.bearing` unchanged for demand items, so no new values reach learned features.
+11. **Oracle.**
+    - Add a `(product_demand, True)` target to the oracle (`check_masked_assignment_cobra.py:87–102`), with the sign taken from the COBRA coefficient.
+    - Add negative tests for: a demand in the medium, an extracellular demand, a biomass drain, a reversed orientation, a demand with a GPR, and a knocked-out demand.
+    - Add negative tests for: exchange and demand set together, growth 0 with maintenance, infeasible maintenance, and byte-equality of an exchange-only run before and after.
+12. **Finite menu.** The menu grows by at most (allowlist ∩ hypothesis evidence) × (1 + 3 variants) items. Budgets stay unchanged.
+
+**Open decision for you:** should demands default to `maintenance_only`, which I recommend, or inherit the global `product_requirement`?

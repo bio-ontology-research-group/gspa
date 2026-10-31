@@ -1,0 +1,147 @@
+[
+  {
+    "name": "plain",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/9c471e8ba6652d519e12bb99ad2b5b186e8e4f8c7cf75a62fd177e3a921370b3.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000012525.1/protein.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/plain",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/plain/raw.jsonl",
+      "--threads",
+      "3",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "mode": "observed"
+  },
+  {
+    "name": "integrated",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/9c471e8ba6652d519e12bb99ad2b5b186e8e4f8c7cf75a62fd177e3a921370b3.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000012525.1/protein.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/integrated",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/integrated/raw.jsonl",
+      "--threads",
+      "3",
+      "--no-metrics",
+      "--integration-config",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/workflow.json"
+    ],
+    "exit_code": 0,
+    "mode": "observed"
+  },
+  {
+    "name": "direct",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/9c471e8ba6652d519e12bb99ad2b5b186e8e4f8c7cf75a62fd177e3a921370b3.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/integrated/raw.jsonl",
+      "--workflow-config",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/workflow.json",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/direct.tsv"
+    ],
+    "exit_code": 0,
+    "mode": "observed"
+  },
+  {
+    "name": "logistic",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/9c471e8ba6652d519e12bb99ad2b5b186e8e4f8c7cf75a62fd177e3a921370b3.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/integrated/raw.jsonl",
+      "--workflow-config",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/workflow.json",
+      "--learned-model",
+      "/home/leechuck/Public/software/gspa/benchmark/v3/results/cohort-evidence-dedup-v1/models/model_logistic.json",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/logistic.tsv"
+    ],
+    "exit_code": 0,
+    "mode": "observed"
+  },
+  {
+    "name": "gbdt",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/9c471e8ba6652d519e12bb99ad2b5b186e8e4f8c7cf75a62fd177e3a921370b3.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/integrated/raw.jsonl",
+      "--workflow-config",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/workflow.json",
+      "--learned-model",
+      "/home/leechuck/Public/software/gspa/benchmark/v3/results/cohort-evidence-dedup-v1/models/model_gbdt.json",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/gbdt.tsv"
+    ],
+    "exit_code": 0,
+    "mode": "observed"
+  },
+  {
+    "name": "zero",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/9c471e8ba6652d519e12bb99ad2b5b186e8e4f8c7cf75a62fd177e3a921370b3.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000012525.1/protein.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/zero",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/zero/raw.jsonl",
+      "--threads",
+      "3",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "mode": "zero"
+  },
+  {
+    "name": "malformed",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/9c471e8ba6652d519e12bb99ad2b5b186e8e4f8c7cf75a62fd177e3a921370b3.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000012525.1/protein.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/malformed",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/gapsmith-role-after-v1/malformed/raw.jsonl",
+      "--threads",
+      "3",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "mode": "malformed"
+  }
+]

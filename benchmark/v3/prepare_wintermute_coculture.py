@@ -23,6 +23,7 @@ Rules recorded in every export
 from __future__ import annotations
 
 import argparse
+import os
 import hashlib
 import json
 import statistics
@@ -227,7 +228,7 @@ def run(outdir: Path) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("--out", type=Path, default=Path("/tmp/gspa-v3-metabolic-data"))
+    p.add_argument("--out", type=Path, default=Path(os.environ.get("TMPDIR", str(Path.home() / "tmp"))) / "gspa-v3-metabolic-data")
     print(json.dumps(run(p.parse_args(argv).out)["quality"], indent=2))
     return 0
 

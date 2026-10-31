@@ -54,7 +54,10 @@ class IntegrationWriter {
             stashRawEvidence(p)
 
             // Replace the protein's annotations with the integrated set.
-            p.annotations = new AnnotationSet(integratedForP ?: [])
+            List<Annotation> quality = p.annotations?.annotations?.findAll {
+                ClaimExtractor.resolveType(it) == EvidenceType.GENE_MODEL_QUALITY
+            } ?: []
+            p.annotations = new AnnotationSet((integratedForP ?: []) + quality)
             touched++
         }
 

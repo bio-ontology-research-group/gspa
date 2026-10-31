@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.PipelineDispatchSpec" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-27T02:57:24" hostname="lc-dell" time="0.461">
+  <properties/>
+  <testcase name="genomic-region sidecars run as genome tools on nucleotide input; statuses distinguish unavailable / failed / zero / success" classname="gspa.predictor.PipelineDispatchSpec" time="0.413"/>
+  <testcase name="a sidecar that exits 0 but writes no TSV (wrapped tool failed) is FAILED, not zero regions" classname="gspa.predictor.PipelineDispatchSpec" time="0.018"/>
+  <testcase name="a region tool without its database is UNAVAILABLE with the reason, and never executed" classname="gspa.predictor.PipelineDispatchSpec" time="0.011"/>
+  <testcase name="region tools refuse protein-only input rather than scanning protein FASTA" classname="gspa.predictor.PipelineDispatchSpec" time="0.003"/>
+  <testcase name="InterProScan honors the domain thread budget" classname="gspa.predictor.PipelineDispatchSpec" time="0.005"/>
+  <testcase name="HMMER database is wired from the pipeline into the registered predictor" classname="gspa.predictor.PipelineDispatchSpec" time="0.01"/>
+  <system-out><![CDATA[05:57:24.703 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+05:57:24.708 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: hmmer
+05:57:24.709 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: genomad
+05:57:24.709 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: checkv
+05:57:24.709 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: phispy
+05:57:24.709 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 4 predictors registered
+05:57:24.710 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: genomad
+05:57:24.710 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: checkv
+05:57:24.710 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: phispy
+05:57:24.711 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+05:57:24.711 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_genomic-region_side_0_tmp3294548523104819857/asm.fna
+05:57:24.731 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Attached sequences to 1 contig(s) from asm.fna
+05:57:24.792 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Translated 3 proteins from 3 CDS features
+05:57:24.793 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(asm, 1 contigs, 3 proteins, 958bp)
+05:57:24.795 [Test worker] WARN gspa.predictor.AnnotationPipeline --   hmmer unavailable: no HMM database configured (hmmDatabase / GSPA_PFAM_HMM)
+05:57:24.795 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+05:57:24.801 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 3 genome-level predictors...
+05:57:24.802 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running genomad...
+05:57:24.803 [Test worker] INFO gspa.predictor.PipelineDispatchSpec$FakeGenomad -- Running genomad: python3 /home/leechuck/tmp/spock_genomic-region_side_0_tmp3294548523104819857/run_genomic_predictors.py --predictor genomad --manifest /home/leechuck/tmp/gspa_genomad_4396698932900763283/manifest.tsv --min-score 0.7 --db-path /db/genomad
+05:57:24.813 [Test worker] INFO gspa.predictor.AnnotationPipeline --   genomad: 2 annotations assigned
+05:57:24.813 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running checkv...
+05:57:24.814 [Test worker] INFO gspa.predictor.PipelineDispatchSpec$FakeCheckV -- Running checkv: python3 /home/leechuck/tmp/spock_genomic-region_side_0_tmp3294548523104819857/run_genomic_predictors.py --predictor checkv --manifest /home/leechuck/tmp/gspa_checkv_1431038782371514305/manifest.tsv --min-score 0.5 --db-path /db/checkv --threads 4
+05:57:24.815 [Test worker] ERROR gspa.predictor.PipelineDispatchSpec$FakeCheckV -- checkv failed with exit code 3: tool crashed
+05:57:24.818 [Test worker] ERROR gspa.predictor.AnnotationPipeline --   checkv failed: exit code 3: tool crashed
+05:57:24.818 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running phispy...
+05:57:24.840 [Test worker] INFO gspa.predictor.PipelineDispatchSpec$FakePhiSpy -- Running phispy: python3 /home/leechuck/tmp/spock_genomic-region_side_0_tmp3294548523104819857/run_genomic_predictors.py --predictor phispy --manifest /home/leechuck/tmp/gspa_phispy_14999759087928147440/manifest.tsv --min-score 0.5
+05:57:24.845 [Test worker] INFO gspa.predictor.AnnotationPipeline --   phispy: 0 annotations assigned
+05:57:24.892 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 2/3 proteins annotated, 2 total annotations
+05:57:24.908 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Predictor status manifest written: /home/leechuck/tmp/spock_genomic-region_side_0_tmp3294548523104819857/out/asm_predictor_status.json
+05:57:24.938 [Test worker] INFO gspa.predictor.AnnotationPipeline -- GFF3 written: /home/leechuck/tmp/spock_genomic-region_side_0_tmp3294548523104819857/out/asm.gff3
+05:57:24.945 [Test worker] INFO gspa.predictor.AnnotationPipeline -- TSV written: /home/leechuck/tmp/spock_genomic-region_side_0_tmp3294548523104819857/out/asm_annotations.tsv
+05:57:24.951 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+05:57:24.952 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: genomad
+05:57:24.952 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 1 predictors registered
+05:57:24.954 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: genomad
+05:57:24.954 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+05:57:24.954 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_a_sidecar_that_exit_0_tmp15796075193255223763/asm.fna
+05:57:24.956 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Attached sequences to 1 contig(s) from asm.fna
+05:57:24.958 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Translated 3 proteins from 3 CDS features
+05:57:24.958 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(asm, 1 contigs, 3 proteins, 958bp)
+05:57:24.959 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+05:57:24.959 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 1 genome-level predictors...
+05:57:24.959 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running genomad...
+05:57:24.961 [Test worker] INFO gspa.predictor.PipelineDispatchSpec$FakeGenomad -- Running genomad: python3 /home/leechuck/tmp/spock_a_sidecar_that_exit_0_tmp15796075193255223763/run_genomic_predictors.py --predictor genomad --manifest /home/leechuck/tmp/gspa_genomad_14534637536007331403/manifest.tsv --min-score 0.5 --db-path /db/genomad
+05:57:24.963 [Test worker] ERROR gspa.predictor.PipelineDispatchSpec$FakeGenomad -- genomad output rejected: genomad: expected output 'query.genomad.genomic.tsv' is missing after a clean exit (run_genomic_predictors.py writes a header row whenever the wrapped tool produced output)
+05:57:24.963 [Test worker] ERROR gspa.predictor.AnnotationPipeline --   genomad failed: genomad: expected output 'query.genomad.genomic.tsv' is missing after a clean exit (run_genomic_predictors.py writes a header row whenever the wrapped tool produced output)
+05:57:24.966 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/3 proteins annotated, 0 total annotations
+05:57:24.969 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+05:57:24.970 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: checkv
+05:57:24.970 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 1 predictors registered
+05:57:24.971 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+05:57:24.971 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_a_region_tool_witho_0_tmp15592756338314644272/asm.fna
+05:57:24.973 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Attached sequences to 1 contig(s) from asm.fna
+05:57:24.975 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Translated 3 proteins from 3 CDS features
+05:57:24.975 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(asm, 1 contigs, 3 proteins, 958bp)
+05:57:24.976 [Test worker] WARN gspa.predictor.AnnotationPipeline --   checkv unavailable: dbPath (CheckV database) is not configured
+05:57:24.976 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+05:57:24.977 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/3 proteins annotated, 0 total annotations
+05:57:24.983 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+05:57:24.984 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+05:57:24.985 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 1 predictors registered
+05:57:24.989 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+05:57:24.993 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: hmmer
+05:57:24.993 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: antifam
+05:57:24.993 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 2 predictors registered
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

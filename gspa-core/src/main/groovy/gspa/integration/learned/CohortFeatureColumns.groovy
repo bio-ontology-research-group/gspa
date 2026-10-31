@@ -41,11 +41,10 @@ class CohortFeatureColumns {
     static final List<Entry> ENTRIES = build([
         // peer set and uncertainty (always reported with a weighted block)
         [null, 'effectiveN', true, 'log(1 + effective N): summed weight of informative independent clade/strain units'],
-        [null, 'phylogenyKnownFraction', false, 'share of the peer set with real clade/strain metadata (1 = all known; unknown never counts as independent)'],
-        [null, 'nPeerGenomes', true, 'log(1 + peer genomes after holding out the target and its non-independent relatives)'],
+        [null, 'phylogenyKnownFraction', false, 'clade/strain-weighted share of peers with resolved clade metadata (1 = all known; unknown never counts as independent)'],
         [null, 'coverage', false, 'share of peer clades that were informative'],
         [null, 'supportFraction', false, 'weighted Jeffreys-smoothed share of informative peers whose family member sits in a context-positive window'],
-        [null, 'peerOrganismSetKnownFraction', false, 'share of peers with a known organism-specific reaction set'],
+        [null, 'peerOrganismSetKnownFraction', false, 'clade/strain-weighted share of peers with a known organism-specific reaction set'],
         [null, 'membershipWeight', false, 'soft family membership weight of the candidate protein'],
         [null, 'nFamilyAlternatives', true, 'log(1 + further family assignments of the protein); paralog/subfamily ambiguity'],
         [null, 'nReactionAlternatives', true, 'log(1 + further reaction hypotheses of the protein); alternatives are reported, not summed'],
@@ -66,7 +65,6 @@ class CohortFeatureColumns {
         ['interval', 'supportFractionHi90', false, 'approximate 90% upper bound on the support fraction (only with clade metadata)'],
         // matched background
         ['bg', 'bgRate', false, 'rate of the signature in matched same-genome background windows (never total genome presence)'],
-        ['bg', 'bgWindows', true, 'log(1 + matched background windows)'],
         ['bg', 'enrichmentLog', false, 'log ratio of support to matched background'],
         ['bg', 'supportMinusBg', false, 'support fraction minus matched background rate'],
         // complementary partial contexts
@@ -108,6 +106,18 @@ class CohortFeatureColumns {
 
     static final String AVAILABLE = PREFIX + 'available'
 
+    /** The same engine computes local evidence even when no independent peers exist. */
+    static final Set<String> LOCAL_GROUPS = ['local', 'local_enrich'] as Set
+    static final Set<String> LOCAL_PROPERTIES = ['membershipWeight', 'nFamilyAlternatives',
+        'nReactionAlternatives', 'ecReactionCount'] as Set
+    static final Set<String> LOCAL_FLAGS = ['layoutAvailable', 'ecDirect', 'familyKnown', 'roleEvidenceMissing'] as Set
+
+    static boolean localEntry(Entry e) { e.group in LOCAL_GROUPS || e.property in LOCAL_PROPERTIES }
+
+    static Set<String> peerProperties() {
+        (ENTRIES.findAll { !localEntry(it) }*.property + ['nPeerGenomes', 'bgWindows']) as Set<String>
+    }
+
     static String roleColumn(CandidateRole r) { PREFIX + 'role_evidence.' + r.name().toLowerCase(Locale.ROOT) }
     static String roleReportedColumn(CandidateRole r) { roleColumn(r) + '_reported' }
     static String groupColumn(String group) { PREFIX + group + '_available' }
@@ -138,13 +148,17 @@ class CohortFeatureColumns {
     }
 
     /** Write the block's values for one candidate through {@code set(column, value)}. */
-    static void extract(ExternalContext.Weighted w, Closure set) {
-        set(AVAILABLE, 1)
+    static void extract(ExternalContext.Weighted w, Closure set, boolean localOnly = false) {
+        if (!localOnly) set(AVAILABLE, 1)
         GROUP_LEADS.each { String g, String lead ->
+            if (localOnly && !(g in LOCAL_GROUPS)) return
             if (w.getProperty(lead) != null) set(groupColumn(g), 1)
         }
-        FLAGS.each { List f -> if (w.getProperty(f[1] as String)) set(PREFIX + f[0], 1) }
+        FLAGS.each { List f ->
+            if ((!localOnly || f[1] in LOCAL_FLAGS) && w.getProperty(f[1] as String)) set(PREFIX + f[0], 1)
+        }
         ENTRIES.each { Entry e ->
+            if (localOnly && !localEntry(e)) return
             Double v = w.getProperty(e.property) as Double
             if (v == null) return
             if (e.group != null && w.getProperty(GROUP_LEADS[e.group]) == null) return

@@ -1,0 +1,384 @@
+734455:
+2026-10-28 01:27:25
+Full thread dump OpenJDK 64-Bit Server VM (21.0.12.1+1-1-24.04.4-Ubuntu mixed mode, sharing):
+
+Threads class SMR info:
+_java_thread_list=0x00001096c8002900, length=19, elements={
+0x000010c22c019d60, 0x000010c22c119ba0, 0x000010c22c11b120, 0x000010c22c11c8d0,
+0x000010c22c11df20, 0x000010c22c11f4d0, 0x000010c22c121020, 0x000010c22c1226f0,
+0x000010c22c1c0b50, 0x000010c22c21a340, 0x000010c22c325e60, 0x000010c22c337de0,
+0x000010c22d4096b0, 0x000010c22d40ad00, 0x000010c22d40bf60, 0x000010c22d40d1a0,
+0x000010967c004c00, 0x000010c22d4da5e0, 0x00001096c8001880
+}
+
+"main" #1 [734456] prio=5 os_prio=0 cpu=12649.75ms elapsed=2117.91s tid=0x000010c22c019d60 nid=734456 waiting on condition  [0x000010c2309fc000]
+   java.lang.Thread.State: WAITING (parking)
+	at jdk.internal.misc.Unsafe.park(java.base@21.0.12.1/Native Method)
+	- parking to wait for  <0x0000109839ddfd40> (a java.util.concurrent.FutureTask)
+	at java.util.concurrent.locks.LockSupport.park(java.base@21.0.12.1/LockSupport.java:221)
+	at java.util.concurrent.FutureTask.awaitDone(java.base@21.0.12.1/FutureTask.java:500)
+	at java.util.concurrent.FutureTask.get(java.base@21.0.12.1/FutureTask.java:190)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e4099800.invokeInterface(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4101800.guardWithCatch(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4103000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4103400.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4103000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4129400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e400a800.invokeStatic(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e40b3400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.linkToCallSite(java.base@21.0.12.1/Invokers$Holder)
+	at gspa.cli.IntegrateCommand$_runBatchManifest_closure18.doCall(IntegrateCommand.groovy:770)
+	at java.lang.invoke.DirectMethodHandle$Holder.invokeSpecial(java.base@21.0.12.1/DirectMethodHandle$Holder)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4004800.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl(java.base@21.0.12.1/DirectMethodHandleAccessor.java:154)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(java.base@21.0.12.1/DirectMethodHandleAccessor.java:103)
+	at java.lang.reflect.Method.invoke(java.base@21.0.12.1/Method.java:580)
+	at org.codehaus.groovy.reflection.CachedMethod.invoke(CachedMethod.java:343)
+	at groovy.lang.MetaMethod.doMethodInvoke(MetaMethod.java:328)
+	at org.codehaus.groovy.runtime.metaclass.ClosureMetaClass.invokeMethod(ClosureMetaClass.java:279)
+	at groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1007)
+	at groovy.lang.Closure.call(Closure.java:433)
+	at groovy.lang.Closure.call(Closure.java:422)
+	at org.codehaus.groovy.runtime.DefaultGroovyMethods.each(DefaultGroovyMethods.java:2394)
+	at org.codehaus.groovy.runtime.DefaultGroovyMethods.each(DefaultGroovyMethods.java:2379)
+	at org.codehaus.groovy.runtime.DefaultGroovyMethods.each(DefaultGroovyMethods.java:2420)
+	at org.codehaus.groovy.runtime.dgm$207.doMethodInvoke(Unknown Source)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e40b3c00.invokeVirtual(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e41c9c00.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410c800.guardWithCatch(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d400.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4138400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e400a800.invokeStatic(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4104c00.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.linkToCallSite(java.base@21.0.12.1/Invokers$Holder)
+	at gspa.cli.IntegrateCommand.runBatchManifest(IntegrateCommand.groovy:770)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e4001800.invokeSpecial(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e41d5800.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410c800.guardWithCatch(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d400.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d400.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e41d6000.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e400a800.invokeStatic(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4104c00.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.linkToCallSite(java.base@21.0.12.1/Invokers$Holder)
+	at gspa.cli.IntegrateCommand.run(IntegrateCommand.groovy:553)
+	at picocli.CommandLine.executeUserObject(CommandLine.java:2030)
+	at picocli.CommandLine.access$1500(CommandLine.java:148)
+	at picocli.CommandLine$RunLast.executeUserObjectOfLastSubcommandWithSameParent(CommandLine.java:2465)
+	at picocli.CommandLine$RunLast.handle(CommandLine.java:2457)
+	at picocli.CommandLine$RunLast.handle(CommandLine.java:2419)
+	at picocli.CommandLine$AbstractParseResultHandler.execute(CommandLine.java:2277)
+	at picocli.CommandLine$RunLast.execute(CommandLine.java:2421)
+	at picocli.CommandLine.execute(CommandLine.java:2174)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e4101000.invokeVirtual(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4139800.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410c800.guardWithCatch(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d400.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e413a000.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e400a800.invokeStatic(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4104c00.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.linkToCallSite(java.base@21.0.12.1/Invokers$Holder)
+	at gspa.cli.GspaMain.main(GspaMain.groovy:42)
+
+"Reference Handler" #9 [734464] daemon prio=10 os_prio=0 cpu=4.32ms elapsed=2117.89s tid=0x000010c22c119ba0 nid=734464 waiting on condition  [0x00001097418f7000]
+   java.lang.Thread.State: RUNNABLE
+	at java.lang.ref.Reference.waitForReferencePendingList(java.base@21.0.12.1/Native Method)
+	at java.lang.ref.Reference.processPendingReferences(java.base@21.0.12.1/Reference.java:246)
+	at java.lang.ref.Reference$ReferenceHandler.run(java.base@21.0.12.1/Reference.java:208)
+
+"Finalizer" #10 [734465] daemon prio=8 os_prio=0 cpu=0.21ms elapsed=2117.89s tid=0x000010c22c11b120 nid=734465 in Object.wait()  [0x00001097411fe000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@21.0.12.1/Native Method)
+	- waiting on <0x0000109814086418> (a java.lang.ref.NativeReferenceQueue$Lock)
+	at java.lang.Object.wait(java.base@21.0.12.1/Object.java:366)
+	at java.lang.Object.wait(java.base@21.0.12.1/Object.java:339)
+	at java.lang.ref.NativeReferenceQueue.await(java.base@21.0.12.1/NativeReferenceQueue.java:48)
+	at java.lang.ref.ReferenceQueue.remove0(java.base@21.0.12.1/ReferenceQueue.java:158)
+	at java.lang.ref.NativeReferenceQueue.remove(java.base@21.0.12.1/NativeReferenceQueue.java:89)
+	- locked <0x0000109814086418> (a java.lang.ref.NativeReferenceQueue$Lock)
+	at java.lang.ref.Finalizer$FinalizerThread.run(java.base@21.0.12.1/Finalizer.java:173)
+
+"Signal Dispatcher" #11 [734466] daemon prio=9 os_prio=0 cpu=0.45ms elapsed=2117.89s tid=0x000010c22c11c8d0 nid=734466 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Service Thread" #12 [734467] daemon prio=9 os_prio=0 cpu=9.14ms elapsed=2117.89s tid=0x000010c22c11df20 nid=734467 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Monitor Deflation Thread" #13 [734468] daemon prio=9 os_prio=0 cpu=120.72ms elapsed=2117.89s tid=0x000010c22c11f4d0 nid=734468 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"C2 CompilerThread0" #14 [734469] daemon prio=9 os_prio=0 cpu=16083.58ms elapsed=2117.89s tid=0x000010c22c121020 nid=734469 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+   No compile task
+
+"C1 CompilerThread0" #16 [734470] daemon prio=9 os_prio=0 cpu=3396.55ms elapsed=2117.88s tid=0x000010c22c1226f0 nid=734470 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+   No compile task
+
+"Common-Cleaner" #17 [734471] daemon prio=8 os_prio=0 cpu=2.65ms elapsed=2117.86s tid=0x000010c22c1c0b50 nid=734471 waiting on condition  [0x0000109740b2d000]
+   java.lang.Thread.State: TIMED_WAITING (parking)
+	at jdk.internal.misc.Unsafe.park(java.base@21.0.12.1/Native Method)
+	- parking to wait for  <0x00001098140865c8> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+	at java.util.concurrent.locks.LockSupport.parkNanos(java.base@21.0.12.1/LockSupport.java:269)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(java.base@21.0.12.1/AbstractQueuedSynchronizer.java:1886)
+	at java.lang.ref.ReferenceQueue.await(java.base@21.0.12.1/ReferenceQueue.java:71)
+	at java.lang.ref.ReferenceQueue.remove0(java.base@21.0.12.1/ReferenceQueue.java:143)
+	at java.lang.ref.ReferenceQueue.remove(java.base@21.0.12.1/ReferenceQueue.java:218)
+	at jdk.internal.ref.CleanerImpl.run(java.base@21.0.12.1/CleanerImpl.java:140)
+	at java.lang.Thread.runWith(java.base@21.0.12.1/Thread.java:1596)
+	at java.lang.Thread.run(java.base@21.0.12.1/Thread.java:1583)
+	at jdk.internal.misc.InnocuousThread.run(java.base@21.0.12.1/InnocuousThread.java:186)
+
+"JFR Recorder Thread" #18 [734473] daemon prio=5 os_prio=0 cpu=259.35ms elapsed=2117.80s tid=0x000010c22c21a340 nid=734473 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"JFR Periodic Tasks" #19 [734474] daemon prio=5 os_prio=0 cpu=3172.19ms elapsed=2117.59s tid=0x000010c22c325e60 nid=734474 in Object.wait()  [0x0000109731a75000]
+   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@21.0.12.1/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@21.0.12.1/Object.java:366)
+	at jdk.jfr.internal.PlatformRecorder.takeNap(jdk.jfr@21.0.12.1/PlatformRecorder.java:561)
+	- locked <0x0000109814086760> (a jdk.jfr.internal.JVM$ChunkRotationMonitor)
+	at jdk.jfr.internal.PlatformRecorder.periodicTask(jdk.jfr@21.0.12.1/PlatformRecorder.java:529)
+	at jdk.jfr.internal.PlatformRecorder.lambda$startDiskMonitor$1(jdk.jfr@21.0.12.1/PlatformRecorder.java:448)
+	at jdk.jfr.internal.PlatformRecorder$$Lambda/0x00001096e4042b90.run(jdk.jfr@21.0.12.1/Unknown Source)
+	at java.lang.Thread.runWith(java.base@21.0.12.1/Thread.java:1596)
+	at java.lang.Thread.run(java.base@21.0.12.1/Thread.java:1583)
+
+"Notification Thread" #22 [734476] daemon prio=9 os_prio=0 cpu=0.11ms elapsed=2117.49s tid=0x000010c22c337de0 nid=734476 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"elk-reasoner-thread-1" #31 [734489] daemon prio=5 os_prio=0 cpu=313.44ms elapsed=2105.03s tid=0x000010c22d4096b0 nid=734489 waiting on condition  [0x0000109730d48000]
+   java.lang.Thread.State: WAITING (parking)
+	at jdk.internal.misc.Unsafe.park(java.base@21.0.12.1/Native Method)
+	- parking to wait for  <0x00001098560fdbb8> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+	at java.util.concurrent.locks.LockSupport.park(java.base@21.0.12.1/LockSupport.java:371)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionNode.block(java.base@21.0.12.1/AbstractQueuedSynchronizer.java:519)
+	at java.util.concurrent.ForkJoinPool.unmanagedBlock(java.base@21.0.12.1/ForkJoinPool.java:3780)
+	at java.util.concurrent.ForkJoinPool.managedBlock(java.base@21.0.12.1/ForkJoinPool.java:3725)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(java.base@21.0.12.1/AbstractQueuedSynchronizer.java:1746)
+	at java.util.concurrent.ArrayBlockingQueue.take(java.base@21.0.12.1/ArrayBlockingQueue.java:420)
+	at java.util.concurrent.ThreadPoolExecutor.getTask(java.base@21.0.12.1/ThreadPoolExecutor.java:1070)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(java.base@21.0.12.1/ThreadPoolExecutor.java:1130)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(java.base@21.0.12.1/ThreadPoolExecutor.java:642)
+	at java.lang.Thread.runWith(java.base@21.0.12.1/Thread.java:1596)
+	at java.lang.Thread.run(java.base@21.0.12.1/Thread.java:1583)
+
+"elk-reasoner-thread-2" #32 [734490] daemon prio=5 os_prio=0 cpu=270.50ms elapsed=2105.03s tid=0x000010c22d40ad00 nid=734490 waiting on condition  [0x0000109730c48000]
+   java.lang.Thread.State: WAITING (parking)
+	at jdk.internal.misc.Unsafe.park(java.base@21.0.12.1/Native Method)
+	- parking to wait for  <0x00001098560fdbb8> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+	at java.util.concurrent.locks.LockSupport.park(java.base@21.0.12.1/LockSupport.java:371)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionNode.block(java.base@21.0.12.1/AbstractQueuedSynchronizer.java:519)
+	at java.util.concurrent.ForkJoinPool.unmanagedBlock(java.base@21.0.12.1/ForkJoinPool.java:3780)
+	at java.util.concurrent.ForkJoinPool.managedBlock(java.base@21.0.12.1/ForkJoinPool.java:3725)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(java.base@21.0.12.1/AbstractQueuedSynchronizer.java:1746)
+	at java.util.concurrent.ArrayBlockingQueue.take(java.base@21.0.12.1/ArrayBlockingQueue.java:420)
+	at java.util.concurrent.ThreadPoolExecutor.getTask(java.base@21.0.12.1/ThreadPoolExecutor.java:1070)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(java.base@21.0.12.1/ThreadPoolExecutor.java:1130)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(java.base@21.0.12.1/ThreadPoolExecutor.java:642)
+	at java.lang.Thread.runWith(java.base@21.0.12.1/Thread.java:1596)
+	at java.lang.Thread.run(java.base@21.0.12.1/Thread.java:1583)
+
+"elk-reasoner-thread-3" #33 [734491] daemon prio=5 os_prio=0 cpu=290.13ms elapsed=2105.03s tid=0x000010c22d40bf60 nid=734491 waiting on condition  [0x0000109730b48000]
+   java.lang.Thread.State: WAITING (parking)
+	at jdk.internal.misc.Unsafe.park(java.base@21.0.12.1/Native Method)
+	- parking to wait for  <0x00001098560fdbb8> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+	at java.util.concurrent.locks.LockSupport.park(java.base@21.0.12.1/LockSupport.java:371)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionNode.block(java.base@21.0.12.1/AbstractQueuedSynchronizer.java:519)
+	at java.util.concurrent.ForkJoinPool.unmanagedBlock(java.base@21.0.12.1/ForkJoinPool.java:3780)
+	at java.util.concurrent.ForkJoinPool.managedBlock(java.base@21.0.12.1/ForkJoinPool.java:3725)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(java.base@21.0.12.1/AbstractQueuedSynchronizer.java:1746)
+	at java.util.concurrent.ArrayBlockingQueue.take(java.base@21.0.12.1/ArrayBlockingQueue.java:420)
+	at java.util.concurrent.ThreadPoolExecutor.getTask(java.base@21.0.12.1/ThreadPoolExecutor.java:1070)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(java.base@21.0.12.1/ThreadPoolExecutor.java:1130)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(java.base@21.0.12.1/ThreadPoolExecutor.java:642)
+	at java.lang.Thread.runWith(java.base@21.0.12.1/Thread.java:1596)
+	at java.lang.Thread.run(java.base@21.0.12.1/Thread.java:1583)
+
+"elk-reasoner-thread-4" #34 [734492] daemon prio=5 os_prio=0 cpu=292.65ms elapsed=2105.03s tid=0x000010c22d40d1a0 nid=734492 waiting on condition  [0x0000109730a48000]
+   java.lang.Thread.State: WAITING (parking)
+	at jdk.internal.misc.Unsafe.park(java.base@21.0.12.1/Native Method)
+	- parking to wait for  <0x00001098560fdbb8> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+	at java.util.concurrent.locks.LockSupport.park(java.base@21.0.12.1/LockSupport.java:371)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionNode.block(java.base@21.0.12.1/AbstractQueuedSynchronizer.java:519)
+	at java.util.concurrent.ForkJoinPool.unmanagedBlock(java.base@21.0.12.1/ForkJoinPool.java:3780)
+	at java.util.concurrent.ForkJoinPool.managedBlock(java.base@21.0.12.1/ForkJoinPool.java:3725)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(java.base@21.0.12.1/AbstractQueuedSynchronizer.java:1746)
+	at java.util.concurrent.ArrayBlockingQueue.take(java.base@21.0.12.1/ArrayBlockingQueue.java:420)
+	at java.util.concurrent.ThreadPoolExecutor.getTask(java.base@21.0.12.1/ThreadPoolExecutor.java:1070)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(java.base@21.0.12.1/ThreadPoolExecutor.java:1130)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(java.base@21.0.12.1/ThreadPoolExecutor.java:642)
+	at java.lang.Thread.runWith(java.base@21.0.12.1/Thread.java:1596)
+	at java.lang.Thread.run(java.base@21.0.12.1/Thread.java:1583)
+
+"elk-timer-thread" #35 [734493] daemon prio=5 os_prio=0 cpu=17242.47ms elapsed=2105.02s tid=0x000010967c004c00 nid=734493 waiting on condition  [0x0000109730948000]
+   java.lang.Thread.State: TIMED_WAITING (sleeping)
+	at java.lang.Thread.sleep0(java.base@21.0.12.1/Native Method)
+	at java.lang.Thread.sleep(java.base@21.0.12.1/Thread.java:509)
+	at org.semanticweb.elk.util.logging.CachedTimeThread.run(CachedTimeThread.java:70)
+
+"pool-2-thread-1" #36 [734494] prio=5 os_prio=0 cpu=641021.74ms elapsed=2103.16s tid=0x000010c22d4da5e0 nid=734494 runnable  [0x0000109730845000]
+   java.lang.Thread.State: RUNNABLE
+	at java.io.FileDescriptor.close0(java.base@21.0.12.1/Native Method)
+	at java.io.FileDescriptor.close(java.base@21.0.12.1/FileDescriptor.java:304)
+	- locked <0x000010bd2a09c2c0> (a java.io.FileDescriptor)
+	at java.io.FileOutputStream$1.close(java.base@21.0.12.1/FileOutputStream.java:419)
+	at java.io.FileDescriptor.closeAll(java.base@21.0.12.1/FileDescriptor.java:362)
+	- locked <0x000010bd2a09c2c0> (a java.io.FileDescriptor)
+	at java.io.FileOutputStream.close(java.base@21.0.12.1/FileOutputStream.java:417)
+	at sun.nio.cs.StreamEncoder.implClose(java.base@21.0.12.1/StreamEncoder.java:435)
+	at sun.nio.cs.StreamEncoder.lockedClose(java.base@21.0.12.1/StreamEncoder.java:237)
+	at sun.nio.cs.StreamEncoder.close(java.base@21.0.12.1/StreamEncoder.java:222)
+	at java.io.OutputStreamWriter.close(java.base@21.0.12.1/OutputStreamWriter.java:266)
+	at java.io.BufferedWriter.implClose(java.base@21.0.12.1/BufferedWriter.java:398)
+	at java.io.BufferedWriter.close(java.base@21.0.12.1/BufferedWriter.java:380)
+	at org.codehaus.groovy.runtime.IOGroovyMethods.withWriter(IOGroovyMethods.java:1148)
+	at org.codehaus.groovy.runtime.ResourceGroovyMethods.withWriter(ResourceGroovyMethods.java:2064)
+	at org.codehaus.groovy.runtime.dgm$1173.doMethodInvoke(Unknown Source)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e40b3c00.invokeVirtual(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4475000.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410c800.guardWithCatch(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d400.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4138400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e400a800.invokeStatic(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4530400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.linkToCallSite(java.base@21.0.12.1/Invokers$Holder)
+	at gspa.integration.workflow.IntegrationArtifacts.writeIntegratedOutputTsv(IntegrationArtifacts.groovy:47)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e4098000.invokeStaticInit(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e454c400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e41b3000.guardWithCatch(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e41b3c00.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e41b4000.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e41b3c00.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e41b4000.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e41b3c00.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4549800.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e400a800.invokeStatic(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e436b400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.linkToCallSite(java.base@21.0.12.1/Invokers$Holder)
+	at gspa.integration.workflow.IntegrationWorkflow.writeArtifacts(IntegrationWorkflow.groovy:317)
+	at java.lang.invoke.DirectMethodHandle$Holder.invokeVirtual(java.base@21.0.12.1/DirectMethodHandle$Holder)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4551400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410c800.guardWithCatch(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d400.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d400.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e410d000.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e413a000.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e400a800.invokeStatic(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4530400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.linkToCallSite(java.base@21.0.12.1/Invokers$Holder)
+	at gspa.cli.IntegrateCommand.runGenome(IntegrateCommand.groovy:629)
+	at java.lang.invoke.DirectMethodHandle$Holder.invokeSpecial(java.base@21.0.12.1/DirectMethodHandle$Holder)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4463000.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl(java.base@21.0.12.1/DirectMethodHandleAccessor.java:157)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(java.base@21.0.12.1/DirectMethodHandleAccessor.java:103)
+	at java.lang.reflect.Method.invoke(java.base@21.0.12.1/Method.java:580)
+	at org.codehaus.groovy.reflection.CachedMethod.invoke(CachedMethod.java:343)
+	at groovy.lang.MetaMethod.doMethodInvoke(MetaMethod.java:328)
+	at org.codehaus.groovy.runtime.metaclass.ClosureMetaClass.invokeMethod(ClosureMetaClass.java:342)
+	at groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1007)
+	at org.codehaus.groovy.runtime.InvokerHelper.invokePogoMethod(InvokerHelper.java:645)
+	at org.codehaus.groovy.runtime.InvokerHelper.invokeMethod(InvokerHelper.java:628)
+	at org.codehaus.groovy.runtime.metaclass.ClosureMetaClass.invokeOnDelegationObjects(ClosureMetaClass.java:391)
+	at org.codehaus.groovy.runtime.metaclass.ClosureMetaClass.invokeMethod(ClosureMetaClass.java:328)
+	at groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1007)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e40bc800.invokeInterface(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4241c00.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445d000.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445d800.guardWithCatch(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e400.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e800.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e400.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e800.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e400.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e800.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e400.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e800.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e400.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e800.guard(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445e400.reinvoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4461800.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at java.lang.invoke.LambdaForm$DMH/0x00001096e400a800.invokeStatic(java.base@21.0.12.1/LambdaForm$DMH)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e445c800.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.linkToCallSite(java.base@21.0.12.1/Invokers$Holder)
+	at gspa.cli.IntegrateCommand$_runBatchManifest_closure17$_closure22.doCall(IntegrateCommand.groovy:768)
+	at java.lang.invoke.DirectMethodHandle$Holder.invokeSpecial(java.base@21.0.12.1/DirectMethodHandle$Holder)
+	at java.lang.invoke.LambdaForm$MH/0x00001096e4002400.invoke(java.base@21.0.12.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@21.0.12.1/Invokers$Holder)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl(java.base@21.0.12.1/DirectMethodHandleAccessor.java:153)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(java.base@21.0.12.1/DirectMethodHandleAccessor.java:103)
+	at java.lang.reflect.Method.invoke(java.base@21.0.12.1/Method.java:580)
+	at org.codehaus.groovy.reflection.CachedMethod.invoke(CachedMethod.java:343)
+	at groovy.lang.MetaMethod.doMethodInvoke(MetaMethod.java:328)
+	at org.codehaus.groovy.runtime.metaclass.ClosureMetaClass.invokeMethod(ClosureMetaClass.java:279)
+	at groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1007)
+	at groovy.lang.Closure.call(Closure.java:433)
+	at groovy.lang.Closure.call(Closure.java:412)
+	at java.util.concurrent.FutureTask.run(java.base@21.0.12.1/FutureTask.java:317)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(java.base@21.0.12.1/ThreadPoolExecutor.java:1144)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(java.base@21.0.12.1/ThreadPoolExecutor.java:642)
+	at java.lang.Thread.runWith(java.base@21.0.12.1/Thread.java:1596)
+	at java.lang.Thread.run(java.base@21.0.12.1/Thread.java:1583)
+
+"Attach Listener" #39 [736649] daemon prio=9 os_prio=0 cpu=39.66ms elapsed=23.88s tid=0x00001096c8001880 nid=736649 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"G1 Refine#3" os_prio=0 cpu=1851.08ms elapsed=1815.19s tid=0x000010972fe31a10 nid=734504 runnable  
+
+"G1 Refine#2" os_prio=0 cpu=4162.79ms elapsed=1815.33s tid=0x000010972fe0f180 nid=734503 runnable  
+
+"G1 Refine#1" os_prio=0 cpu=8943.78ms elapsed=2110.99s tid=0x000010972c0421e0 nid=734484 runnable  
+
+"GC Thread#3" os_prio=0 cpu=159740.32ms elapsed=2116.93s tid=0x00001096d800c380 nid=734479 runnable  
+
+"GC Thread#2" os_prio=0 cpu=159634.83ms elapsed=2116.93s tid=0x00001096d800b8c0 nid=734478 runnable  
+
+"GC Thread#1" os_prio=0 cpu=159646.45ms elapsed=2116.93s tid=0x00001096d800ae00 nid=734477 runnable  
+
+os_prio=0 cpu=7251.57ms elapsed=2117.54s tid=0x000010c22c32a2f0 nid=734475 runnable  
+"VM Thread" os_prio=0 cpu=359.04ms elapsed=2117.89s tid=0x000010c22c110790 nid=734463 runnable  
+
+"VM Periodic Task Thread" os_prio=0 cpu=724.67ms elapsed=2117.89s tid=0x000010c22c0fea70 nid=734462 waiting on condition  
+
+"G1 Service" os_prio=0 cpu=265.18ms elapsed=2117.90s tid=0x000010c22c0e8fb0 nid=734461 runnable  
+
+"G1 Refine#0" os_prio=0 cpu=188440.59ms elapsed=2117.90s tid=0x000010c22c0e7fe0 nid=734460 runnable  
+
+"G1 Conc#0" os_prio=0 cpu=182903.78ms elapsed=2117.91s tid=0x000010c22c09c160 nid=734459 runnable  
+
+"G1 Main Marker" os_prio=0 cpu=1.16ms elapsed=2117.91s tid=0x000010c22c09b1b0 nid=734458 runnable  
+
+"GC Thread#0" os_prio=0 cpu=159554.64ms elapsed=2117.91s tid=0x000010c22c06fba0 nid=734457 runnable  
+
+JNI global refs: 34, weak refs: 4
+

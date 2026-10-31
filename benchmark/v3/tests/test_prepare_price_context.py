@@ -95,6 +95,40 @@ class Base(unittest.TestCase):
 
 
 class ExportPart(Base):
+    def test_compact_statistics_projection_does_not_change_raw_claims(self):
+        columns = ['1.1.1.1', '2.4.1.129', '2.4.99.28', '3.1.1.1']
+        values = np.array([[1e-58, .5818074345588684, .2, .4]], dtype=np.float64)
+        matrix = self.matrix(index=['P1.1'], columns=columns, values=values)
+        targets = self.targets_file(entries={'T1': 'P1.1'})
+        spec = json.loads(Path(targets).read_text())
+        spec['ec_vocab'] = ['1.1.1.1','2.4.99.28','3.1.1.1']
+        spec['statistics_projection'] = {'schema':'gspa.compact-ec-projection/1',
+            'kind':'float32_max_obsolete','aliases':{'2.4.1.129':'2.4.99.28'}}
+        spec['targets']['clean'][ASM]['T1'].update(n_nonzero_vocab=2, max=float(np.float32(values.max())))
+        spec['targets']['clean'][ASM]['T1']['projected_float32_sha256'] = hashlib.sha256(
+            np.array([0, values[0,1], .4], dtype='<f4').tobytes()).hexdigest()
+        Path(targets).write_text(json.dumps(spec))
+        rec = self.part(matrix=matrix, targets=targets)
+        self.assertTrue(rec['target_coverage']['verified'])
+        claims = self.lines(rec)
+        self.assertEqual(len(claims), 4)
+        self.assertEqual({c['function_id']:c['raw_score'] for c in claims}, dict(zip(columns, values[0])))
+
+        # Counts and maxima alone would miss a changed nonmaximal component.
+        values[0,3] = .3
+        matrix = self.matrix(name='changed.npz', index=['P1.1'], columns=columns, values=values)
+        bad = self.part(matrix=matrix, targets=targets, parts=str(self.tmp/'changed-parts'))
+        self.assertFalse(bad['target_coverage']['verified'])
+        mismatch = bad['target_coverage']['mismatches'][0]
+        self.assertEqual(mismatch['compact'], mismatch['streamed'])
+        self.assertNotEqual(mismatch['expected_projected_sha256'], mismatch['actual_projected_sha256'])
+
+    def test_empty_column_projection_can_validate_target_metadata(self):
+        plan = C.column_plan([], ['1.1.1.1'], {'schema':'gspa.compact-ec-projection/1',
+            'kind':'float32_max_obsolete', 'aliases':{}})
+        self.assertEqual(plan['compact_size'], 1)
+        self.assertEqual(plan['partial'], 0)
+
     def test_targets_keep_all_nonzero_context_all_nonzero_default(self):
         rec = self.part()
         claims = self.lines(rec)

@@ -5,12 +5,12 @@ from __future__ import annotations
 import copy
 import csv
 import json
+import math
 import random
-import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path("/home/leechuck/Public/software/gspa")
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "benchmark" / "v3"))
 
@@ -18,7 +18,7 @@ import homology_baseline as H  # noqa: E402
 import run_training_cohort_ablations as base  # noqa: E402
 from v3_metrics import load_obo  # noqa: E402
 
-CACHE = Path("/home/leechuck/.cache/gspa-v3-data/training-cohort")
+CACHE = base.CACHE
 RES = ROOT / "benchmark" / "v3" / "results" / "training-cohort"
 PERT_DIR = CACHE / "perturbation_runs"
 OUT_JSON = RES / "perturbation_controls.json"
@@ -118,12 +118,11 @@ def run_perturbation_batch(
     learned_model_path: Path | None,
     claims_override: dict[str, Path] | None = None,
     layout_override: dict[str, Path] | None = None,
+    rlc_suggester: bool = True,
+    sources: tuple[Path, ...] = (),
 ) -> Path:
     run_dir = PERT_DIR / name
     out_dir = run_dir / "out"
-    if out_dir.exists() and len(list(out_dir.glob("*.integrated.tsv"))) >= len(genomes):
-        print(f"[skip existing perturbation] {name}", flush=True)
-        return out_dir
     run_dir.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -154,7 +153,7 @@ def run_perturbation_batch(
     manifest_path.write_text("\n".join(rows) + "\n")
 
     cmd = [
-        "java", "-Xmx12g", "-jar", str(base.JAR), "integrate",
+        "java", "-Xmx12g", "-jar", str(base.production_jar()), "integrate",
         "--batch-manifest", str(manifest_path),
         "--batch-threads", "4",
         "--go-owl", str(ROOT / "benchmark/whole_genome_cafa/data/reference/go.owl"),
@@ -169,100 +168,53 @@ def run_perturbation_batch(
         "--cohort-metadata", str(cohort_meta_path),
         "--cohort-orthogroups", str(cohort_og_path),
         "--cohort-holdout", "CLADE",
-        "--rlc-suggester",
     ]
+    if rlc_suggester:
+        cmd.append("--rlc-suggester")
     if learned_model_path is not None:
         cmd.extend(["--learned-model", str(learned_model_path)])
 
     print(f"[running perturbation] {name} ...", flush=True)
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RuntimeError(f"Perturbation {name} failed:\nSTDOUT:\n{proc.stdout[-1000:]}\nSTDERR:\n{proc.stderr[-1000:]}")
+    base.run_batch(cmd, manifest_path, out_dir, sources=[Path(__file__), Path(base.__file__), *sources])
     return out_dir
 
 
 def compare_test_cohort_features(dir_a: Path, dir_b: Path, test_genomes: list[str]) -> dict:
-    max_diff = 0.0
-    n_compared = 0
+    report = dict(n_test_candidates_compared=0, max_abs_probability_diff=None,
+                  unsupported_both=0, support_transitions=0, missing_before=0, missing_after=0)
+    def candidates(folder, gid):
+        rows = json.loads((folder / f'{gid}.integrated.tsv.learned.json').read_text())['candidates']
+        result = {}
+        for row in rows:
+            key, value = row['candidate_key'], row['probability']
+            if key in result or not isinstance(key, str) or not key:
+                raise ValueError('invalid or duplicate learned candidate identity')
+            if value is not None and (type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 1):
+                raise ValueError('invalid learned candidate probability')
+            result[key] = value
+        return result
     for gid in test_genomes:
-        la = json.loads((dir_a / f"{gid}.integrated.tsv.learned.json").read_text())
-        lb = json.loads((dir_b / f"{gid}.integrated.tsv.learned.json").read_text())
-        map_a = {c["candidate_key"]: c["probability"] for c in la.get("candidates", [])}
-        map_b = {c["candidate_key"]: c["probability"] for c in lb.get("candidates", [])}
-        for k, pa in map_a.items():
-            if k in map_b:
-                n_compared += 1
-                max_diff = max(max_diff, abs(pa - map_b[k]))
-    return {"n_test_candidates_compared": n_compared, "max_abs_probability_diff": max_diff}
+        a, b = candidates(dir_a, gid), candidates(dir_b, gid)
+        report['missing_before'] += len(b.keys() - a.keys())
+        report['missing_after'] += len(a.keys() - b.keys())
+        for key in a.keys() & b.keys():
+            if a[key] is None and b[key] is None:
+                report['unsupported_both'] += 1
+            elif a[key] is None or b[key] is None:
+                report['support_transitions'] += 1
+            else:
+                report['n_test_candidates_compared'] += 1
+                report['max_abs_probability_diff'] = max(report['max_abs_probability_diff'] or 0, abs(a[key] - b[key]))
+    return report
 
 
 def main():
-    PERT_DIR.mkdir(parents=True, exist_ok=True)
-    pid_to_seq = {}
-    with open(CACHE / "prepared/proteins.tsv") as fh:
-        for r in csv.DictReader(fh, delimiter="\t"):
-            pid_to_seq[(r["genome_id"], r["genome_protein_id"])] = r["protein_id"]
-
-    split_of = {}
-    with open(RES / "splits.tsv") as fh:
-        for r in csv.DictReader(fh, delimiter="\t"):
-            split_of[r["genome_id"]] = r["split"]
-
-    go = load_obo(str(CACHE / "go-basic.obo"))
-    truth = H.read_truth(RES / "labels.tsv", CACHE / "prepared/proteins.tsv")
-    base_genomes = sorted(split_of.keys())
-    test_genomes = sorted(g for g, s in split_of.items() if s == "test")
-    logistic_model = RES / "learned_models" / "model_logistic.json"
-
-    shuf_lay = build_shuffled_layouts(PERT_DIR, seed=42)
-    frag_lay, frag_meta = build_fragmented_layouts(PERT_DIR, seed=42)
-    dup_meta, dup_og, src_gid, dup_gids = build_duplicated_strain_cohort(PERT_DIR, n_dups=5)
-
-    unperturbed_dir = CACHE / "ablation_runs" / "homology_learned_logistic"
-    shuf_dir = run_perturbation_batch(
-        "shuffled_neighborhoods_logistic",
-        base_genomes,
-        shuf_lay,
-        CACHE / "cohort_inputs" / "cohort_metadata.json",
-        CACHE / "cohort_inputs" / "cohort_orthogroups.tsv",
-        logistic_model,
-    )
-    frag_dir = run_perturbation_batch(
-        "fragmented_assembly_50pct_logistic",
-        base_genomes,
-        frag_lay,
-        frag_meta,
-        CACHE / "cohort_inputs" / "cohort_orthogroups.tsv",
-        logistic_model,
-    )
-    dup_dir = run_perturbation_batch(
-        "duplicated_strain_5x_logistic",
-        base_genomes + dup_gids,
-        CACHE / "layout",
-        dup_meta,
-        dup_og,
-        logistic_model,
-    )
-
-    def eval_dir(d: Path) -> dict:
-        preds = base.load_integrated_predictions(d, pid_to_seq)
-        return H.evaluate(preds, truth, split_of, go=go, n_boot=200)["test"]
-
-    res = {
-        "schema": "gspa.training_cohort_perturbations/1",
-        "baseline_unperturbed": eval_dir(unperturbed_dir),
-        "shuffled_neighborhoods": eval_dir(shuf_dir),
-        "fragmented_assembly_50pct": eval_dir(frag_dir),
-        "duplicated_strain_5x": eval_dir(dup_dir),
-        "duplicated_strain_invariance_check": compare_test_cohort_features(unperturbed_dir, dup_dir, test_genomes),
-    }
-    OUT_JSON.write_text(json.dumps(res, indent=2, sort_keys=True) + "\n")
-    print("Wrote", OUT_JSON)
-    for k in ("baseline_unperturbed", "shuffled_neighborhoods", "fragmented_assembly_50pct", "duplicated_strain_5x"):
-        m = res[k]
-        print(f"  {k:28s}: test GO Fmax={m['go_fmax']['estimate']:.4f}, EC top1={m['ec_top1_accuracy']['estimate']:.4f}")
-    print("  duplicated_strain_invariance_check:", res["duplicated_strain_invariance_check"])
+    # Keep the entry point, but require the verified prepare/run/calibrate/evaluate
+    # interface. The historical no-argument main reused unverified baseline outputs
+    # and chose Fmax thresholds on test outcomes.
+    from run_cohort_controls import main as verified_main
+    verified_main()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -1,0 +1,369 @@
+{
+  "schema": "gspa.masked_assignment_experiments/1",
+  "model": {
+    "sha256": "85460b5e7c6b8409ec5e50010680bab76c7421af01f129319d176341eadb4c99",
+    "path": "masked:85460b5e7c6b8409ec5e50010680bab76c7421af01f129319d176341eadb4c99"
+  },
+  "input_model_sha256": "b1e91300c91cb05defe126808a263de4df2bd6b88f2d7397671a698df1bb9fa3",
+  "public_problem": {
+    "baseline": {
+      "carbon_exchanges": [
+        "EX_glc_e"
+      ],
+      "exchanges": [
+        "EX_glc_e",
+        "EX_ac_e",
+        "EX_o2_e",
+        "EX_vit_e",
+        "EX_sec_e",
+        "EX_nh4_e",
+        "EX_lac_e"
+      ],
+      "medium": {
+        "EX_glc_e": 10,
+        "EX_nh4_e": 10,
+        "EX_o2_e": 10,
+        "EX_vit_e": 10
+      },
+      "nitrogen_exchanges": [
+        "EX_nh4_e"
+      ],
+      "oxygen_exchange": "EX_o2_e"
+    },
+    "objectives": {
+      "biomass": "BIOMASS",
+      "maintenance": {
+        "lower_bound": 1.0,
+        "reaction": "ATPM"
+      }
+    },
+    "model": "masked:85460b5e7c6b8409ec5e50010680bab76c7421af01f129319d176341eadb4c99",
+    "hypotheses": [
+      {
+        "id": "H0",
+        "assignments": {}
+      },
+      {
+        "id": "H1",
+        "assignments": {
+          "ACS": [
+            [
+              "MASKED_TARGET",
+              "gB"
+            ]
+          ]
+        },
+        "evidence": {
+          "domain": 0.6,
+          "sequence": 0.001
+        }
+      }
+    ],
+    "conditions": [
+      {
+        "id": "C0",
+        "mods": [],
+        "evidence_channels": []
+      },
+      {
+        "id": "C1",
+        "mods": [
+          {
+            "op": "carbon_swap",
+            "exchange": "EX_ac_e"
+          }
+        ],
+        "evidence_channels": [
+          "domain",
+          "sequence"
+        ]
+      },
+      {
+        "id": "C2",
+        "mods": [
+          {
+            "op": "knockout",
+            "reactions": [],
+            "genes": [
+              "gB"
+            ]
+          }
+        ],
+        "evidence_channels": [
+          "domain",
+          "sequence"
+        ]
+      }
+    ]
+  },
+  "public_problem_sha256": "ca91f60f5628da5bab4c58cc72bd47a802d2bbeed4851f82fa11893ff18d3443",
+  "strategy": "fixed",
+  "config": {
+    "strategy": "fixed",
+    "seed": 0,
+    "max_experiments": 2,
+    "max_solver_calls": 80,
+    "uptake_rate": 10.0,
+    "default_bound": 1000.0,
+    "growth_threshold": 1e-06,
+    "flux_tol": 1e-07,
+    "residual_tol": 1e-06,
+    "relative_tol": 0.05,
+    "growth_fraction": 0.95,
+    "product_requirement": "growth_fraction",
+    "max_focus_reactions": 2,
+    "max_baseline_focus_reactions": 6,
+    "panel": null,
+    "qwen": {
+      "model": "qwen3.8-27b",
+      "api_base": null,
+      "max_invalid": 2,
+      "max_tokens": 300
+    }
+  },
+  "visited_conditions": [
+    "C0",
+    "C1"
+  ],
+  "selection": [
+    {
+      "status": "selected",
+      "condition_id": "C0"
+    },
+    {
+      "status": "selected",
+      "condition_id": "C1"
+    }
+  ],
+  "cells": [
+    {
+      "hypothesis_id": "H0",
+      "condition_id": "C0",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        0,
+        1
+      ],
+      "contrast": "both_grow",
+      "status": "completed"
+    },
+    {
+      "hypothesis_id": "H1",
+      "condition_id": "C0",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [],
+          "flux_intervals": {
+            "ACS": {
+              "minimum": 0.0,
+              "maximum": -0.0,
+              "statuses": [
+                "optimal",
+                "optimal"
+              ]
+            }
+          }
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 10.0,
+          "knocked_out_reactions": [
+            "ACS"
+          ],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "contrast": "both_grow",
+      "status": "completed"
+    },
+    {
+      "hypothesis_id": "H0",
+      "condition_id": "C1",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 5.75,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        },
+        "target_knockout": {
+          "status": "optimal",
+          "growth": 5.75,
+          "knocked_out_reactions": [],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        6,
+        7
+      ],
+      "contrast": "both_grow",
+      "status": "completed"
+    },
+    {
+      "hypothesis_id": "H1",
+      "condition_id": "C1",
+      "active_constraints": [],
+      "phenotypes": {
+        "wild_type": {
+          "status": "optimal",
+          "growth": 5.75,
+          "knocked_out_reactions": [],
+          "flux_intervals": {
+            "ACS": {
+              "minimum": 9.507142857142856,
+              "maximum": 10.0,
+              "statuses": [
+                "optimal",
+                "optimal"
+              ]
+            }
+          }
+        },
+        "target_knockout": {
+          "status": "infeasible",
+          "growth": null,
+          "knocked_out_reactions": [
+            "ACS"
+          ],
+          "flux_intervals": {}
+        }
+      },
+      "solver_calls": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "contrast": "knockout_infeasible_with_maintenance",
+      "status": "completed"
+    }
+  ],
+  "solver_calls": [
+    {
+      "call": 0,
+      "label": "C0:H0:wild_type",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 1,
+      "label": "C0:H0:target_knockout",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 2,
+      "label": "C0:H1:wild_type",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 3,
+      "label": "C0:H1:wild_type:ACS:min",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 4,
+      "label": "C0:H1:wild_type:ACS:max",
+      "status": "optimal",
+      "objective": 0.0,
+      "note": ""
+    },
+    {
+      "call": 5,
+      "label": "C0:H1:target_knockout",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 6,
+      "label": "C1:H0:wild_type",
+      "status": "optimal",
+      "objective": -5.75,
+      "note": ""
+    },
+    {
+      "call": 7,
+      "label": "C1:H0:target_knockout",
+      "status": "optimal",
+      "objective": -5.75,
+      "note": ""
+    },
+    {
+      "call": 8,
+      "label": "C1:H1:wild_type",
+      "status": "optimal",
+      "objective": -5.75,
+      "note": ""
+    },
+    {
+      "call": 9,
+      "label": "C1:H1:wild_type:ACS:min",
+      "status": "optimal",
+      "objective": 9.507142857142856,
+      "note": ""
+    },
+    {
+      "call": 10,
+      "label": "C1:H1:wild_type:ACS:max",
+      "status": "optimal",
+      "objective": -10.0,
+      "note": ""
+    },
+    {
+      "call": 11,
+      "label": "C1:H1:target_knockout",
+      "status": "infeasible",
+      "objective": null,
+      "note": ""
+    }
+  ],
+  "agent_usage": null,
+  "unvisited_conditions": [
+    "C2"
+  ],
+  "max_solver_calls": 80,
+  "wall_seconds": 0.025391101982677355,
+  "promotion": "none",
+  "calibrated_probability": null,
+  "assumptions": [
+    "Only the target annotation is masked; network reactions remain available.",
+    "Candidate GPR clauses are added as alternatives to surviving non-target clauses.",
+    "Exactly one null assignment is included.",
+    "Growth and flux ranges are conditional on the model, medium and maintenance.",
+    "Feasible product flux is not evidence of observed production or expression.",
+    "No hidden function truth or measured outcome is supplied to the planner.",
+    "Independent phenotypes and function truth must be joined in a separate evaluation."
+  ]
+}

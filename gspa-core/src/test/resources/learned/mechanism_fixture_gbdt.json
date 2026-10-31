@@ -89,12 +89,6 @@
    "ctx.nbr.conflict_max",
    "ctx.nbr.reaction_distance_available",
    "ctx.nbr.reaction_distance",
-   "cohort.available",
-   "cohort.log_n_genomes",
-   "cohort.frac_with_orthogroup",
-   "cohort.frac_with_function_seq",
-   "cohort.frac_with_context",
-   "cohort.n_genomes_incomplete",
    "cohort.w.available",
    "cohort.w.states_available",
    "cohort.w.support_raw_available",
@@ -115,7 +109,6 @@
    "cohort.w.role_evidence_missing",
    "cohort.w.effective_n",
    "cohort.w.phylogeny_known_fraction",
-   "cohort.w.n_peer_genomes",
    "cohort.w.coverage",
    "cohort.w.support_fraction",
    "cohort.w.peer_organism_set_known_fraction",
@@ -135,7 +128,6 @@
    "cohort.w.support_fraction_lo90",
    "cohort.w.support_fraction_hi90",
    "cohort.w.bg_rate",
-   "cohort.w.bg_windows",
    "cohort.w.enrichment_log",
    "cohort.w.support_minus_bg",
    "cohort.w.complementarity",
@@ -179,8 +171,8 @@
    "fba.optional_fraction",
    "fba.knockout_growth_effect"
   ],
-  "fingerprint": "7106d884d3225a04724ef589ca15a99c4ced7ea7864e3677f0c7c82be0f1a7e2",
-  "id": "gspa.context-features/2"
+  "fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+  "id": "gspa.context-features/3"
  },
  "display_threshold": {
   "advisory_only": true,
@@ -1347,7 +1339,7 @@
      16,
      74,
      16,
-     156,
+     148,
      16,
      -1,
      -1,
@@ -1527,8 +1519,8 @@
     "feature": [
      16,
      74,
-     155,
-     156,
+     147,
+     148,
      68,
      -1,
      -1,
@@ -1909,10 +1901,10 @@
     "feature": [
      16,
      16,
-     156,
+     148,
      -1,
      -1,
-     155,
+     147,
      76,
      -1,
      -1,
@@ -2032,10 +2024,10 @@
    {
     "feature": [
      16,
-     156,
+     148,
      -1,
      74,
-     156,
+     148,
      -1,
      -1,
      -1,
@@ -2091,7 +2083,7 @@
      16,
      -1,
      68,
-     157,
+     149,
      74,
      -1,
      -1,
@@ -2148,7 +2140,7 @@
      74,
      76,
      16,
-     155,
+     147,
      68,
      -1,
      -1,
@@ -2213,9 +2205,9 @@
    {
     "feature": [
      16,
-     156,
+     148,
      -1,
-     155,
+     147,
      76,
      -1,
      -1,
@@ -2405,8 +2397,8 @@
     "feature": [
      16,
      -1,
-     156,
-     155,
+     148,
+     147,
      76,
      -1,
      -1,
@@ -2463,7 +2455,7 @@
      68,
      68,
      16,
-     155,
+     147,
      76,
      -1,
      -1,
@@ -2617,7 +2609,7 @@
      74,
      76,
      16,
-     156,
+     148,
      68,
      -1,
      -1,
@@ -2805,6 +2797,11 @@
    }
   ]
  },
+ "input_support": {
+  "available": false,
+  "reason": "training rows lack exact sequence_sources; re-export production features",
+  "schema": "gspa.model-input-support/1"
+ },
  "intended_use": "mechanism_test",
  "kind": "gbdt",
  "locus_model": {
@@ -2839,7 +2836,7 @@
   "scale": 0.9475789052751987,
   "trained": true
  },
- "model_id": "context-gbdt-a679163e793d-7106d884",
+ "model_id": "context-gbdt-ad98d2668109-d9537b61",
  "normalization": null,
  "schema": "gspa.learned-context-model/1",
  "training": {
@@ -2907,8 +2904,20 @@
    }
   },
   "synthetic": true,
-  "trainer_version": "1",
-  "training_data_sha256": "a679163e793da60b720489387583b57ec40cb2f3bdbffcbd0ce1e1da79588dc1",
+  "trainer_version": "3",
+  "training_data_sha256": "ad98d2668109e52c0800a56563339911adbad82cd23707efd9723f9eda9449f1",
+  "truth": {
+   "label_basis_counts": {
+    "calibration": {
+     "unspecified": 100
+    },
+    "train": {
+     "unspecified": 335
+    }
+   },
+   "locus_supervision": "synthetic mechanism groups",
+   "probability_target": "synthetic_mechanism"
+  },
   "weighting": "group"
  }
 }

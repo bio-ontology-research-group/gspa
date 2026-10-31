@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.config.KingdomDetectorSpec" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-27T22:37:23" hostname="node004" time="7.576">
+  <properties/>
+  <testcase name="should detect bacteria from typical prokaryotic genome size" classname="gspa.config.KingdomDetectorSpec" time="1.77"/>
+  <testcase name="should detect eukaryote from large genome" classname="gspa.config.KingdomDetectorSpec" time="5.788"/>
+  <testcase name="should detect virus from very small genome" classname="gspa.config.KingdomDetectorSpec" time="0.006"/>
+  <testcase name="should compute GC content" classname="gspa.config.KingdomDetectorSpec" time="0.006"/>
+  <testcase name="should return UNKNOWN for empty genome" classname="gspa.config.KingdomDetectorSpec" time="0.004"/>
+  <system-out><![CDATA[01:37:25.489 [Test worker] INFO gspa.config.KingdomDetector -- Auto-detecting kingdom: size=4000000bp, GC=50.0%, contigs=1, gene_density=0 genes/Mbp
+01:37:25.490 [Test worker] INFO gspa.config.KingdomDetector -- Detected: BACTERIA (default for prokaryotic-sized genome)
+01:37:31.277 [Test worker] INFO gspa.config.KingdomDetector -- Auto-detecting kingdom: size=20000000bp, GC=50.0%, contigs=20, gene_density=0 genes/Mbp
+01:37:31.278 [Test worker] INFO gspa.config.KingdomDetector -- Detected: EUKARYA (genome > 15Mbp)
+01:37:31.285 [Test worker] INFO gspa.config.KingdomDetector -- Auto-detecting kingdom: size=20000bp, GC=50.0%, contigs=1, gene_density=0 genes/Mbp
+01:37:31.285 [Test worker] INFO gspa.config.KingdomDetector -- Detected: VIRUS (genome < 50kb)
+01:37:31.293 [Test worker] WARN gspa.config.KingdomDetector -- Cannot auto-detect kingdom: no sequence data
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

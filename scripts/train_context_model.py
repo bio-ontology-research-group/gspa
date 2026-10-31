@@ -36,14 +36,16 @@ import csv
 import hashlib
 import json
 import math
+import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
 from scipy import optimize
 from scipy.stats import rankdata
 
-TRAINER_VERSION = "1"
+TRAINER_VERSION = "4"
 ARTIFACT_SCHEMA = "gspa.learned-context-model/1"
 LOCUS_GROUP_ID = "gspa.locus-group-features/1"
 SPLITS = ("train", "calibration", "test")
@@ -107,8 +109,14 @@ def read_table(path: Path, contract: dict) -> list[dict]:
         with open(path, newline="") as fh:
             for rec in csv.DictReader(fh, delimiter="\t"):
                 row = {k: rec.get(k) for k in ("example_id", "genome_id", "group", "split", "label",
-                                              "locus_group_id", "role")}
+                                              "locus_group_id", "role", "function_type", "function_id", "candidate_key",
+                                              "label_basis", "label_references", "locus_members", "locus_truth_source", "sequence_sources", "sequence_contracts", "quality_evidence")}
+                for key in ('label_references', 'locus_members', 'sequence_sources', 'sequence_contracts', 'quality_evidence'):
+                    if row.get(key):
+                        row[key] = json.loads(row[key])
                 row["features"] = {n: rec.get(n) for n in names}
+                if 'cohort_context_mode' in rec:
+                    row['cohort_context_mode'] = rec['cohort_context_mode']
                 raw.append(row)
     else:
         raise ProvenanceError(f"unsupported table type {path.suffix}; use .jsonl or .tsv")
@@ -116,6 +124,8 @@ def read_table(path: Path, contract: dict) -> list[dict]:
     seen = set()
     for i, r in enumerate(raw, 1):
         where = f"{path.name} row {i}"
+        if r.get('quality_evidence'):
+            raise ProvenanceError(f"{where}: gene-model quality observations are not supported by the numeric feature contract; do not discard them to train or score this row")
         for req in ("example_id", "genome_id", "group", "split", "label", "features"):
             if r.get(req) in (None, ""):
                 raise ProvenanceError(f"{where}: missing required field '{req}' (provenance is mandatory)")
@@ -125,8 +135,8 @@ def read_table(path: Path, contract: dict) -> list[dict]:
             label = int(r["label"])
         except (TypeError, ValueError):
             raise ProvenanceError(f"{where}: label must be 0/1, got {r['label']!r}")
-        if label not in (0, 1):
-            raise ProvenanceError(f"{where}: label must be 0/1, got {label}")
+        if isinstance(r['label'], bool) or r['label'] not in (0, 1, '0', '1'):
+            raise ProvenanceError(f"{where}: label must be 0/1, got {r['label']!r}")
         eid = str(r["example_id"])
         if eid in seen:
             raise ProvenanceError(f"{where}: duplicate example_id {eid!r}")
@@ -146,8 +156,227 @@ def read_table(path: Path, contract: dict) -> list[dict]:
         lg = r.get("locus_group_id")
         rows.append(dict(example_id=eid, genome_id=str(r["genome_id"]), group=str(r["group"]), split=r["split"],
                          label=label, x=x, locus_group_id=(str(lg) if lg not in (None, "") else None),
-                         role=r.get("role")))
+                         role=r.get("role"), **{k: r[k] for k in ('function_type', 'function_id', 'candidate_key',
+                         'label_basis', 'label_references', 'locus_members', 'locus_truth_source', 'sequence_sources',
+                         'cohort_context_mode', 'sequence_contracts') if k in r}))
+        validate_context_mode(r.get('cohort_context_mode', 'UNIVERSAL'))
+        if 'sequence_sources' in r and r['sequence_sources'] is not None:
+            validate_sequence_sources(r['sequence_sources'])
+        if r.get('sequence_contracts') is not None:
+            validate_sequence_contracts(r['sequence_contracts'], r.get('sequence_sources'))
+    validate_locus_truth(rows, required=False)
     return rows
+
+
+def validate_sequence_sources(sources):
+    if (not isinstance(sources, list) or any(not isinstance(s, str) or not s or s != s.strip().lower() for s in sources)
+            or sources != sorted(set(sources))):
+        raise ProvenanceError('sequence_sources must be sorted unique normalized source names')
+
+
+def support_features(names):
+    return [n for n in names if n.startswith(('fn.type_', 'fn.go_aspect_', 'role.'))
+            or n.endswith('.reported') or n.endswith('.available') or n.endswith('_available')]
+
+
+def score_support_features(names):
+    return [n for n in names if n.startswith('seq.') and n not in support_features(names)]
+
+
+def validate_sequence_contracts(entries, sources):
+    if entries is None:
+        return False
+    keys = {'schema', 'tool', 'tool_version', 'tool_sha256', 'reference_sha256',
+            'parameters_sha256', 'adapter_sha256', 'score_model'}
+    if not isinstance(entries, list) or sources is None:
+        raise ProvenanceError('invalid sequence_contracts identity')
+    validate_sequence_sources(sources)
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != {'source', 'contract'} or entry['source'] not in sources:
+            raise ProvenanceError('invalid sequence_contracts source')
+        c = entry['contract']
+        if c is not None and (not isinstance(c, dict) or set(c) != keys or c['schema'] != 'gspa.predictor-contract/1'
+                or any(not isinstance(v, str) or not v or v != v.strip() for v in c.values())
+                or any(not re.fullmatch('[0-9a-f]{64}', c[k]) for k in keys if k.endswith('_sha256'))):
+            raise ProvenanceError('invalid predictor contract')
+    canonical = [json.dumps(e, sort_keys=True, separators=(',', ':'), ensure_ascii=True) for e in entries]
+    if canonical != sorted(set(canonical)) or sorted({e['source'] for e in entries}) != sources:
+        raise ProvenanceError('sequence_contracts must be sorted unique and cover the sources')
+    return all(e['contract'] is not None for e in entries)
+
+
+def validate_context_mode(mode):
+    if mode not in ('UNIVERSAL', 'PATHWAY', 'ORGANISM'):
+        raise ProvenanceError('cohort_context_mode must be UNIVERSAL, PATHWAY or ORGANISM')
+    return mode
+
+
+def build_input_support(train_rows, calib_rows, names):
+    """Necessary input-coverage checks, not proof of calibration/generalization.
+
+    Profiles preserve actual source identities even when numerical columns pool
+    them as 'other'. Only train/calibration evidence determines coverage.
+    """
+    if any(r.get('sequence_sources') is None for r in train_rows + calib_rows):
+        return {'schema': 'gspa.model-input-support/3', 'available': False,
+                'reason': 'training rows lack exact sequence_sources; re-export production features'}
+    if any(not validate_sequence_contracts(r.get('sequence_contracts'), r['sequence_sources']) for r in train_rows + calib_rows):
+        return {'schema': 'gspa.model-input-support/3', 'available': False,
+                'reason': 'training rows lack complete predictor identities; re-export verified inputs'}
+    flags = support_features(names)
+    if not flags:
+        return {'schema': 'gspa.model-input-support/3', 'available': False, 'reason': 'contract has no source/function/role indicators'}
+    positions = [names.index(n) for n in flags]
+    score_names = score_support_features(names)
+    score_positions = [names.index(n) for n in score_names]
+    profiles = {}
+    for split, rows in (('train', train_rows), ('calibration', calib_rows)):
+        for r in rows:
+            sources = r['sequence_sources']
+            validate_sequence_sources(sources)
+            values = [float(r['x'][i]) for i in positions]
+            if any(v not in (0, 1) for v in values):
+                raise ProvenanceError('input-support indicators must be binary')
+            values = [int(v) for v in values]
+            mode = validate_context_mode(r.get('cohort_context_mode', 'UNIVERSAL'))
+            contracts = r['sequence_contracts']
+            identity = [sources, values, mode, contracts]
+            key = json.dumps(identity, separators=(',', ':'), sort_keys=True)
+            scores = [float(r['x'][i]) for i in score_positions]
+            if any(not math.isfinite(v) for v in scores):
+                raise ProvenanceError('sequence score ranges require finite features')
+            p = profiles.setdefault(key, {'sources': sources, 'flags': values,
+                'train_labels': [0, 0], 'calibration_labels': [0, 0], 'cohort_context_mode': mode,
+                'sequence_contracts': contracts, 'lower': scores[:], 'upper': scores[:]})
+            p['lower'] = [min(a, b) for a, b in zip(p['lower'], scores)]
+            p['upper'] = [max(a, b) for a, b in zip(p['upper'], scores)]
+            p[split + '_labels'][r['label']] += 1
+    return json.loads(json.dumps({'schema': 'gspa.model-input-support/3', 'available': True,
+            'features': flags, 'score_features': score_names, 'profiles': [profiles[k] for k in sorted(profiles)],
+            'interpretation': 'Exact predictor/source/function/role/context identities with both classes in train and calibration; sequence features within their observed profile ranges. Necessary coverage only; no joint-distribution, taxonomic-transfer or calibration guarantee.'}))
+
+
+def validate_contract_support(support, names):
+    if support.get('features') != support_features(names) or support.get('score_features') != score_support_features(names):
+        raise ProvenanceError('input-support feature lists do not match the contract')
+    if not isinstance(support.get('profiles'), list):
+        raise ProvenanceError('invalid input-support profiles')
+    seen = set()
+    for p in support['profiles']:
+        if not isinstance(p, dict):
+            raise ProvenanceError('invalid input-support profile')
+        sources = p.get('sources')
+        validate_sequence_sources(sources)
+        if not validate_sequence_contracts(p.get('sequence_contracts'), sources):
+            raise ProvenanceError('incomplete predictor profile')
+        validate_context_mode(p.get('cohort_context_mode'))
+        flags = p.get('flags')
+        if not isinstance(flags, list) or len(flags) != len(support['features']) or any(type(v) not in (int, float) or v not in (0, 1) for v in flags):
+            raise ProvenanceError('invalid profile flags')
+        for k in ('train_labels', 'calibration_labels'):
+            counts = p.get(k)
+            if not isinstance(counts, list) or len(counts) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) or v < 0 or v != int(v) for v in counts):
+                raise ProvenanceError('invalid profile class counts')
+        for k in ('lower', 'upper'):
+            bounds = p.get(k)
+            if not isinstance(bounds, list) or len(bounds) != len(support['score_features']) or any(type(v) not in (int, float) or not math.isfinite(v) for v in bounds):
+                raise ProvenanceError('invalid sequence score ranges')
+        if any(lo > hi for lo, hi in zip(p['lower'], p['upper'])):
+            raise ProvenanceError('invalid sequence score ranges')
+        identity = json.dumps([sources, [int(v) for v in flags], p['cohort_context_mode'], p['sequence_contracts']], sort_keys=True)
+        if identity in seen:
+            raise ProvenanceError('duplicate input-support profile')
+        seen.add(identity)
+
+
+def unsupported_input_reason(art, x, sequence_sources=None, quality_evidence=None, cohort_context_mode='UNIVERSAL', sequence_contracts=None):
+    validate_context_mode(cohort_context_mode)
+    if quality_evidence:
+        return 'gene_model_quality_not_supported_by_model'
+    if art.get('intended_use') == 'mechanism_test':
+        return None
+    support = art.get('input_support')
+    if support is not None and (not isinstance(support, dict) or type(support.get('available')) is not bool or
+            support.get('schema') not in ('gspa.model-input-support/1', 'gspa.model-input-support/2', 'gspa.model-input-support/3')):
+        raise ProvenanceError('invalid input-support schema/availability')
+    if support is None or not support['available']:
+        return 'model_input_support_unavailable'
+    if support.get('schema') not in ('gspa.model-input-support/1', 'gspa.model-input-support/2', 'gspa.model-input-support/3'):
+        raise ProvenanceError('invalid input-support schema')
+    names = art['contract']['features']
+    if len(x) != len(names) or not np.all(np.isfinite(x)):
+        raise ProvenanceError('invalid feature vector')
+    if support['schema'] == 'gspa.model-input-support/3':
+        validate_contract_support(support, names)
+    mode_aware = support['schema'] != 'gspa.model-input-support/1'
+    modes = {validate_context_mode(p.get('cohort_context_mode')) for p in support['profiles']} if mode_aware else {'UNIVERSAL'}
+    if cohort_context_mode not in modes:
+        return 'unseen_reaction_context_mode'
+    if sequence_sources is None:
+        return 'candidate_source_identity_unavailable'
+    validate_sequence_sources(sequence_sources)
+    if '(unnamed)' in sequence_sources:
+        return 'unnamed_sequence_source'
+    if support['schema'] != 'gspa.model-input-support/3':
+        return 'model_predictor_contract_support_unavailable'
+    if not validate_sequence_contracts(sequence_contracts, sequence_sources):
+        return 'candidate_predictor_contract_unavailable'
+    values = [float(x[names.index(n)]) for n in support['features']]
+    if any(v not in (0, 1) for v in values):
+        raise ProvenanceError('input-support indicators must be binary')
+    known_base = False
+    for p in support['profiles']:
+        if mode_aware and p['cohort_context_mode'] != cohort_context_mode:
+            continue
+        if p['sources'] == sequence_sources and p['flags'] == values:
+            known_base = True
+        if p['sources'] == sequence_sources and p['flags'] == values and p['sequence_contracts'] == sequence_contracts:
+            if not all(v > 0 for v in p['train_labels'] + p['calibration_labels']):
+                return 'profile_lacks_both_classes_in_train_and_calibration'
+            score_values = [float(x[names.index(n)]) for n in support['score_features']]
+            if any(v < lo or v > hi for v, lo, hi in zip(score_values, p['lower'], p['upper'])):
+                return 'sequence_score_outside_training_calibration_range'
+            return None
+    return 'unseen_predictor_contract' if known_base else 'unseen_source_function_role_or_availability_profile'
+
+
+def validate_locus_truth(rows, required=True):
+    """Preserve complete declared membership through filtering/serialization.
+
+    Production null supervision needs explicit negative assays, never unconfirmed
+    closed-world rows. The source statement is auditable provenance, not proof of
+    biological completeness by itself; the builder verifies the exported universe.
+    """
+    groups = {}
+    for r in rows:
+        if r.get('locus_group_id') is not None:
+            groups.setdefault((r['genome_id'], r['locus_group_id']), []).append(r)
+    for key, members in groups.items():
+        actual = {r['example_id'] for r in members}
+        if len(actual) != len(members):
+            raise ProvenanceError(f'locus {key}: duplicate example identity')
+        if len({(r['split'], r['group']) for r in members}) != 1:
+            raise ProvenanceError(f'locus {key}: split or ancestry group differs among members')
+        present = any(r.get('locus_members') is not None or r.get('locus_truth_source') is not None for r in members)
+        if not required and not present:
+            continue  # legacy mechanism fixtures only; production train() requires the certificate
+        for r in members:
+            expected = r.get('locus_members')
+            if (not isinstance(expected, list) or not expected or not all(isinstance(x, str) for x in expected)
+                    or len(expected) != len(set(expected)) or set(expected) != actual):
+                raise ProvenanceError(f'locus {key}: missing or incomplete locus_members certificate')
+            if not isinstance(r.get('locus_truth_source'), str) or not r['locus_truth_source'].strip():
+                raise ProvenanceError(f'locus {key}: missing locus_truth_source')
+        if len({r['locus_truth_source'] for r in members}) != 1:
+            raise ProvenanceError(f'locus {key}: inconsistent truth source')
+        if required:
+            identity = {(r.get('function_type'), r.get('function_id'), r.get('role')) for r in members}
+            if len(identity) != 1 or any(not v for v in next(iter(identity))):
+                raise ProvenanceError(f'locus {key}: members need the same function/role identity')
+            for r in members:
+                expected_basis = 'positive_truth' if r['label'] else 'explicit_negative_truth'
+                if r.get('label_basis') != expected_basis or (not r['label'] and not r.get('label_references')):
+                    raise ProvenanceError(f'locus {key}: needs explicit positive/negative truth, not unconfirmed labels')
 
 
 def check_disjoint(rows: list[dict], keys: list[str]) -> None:
@@ -195,6 +424,22 @@ def training_data_digest(train_rows: list[dict], calib_rows: list[dict]) -> str:
         md.update(json.dumps([r["example_id"], r["genome_id"], r["group"], r["split"], r["label"],
                               r["locus_group_id"], [float(v) for v in r["x"]]]).encode("utf-8"))
         md.update(b"\n")
+        truth = {k: r[k] for k in ('locus_members', 'locus_truth_source', 'label_basis', 'label_references',
+                                  'function_type', 'function_id', 'role') if r.get(k) is not None}
+        if any(r.get(k) is not None for k in ('locus_members', 'locus_truth_source', 'label_basis', 'label_references')):
+            md.update(json.dumps(truth, sort_keys=True).encode('utf-8'))
+            md.update(b'\n')
+        if r.get('sequence_sources') is not None:
+            md.update(json.dumps(r['sequence_sources']).encode('utf-8'))
+            md.update(b'\n')
+        if r.get('sequence_contracts') is not None:
+            validate_sequence_contracts(r['sequence_contracts'], r.get('sequence_sources'))
+            md.update(json.dumps(r['sequence_contracts'], sort_keys=True).encode('utf-8'))
+            md.update(b'\n')
+        mode = validate_context_mode(r.get('cohort_context_mode', 'UNIVERSAL'))
+        if mode != 'UNIVERSAL':  # Preserve historical universal-only training identities.
+            md.update(json.dumps({'cohort_context_mode': mode}, sort_keys=True).encode('utf-8'))
+            md.update(b'\n')
     return md.hexdigest()
 
 
@@ -465,12 +710,12 @@ def _group_features(margins, feats_rows, idx):
 
 
 def build_locus_groups(rows, margins, names):
-    """Group rows by locus_group_id -> (margins, features, target) with target 0 = null, i+1 = candidate i."""
+    """Group within a genome; identical local names in other genomes are independent."""
     idx = {n: i for i, n in enumerate(names)}
     by: dict[str, list[int]] = {}
     for i, r in enumerate(rows):
         if r["locus_group_id"] is not None:
-            by.setdefault(r["locus_group_id"], []).append(i)
+            by.setdefault((r['genome_id'], r["locus_group_id"]), []).append(i)
     out, multi = [], 0
     for gid, members in by.items():
         pos = [j for j, i in enumerate(members) if rows[i]["label"] == 1]
@@ -532,6 +777,9 @@ def train(train_rows, calib_rows, contract, kind, *, weighting="group", folds=4,
 
     Deliberately has no access to test rows. Returns the artifact dict (not yet serialised).
     """
+    if any(r.get('quality_evidence') for r in train_rows + calib_rows):
+        raise ProvenanceError('gene-model quality observations require a supported feature contract before training')
+    validate_locus_truth(train_rows + calib_rows, required=not synthetic)
     names = contract["names"]
     data_sha = training_data_digest(train_rows, calib_rows)
     Xtr, ytr = stack(train_rows)
@@ -596,6 +844,7 @@ def train(train_rows, calib_rows, contract, kind, *, weighting="group", folds=4,
                         "logloss_after": weighted_logloss(yca, p_cal, wca)},
         "display_threshold": threshold,
         "locus_model": locus,
+        "input_support": build_input_support(train_rows, calib_rows, names),
         "training": {
             "trainer_version": TRAINER_VERSION,
             "frozen_before_test": True,
@@ -608,6 +857,17 @@ def train(train_rows, calib_rows, contract, kind, *, weighting="group", folds=4,
             "hyperparameters": params,
             "n_train": int(len(ytr)), "n_calibration": int(len(yca)),
             "positive_rate_train": float(ytr.mean()),
+            "truth": {
+                "label_basis_counts": {s: dict(sorted(Counter(r.get('label_basis', 'unspecified') for r in rs).items()))
+                                       for s, rs in (('train', train_rows), ('calibration', calib_rows))},
+                "probability_target": ('synthetic_mechanism' if synthetic else
+                    'reference_annotation_support_under_declared_closed_world_policy'
+                    if any(r.get('label_basis') == 'closed_world_unconfirmed' for r in train_rows + calib_rows)
+                    else 'supplied_explicit_binary_truth'
+                    if all(r.get('label_basis') in ('positive_truth', 'explicit_negative_truth') for r in train_rows + calib_rows)
+                    else 'unspecified_binary_label_target'),
+                "locus_supervision": 'complete per-genome function/role groups with explicit truth certificates' if not synthetic else 'synthetic mechanism groups',
+            },
         },
     }
     return artifact
@@ -640,13 +900,23 @@ def predict_margin(art: dict, x: np.ndarray) -> float:
     return float(z)
 
 
-def predict_proba(art: dict, x: np.ndarray) -> float:
+def predict_proba(art: dict, x: np.ndarray, sequence_sources=None, quality_evidence=None, cohort_context_mode='UNIVERSAL', sequence_contracts=None) -> float:
+    reason = unsupported_input_reason(art, x, sequence_sources, quality_evidence, cohort_context_mode, sequence_contracts)
+    if reason:
+        raise ProvenanceError('unsupported learned probability: ' + reason)
     c = art["calibration"]
     z = c["a"] * predict_margin(art, x) + c["b"]
     return float(_sigmoid(np.array(z)))
 
 
-def assign_locus(art: dict, candidate_vectors: list[np.ndarray]):
+def assign_locus(art: dict, candidate_vectors: list[np.ndarray], sequence_sources=None, quality_evidence=None, cohort_context_modes=None, sequence_contracts=None):
+    for i, x in enumerate(candidate_vectors):
+        reason = unsupported_input_reason(art, x, sequence_sources[i] if sequence_sources is not None else None,
+                                          quality_evidence[i] if quality_evidence is not None else None,
+                                          cohort_context_modes[i] if cohort_context_modes is not None else 'UNIVERSAL',
+                                          sequence_contracts[i] if sequence_contracts is not None else None)
+        if reason:
+            raise ProvenanceError('unsupported locus member: ' + reason)
     lm = art["locus_model"]
     if not lm.get("trained"):
         raise ValueError("no trained null-outcome layer: " + lm.get("reason", ""))
@@ -665,6 +935,23 @@ def evaluate_frozen(artifact_path: Path, contract: dict, test_rows, model_sha256
     art = load_artifact(artifact_path)
     if hashlib.sha256(Path(artifact_path).read_bytes()).hexdigest() != model_sha256:
         raise ProvenanceError("artifact changed between freezing and evaluation")
+    validate_locus_truth(test_rows, required=not art['training'].get('synthetic', False))
+    original_n = len(test_rows)
+    reasons = [unsupported_input_reason(art, r['x'], r.get('sequence_sources'), r.get('quality_evidence'),
+                                       r.get('cohort_context_mode', 'UNIVERSAL'), r.get('sequence_contracts')) for r in test_rows]
+    unsupported_groups = {(r['genome_id'], r['locus_group_id']) for r, reason in zip(test_rows, reasons)
+                          if reason and r.get('locus_group_id') is not None}
+    coverage = {'total_rows': original_n, 'supported_rows': reasons.count(None),
+                'unsupported_reasons': dict(Counter(r for r in reasons if r)),
+                'locus_groups_with_unsupported_members': len(unsupported_groups)}
+    all_positive_rows = sum(r['label'] for r in test_rows)
+    test_rows = [dict(r, locus_group_id=None) if (r['genome_id'], r['locus_group_id']) in unsupported_groups else r
+                 for r, reason in zip(test_rows, reasons) if reason is None]
+    if not test_rows:
+        return {'model_sha256': model_sha256, 'source_file_sha256': source_file_sha256,
+                'evaluated_on': 'test after freezing', 'input_coverage': coverage, 'n': 0,
+                'status': 'no_supported_test_rows', 'auroc': None, 'logloss': None, 'brier': None,
+                'ece_10bin': None, 'locus': {'trained': False, 'reason': 'no supported test rows'}}
     X, y = stack(test_rows)
     margins = np.array([predict_margin(art, x) for x in X])
     c = art["calibration"]
@@ -680,14 +967,18 @@ def evaluate_frozen(artifact_path: Path, contract: dict, test_rows, model_sha256
                     for b in range(10) if np.any(bins == b)))
     report = {
         "model_sha256": model_sha256,
+        "input_coverage": coverage,
+        "metric_scope": 'supported rows only; input_coverage reports abstentions over the full test set',
         "source_file_sha256": source_file_sha256,
         "evaluated_on": "test (labels used only now, after the artifact was frozen)",
+        "probability_target": art['training'].get('truth', {}).get('probability_target', 'unspecified'),
         "n": int(len(y)), "positive_rate": float(y.mean()),
         "logloss": weighted_logloss(y, p), "brier": float(np.mean((p - y) ** 2)),
         "auroc": auroc, "ece_10bin": ece,
         "at_display_threshold": {"threshold": thr, "n_predicted_positive": int(pred.sum()),
                                  "precision": tp / pred.sum() if pred.sum() else None,
-                                 "recall": tp / npos if npos else None},
+                                 "recall": tp / npos if npos else None,
+                                 "recall_all_test_positives": tp / all_positive_rows if all_positive_rows else None},
     }
     lm = art["locus_model"]
     if lm.get("trained"):
@@ -793,6 +1084,9 @@ def write_rows_jsonl(rows, names, path: Path):
                 "example_id": r["example_id"], "genome_id": r["genome_id"], "group": r["group"],
                 "split": r["split"], "label": r["label"], "locus_group_id": r["locus_group_id"],
                 "role": r["role"], "features": {n: float(v) for n, v in zip(names, r["x"])},
+                **{k: r[k] for k in ('locus_members', 'locus_truth_source', 'label_basis', 'label_references',
+                                     'function_type', 'function_id', 'candidate_key', 'sequence_sources', 'quality_evidence',
+                                     'cohort_context_mode', 'sequence_contracts') if k in r},
             }, sort_keys=True) + "\n")
 
 

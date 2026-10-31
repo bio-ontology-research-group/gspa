@@ -1,0 +1,96 @@
+             JOBID                             NAME        STATE         TIME   NODELIST(REASON)
+             10108             gspa-index-dpz-check      PENDING         0:00       (Dependency)
+             10109           gspa-full-export-audit      RUNNING        45:35            node003
+             10080                   gspa-index-dpz      RUNNING      1:02:40            node003
+JobId=10080 JobName=gspa-index-dpz
+   UserId=hohndor(2122) GroupId=hohndor(2122) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=normal
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=01:02:40 TimeLimit=04:30:00 TimeMin=N/A
+   SubmitTime=2026-10-26T22:04:51 EligibleTime=2026-10-27T00:08:08
+   AccrueTime=Unknown
+   StartTime=2026-10-27T00:08:08 EndTime=2026-10-27T04:38:08 Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-27T00:08:08 Scheduler=Main
+   Partition=debug AllocNode:Sid=unimatrix01:3801971
+   ReqNodeList=node003 ExcNodeList=(null)
+   NodeList=node003
+   BatchHost=node003
+   NumNodes=1 NumCPUs=4 NumTasks=1 CPUs/Task=4 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=4,mem=80G,node=1,billing=4
+   AllocTRES=cpu=4,mem=80G,node=1,billing=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:1 CoreSpec=*
+   MinCPUsNode=4 MinMemoryNode=80G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
+   Command=/data/hohndor/gspa-v3/price-index-capacity-v1/run-dpz.sbatch
+   WorkDir=/data/hohndor/gspa-v3/price-index-capacity-v1
+   StdErr=/data/hohndor/gspa-v3/price-index-capacity-v1/dpz-10080.log
+   StdIn=/dev/null
+   StdOut=/data/hohndor/gspa-v3/price-index-capacity-v1/dpz-10080.log
+   Power=
+   TresPerTask=cpu:4
+   
+
+JobId=10108 JobName=gspa-index-dpz-check
+   UserId=hohndor(2122) GroupId=hohndor(2122) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=normal
+   JobState=PENDING Reason=Dependency Dependency=afterany:10080(unfulfilled)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:00 TimeLimit=01:00:00 TimeMin=N/A
+   SubmitTime=2026-10-27T00:11:19 EligibleTime=Unknown
+   AccrueTime=Unknown
+   StartTime=Unknown EndTime=Unknown Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-27T00:11:19 Scheduler=Main
+   Partition=debug AllocNode:Sid=unimatrix01:3821790
+   ReqNodeList=node003 ExcNodeList=(null)
+   NodeList=
+   NumNodes=1 NumCPUs=1 NumTasks=1 CPUs/Task=1 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=1,mem=1G,node=1,billing=1
+   AllocTRES=(null)
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:1 CoreSpec=*
+   MinCPUsNode=1 MinMemoryNode=1G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
+   Command=/data/hohndor/gspa-v3/price-index-comparison-dpz-v1/recheck-dpz.sbatch
+   WorkDir=/home/hohndor
+   StdErr=/data/hohndor/gspa-v3/price-index-comparison-dpz-v1/recheck-10108.log
+   StdIn=/dev/null
+   StdOut=/data/hohndor/gspa-v3/price-index-comparison-dpz-v1/recheck-10108.log
+   Power=
+   TresPerTask=cpu:1
+   
+
+JobId=10109 JobName=gspa-full-export-audit
+   UserId=hohndor(2122) GroupId=hohndor(2122) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=normal
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:45:35 TimeLimit=06:00:00 TimeMin=N/A
+   SubmitTime=2026-10-27T00:25:13 EligibleTime=2026-10-27T00:25:13
+   AccrueTime=2026-10-27T00:25:13
+   StartTime=2026-10-27T00:25:13 EndTime=2026-10-27T06:25:13 Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-27T00:25:13 Scheduler=Backfill
+   Partition=debug AllocNode:Sid=unimatrix01:3823716
+   ReqNodeList=node003 ExcNodeList=(null)
+   NodeList=node003
+   BatchHost=node003
+   NumNodes=1 NumCPUs=2 NumTasks=1 CPUs/Task=1 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=1,mem=1G,node=1,billing=1
+   AllocTRES=cpu=2,mem=1G,node=1,billing=2
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:1 CoreSpec=*
+   MinCPUsNode=1 MinMemoryNode=1G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
+   Command=/data/hohndor/gspa-v3/price-full-collection-audit-v1/verify.sbatch
+   WorkDir=/home/hohndor
+   StdErr=/data/hohndor/gspa-v3/price-full-collection-audit-v1/audit-10109.log
+   StdIn=/dev/null
+   StdOut=/data/hohndor/gspa-v3/price-full-collection-audit-v1/audit-10109.log
+   Power=
+   TresPerTask=cpu:1
+   
+
+{"files_verified": 460, "files_total": 851, "path": "/data/hohndor/gspa-v3/price-full-matrix-v2/parts/graphec/GCF_001307155.1/join_map.tsv"}
+{"files_verified": 461, "files_total": 851, "path": "/data/hohndor/gspa-v3/price-full-matrix-v2/parts/graphec/GCF_001307155.1/matrix-verification.json"}
+{"files_verified": 462, "files_total": 851, "path": "/data/hohndor/gspa-v3/price-full-matrix-v2/parts/graphec/GCF_001307155.1/part.json"}

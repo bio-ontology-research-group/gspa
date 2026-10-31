@@ -28,7 +28,7 @@ include { HMMSEARCH; INTERPROSCAN; EGGNOG_MAPPER; DBCAN } from './modules/domain
 include { BARRNAP; MINCED; AMRFINDER; ANTISMASH;
           SIGNALP; CHECKM2; GTDBTK }                    from './modules/specialized'
 include { MERGE_ANNOTATIONS }                            from './modules/quality'
-include { BUILD_CLAIMS; SIDECAR_CLAIMS; MERGE_CLAIMS;
+include { BUILD_CLAIMS; SIDECAR_CLAIMS; DBCAN_CLAIMS; CLEAN_CLAIMS; ANTISMASH_CLAIMS; MERGE_CLAIMS;
           OPERONS; INTEGRATE; VISUALIZE }               from './modules/integrate'
 include { ESM2_DEEPGOPLUS; ESM2_CENTROID;
           CLEAN; PROTEINFER }                            from './modules/neural'
@@ -40,10 +40,14 @@ include { PSORTB }                                       from './modules/loc'
 include { DEEPFRI; DEEPEC; DEEPARG; MDF }                from './modules/term_extras'
 include { MUSITEDEEP; SCANNET }                          from './modules/sites'
 include { STRUCTURE_PROVIDER }                           from './modules/structure'
+include { INTEGRATE_COHORT; cohortBatch; cohortResources } from './modules/cohort'
 include { GENOMAD; CHECKV; PHISPY; VIRSORTER2; VIBRANT; FLATTEN_PROPHAGE_CDS } from './modules/viral'
 
 if (!params.input) {
     error "Please provide --input (FASTA file or samplesheet CSV)"
+}
+if (params.cohort && !params.run_integrate) {
+    error '--cohort requires --run_integrate'
 }
 
 def create_input() {
@@ -108,8 +112,11 @@ workflow {
         EGGNOG_MAPPER(PYRODIGAL.out.proteins, file(params.eggnog_db))
         ch_eggnog = EGGNOG_MAPPER.out.results
     }
-    if (params.run_dbcan && params.dbcan_db) {
+    ch_dbcan = Channel.empty()
+    if (params.run_dbcan) {
+        if (!params.dbcan_db) error 'run_dbcan=true requires --dbcan_db'
         DBCAN(PYRODIGAL.out.proteins, file(params.dbcan_db))
+        ch_dbcan = DBCAN.out.results
     }
 
     // ===== Step 5: Genome-level annotation =====
@@ -126,7 +133,8 @@ workflow {
     if (params.run_amrfinder && params.amrfinder_db) {
         AMRFINDER(PYRODIGAL.out.proteins, file(params.amrfinder_db))
     }
-    if (params.run_antismash && params.antismash_db) {
+    if (params.run_antismash) {
+        if (!params.antismash_db) error "run_antismash=true requires --antismash_db"
         ANTISMASH(PYRODIGAL.out.genome, file(params.antismash_db))
     }
     if (params.run_signalp && params.signalp_path) {
@@ -159,9 +167,19 @@ workflow {
         ESM2_CENTROID(PYRODIGAL.out.proteins, file(params.esm2_centroid_db))
         ch_neural = ch_neural.mix(ESM2_CENTROID.out.results.map { id, f -> tuple(id, 'esm2-centroid', f) })
     }
-    if (params.run_clean && params.clean_model_dir) {
+    if (params.run_clean) {
+        if (!params.clean_model_dir) error 'run_clean=true requires --clean_model_dir'
+        if (!(params.clean_score_kind in ['gmm_confidence', 'distance'])) error 'run_clean=true requires --clean_score_kind gmm_confidence or distance'
+        def clean_cutoff = params.clean_min_score as double
+        if (!Double.isFinite(clean_cutoff) || clean_cutoff < 0d || clean_cutoff > 1d ||
+            (params.clean_score_kind == 'distance' && clean_cutoff != 0d)) {
+            error 'clean_min_score must be a confidence cutoff in [0,1], or zero in distance mode'
+        }
         CLEAN(PYRODIGAL.out.proteins, file(params.clean_model_dir))
-        ch_neural = ch_neural.mix(CLEAN.out.results.map { id, f -> tuple(id, 'clean', f) })
+        // Distance observations have no functional confidence for ensemble/evaluation.
+        if (params.clean_score_kind == 'gmm_confidence') {
+            ch_neural = ch_neural.mix(CLEAN.out.results.map { id, f -> tuple(id, 'clean', f) })
+        }
     }
     if (params.run_proteinfer && params.proteinfer_model_dir) {
         PROTEINFER(PYRODIGAL.out.proteins, file(params.proteinfer_model_dir))
@@ -409,9 +427,8 @@ workflow {
         ch_proteinfer_or_empty = params.run_proteinfer ?
             ch_proteinfer :
             PYRODIGAL.out.proteins.map { id, f -> tuple(id, empty_file("empty_proteinfer_${id}.tsv")) }
-        ch_clean_or_empty = params.run_clean ?
-            ch_clean :
-            PYRODIGAL.out.proteins.map { id, f -> tuple(id, empty_file("empty_clean_${id}.tsv")) }
+        // CLEAN uses the typed parser below; never drop its score semantics here.
+        ch_clean_or_empty = PYRODIGAL.out.proteins.map { id, f -> tuple(id, empty_file("empty_clean_${id}.tsv")) }
         ch_sidecar_in = ch_mdf_or_empty
             .join(ch_proteinfer_or_empty)
             .join(ch_clean_or_empty)
@@ -421,11 +438,38 @@ workflow {
             params.go_obo ? file(params.go_obo) : file('NO_GO_OBO')
         )
 
-        // Merge builtin + sidecar claims so the integrator sees every tool.
+        // Native dbCAN families use the same JVM parser as annotation.
+        ch_dbcan_claims = PYRODIGAL.out.proteins.map { id, f ->
+            tuple(id, empty_file("empty_dbcan_${id}.jsonl"))
+        }
+        if (params.run_dbcan) {
+            DBCAN_CLAIMS(ch_dbcan.join(PYRODIGAL.out.proteins), file(params.gspa_jar))
+            ch_dbcan_claims = DBCAN_CLAIMS.out.claims
+        }
+
+        ch_clean_claims = PYRODIGAL.out.proteins.map { id, f ->
+            tuple(id, empty_file("empty_clean_${id}.jsonl"))
+        }
+        if (params.run_clean) {
+            CLEAN_CLAIMS(CLEAN.out.bundle.join(PYRODIGAL.out.proteins), file(params.gspa_jar))
+            ch_clean_claims = CLEAN_CLAIMS.out.claims
+        }
+
+        ch_antismash_claims = PYRODIGAL.out.proteins.map { id, f ->
+            tuple(id, empty_file("empty_antismash_${id}.jsonl"))
+        }
+        if (params.run_antismash) {
+            ANTISMASH_CLAIMS(ANTISMASH.out.results.join(PYRODIGAL.out.genome)
+                .join(PYRODIGAL.out.gff).join(PYRODIGAL.out.proteins), file(params.gspa_jar))
+            ch_antismash_claims = ANTISMASH_CLAIMS.out.claims
+        }
+
+        // Preserve unscored BGC memberships alongside the other raw observations.
         ch_merged_claims = BUILD_CLAIMS.out.claims.join(SIDECAR_CLAIMS.out.claims)
+            .join(ch_dbcan_claims).join(ch_clean_claims).join(ch_antismash_claims)
         MERGE_CLAIMS(ch_merged_claims)
 
-        // Operons from the bundled 3-predictor ensemble.
+        // Same-strand, distance-based operon groups from the bundled script.
         OPERONS(
             PYRODIGAL.out.gff,
             file("${projectDir}/../gspa-cli/src/main/resources/visualize/predict_operons.py")
@@ -434,6 +478,34 @@ workflow {
         // Integrate with operons threaded in (so GenomicContextPrior fires).
         ch_integrate_in = MERGE_CLAIMS.out.claims
             .join(OPERONS.out.operons.map { id, ops, p2o, ops4int -> tuple(id, ops4int) })
+        if (params.cohort) {
+            ['cohort_layouts', 'cohort_metadata', 'cohort_orthogroups', 'reaction_graph', 'reaction_ec_aliases'].each {
+                if (!params[it]) error "cohort=true requires --${it}"
+            }
+            def resources = [goOwlFile: file(params.go_owl, checkIfExists: true),
+                ec2goFile: file(params.ec2go, checkIfExists: true),
+                pathwaysFile: file(params.pathways, checkIfExists: true)]
+            [cohortMetadataFile: 'cohort_metadata', cohortOrthogroupsFile: 'cohort_orthogroups',
+             reactionGraphFile: 'reaction_graph', reactionEcAliasesFile: 'reaction_ec_aliases',
+             diffusionMetsFile: 'diffusion_mets', cohortRoleEvidenceFile: 'cohort_roles',
+             cohortInteractionEdgesFile: 'cohort_interactions', cohortReactionDirectionsFile: 'cohort_directions',
+             cohortPathwaysFile: 'cohort_pathways',
+             thetaFile: 'theta_file', overlayFile: 'integration_config', learnedModelFile: 'learned_model',
+             externalContextFile: 'external_context', reasonerCacheDir: 'reasoner_cache'].each { key, option ->
+                if (params[option]) resources[key] = file(params[option], checkIfExists: true)
+            }
+            if (params.integration_modules) resources.moduleFiles = params.integration_modules.collect { file(it, checkIfExists: true) }
+            def batch = ch_integrate_in.map { id, claims, ops ->
+                def row = [genome_id: id, claims_path: claims, operons_path: ops,
+                    genome_layout_path: file("${params.cohort_layouts}/${id}.layout.tsv", checkIfExists: true)]
+                if (params.cohort_gaps) row.gaps_path = file("${params.cohort_gaps}/${id}.gaps.jsonl", checkIfExists: true)
+                row
+            }.toList().map { cohortBatch(it) }
+            def settings = [lite: true, essentialProfile: params.essential_profile ?: 'bacteria',
+                enabledPriors: params.enable_priors ?: 'essentiality,coherence,gap_filling,genomic_context',
+                cohortConfig: [holdout: params.cohort_holdout, contextMode: params.cohort_context_mode], featureExport: params.feature_export]
+            INTEGRATE_COHORT(batch, cohortResources(resources), file(params.gspa_jar, checkIfExists: true), settings)
+        } else {
         INTEGRATE(
             ch_integrate_in,
             file(params.gspa_jar),
@@ -449,6 +521,7 @@ workflow {
             params.learned_model ? file(params.learned_model) : empty_file('NO_LEARNED_MODEL'),
             params.external_context ? file(params.external_context) : empty_file('NO_EXTERNAL_CONTEXT')
         )
+        }
 
         // Optional self-contained HTML browser (always emitted when
         // run_integrate=true; small marginal cost vs the integrate step).

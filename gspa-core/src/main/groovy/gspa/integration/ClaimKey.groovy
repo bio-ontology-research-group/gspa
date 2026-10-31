@@ -30,8 +30,10 @@ class ClaimKey {
     /** Parse a legacy 3-part function key string into a ClaimKey, or null on malformed input. */
     static ClaimKey parse(String functionKey) {
         if (functionKey == null) return null
-        String[] parts = functionKey.split('\\|', 3)
-        if (parts.length != 3) return null
+        // Protein identifiers may themselves contain pipes (e.g. UniProt FASTA IDs).
+        // Use the same last-two-delimiters contract as the rest of integration.
+        String[] parts = IntegrationState.splitFunctionKey(functionKey)
+        if (parts == null) return null
         AnnotationType t
         try {
             t = AnnotationType.valueOf(parts[1])

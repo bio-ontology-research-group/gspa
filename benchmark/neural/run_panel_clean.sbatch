@@ -35,7 +35,8 @@ python $NEURAL/run_neural_predictors.py \
     --predictor clean \
     --manifest $OUT/manifest.tsv \
     --model-dir $MODEL \
-    --min-score 0.1
+    --clean-score-kind gmm_confidence \
+    --min-score 0
 
 wc -l $OUT/${TAG}.clean.tsv
 head -3 $OUT/${TAG}.clean.tsv

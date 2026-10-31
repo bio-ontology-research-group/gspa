@@ -186,7 +186,7 @@ def assert_no_forced_objective(manifest: dict) -> None:
     """Planner menus must not contain product objectives or forced-flux checks (circular as function evidence)."""
     cfg = manifest.get("config", {})
     bad_types = {e.get("type") for e in manifest["context"]["evidence"]} & FORBIDDEN_EVIDENCE_TYPES
-    if bad_types or any(e.get("product_exchange") for e in manifest["context"]["evidence"]):
+    if bad_types or any(e.get("product_exchange") or e.get("product_demand") for e in manifest["context"]["evidence"]):
         raise ValueError(f"forced-production evidence is not admissible in planner menus: {sorted(bad_types)}")
     if cfg.get("max_focus_reactions") != 0 or cfg.get("max_baseline_focus_reactions") != 0:
         raise ValueError("focus checks impose a growth floor (a forced flux) and are disabled in this benchmark")
@@ -344,7 +344,9 @@ def run_arm(model: ME.Model, view: dict, network: Network, locus: str, arm: str,
         first: list = []
         prompt_fn = make_prompt(manifest, locus)
 
-        def logged(remaining, results, left):
+        def logged(remaining, results, left, manifest=None, cfg=None):
+            # Keep this benchmark's frozen matched-control prompt. The engine
+            # supplies context/config to its standard production prompt in v2.
             msgs = prompt_fn(remaining, results, left)
             if not first:
                 first.append(msgs)

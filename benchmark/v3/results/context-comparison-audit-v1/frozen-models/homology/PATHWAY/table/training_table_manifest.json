@@ -1,0 +1,350 @@
+{
+ "dataset_status": "real",
+ "excluded_rows": {
+  "complex_subunit_without_role_truth": 916,
+  "no_truth_not_negative": 472019,
+  "obsolete_go_candidate": 6929,
+  "role_not_labelled": 916
+ },
+ "family_masking": {
+  "family_disjoint_verified": true,
+  "kept": 4262,
+  "labelled_examples_before": 4338,
+  "masked": 76,
+  "masked_by_split": {
+   "calibration": 0,
+   "test": 0,
+   "train": 76
+  },
+  "masked_positives_by_split": {
+   "calibration": 0,
+   "test": 0,
+   "train": 19
+  },
+  "test_examples_with_family_in_train_retained": 31
+ },
+ "inputs": {
+  "contract": "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1/homology/PATHWAY/features/GCA_000195915.1/feature_contract.json",
+  "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+  "example_clusters": "/home/leechuck/Public/software/gspa/benchmark/v3/results/training-cohort/example_clusters.tsv",
+  "example_clusters_sha256": "7bbe6ce1d8b6bf24298e2d64fbfc9c379c4b747504d9fab7b118c97a4db4a5b4",
+  "feature_dir": "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1/homology/PATHWAY/features",
+  "go_obo": "/home/leechuck/.cache/gspa-v3-data/training-cohort/go-basic.obo",
+  "go_obo_sha256": "b08d45b268b8c24ccb2513dbbbc7d4df9f6521c099b413f79eb31e06e0fa3bcc",
+  "go_propagation": "is_a+part_of",
+  "label_policy": "/home/leechuck/.cache/gspa-v3-data/reviewed-thrs-locus-v1/label_policy.json",
+  "label_policy_sha256": "16fa218f1dbc06fc8cb49c59634c49f509b2b06cce27d2640f71167caa30aa03",
+  "labels": "/home/leechuck/.cache/gspa-v3-data/reviewed-thrs-locus-v1/labels.tsv",
+  "labels_sha256": "2d292ad5bfa1a29d5f1ec17f070b654fe0e006ba186298d02caf73a32c1e5de3",
+  "locus_groups": "/home/leechuck/.cache/gspa-v3-data/reviewed-thrs-locus-v1/locus_groups.tsv",
+  "locus_groups_sha256": "f787964c793d52e717d2f4922c6c7dc68a83887352713972ba380b008180533d",
+  "registry": "/home/leechuck/Public/software/gspa/benchmark/v3/registry/training_cohort_registry.json",
+  "splits": "/home/leechuck/Public/software/gspa/benchmark/v3/results/training-cohort/splits.tsv",
+  "splits_sha256": "7d601436fd72ef9407e272004f026b4b5456b69eb2e058d6be35f7ba19252fdc"
+ },
+ "label_basis_note": "explicit_negative_truth rows carry polarity, assay policy and references; closed_world_unconfirmed rows are unconfirmed, not verified-false, and cannot supervise locus null outcomes",
+ "label_records_dropped": {
+  "evidence_curated_inferential_not_experimental": 51,
+  "evidence_not_allowed": 51,
+  "obsolete_go_term": 22
+ },
+ "locus_audit": {
+  "declared_groups": 1,
+  "eligible_groups": 1,
+  "groups": [
+   {
+    "declared_members": [
+     "AAK40712.1|GO|GO:0004829|UNSPECIFIED",
+     "AAK42622.1|GO|GO:0004829|UNSPECIFIED"
+    ],
+    "eligible": true,
+    "exported_members": [
+     "AAK40712.1|GO|GO:0004829|UNSPECIFIED",
+     "AAK42622.1|GO|GO:0004829|UNSPECIFIED"
+    ],
+    "genome_id": "GCA_000007005.1",
+    "locus_group_id": "PMID15240874-threonylation",
+    "reasons": [],
+    "retained_members": [
+     "AAK40712.1|GO|GO:0004829|UNSPECIFIED",
+     "AAK42622.1|GO|GO:0004829|UNSPECIFIED"
+    ]
+   }
+  ],
+  "scope": "all exported candidates of one function/role in one genome; complete explicit truth only"
+ },
+ "masked_examples_file": "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1/homology/PATHWAY/table/masked_examples.tsv",
+ "per_split": {
+  "calibration": {
+   "closed_world_negatives": 544,
+   "explicit_negatives": 0,
+   "genomes": 3,
+   "groups": 3,
+   "locus_group_rows": 0,
+   "positives": 72,
+   "role_basis": {
+    "default_role": 72
+   },
+   "rows": 616
+  },
+  "test": {
+   "closed_world_negatives": 533,
+   "explicit_negatives": 0,
+   "genomes": 4,
+   "groups": 4,
+   "locus_group_rows": 0,
+   "positives": 75,
+   "role_basis": {
+    "default_role": 75
+   },
+   "rows": 608
+  },
+  "train": {
+   "closed_world_negatives": 2643,
+   "explicit_negatives": 1,
+   "genomes": 11,
+   "groups": 9,
+   "locus_group_rows": 2,
+   "positives": 394,
+   "role_basis": {
+    "default_role": 394
+   },
+   "rows": 3038
+  }
+ },
+ "schema": "gspa.training-table-manifest/1",
+ "split_audit": {
+  "claims": {
+   "all_sources_registered": true,
+   "checked_axes": [
+    "genome_id",
+    "group",
+    "source_registry",
+    "taxonomy:genus",
+    "taxonomy:family"
+   ],
+   "genome_disjoint_splits": true,
+   "group_disjoint_splits": true,
+   "homology_disjoint_checked": false,
+   "homology_scope": "not_assessed",
+   "independent_test_claim_supportable": false,
+   "independent_test_claim_text": "NOT a supported independence claim; checked: genome_id, group, source_registry, taxonomy:genus, taxonomy:family; not checked: taxonomy:species, protein_id_overlap, homology_clusters, pretrained_model_leakage, untouched_test_use",
+   "pretrained_model_leakage": "not_assessed",
+   "protein_overlap_checked": false,
+   "species_disjoint_splits": true,
+   "test_contains_development_data": false,
+   "test_contains_examined_or_development_data": false,
+   "unchecked_axes": [
+    "taxonomy:species",
+    "protein_id_overlap",
+    "homology_clusters",
+    "pretrained_model_leakage",
+    "untouched_test_use"
+   ],
+   "untouched_test_claim": "not_assessed"
+  },
+  "context_sharing": null,
+  "counts": {
+   "calibration": {
+    "genomes": 3,
+    "groups": 3,
+    "sources": [
+     "swissprot_label_rich_v1"
+    ]
+   },
+   "test": {
+    "genomes": 4,
+    "groups": 4,
+    "sources": [
+     "swissprot_label_rich_v1"
+    ]
+   },
+   "train": {
+    "genomes": 11,
+    "groups": 9,
+    "sources": [
+     "swissprot_label_rich_v1"
+    ]
+   }
+  },
+  "disjoint_keys": [
+   "genome_id",
+   "group",
+   "genus",
+   "family"
+  ],
+  "violations": [],
+  "warnings": [
+   "no protein list declared: protein-id overlap NOT assessed",
+   "only 4 test genome(s) (< 5): genome-level uncertainty will be wide"
+  ]
+ },
+ "table": "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1/homology/PATHWAY/table/training_table.jsonl",
+ "table_sha256": "c75f05925f03242edde48fec6c39447fa48dfab80549ef1f45c98a049a13e18a",
+ "truth_recall_ceiling": {
+  "GCA_000007005.1/EC/CATALYTIC": {
+   "truth_pairs": 32,
+   "with_candidate_row": 21
+  },
+  "GCA_000007005.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 63,
+   "with_candidate_row": 0
+  },
+  "GCA_000007005.1/GO/UNSPECIFIED": {
+   "truth_pairs": 481,
+   "with_candidate_row": 36
+  },
+  "GCA_000007065.1/EC/CATALYTIC": {
+   "truth_pairs": 21,
+   "with_candidate_row": 5
+  },
+  "GCA_000007065.1/GO/UNSPECIFIED": {
+   "truth_pairs": 96,
+   "with_candidate_row": 12
+  },
+  "GCA_000008485.1/EC/CATALYTIC": {
+   "truth_pairs": 4,
+   "with_candidate_row": 2
+  },
+  "GCA_000008485.1/GO/UNSPECIFIED": {
+   "truth_pairs": 293,
+   "with_candidate_row": 9
+  },
+  "GCA_000008765.1/EC/CATALYTIC": {
+   "truth_pairs": 13,
+   "with_candidate_row": 6
+  },
+  "GCA_000008765.1/GO/UNSPECIFIED": {
+   "truth_pairs": 370,
+   "with_candidate_row": 29
+  },
+  "GCA_000009085.1/EC/CATALYTIC": {
+   "truth_pairs": 15,
+   "with_candidate_row": 6
+  },
+  "GCA_000009085.1/GO/UNSPECIFIED": {
+   "truth_pairs": 370,
+   "with_candidate_row": 16
+  },
+  "GCA_000009965.1/EC/CATALYTIC": {
+   "truth_pairs": 42,
+   "with_candidate_row": 30
+  },
+  "GCA_000009965.1/GO/UNSPECIFIED": {
+   "truth_pairs": 326,
+   "with_candidate_row": 38
+  },
+  "GCA_000009985.1/GO/UNSPECIFIED": {
+   "truth_pairs": 171,
+   "with_candidate_row": 5
+  },
+  "GCA_000011125.1/EC/CATALYTIC": {
+   "truth_pairs": 20,
+   "with_candidate_row": 9
+  },
+  "GCA_000011125.1/GO/UNSPECIFIED": {
+   "truth_pairs": 88,
+   "with_candidate_row": 14
+  },
+  "GCA_000011205.1/EC/CATALYTIC": {
+   "truth_pairs": 28,
+   "with_candidate_row": 13
+  },
+  "GCA_000011205.1/GO/UNSPECIFIED": {
+   "truth_pairs": 213,
+   "with_candidate_row": 22
+  },
+  "GCA_000011585.1/EC/CATALYTIC": {
+   "truth_pairs": 15,
+   "with_candidate_row": 4
+  },
+  "GCA_000011585.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 35,
+   "with_candidate_row": 0
+  },
+  "GCA_000011585.1/GO/UNSPECIFIED": {
+   "truth_pairs": 291,
+   "with_candidate_row": 24
+  },
+  "GCA_000012285.1/EC/CATALYTIC": {
+   "truth_pairs": 28,
+   "with_candidate_row": 13
+  },
+  "GCA_000012285.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 84,
+   "with_candidate_row": 0
+  },
+  "GCA_000012285.1/GO/UNSPECIFIED": {
+   "truth_pairs": 446,
+   "with_candidate_row": 26
+  },
+  "GCA_000012525.1/EC/CATALYTIC": {
+   "truth_pairs": 8,
+   "with_candidate_row": 6
+  },
+  "GCA_000012525.1/GO/UNSPECIFIED": {
+   "truth_pairs": 315,
+   "with_candidate_row": 33
+  },
+  "GCA_000025685.1/EC/CATALYTIC": {
+   "truth_pairs": 23,
+   "with_candidate_row": 12
+  },
+  "GCA_000025685.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 24,
+   "with_candidate_row": 0
+  },
+  "GCA_000025685.1/GO/UNSPECIFIED": {
+   "truth_pairs": 510,
+   "with_candidate_row": 35
+  },
+  "GCA_000027305.1/EC/CATALYTIC": {
+   "truth_pairs": 21,
+   "with_candidate_row": 19
+  },
+  "GCA_000027305.1/GO/UNSPECIFIED": {
+   "truth_pairs": 219,
+   "with_candidate_row": 19
+  },
+  "GCA_000046845.1/EC/CATALYTIC": {
+   "truth_pairs": 13,
+   "with_candidate_row": 11
+  },
+  "GCA_000046845.1/GO/UNSPECIFIED": {
+   "truth_pairs": 125,
+   "with_candidate_row": 17
+  },
+  "GCA_000145295.1/EC/CATALYTIC": {
+   "truth_pairs": 28,
+   "with_candidate_row": 7
+  },
+  "GCA_000145295.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 32,
+   "with_candidate_row": 0
+  },
+  "GCA_000145295.1/GO/UNSPECIFIED": {
+   "truth_pairs": 229,
+   "with_candidate_row": 5
+  },
+  "GCA_000147055.1/EC/CATALYTIC": {
+   "truth_pairs": 5,
+   "with_candidate_row": 4
+  },
+  "GCA_000147055.1/GO/UNSPECIFIED": {
+   "truth_pairs": 315,
+   "with_candidate_row": 14
+  },
+  "GCA_000195915.1/EC/CATALYTIC": {
+   "truth_pairs": 19,
+   "with_candidate_row": 9
+  },
+  "GCA_000195915.1/GO/COMPLEX_SUBUNIT": {
+   "truth_pairs": 18,
+   "with_candidate_row": 0
+  },
+  "GCA_000195915.1/GO/UNSPECIFIED": {
+   "truth_pairs": 311,
+   "with_candidate_row": 29
+  }
+ }
+}

@@ -1,0 +1,9 @@
+# Repair reviews and dispositions
+
+Two read-only Sonnet5.5 repair reviews completed (14579 and88266 closed), after original diagnostic review. No full correctness sign-off inferred from incomplete reviewer reads.
+
+Applied actionable findings: coordinate-identical cross-contig alias test; wrong-end header test; second-contig partial-output atomicity test; exact -v/-V availability argument checks for both callers; observed nativeProdigal zero fixture; longer bounded timeout test; preserve interrupt flag during cleanup with direct regression; CLI harness records/kills timed-out process groups, binds hostPython and recordsversions, and checks nativeFASTAcoordinates against independentGFFrows.
+
+Not defects introduced here: native header contig-suffix validation, existing single-line nativeinput, existing stopcharacter preservation, independently repaired nucleotidecontinuation. FullnativeProdigal observations now confirm -v exit0, one-line wholeassembly support and coverageformat; Pyrodigal3.7.1 and Prodigal2.6.3 use separate native references. Runtimefallback, arbitrary transcriptassembler support and changed publicIDordering remain out of scope. Process-grandchild fork races and detachedwrapper children after normalexit are not certified. Fatal JVM Error/OOM is not converted into successful predictor state.
+
+10513 failed predictor-test compilation (multiple variable declaration under Spock given); actual oldCLI numeric regression also failed as expected. 10514 reproduced22 original failures; repairedpredictor tests31/32pass, availabilityname check failed and fixed. Some final-tests files in10514 are stale oldCLI results because Gradle stopped before that task; only successful gates certify aftertests. 10517 complete fullgate onv3. 10519 cancelled whilePENDING beforeexecution to replace with finalv4 artifact. 10520/v4 adds interrupt-preservation and stronger tests; finalCLI job follows it.

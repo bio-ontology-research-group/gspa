@@ -31,7 +31,39 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
     String getExecutable() { 'emapper.py' }
 
     @Override
+    String getVersion() {
+        try {
+            def builder = new ProcessBuilder([executablePath ?: executable, '--version'])
+                .redirectErrorStream(true)
+            builder.environment().putAll(environment)
+            if (dataDir) builder.environment().put('EGGNOG_DATA_DIR', dataDir)
+            def process = builder.start()
+            def output = new StringBuffer()
+            Thread reader = process.consumeProcessOutputStream(output)
+            process.waitForOrKill(10000)
+            reader.join(1000)
+            if (reader.alive) return 'unknown'
+            if (process.exitValue() != 0) return 'unknown'
+            def match = output.toString() =~ /emapper-v?\d+\.\d+\.\d+[^\s\/\u001b]*/
+            return match.find() ? match.group() : 'unknown'
+        } catch (Exception ignored) {
+            return 'unknown'
+        }
+    }
+
+    private int supportedMajor() {
+        def match = version =~ /^emapper-v?([23])\./
+        if (!match.find()) throw new IllegalArgumentException('eggNOG-mapper requires a recognized version 2 or 3')
+        Integer.parseInt(match.group(1))
+    }
+
+    @Override
     List<String> buildCommand(File inputFasta, File outputDir) {
+        int major = supportedMajor()
+        if (threads < 1) throw new IllegalArgumentException('eggNOG threads must be positive')
+        if (!(searchMode in (major == 3 ? ['diamond', 'mmseqs'] : ['diamond', 'mmseqs', 'hmmer']))) {
+            throw new IllegalArgumentException("unsupported eggNOG ${major} search mode: ${searchMode}")
+        }
         def prefix = new File(outputDir, 'eggnog_results')
         def cmd = [
             executablePath ?: executable,
@@ -40,8 +72,9 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
             '--cpu', threads.toString(),
             '-m', searchMode,
             '--itype', 'proteins',
-            '--go_evidence', 'non-electronic',
         ]
+        // v3 uses curated donors and removed the v2 GO-evidence switch.
+        if (major == 2) cmd.addAll(['--go_evidence', 'non-electronic'])
         if (dataDir) {
             cmd.addAll(['--data_dir', dataDir])
         }
@@ -62,27 +95,35 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
         // 0 query, 1 seed_ortholog, 2 evalue, 3 score (bit score), 4 eggNOG_OGs,
         // 5 max_annot_lvl, 6 COG_category, 7 Description, 8 Preferred_name, 9 GOs,
         // 10 EC, 11 KEGG_ko ...
-        Map<String, Integer> col = [evalue: 2, score: 3, ogs: 4, cog: 6, gos: 9, ec: 10, ko: 11]
+        Map<String, Integer> col = [seed: 1, evalue: 2, score: 3, ogs: 4, cog: 6, gos: 9, ec: 10, ko: 11, confidence: -1]
         boolean headerSeen = false
         int dataRows = 0
         int lineNo = 0
+        String toolVersion = 'unreported'
 
         annotFile.eachLine { line ->
             lineNo++
+            if (line.startsWith('## emapper-')) {
+                toolVersion = line.substring(3).trim()
+                return
+            }
             if (line.startsWith('#query')) {
                 col = columnsFromHeader(line)
                 headerSeen = true
                 return
             }
             if (line.startsWith('#') || line.trim().isEmpty()) return
+            if (!headerSeen && toolVersion ==~ /emapper-v?3\..*/) {
+                throw new ToolOutputContractException('eggNOG v3 requires its named-column header; v2 positional fallback is invalid')
+            }
             def fields = line.split('\t', -1)
             // A data row that is too short or whose E-value is not a finite number >= 0
             // means the table is corrupt or its columns are not what we think they are.
             // Rejecting the file is the only honest outcome: no confidence is invented.
             int needed = headerSeen ? col.values().max() + 1 : 21
-            if (fields.length < needed) {
+            if (fields.length < needed || (!headerSeen && fields.length != 21)) {
                 throw new ToolOutputContractException("eggnog-mapper line ${lineNo}: ${fields.length} columns, " +
-                    "expected at least ${needed}${headerSeen ? '' : ' (no #query header found; assumed emapper 2.1 layout)'}")
+                    "expected ${headerSeen ? 'at least ' : 'exactly '}${needed}${headerSeen ? '' : ' (no #query header found; assumed emapper 2.1 layout)'}")
             }
             dataRows++
 
@@ -97,6 +138,11 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
             double evalue = parseEvalue(field(fields, col.evalue), lineNo, proteinId, headerSeen)
             double confScore = evalue == 0.0d ? 1.0d : Math.min(1.0d, -Math.log10(evalue) / 30.0d)
             if (confScore < 0.0d) confScore = 0.0d   // E-values above 1 are weak hits, not errors
+            Map provenance = [toolVersion: toolVersion, seedOrtholog: field(fields, col.seed),
+                rawStatistic: field(fields, col.evalue), rawBitScore: field(fields, col.score),
+                statisticType: 'evalue', scoreModel: 'legacy_neg_log10_evalue_over_30',
+                scoreCalibrated: false, orthologGroup: eggNogOGs]
+            if (col.confidence >= 0) provenance.annotationConfidence = field(fields, col.confidence)
 
             // GO annotations
             if (goTerms && goTerms != '-') {
@@ -106,7 +152,7 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
                         results[proteinId] << new Annotation(
                             type: AnnotationType.GO, value: goTerm,
                             source: name, score: confScore, evidence: 'IEA',
-                            metadata: [orthologGroup: eggNogOGs]
+                            metadata: new LinkedHashMap(provenance)
                         )
                     }
                 }
@@ -120,7 +166,7 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
                         results[proteinId] << new Annotation(
                             type: AnnotationType.EC, value: "EC:${ec}",
                             source: name, score: confScore,
-                            metadata: [orthologGroup: eggNogOGs]
+                            metadata: new LinkedHashMap(provenance)
                         )
                     }
                 }
@@ -134,6 +180,7 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
                         results[proteinId] << new Annotation(
                             type: AnnotationType.KEGG, value: ko,
                             source: name, score: confScore,
+                            metadata: new LinkedHashMap(provenance),
                         )
                     }
                 }
@@ -144,7 +191,7 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
                 results[proteinId] << new Annotation(
                     type: AnnotationType.COG, value: cogCats,
                     source: name, score: confScore,
-                    metadata: [orthologGroup: eggNogOGs]
+                    metadata: new LinkedHashMap(provenance)
                 )
             }
         }
@@ -161,6 +208,9 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
      */
     protected static Map<String, Integer> columnsFromHeader(String headerLine) {
         List<String> names = headerLine.substring(1).split('\t', -1).collect { it.trim() }
+        if (names.toSet().size() != names.size()) {
+            throw new ToolOutputContractException('eggNOG annotations header contains duplicate column names')
+        }
         Map<String, List<String>> wanted = [
             evalue: ['evalue', 'seed_evalue'], score: ['score', 'seed_score'],
             ogs: ['eggNOG_OGs'], cog: ['COG_category'], gos: ['GOs'], ec: ['EC'], ko: ['KEGG_ko'],
@@ -174,11 +224,13 @@ class EggNogMapperPredictor extends AbstractToolPredictor {
             }
             col[key] = idx
         }
+        col.seed = names.indexOf('seed_ortholog')
+        col.confidence = names.indexOf('annotation_confidence')
         col
     }
 
     protected static String field(String[] fields, int idx) {
-        idx < fields.length ? fields[idx] : ''
+        idx >= 0 && idx < fields.length ? fields[idx] : ''
     }
 
     /** Strict E-value: a finite number >= 0 (0 is valid). Anything else is a contract violation. */

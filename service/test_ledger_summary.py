@@ -79,6 +79,61 @@ class LearnedSummaryTest(LedgerSummaryTest):
     def report(self, sha=SHA):
         return {'schema': 'gspa.learned-stage-report/1', 'model': {'id': 'm1', 'sha256': sha}, 'candidates': [], 'outcomes': [], 'counts': {'candidates': 0}}
 
+    def unsupported_pair(self):
+        ledger = learned_ledger('legacy_heuristic')
+        ledger['stages'][2].update(status='skipped', candidates_scored=0,
+                                   reason='no candidates supported; baseline scores retained')
+        report = self.report()
+        report['candidates'] = [{'score_status': 'unsupported', 'probability': None, 'margin': None}]
+        report['counts'] = {'candidates': 1, 'unsupported': 1}
+        return ledger, report
+
+    def test_valid_unsupported_abstention_remains_available_without_learned_scores(self):
+        ledger, report = self.unsupported_pair()
+        out = self.summarize_with(ledger, report)
+        self.assertEqual(out['scoring']['mode'], 'legacy_heuristic')
+        self.assertEqual(out['learned']['status'], 'available')
+        self.assertTrue(out['learned']['unsupported_only'])
+        self.assertTrue(out['learned']['hash_verified'])
+        self.assertEqual(out['learned']['counts']['unsupported'], 1)
+        if shutil.which('node'):
+            text = PortalTextTest().text(out)
+            self.assertIn('model abstained', text)
+            self.assertIn('baseline scores retained', text)
+            self.assertNotIn('not trusted', text)
+
+    def test_abstention_exception_cannot_trust_failed_scored_or_unbound_reports(self):
+        for mutation in ('failed', 'not_run', 'count', 'probability', 'margin', 'hash', 'empty'):
+            ledger, report = self.unsupported_pair()
+            if mutation in ('failed', 'not_run'): ledger['stages'][2]['status'] = mutation
+            if mutation == 'count': ledger['stages'][2]['candidates_scored'] = 1
+            if mutation in ('probability', 'margin'): report['candidates'][0][mutation] = .5
+            if mutation == 'hash': report['model']['sha256'] = 'b' * 64
+            if mutation == 'empty': report['candidates'] = []
+            with self.subTest(mutation=mutation):
+                self.assertEqual(self.summarize_with(ledger, report)['learned']['status'], 'not_trusted')
+
+    def test_mixed_scoring_retains_available_model_identity_and_unsupported_count(self):
+        ledger = learned_ledger('mixed')
+        ledger['stages'][2]['status'] = 'executed'
+        report = self.report()
+        report['counts'] = {'candidates': 3, 'unsupported': 1}
+        out = self.summarize_with(ledger, report)
+        self.assertEqual(out['scoring']['mode'], 'mixed')
+        self.assertEqual(out['learned']['status'], 'available')
+        self.assertFalse(out['learned']['unsupported_only'])
+        if shutil.which('node'):
+            text = PortalTextTest().text(out)
+            self.assertIn('Scoring: mixed', text)
+            self.assertIn('m1', text)
+            self.assertIn('1 unsupported', text)
+            self.assertNotIn('unknown', text)
+        missing = self.summarize_with(ledger)['learned']
+        self.assertEqual(missing['status'], 'unavailable')
+        self.assertIn('not zero', missing['reason'])
+        ledger['stages'][2]['status'] = 'failed'
+        self.assertEqual(self.summarize_with(ledger, report)['learned']['status'], 'not_trusted')
+
     def test_stage_order_labels_and_baseline_come_from_the_new_schema(self):
         out = self.summarize_with(learned_ledger(), self.report())
         self.assertEqual([s['name'] for s in out['stages']], ['reference_preparation', 'cohort_context', 'learned_integration', 'feature_export'])

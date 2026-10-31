@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.cli.PresetsSpec" tests="30" skipped="0" failures="0" errors="0" timestamp="2026-10-27T00:06:24" hostname="lc-dell" time="2.663">
+  <properties/>
+  <testcase name="annotation thread override reaches HMMER while YAML remains the default [extra: [], expected: 3, #0]" classname="gspa.cli.PresetsSpec" time="0.047"/>
+  <testcase name="annotation thread override reaches HMMER while YAML remains the default [extra: [--threads, 1], expected: 1, #1]" classname="gspa.cli.PresetsSpec" time="0.005"/>
+  <testcase name="catalog and previews need no files or external tools [name: prokaryote, type: genome, #0]" classname="gspa.cli.PresetsSpec" time="0.041"/>
+  <testcase name="catalog and previews need no files or external tools [name: bacteria, type: genome, #1]" classname="gspa.cli.PresetsSpec" time="0.012"/>
+  <testcase name="catalog and previews need no files or external tools [name: archaea, type: genome, #2]" classname="gspa.cli.PresetsSpec" time="0.012"/>
+  <testcase name="catalog and previews need no files or external tools [name: eukaryote, type: genome, #3]" classname="gspa.cli.PresetsSpec" time="0.011"/>
+  <testcase name="catalog and previews need no files or external tools [name: mag, type: mag, #4]" classname="gspa.cli.PresetsSpec" time="0.013"/>
+  <testcase name="catalog and previews need no files or external tools [name: metagenomics, type: metagenome, #5]" classname="gspa.cli.PresetsSpec" time="0.018"/>
+  <testcase name="integration preset assumptions match workflow and explicit switches win [name: prokaryote, stage2: true, profile: null, essentiality: false, #0]" classname="gspa.cli.PresetsSpec" time="0.013"/>
+  <testcase name="integration preset assumptions match workflow and explicit switches win [name: bacteria, stage2: true, profile: bacteria, essentiality: true, #1]" classname="gspa.cli.PresetsSpec" time="0.004"/>
+  <testcase name="integration preset assumptions match workflow and explicit switches win [name: archaea, stage2: true, profile: archaea, essentiality: true, #2]" classname="gspa.cli.PresetsSpec" time="0.004"/>
+  <testcase name="integration preset assumptions match workflow and explicit switches win [name: eukaryote, stage2: true, profile: eukaryote, essentiality: true, #3]" classname="gspa.cli.PresetsSpec" time="0.004"/>
+  <testcase name="integration preset assumptions match workflow and explicit switches win [name: mag, stage2: false, profile: null, essentiality: false, #4]" classname="gspa.cli.PresetsSpec" time="0.004"/>
+  <testcase name="integration preset assumptions match workflow and explicit switches win [name: metagenomics, stage2: false, profile: null, essentiality: false, #5]" classname="gspa.cli.PresetsSpec" time="0.004"/>
+  <testcase name="negative boolean flags and explicit false override integration defaults in either order [args: [--preset, bacteria, --no-enforce-stage2, --no-lite, --taxon, 562, --enable-priors, consistency, --essential-profile, archaea], #0]" classname="gspa.cli.PresetsSpec" time="0.005"/>
+  <testcase name="negative boolean flags and explicit false override integration defaults in either order [args: [--enforce-stage2=false, --lite=false, --taxon, 562, --enable-priors, consistency, --essential-profile, archaea, --preset, bacteria], #1]" classname="gspa.cli.PresetsSpec" time="0.005"/>
+  <testcase name="annotation precedence includes output ontology and disabling enforcement" classname="gspa.cli.PresetsSpec" time="0.007"/>
+  <testcase name="explicit taxon inference replaces preset taxon" classname="gspa.cli.PresetsSpec" time="0.004"/>
+  <testcase name="integration taxon inference is not shadowed by the preset domain" classname="gspa.cli.PresetsSpec" time="0.003"/>
+  <testcase name="batch rows retain overrides on top of a workflow preset" classname="gspa.cli.PresetsSpec" time="0.903"/>
+  <testcase name="invalid presets and unsupported raw eukaryotic gene calling fail helpfully" classname="gspa.cli.PresetsSpec" time="0.058"/>
+  <testcase name="integration preview is JSON and does not create output" classname="gspa.cli.PresetsSpec" time="0.011"/>
+  <testcase name="no preset keeps integration defaults" classname="gspa.cli.PresetsSpec" time="0.005"/>
+  <testcase name="annotation runs with a controlled sidecar and respects YAML output and disabled operons" classname="gspa.cli.PresetsSpec" time="0.068"/>
+  <testcase name="each integration preset executes with bundled resources and produces annotations [name: prokaryote, #0]" classname="gspa.cli.PresetsSpec" time="0.167"/>
+  <testcase name="each integration preset executes with bundled resources and produces annotations [name: bacteria, #1]" classname="gspa.cli.PresetsSpec" time="0.509"/>
+  <testcase name="each integration preset executes with bundled resources and produces annotations [name: archaea, #2]" classname="gspa.cli.PresetsSpec" time="0.315"/>
+  <testcase name="each integration preset executes with bundled resources and produces annotations [name: eukaryote, #3]" classname="gspa.cli.PresetsSpec" time="0.357"/>
+  <testcase name="each integration preset executes with bundled resources and produces annotations [name: mag, #4]" classname="gspa.cli.PresetsSpec" time="0.021"/>
+  <testcase name="each integration preset executes with bundled resources and produces annotations [name: metagenome, #5]" classname="gspa.cli.PresetsSpec" time="0.021"/>
+  <system-out><![CDATA[Preset: mag
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_batch_rows_retain_o_0_tempDir4918688715095732102/manifest.tsv (threads=8)
+  Loaded 1 batch tasks from /home/leechuck/tmp/spock_batch_rows_retain_o_0_tempDir4918688715095732102/manifest.tsv
+03:06:25.105 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+03:06:25.115 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_batch_rows_retain_o_0_tempDir4918688715095732102/batch-claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_batch_rows_retain_o_0_tempDir4918688715095732102/batch.tsv
+  Loaded 1 claims
+03:06:25.126 [pool-8-thread-1] INFO gspa.config.EssentialFunctions -- Loaded 25 essential functions from /home/leechuck/tmp/ef_archaea_1271866110060858906.tsv (profile: archaea)
+  Essential functions (preset=archaea): 25 GO terms
+03:06:25.137 [pool-8-thread-1] INFO gspa.ontology.TaxonConstraints -- Loading taxon constraints from: /home/leechuck/tmp/go-taxon-constraints16262529928730346642.tsv
+03:06:25.266 [pool-8-thread-1] INFO gspa.ontology.TaxonConstraints -- Loaded 13800 only_in_taxon and 5765 never_in_taxon constraints
+03:06:25.272 [pool-8-thread-1] INFO gspa.ontology.SatConsistencyChecker -- Loading taxon hierarchy + disjointness from: /home/leechuck/tmp/ncbi-taxon-hierarchy15031892273721844437.tsv
+03:06:25.292 [pool-8-thread-1] INFO gspa.ontology.SatConsistencyChecker -- Loaded taxon hierarchy: 1302 taxa, 452 with explicit disjointness
+  Asserted organism taxon: NCBITaxon_2157
+  SAT checker: 13800 only_in + 5765 never_in (organismTaxon=NCBITaxon_2157)
+03:06:25.296 [pool-8-thread-1] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=1, damping=0.5)
+03:06:25.989 [pool-8-thread-1] DEBUG gspa.integration.prior.ConsistencyPrior -- ConsistencyPrior: 13186 conflicting/forbidden GO terms active
+03:06:25.990 [pool-8-thread-1] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+03:06:25.990 [pool-8-thread-1] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+  Wrote: /home/leechuck/tmp/spock_batch_rows_retain_o_0_tempDir4918688715095732102/batch.tsv
+GSPA annotate: /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/proteins.faa
+Proteins: /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/proteins.faa
+Output: /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/annotation-output
+Kingdom: eukaryote
+Input type: genome
+Preset: eukaryote
+
+03:06:26.077 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+03:06:26.085 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: clean
+03:06:26.086 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 1 predictors registered
+03:06:26.092 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+03:06:26.092 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/proteins.faa
+03:06:26.098 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded 1 proteins (protein-only input)
+03:06:26.098 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(proteins, 1 contigs, 1 proteins, 0bp)
+03:06:26.101 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 1 protein-level predictors...
+03:06:26.102 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running clean...
+03:06:26.107 [Test worker] INFO gspa.predictor.neural.CleanPredictor -- Running clean: /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/fake-python /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/sidecar.py --predictor clean --manifest /home/leechuck/tmp/gspa_clean_11481118433471251611/manifest.tsv --seed 0 --batch-size 16 --min-score 0.1 --model-dir /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461
+03:06:26.120 [Test worker] INFO gspa.predictor.AnnotationPipeline --   clean: 1 annotations assigned
+03:06:26.122 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 1/1 proteins annotated, 1 total annotations
+03:06:26.124 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Predictor status manifest written: /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/annotation-output/proteins_predictor_status.json
+03:06:26.131 [Test worker] INFO gspa.predictor.AnnotationPipeline -- GFF3 written: /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/annotation-output/proteins.gff3
+03:06:26.132 [Test worker] INFO gspa.predictor.AnnotationPipeline -- TSV written: /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/annotation-output/proteins_annotations.tsv
+
+Timing (1 proteins, 0.1s total, 55.9s / 1k proteins):
+  setup              0.01s (24%)
+  prediction         0.03s (58%)
+  output             0.01s (18%)
+
+Done. Output in: /home/leechuck/tmp/spock_annotation_runs_wit_0_tempDir4300182979792181461/annotation-output
+Preset: prokaryote
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_each_integration_pr_0_tempDir10786976683521719324/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_each_integration_pr_0_tempDir10786976683521719324/prokaryote.tsv
+  Loaded 1 claims
+03:06:26.144 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+03:06:26.151 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+03:06:26.156 [Test worker] INFO gspa.ontology.TaxonConstraints -- Loading taxon constraints from: /home/leechuck/tmp/go-taxon-constraints3799255156325846205.tsv
+03:06:26.205 [Test worker] INFO gspa.ontology.TaxonConstraints -- Loaded 13800 only_in_taxon and 5765 never_in_taxon constraints
+03:06:26.261 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Augmented TaxonConstraints with 14276 anatomical (GO, taxon) constraint edges
+03:06:26.265 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loading taxon hierarchy + disjointness from: /home/leechuck/tmp/ncbi-taxon-hierarchy2707328300707363071.tsv
+03:06:26.276 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loaded taxon hierarchy: 1302 taxa, 452 with explicit disjointness
+  SAT checker: 13950 only_in + 7458 never_in (organismTaxon=none)
+03:06:26.285 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+03:06:26.288 [Test worker] DEBUG gspa.integration.prior.CoherencePrior -- CoherencePrior: 0 process-missing, 0 pathway-missing, 0 complex-adjusted keys
+03:06:26.288 [Test worker] DEBUG gspa.integration.prior.AnatomicalPrior -- AnatomicalPrior disabled: missing anatomicalConstraints or organismTaxon
+03:06:26.289 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+03:06:26.289 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+03:06:26.299 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (relax): acted on 0 annotation(s) (relaxed=0) across 0 protein(s); 0 violation(s) found
+  Stage 2 Consistency (relax): ConsistencyEnforcer.Result(violations=0, proteins=0, annotations=0, relaxed=0)
+  Stage 2 synced to integrated output (relaxed_new=0)
+  Wrote: /home/leechuck/tmp/spock_each_integration_pr_0_tempDir10786976683521719324/prokaryote.tsv
+Preset: bacteria
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_each_integration_pr_1_tempDir7002226158225457516/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_each_integration_pr_1_tempDir7002226158225457516/bacteria.tsv
+  Loaded 1 claims
+03:06:26.312 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+03:06:26.318 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+03:06:26.323 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_14657236163707337524.tsv (profile: bacteria)
+  Essential functions (preset=bacteria): 32 GO terms
+03:06:26.326 [Test worker] INFO gspa.ontology.TaxonConstraints -- Loading taxon constraints from: /home/leechuck/tmp/go-taxon-constraints12021690323464827993.tsv
+03:06:26.336 [Test worker] INFO gspa.ontology.TaxonConstraints -- Loaded 13800 only_in_taxon and 5765 never_in_taxon constraints
+03:06:26.367 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Augmented TaxonConstraints with 14276 anatomical (GO, taxon) constraint edges
+03:06:26.370 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loading taxon hierarchy + disjointness from: /home/leechuck/tmp/ncbi-taxon-hierarchy11839186126461827544.tsv
+03:06:26.382 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loaded taxon hierarchy: 1302 taxa, 452 with explicit disjointness
+  Asserted organism taxon: NCBITaxon_2
+  SAT checker: 13950 only_in + 7458 never_in (organismTaxon=NCBITaxon_2)
+03:06:26.385 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+03:06:26.386 [Test worker] INFO gspa.integration.prior.EssentialityPrior -- EssentialityPrior: no GoOntology/GoReasoner, boosting 32 exact essential terms (no descendant expansion)
+03:06:26.389 [Test worker] DEBUG gspa.integration.prior.EssentialityPrior -- EssentialityPrior: 32 uncovered essentials, 32 boostable descendants
+03:06:26.390 [Test worker] DEBUG gspa.integration.prior.CoherencePrior -- CoherencePrior: 0 process-missing, 0 pathway-missing, 0 complex-adjusted keys
+03:06:26.625 [Test worker] DEBUG gspa.integration.prior.ConsistencyPrior -- ConsistencyPrior: 13081 conflicting/forbidden GO terms active
+03:06:26.805 [Test worker] DEBUG gspa.integration.prior.AnatomicalPrior -- AnatomicalPrior (NCBITaxon_2): 2522 forbidden GO terms, 0 active structures (0 boosted GO terms)
+03:06:26.805 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+03:06:26.805 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+03:06:26.808 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Organism NCBITaxon_2: 13081 GO terms forbidden by taxon/anatomical constraints
+03:06:26.810 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (relax): acted on 0 annotation(s) (relaxed=0) across 0 protein(s); 0 violation(s) found
+  Stage 2 Consistency (relax): ConsistencyEnforcer.Result(violations=0, proteins=0, annotations=0, relaxed=0)
+  Stage 2 synced to integrated output (relaxed_new=0)
+  Wrote: /home/leechuck/tmp/spock_each_integration_pr_1_tempDir7002226158225457516/bacteria.tsv
+Preset: archaea
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_each_integration_pr_2_tempDir2408116405361281076/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_each_integration_pr_2_tempDir2408116405361281076/archaea.tsv
+  Loaded 1 claims
+03:06:26.821 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+03:06:26.828 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+03:06:26.832 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 25 essential functions from /home/leechuck/tmp/ef_archaea_5161735535708706384.tsv (profile: archaea)
+  Essential functions (preset=archaea): 25 GO terms
+03:06:26.838 [Test worker] INFO gspa.ontology.TaxonConstraints -- Loading taxon constraints from: /home/leechuck/tmp/go-taxon-constraints18325665295456006626.tsv
+03:06:26.848 [Test worker] INFO gspa.ontology.TaxonConstraints -- Loaded 13800 only_in_taxon and 5765 never_in_taxon constraints
+03:06:26.862 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Augmented TaxonConstraints with 14276 anatomical (GO, taxon) constraint edges
+03:06:26.865 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loading taxon hierarchy + disjointness from: /home/leechuck/tmp/ncbi-taxon-hierarchy17527118878118087730.tsv
+03:06:26.874 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loaded taxon hierarchy: 1302 taxa, 452 with explicit disjointness
+  Asserted organism taxon: NCBITaxon_2157
+  SAT checker: 13950 only_in + 7458 never_in (organismTaxon=NCBITaxon_2157)
+03:06:26.875 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+03:06:26.876 [Test worker] INFO gspa.integration.prior.EssentialityPrior -- EssentialityPrior: no GoOntology/GoReasoner, boosting 25 exact essential terms (no descendant expansion)
+03:06:26.876 [Test worker] DEBUG gspa.integration.prior.EssentialityPrior -- EssentialityPrior: 25 uncovered essentials, 25 boostable descendants
+03:06:26.876 [Test worker] DEBUG gspa.integration.prior.CoherencePrior -- CoherencePrior: 0 process-missing, 0 pathway-missing, 0 complex-adjusted keys
+03:06:27.048 [Test worker] DEBUG gspa.integration.prior.ConsistencyPrior -- ConsistencyPrior: 13290 conflicting/forbidden GO terms active
+03:06:27.123 [Test worker] DEBUG gspa.integration.prior.AnatomicalPrior -- AnatomicalPrior (NCBITaxon_2157): 2522 forbidden GO terms, 0 active structures (0 boosted GO terms)
+03:06:27.124 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+03:06:27.124 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+03:06:27.126 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Organism NCBITaxon_2157: 13290 GO terms forbidden by taxon/anatomical constraints
+03:06:27.127 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (relax): acted on 0 annotation(s) (relaxed=0) across 0 protein(s); 0 violation(s) found
+  Stage 2 Consistency (relax): ConsistencyEnforcer.Result(violations=0, proteins=0, annotations=0, relaxed=0)
+  Stage 2 synced to integrated output (relaxed_new=0)
+  Wrote: /home/leechuck/tmp/spock_each_integration_pr_2_tempDir2408116405361281076/archaea.tsv
+Preset: eukaryote
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_each_integration_pr_3_tempDir3621999092852646791/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_each_integration_pr_3_tempDir3621999092852646791/eukaryote.tsv
+  Loaded 1 claims
+03:06:27.136 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+03:06:27.143 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+03:06:27.147 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_eukaryote_527751643950446711.tsv (profile: eukaryote)
+  Essential functions (preset=eukaryote): 32 GO terms
+03:06:27.153 [Test worker] INFO gspa.ontology.TaxonConstraints -- Loading taxon constraints from: /home/leechuck/tmp/go-taxon-constraints10505878006576302831.tsv
+03:06:27.162 [Test worker] INFO gspa.ontology.TaxonConstraints -- Loaded 13800 only_in_taxon and 5765 never_in_taxon constraints
+03:06:27.173 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Augmented TaxonConstraints with 14276 anatomical (GO, taxon) constraint edges
+03:06:27.176 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loading taxon hierarchy + disjointness from: /home/leechuck/tmp/ncbi-taxon-hierarchy14959096122470041020.tsv
+03:06:27.185 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loaded taxon hierarchy: 1302 taxa, 452 with explicit disjointness
+  Asserted organism taxon: NCBITaxon_2759
+  SAT checker: 13950 only_in + 7458 never_in (organismTaxon=NCBITaxon_2759)
+03:06:27.185 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+03:06:27.186 [Test worker] INFO gspa.integration.prior.EssentialityPrior -- EssentialityPrior: no GoOntology/GoReasoner, boosting 32 exact essential terms (no descendant expansion)
+03:06:27.187 [Test worker] DEBUG gspa.integration.prior.EssentialityPrior -- EssentialityPrior: 32 uncovered essentials, 32 boostable descendants
+03:06:27.187 [Test worker] DEBUG gspa.integration.prior.CoherencePrior -- CoherencePrior: 0 process-missing, 0 pathway-missing, 0 complex-adjusted keys
+03:06:27.426 [Test worker] DEBUG gspa.integration.prior.ConsistencyPrior -- ConsistencyPrior: 362 conflicting/forbidden GO terms active
+03:06:27.482 [Test worker] DEBUG gspa.integration.prior.AnatomicalPrior -- AnatomicalPrior (NCBITaxon_2759): 5 forbidden GO terms, 0 active structures (0 boosted GO terms)
+03:06:27.483 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+03:06:27.483 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+03:06:27.484 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Organism NCBITaxon_2759: 362 GO terms forbidden by taxon/anatomical constraints
+03:06:27.484 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (relax): acted on 0 annotation(s) (relaxed=0) across 0 protein(s); 0 violation(s) found
+  Stage 2 Consistency (relax): ConsistencyEnforcer.Result(violations=0, proteins=0, annotations=0, relaxed=0)
+  Stage 2 synced to integrated output (relaxed_new=0)
+  Wrote: /home/leechuck/tmp/spock_each_integration_pr_3_tempDir3621999092852646791/eukaryote.tsv
+Preset: mag
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_each_integration_pr_4_tempDir12842255347380704124/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_each_integration_pr_4_tempDir12842255347380704124/mag.tsv
+  Loaded 1 claims
+03:06:27.495 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+03:06:27.502 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+03:06:27.506 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+03:06:27.506 [Test worker] DEBUG gspa.integration.prior.ConsistencyPrior -- ConsistencyPrior disabled: no SatConsistencyChecker in state
+03:06:27.506 [Test worker] DEBUG gspa.integration.prior.AnatomicalPrior -- AnatomicalPrior disabled: missing anatomicalConstraints or organismTaxon
+03:06:27.507 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+03:06:27.507 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+  Wrote: /home/leechuck/tmp/spock_each_integration_pr_4_tempDir12842255347380704124/mag.tsv
+Preset: metagenome
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_each_integration_pr_5_tempDir11434747329936586282/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_each_integration_pr_5_tempDir11434747329936586282/metagenome.tsv
+  Loaded 1 claims
+03:06:27.516 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+03:06:27.523 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+03:06:27.527 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+03:06:27.528 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+03:06:27.528 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+  Wrote: /home/leechuck/tmp/spock_each_integration_pr_5_tempDir11434747329936586282/metagenome.tsv
+]]></system-out>
+  <system-err><![CDATA[[picocli WARN] Could not format 'Drop LRs whose 90% CI overlaps 1.0 (log-CI excludes 0). Default true.' (Underlying error: Conversion = c, Flags =  ). Using raw String: '%n' format strings have not been replaced with newlines. Please ensure to escape '%' characters with another '%'.
+[picocli WARN] Could not format 'Drop LRs whose 90% CI overlaps 1.0 (log-CI excludes 0). Default true.' (Underlying error: Conversion = c, Flags =  ). Using raw String: '%n' format strings have not been replaced with newlines. Please ensure to escape '%' characters with another '%'.
+[picocli WARN] Could not format 'Drop LRs whose 90% CI overlaps 1.0 (log-CI excludes 0). Default true.' (Underlying error: Conversion = c, Flags =  ). Using raw String: '%n' format strings have not been replaced with newlines. Please ensure to escape '%' characters with another '%'.
+]]></system-err>
+</testsuite>

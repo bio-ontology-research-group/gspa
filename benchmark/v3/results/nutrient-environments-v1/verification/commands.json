@@ -1,0 +1,82 @@
+[
+  {
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "benchmark/v3/prepare_nutrient_environments.py",
+      "acquire",
+      "--root",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1"
+    ],
+    "log": "acquire-final.log"
+  },
+  {
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "benchmark/v3/prepare_nutrient_environments.py",
+      "prepare",
+      "--root",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1/derived-v1"
+    ],
+    "log": "prepare-initial.log",
+    "source_revision": "historical development; source hash retained, source snapshot unavailable"
+  },
+  {
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "benchmark/v3/prepare_nutrient_environments.py",
+      "prepare",
+      "--root",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1/derived-v2"
+    ],
+    "log": "prepare-final.log",
+    "source_revision": "historical development; source hash retained, source snapshot unavailable"
+  },
+  {
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "benchmark/v3/prepare_nutrient_environments.py",
+      "prepare",
+      "--root",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1/derived-v3"
+    ],
+    "log": "prepare-v3.log",
+    "source_revision": "current"
+  },
+  {
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "benchmark/v3/register_nutrient_models.py",
+      "--inputs",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1/derived-v3/inputs.jsonl",
+      "--ec-model",
+      "/home/leechuck/.cache/gspa-v3-data/masked-metabolic/inputs/iML1515.xml",
+      "--bs-model",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1/models/iYO844.xml",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1/models/registered-preflight.json"
+    ],
+    "log": "register-models.log"
+  },
+  {
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "benchmark/v3/tests"
+    ],
+    "environment": {
+      "TMPDIR": "/home/leechuck/tmp",
+      "JAVA_TOOL_OPTIONS": "-Djava.io.tmpdir=/home/leechuck/tmp",
+      "GSPA_NEXTFLOW_BIN": "/home/leechuck/.cache/gspa-v3-data/tools/nextflow-26.04.6/nextflow"
+    },
+    "log": "benchmark-final.log"
+  }
+]

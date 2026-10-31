@@ -13,6 +13,7 @@ COPY gspa-cli/ gspa-cli/
 COPY scripts/gspa_resources.py scripts/gspa_resources.py
 COPY deepgo-plusplus/models/ deepgo-plusplus/models/
 COPY benchmark/neural/run_*predictors.py benchmark/neural/
+COPY benchmark/neural/clean_contract.py benchmark/neural/
 
 RUN ./gradlew :gspa-cli:installDist --no-daemon
 

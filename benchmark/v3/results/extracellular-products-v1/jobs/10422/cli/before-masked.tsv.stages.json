@@ -1,0 +1,201 @@
+{
+  "schema_version" : 2,
+  "genome_id" : "genome",
+  "interpretation" : "Prediction changes are not measurements of accuracy.",
+  "scoring_mode" : "legacy_heuristic",
+  "scoring_mode_note" : "Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores.",
+  "baseline_definitions" : {
+    "stage0_raw_max_score" : "Stage 0: strongest raw predictor score per function; no priors, no combination, no posterior.",
+    "legacy_prior_baseline" : "Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The baseline_candidates and final_changes of this ledger are measured from it."
+  },
+  "changes_measured_from" : "legacy_prior_baseline",
+  "stages" : [ {
+    "name" : "reference_preparation",
+    "status" : "executed",
+    "changes" : [ ],
+    "metabolic_gap_records" : 0,
+    "metabolic_gap_context_available" : false,
+    "ec_to_go_mapping_available" : false,
+    "mapped_ec_count" : 0,
+    "elapsed_seconds" : 1.496804868
+  }, {
+    "name" : "cohort_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "evidence_integration",
+    "status" : "executed",
+    "changes" : [ {
+      "function_key" : "locus_g6|EC|EC:4.4.4.4",
+      "protein_id" : "locus_g6",
+      "function_type" : "EC",
+      "function_id" : "EC:4.4.4.4",
+      "change" : "added",
+      "before_probability" : null,
+      "after_probability" : 0.41999999999999993
+    }, {
+      "function_key" : "locus_g6|EC|EC:6.2.1.1",
+      "protein_id" : "locus_g6",
+      "function_type" : "EC",
+      "function_id" : "EC:6.2.1.1",
+      "change" : "added",
+      "before_probability" : null,
+      "after_probability" : 0.41999999999999993
+    } ],
+    "input_candidates" : 0,
+    "output_candidates" : 2,
+    "suggestions" : 0,
+    "elapsed_seconds" : 0.132687247
+  }, {
+    "name" : "dark_matter",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "reaction_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "cross_genome",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "symbolic_enforcement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_refinement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "agent_completion",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_experiments",
+    "status" : "executed",
+    "changes" : [ ],
+    "mode" : "evidence_guided",
+    "strategy" : "fixed",
+    "seed" : 0,
+    "model_file" : "/home/leechuck/tmp/extracellular-cli/results/model.xml",
+    "model_sha256" : "fb8b7e5fe498f1b2545638a9f77e6c57cafbdbe522709d258a00fcd2dbfd4995",
+    "max_experiments" : 30,
+    "max_solver_calls" : 200,
+    "context_source" : "evidence_guided_masked_assignments",
+    "context" : {
+      "context_source" : "evidence_guided_masked_assignments",
+      "candidate_protein" : "locus_g6",
+      "mask_gene" : "g6",
+      "candidates_rejected" : [ ],
+      "excluded_claims" : [ ],
+      "measured_evidence" : [ {
+        "function_key" : "locus_g6|EC|EC:4.4.4.4",
+        "channel" : "sequence",
+        "source" : "diamond",
+        "evidence_type" : "SEQUENCE_SIMILARITY",
+        "raw_score" : 0.6
+      }, {
+        "function_key" : "locus_g6|EC|EC:6.2.1.1",
+        "channel" : "sequence",
+        "source" : "diamond",
+        "evidence_type" : "SEQUENCE_SIMILARITY",
+        "raw_score" : 0.6
+      } ],
+      "evidence_unmapped" : [ ],
+      "assignment_support" : [ ],
+      "assignment_groups_rejected" : [ ],
+      "joint_mapping_truncated" : [ ],
+      "hypotheses" : [ {
+        "id" : "H1",
+        "reaction" : "ACS",
+        "reactions" : [ "ACS" ],
+        "assignments" : {
+          "ACS" : [ [ "MASKED_TARGET" ] ]
+        },
+        "candidates" : [ {
+          "function_key" : "locus_g6|EC|EC:6.2.1.1",
+          "mapping_sources" : [ "sbml_annotation" ],
+          "roles" : [ "CATALYTIC" ],
+          "role_source" : "function_default",
+          "raw_role_observations" : [ ]
+        } ],
+        "evidence" : {
+          "sequence" : 0.6
+        },
+        "supporting_records" : [ ],
+        "assignment_groups" : [ ]
+      }, {
+        "id" : "H2",
+        "reaction" : "SEC",
+        "reactions" : [ "SEC" ],
+        "assignments" : {
+          "SEC" : [ [ "MASKED_TARGET" ] ]
+        },
+        "candidates" : [ {
+          "function_key" : "locus_g6|EC|EC:4.4.4.4",
+          "mapping_sources" : [ "sbml_annotation" ],
+          "roles" : [ "CATALYTIC" ],
+          "role_source" : "function_default",
+          "raw_role_observations" : [ ]
+        } ],
+        "evidence" : {
+          "sequence" : 0.6
+        },
+        "supporting_records" : [ ],
+        "assignment_groups" : [ ]
+      } ],
+      "hypotheses_truncated" : [ ],
+      "max_non_null_hypotheses" : 20,
+      "conditions" : 3,
+      "ranking_rule" : "strongest measured channel, then canonical assignment; repeated channels take max; not calibrated probabilities",
+      "assignment_assumption" : "target-alone only without structural support; required partners form AND clauses; named evidence groups support joint activities; alternative mappings remain distinct and bounded; no hidden GPR used",
+      "excluded_sources" : "target GPR, model gene annotations, reactions.tsv, final integration probabilities, FBA and learned/inferred claims; no function is inferred from a gene identifier",
+      "interpretation" : "conditional comparisons; no function recovery, calibrated probability or promotion"
+    },
+    "reaction_mapping_table_present" : false,
+    "model_origin" : "supplied model; independence is not established by file format or presence of a reaction mapping table",
+    "analysis_type" : "masked_assignment",
+    "masked_model_sha256" : "b8c8f58cb24032dba4998baaecd65f3914bc507b10ee0122ced43c2776296a39",
+    "public_problem_sha256" : "7deeee6a7fd632d77d97f19ad3e28b017a9b4b7861313dbf8005026ffbc82ec5",
+    "solver_calls_used" : 42,
+    "solver_calls_max" : 200,
+    "outcome" : "completed",
+    "hypotheses" : 3,
+    "conditions_visited" : [ "C0", "C1", "C2" ],
+    "conditions_unvisited" : [ ],
+    "comparisons_completed" : 9,
+    "comparisons_inconclusive" : 0,
+    "candidates_with_conditional_features" : 0,
+    "promotion" : "none",
+    "seconds" : 0.938,
+    "result_file" : "/home/leechuck/tmp/extracellular-cli/results/before-masked.tsv.experiments/result.json",
+    "result_sha256" : "88fdd78fbd5be486859636d504383350df25e071ed75ef2f70bab9e68b22ce4b",
+    "interpretation" : "Target gene assignments were masked before scenario construction. These are conditional phenotype signatures, not verified function recovery or learned evidence features.",
+    "elapsed_seconds" : 1.436425845
+  }, {
+    "name" : "community_metabolism",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "learned_integration",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them"
+  }, {
+    "name" : "feature_export",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  } ],
+  "baseline_candidates" : 2,
+  "final_candidates" : 2,
+  "final_changes" : [ ]
+}

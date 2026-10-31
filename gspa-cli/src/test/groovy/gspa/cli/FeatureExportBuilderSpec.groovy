@@ -46,7 +46,7 @@ class FeatureExportBuilderSpec extends Specification {
         def summary = new ObjectMapper().readValue(output.readLines().last(), Map)
         summary.rows_read > 0
         summary.table_rows == 3
-        summary.contract_id == 'gspa.context-features/2'
+        summary.contract_id == 'gspa.context-features/3'
 
         when: 'a stale manifest schema is introduced'
         File manifest = new File(export, 'g1/export_manifest.json')

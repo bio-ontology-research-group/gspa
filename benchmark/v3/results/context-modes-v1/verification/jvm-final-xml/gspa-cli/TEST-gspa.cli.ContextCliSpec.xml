@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.cli.ContextCliSpec" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-27T02:10:12" hostname="lc-dell" time="2.291">
+  <properties/>
+  <testcase name="CLI context modes preserve every candidate and report the selected relation" classname="gspa.cli.ContextCliSpec" time="1.475"/>
+  <testcase name="a batch with --cohort is two-pass: one snapshot for every genome, then each genome consumes its held-out features" classname="gspa.cli.ContextCliSpec" time="0.268"/>
+  <testcase name="the batch result does not depend on the order of the manifest rows" classname="gspa.cli.ContextCliSpec" time="0.291"/>
+  <testcase name="a single run with a cohort manifest of reference genomes works and a lone genome has no peers" classname="gspa.cli.ContextCliSpec" time="0.139"/>
+  <testcase name="a learned stage that is requested but cannot run fails the command with a ledger, never a silent heuristic run" classname="gspa.cli.ContextCliSpec" time="0.041"/>
+  <testcase name="a failed cohort pass fails the whole batch and every genome ledger says so" classname="gspa.cli.ContextCliSpec" time="0.066"/>
+  <testcase name="cohort options without the reaction bindings are rejected up front" classname="gspa.cli.ContextCliSpec" time="0.01"/>
+  <system-out><![CDATA[GSPA integrate
+  Claims: /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/UNIVERSAL.tsv
+  Loaded 4 claims
+05:10:12.884 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+05:10:12.990 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Genome layout: 8 loci across 1 contig(s)
+  Cohort: 1 genomes (1 targets, 0 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:76cfc9654da4eddf5d46101c; contexts for 1 of 1 target genomes
+05:10:13.259 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:13.271 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:13.272 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/UNIVERSAL-features
+  Wrote: /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/UNIVERSAL.tsv
+  Cohort context report: /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/UNIVERSAL.tsv.cohort.json
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/PATHWAY.tsv
+  Loaded 4 claims
+05:10:13.474 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+05:10:13.537 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Genome layout: 8 loci across 1 contig(s)
+  Cohort: 1 genomes (1 targets, 0 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:76cfc9654da4eddf5d46101c; contexts for 1 of 1 target genomes
+05:10:13.597 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:13.599 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:13.599 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/PATHWAY-features
+  Wrote: /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/PATHWAY.tsv
+  Cohort context report: /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/PATHWAY.tsv.cohort.json
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/ORGANISM.tsv
+  Loaded 4 claims
+05:10:13.689 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+05:10:13.730 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Genome layout: 8 loci across 1 contig(s)
+  Cohort: 1 genomes (1 targets, 0 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:76cfc9654da4eddf5d46101c; contexts for 1 of 1 target genomes
+05:10:13.751 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:13.752 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:13.752 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/ORGANISM-features
+  Wrote: /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/ORGANISM.tsv
+  Cohort context report: /home/leechuck/tmp/spock_CLI_context_modes_p_0_dir2466099105790228947/ORGANISM.tsv.cohort.json
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/batch.tsv (threads=2)
+  Loaded 3 batch tasks from /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/batch.tsv
+05:10:13.817 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+05:10:13.852 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Cohort: 3 genomes (3 targets, 0 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:12a43e9f21cbfd6171d73c11; contexts for 3 of 3 target genomes
+GSPA integrate
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g2.claims.jsonl
+  Claims: /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g1.claims.jsonl
+  Theta:  (defaults)
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g2.integrated.tsv
+  Out:    /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g1.integrated.tsv
+  Loaded 4 claims
+  Loaded 4 claims
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Orthogroups: 3 protein assignments
+  Genome layout: 8 loci across 1 contig(s)
+  Genome layout: 8 loci across 1 contig(s)
+05:10:13.949 [pool-1-thread-1] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:13.949 [pool-1-thread-2] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:13.950 [pool-1-thread-1] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:13.951 [pool-1-thread-1] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+05:10:13.950 [pool-1-thread-2] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:13.951 [pool-1-thread-2] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Produced 4 integrated annotations
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/export/g2
+  Wrote: /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g2.integrated.tsv
+  Cohort context report: /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g2.integrated.tsv.cohort.json
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/export/g1
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g3.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g3.integrated.tsv
+  Wrote: /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g1.integrated.tsv
+  Loaded 4 claims
+  Cohort context report: /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g1.integrated.tsv.cohort.json
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Genome layout: 8 loci across 1 contig(s)
+05:10:14.001 [pool-1-thread-2] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:14.002 [pool-1-thread-2] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:14.002 [pool-1-thread-2] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/export/g3
+  Wrote: /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g3.integrated.tsv
+  Cohort context report: /home/leechuck/tmp/spock_a_batch_with_--coho_0_dir6026925771127258900/g3.integrated.tsv.cohort.json
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/batch-a.tsv (threads=8)
+  Loaded 3 batch tasks from /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/batch-a.tsv
+05:10:14.098 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+05:10:14.144 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Cohort: 3 genomes (3 targets, 0 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:12a43e9f21cbfd6171d73c11; contexts for 3 of 3 target genomes
+GSPA integrate
+GSPA integrate
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g3.claims.jsonl
+  Claims: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g2.claims.jsonl
+  Theta:  (defaults)
+  Claims: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g1.claims.jsonl
+  Out:    /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g3.integrated.tsv
+  Theta:  (defaults)
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g2.integrated.tsv
+  Out:    /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g1.integrated.tsv
+  Loaded 4 claims
+  Loaded 4 claims
+  Loaded 4 claims
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Orthogroups: 3 protein assignments
+  Orthogroups: 3 protein assignments
+  Genome layout: 8 loci across 1 contig(s)
+  Genome layout: 8 loci across 1 contig(s)
+  Genome layout: 8 loci across 1 contig(s)
+05:10:14.180 [pool-2-thread-1] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:14.181 [pool-2-thread-3] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:14.181 [pool-2-thread-2] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:14.181 [pool-2-thread-1] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:14.181 [pool-2-thread-1] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+05:10:14.182 [pool-2-thread-3] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:14.182 [pool-2-thread-2] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+  Produced 4 integrated annotations
+05:10:14.182 [pool-2-thread-3] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+05:10:14.182 [pool-2-thread-2] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Produced 4 integrated annotations
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/export-a/g1
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/export-a/g2
+  Wrote: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g2.integrated.tsv
+  Wrote: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g1.integrated.tsv
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/export-a/g3
+  Cohort context report: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g2.integrated.tsv.cohort.json
+  Cohort context report: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g1.integrated.tsv.cohort.json
+  Wrote: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g3.integrated.tsv
+  Cohort context report: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g3.integrated.tsv.cohort.json
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/batch-b.tsv (threads=8)
+  Loaded 3 batch tasks from /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/batch-b.tsv
+05:10:14.236 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+05:10:14.265 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Cohort: 3 genomes (3 targets, 0 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:12a43e9f21cbfd6171d73c11; contexts for 3 of 3 target genomes
+GSPA integrate
+GSPA integrate
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g3.claims.jsonl
+  Claims: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g1.claims.jsonl
+  Theta:  (defaults)
+  Claims: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g2.claims.jsonl
+  Out:    /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g3.integrated.tsv
+  Theta:  (defaults)
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g1.integrated.tsv
+  Out:    /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g2.integrated.tsv
+  Loaded 4 claims
+  Loaded 4 claims
+  Loaded 4 claims
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Orthogroups: 3 protein assignments
+  Orthogroups: 3 protein assignments
+  Genome layout: 8 loci across 1 contig(s)
+  Genome layout: 8 loci across 1 contig(s)
+05:10:14.301 [pool-3-thread-1] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:14.301 [pool-3-thread-3] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+  Genome layout: 8 loci across 1 contig(s)
+05:10:14.302 [pool-3-thread-1] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:14.302 [pool-3-thread-3] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:14.302 [pool-3-thread-1] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+05:10:14.302 [pool-3-thread-3] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+05:10:14.303 [pool-3-thread-2] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+  Produced 4 integrated annotations
+  Produced 4 integrated annotations
+05:10:14.305 [pool-3-thread-2] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:14.305 [pool-3-thread-2] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/export-b/g2
+  Wrote: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g2.integrated.tsv
+  Cohort context report: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g2.integrated.tsv.cohort.json
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/export-b/g1
+  Wrote: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g1.integrated.tsv
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/export-b/g3
+  Cohort context report: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g1.integrated.tsv.cohort.json
+  Wrote: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g3.integrated.tsv
+  Cohort context report: /home/leechuck/tmp/spock_the_batch_result_do_0_dir17432732775433165213/g3.integrated.tsv.cohort.json
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_single_run_with_a_0_dir2671334775843640718/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_single_run_with_a_0_dir2671334775843640718/peers.tsv
+  Loaded 4 claims
+05:10:14.360 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+05:10:14.391 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Genome layout: 8 loci across 1 contig(s)
+  Cohort: 3 genomes (1 targets, 2 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:12a43e9f21cbfd6171d73c11; contexts for 1 of 1 target genomes
+05:10:14.419 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:14.420 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:14.420 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Wrote: /home/leechuck/tmp/spock_a_single_run_with_a_0_dir2671334775843640718/peers.tsv
+  Cohort context report: /home/leechuck/tmp/spock_a_single_run_with_a_0_dir2671334775843640718/peers.tsv.cohort.json
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_single_run_with_a_0_dir2671334775843640718/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_single_run_with_a_0_dir2671334775843640718/alone.tsv
+  Loaded 4 claims
+05:10:14.438 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+05:10:14.467 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Genome layout: 8 loci across 1 contig(s)
+  Cohort: 1 genomes (1 targets, 0 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:76cfc9654da4eddf5d46101c; contexts for 1 of 1 target genomes
+05:10:14.481 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+05:10:14.482 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+05:10:14.482 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Wrote: /home/leechuck/tmp/spock_a_single_run_with_a_0_dir2671334775843640718/alone.tsv
+  Cohort context report: /home/leechuck/tmp/spock_a_single_run_with_a_0_dir2671334775843640718/alone.tsv.cohort.json
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_learned_stage_tha_0_dir14678704307328388440/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_learned_stage_tha_0_dir14678704307328388440/g1.integrated.tsv
+  Loaded 4 claims
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_learned_stage_tha_0_dir14678704307328388440/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_learned_stage_tha_0_dir14678704307328388440/g1.integrated.tsv
+  Loaded 4 claims
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_learned_stage_tha_0_dir14678704307328388440/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_learned_stage_tha_0_dir14678704307328388440/g1.integrated.tsv
+  Loaded 4 claims
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_a_failed_cohort_pas_0_dir7690632399766433695/batch.tsv (threads=8)
+  Loaded 2 batch tasks from /home/leechuck/tmp/spock_a_failed_cohort_pas_0_dir7690632399766433695/batch.tsv
+05:10:14.539 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+05:10:14.571 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Cohort: 2 genomes (2 targets, 0 reference); baseline = stage-0 raw scores
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_cohort_options_with_0_dir1470182088794728661/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_cohort_options_with_0_dir1470182088794728661/o.tsv
+  Loaded 4 claims
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@1f6917fb]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@41eb94bc]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@1f6917fb]
+]]></system-err>
+</testsuite>

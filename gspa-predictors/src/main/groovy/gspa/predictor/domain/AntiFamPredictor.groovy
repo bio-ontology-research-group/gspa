@@ -1,25 +1,19 @@
 package gspa.predictor.domain
 
 import gspa.model.Annotation
+import gspa.integration.EvidenceType
+import groovy.json.JsonOutput
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
 import gspa.predictor.ToolOutputContractException
 
 /**
- * AntiFam HMM scanner for spurious / pseudogenic ORF detection.
- *
- * AntiFam (EBI/Pfam) is a curated HMM library whose profiles represent
- * <i>known-spurious</i> protein families — ORFs that look real to gene
- * callers (Prodigal, Pyrodigal, Bakta, Prokka) but are pseudogenes,
- * misannotated coding regions, or sequencing artefacts. A hit against
- * any AntiFam HMM is strong evidence that the ORF should not be treated
- * as a functional gene.
- *
- * <p>The Bakta annotator uses this exact step as its pseudogene filter.
- * This predictor surfaces the same signal inside GSPA: it emits a
- * {@link AnnotationType#PSEUDOGENE} annotation per hit, leaving
- * downstream consumers (integrator, quality scorer, visualiser) free to
- * drop or down-weight claims attached to flagged proteins.</p>
+ * AntiFam scanner for spurious ORFs and local gene-model errors.
+ * A hit can indicate a wrong boundary (including the prfB frameshift example),
+ * not whole-protein inactivity. PSEUDOGENE is retained as the legacy output
+ * namespace; GENE_MODEL_QUALITY makes the non-functional evidence semantics
+ * explicit. No score emitted here is a calibrated probability of inactivity.
+ * See Eberhardt et al. (2012), doi:10.1093/database/bas003.
  *
  * <p>AntiFam HMMs ship with built-in gathering thresholds (GA), so the
  * canonical invocation is {@code hmmsearch --cut_ga …}. We honour that
@@ -59,7 +53,24 @@ class AntiFamPredictor extends AbstractToolPredictor {
     String getExecutable() { 'hmmsearch' }
 
     @Override
+    boolean isAvailable() {
+        hmmDatabase && new File(hmmDatabase).isFile() &&
+            HmmerToolProbe.version(executablePath ?: executable, environment) != null
+    }
+
+    @Override
+    String getVersion() { HmmerToolProbe.version(executablePath ?: executable, environment) ?: 'unknown' }
+
+    @Override
+    String unavailableReason() {
+        if (!hmmDatabase) return 'no AntiFam HMM database configured'
+        if (!new File(hmmDatabase).isFile()) return "AntiFam HMM database not found: ${hmmDatabase}"
+        super.unavailableReason()
+    }
+
+    @Override
     List<String> buildCommand(File inputFasta, File outputDir) {
+        if (!hmmDatabase) throw new IllegalStateException('antifam: hmmDatabase is unset')
         def outputFile = new File(outputDir, 'antifam_domtbl.tsv')
         def cmd = [
             executablePath ?: executable,
@@ -85,7 +96,8 @@ class AntiFamPredictor extends AbstractToolPredictor {
             'hmmsearch --domtblout writes comment header/footer on every run')
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
-        Set<String> seenPerProtein = [] as Set
+        Map<String, Annotation> seenPerProtein = [:]
+        Map<String, List<Map>> domainsByKey = [:]
 
         outputFile.eachLine { line ->
             if (line.startsWith('#') || line.trim().isEmpty()) return
@@ -102,36 +114,76 @@ class AntiFamPredictor extends AbstractToolPredictor {
             String proteinId = fields[0]
             String antifamAcc  = fields[4]   // ANF00001
             String antifamName = fields[3]   // HMM name
-            double seqEvalue = fields[6] as double
-            double seqScore  = fields[7] as double
-            double domEvalue = fields[12] as double
-            double domScore  = fields[13] as double
+            List<Double> statistics
+            try {
+                statistics = [6, 7, 12, 13].collect { Double.parseDouble(fields[it]) }
+            } catch (NumberFormatException ignored) {
+                throw new ToolOutputContractException("antifam: invalid E-value/bit score for ${proteinId}")
+            }
+            if (statistics.any { !Double.isFinite(it) } || statistics[0] < 0.0d || statistics[2] < 0.0d) {
+                throw new ToolOutputContractException("antifam: non-finite statistic or negative E-value for ${proteinId}")
+            }
+            if (antifamAcc == '-') {
+                throw new ToolOutputContractException("antifam: model '${antifamName}' lacks a query accession for ${proteinId}")
+            }
+            double seqEvalue = statistics[0]
+            double seqScore = statistics[1]
+            double domEvalue = statistics[2]
+            double domScore = statistics[3]
 
             String acc = antifamAcc.replaceAll(/\.\d+$/, '')
 
-            // De-duplicate per (protein, AntiFam family) — a single pseudo flag
-            // per family is enough, even when an HMM hits multiple domains.
+            // Preserve every regional match while retaining one legacy flag per family.
+            List<Integer> position
+            try {
+                position = [2, 5, 9, 10, 15, 16, 17, 18, 19, 20].collect { Integer.parseInt(fields[it]) }
+            } catch (NumberFormatException ignored) {
+                throw new ToolOutputContractException("antifam: invalid domain coordinates for ${proteinId}")
+            }
+            def (tlen, qlen, ordinal, total, hmmFrom, hmmTo, aliFrom, aliTo, envFrom, envTo) = position
+            if (position.any { it < 1 } || ordinal > total || hmmFrom > hmmTo || hmmTo > qlen ||
+                    aliFrom > aliTo || aliTo > tlen || envFrom > aliFrom || envTo < aliTo || envTo > tlen) {
+                throw new ToolOutputContractException("antifam: domain coordinates out of bounds for ${proteinId}")
+            }
             String key = "${proteinId}|${acc}"
-            if (!seenPerProtein.add(key)) return
+            List<Map> domains = domainsByKey.computeIfAbsent(key) { [] }
+            domains << [ordinal: ordinal, total: total, proteinLength: tlen, modelLength: qlen,
+                hmmStart: hmmFrom, hmmEnd: hmmTo, alignmentStart: aliFrom, alignmentEnd: aliTo,
+                envelopeStart: envFrom, envelopeEnd: envTo, evalue: domEvalue, bitScore: domScore]
+            if (seenPerProtein.containsKey(key)) {
+                seenPerProtein[key].metadata.domainsJson = JsonOutput.toJson(domains)
+                seenPerProtein[key].metadata.domainCount = domains.size()
+                return
+            }
 
-            // Score: AntiFam treats any --cut_ga pass as a confident pseudo
-            // call, so we always emit score=1.0. When users switch to
-            // E-value gating, scale by -log10(E) capped at 1.0.
-            double score = useCutGa ? 1.0 : Math.min(1.0, -Math.log10(Math.max(domEvalue, 1e-300)) / 50.0)
+            // Legacy normalized score: threshold pass (GA), or capped -log10(E).
+            // This is NOT a probability of whole-gene inactivity.
+            double score = useCutGa ? 1.0 : Math.max(0.0, Math.min(1.0, -Math.log10(Math.max(domEvalue, 1e-300)) / 50.0))
 
-            results[proteinId] << new Annotation(
+            Annotation annotation = new Annotation(
                 type: AnnotationType.PSEUDOGENE,
                 value: acc,
                 source: name,
+                evidenceType: EvidenceType.GENE_MODEL_QUALITY,
                 score: score,
                 metadata: [
                     name        : antifamName,
+                    modelAccession: antifamAcc,
+                    qualityIssue: 'spurious_or_local_gene_model_error',
+                    gating: useCutGa ? 'gathering_threshold' : 'domain_evalue',
+                    domainEvalueThreshold: useCutGa ? null : domainEvalue,
+                    scoreSemantics: useCutGa ? 'threshold_pass_indicator' : 'normalized_domain_evalue',
+                    coordinateSystem: 'protein_1_based_inclusive',
+                    domainsJson: JsonOutput.toJson(domains),
+                    domainCount: domains.size(),
                     seqEvalue   : seqEvalue,
                     seqScore    : seqScore,
                     domainEvalue: domEvalue,
                     domainScore : domScore,
                 ]
             )
+            seenPerProtein[key] = annotation
+            results[proteinId] << annotation
         }
         results
     }

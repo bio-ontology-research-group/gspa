@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.EcClaimIdentitySpec" tests="30" skipped="0" failures="0" errors="0" timestamp="2026-10-28T04:48:09" hostname="node004" time="0.689">
+  <properties/>
+  <testcase name="the fixture really mixes the two spellings (the old bug input)" classname="gspa.integration.EcClaimIdentitySpec" time="0.096"/>
+  <testcase name="without ingestion canonicalization the pair is two groups and two candidates" classname="gspa.integration.EcClaimIdentitySpec" time="0.101"/>
+  <testcase name="JSONL ingestion merges the pair into one group and one candidate with both sources and contracts" classname="gspa.integration.EcClaimIdentitySpec" time="0.018"/>
+  <testcase name="ingestion adds no confidence: raw scores and per-group maxima are exactly the supplied values" classname="gspa.integration.EcClaimIdentitySpec" time="0.014"/>
+  <testcase name="raw spelling is recorded only on the claim whose spelling changed; other metadata is untouched" classname="gspa.integration.EcClaimIdentitySpec" time="0.009"/>
+  <testcase name="annotation ingestion canonicalizes, keeps the annotation untouched and agrees with the JSONL route" classname="gspa.integration.EcClaimIdentitySpec" time="0.016"/>
+  <testcase name="claims written and read back keep the canonical id and the raw spelling" classname="gspa.integration.EcClaimIdentitySpec" time="0.026"/>
+  <testcase name="claim export retains nested evidence and collections as structured JSON" classname="gspa.integration.EcClaimIdentitySpec" time="0.013"/>
+  <testcase name="a contradictory raw_function_id is rejected on both routes, never overwritten" classname="gspa.integration.EcClaimIdentitySpec" time="0.007"/>
+  <testcase name="a raw_function_id that already matches the supplied spelling is idempotent" classname="gspa.integration.EcClaimIdentitySpec" time="0.003"/>
+  <testcase name="canonical('2.5.1.78') is EC:2.5.1.78" classname="gspa.integration.EcClaimIdentitySpec" time="0.001"/>
+  <testcase name="canonical('EC:2.5.1.78') is EC:2.5.1.78" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('ec:2.5.1.78') is EC:2.5.1.78" classname="gspa.integration.EcClaimIdentitySpec" time="0.001"/>
+  <testcase name="canonical(' 2.5.1.78 ') is EC:2.5.1.78" classname="gspa.integration.EcClaimIdentitySpec" time="0.001"/>
+  <testcase name="canonical('2.5.1.-') is EC:2.5.1.-" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('1.-.-.-') is EC:1.-.-.-" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('3.4.21.n12') is EC:3.4.21.n12" classname="gspa.integration.EcClaimIdentitySpec" time="0.001"/>
+  <testcase name="canonical('1.1.1.18') is EC:1.1.1.18" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('2.5.1') is null" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('8.1.1.1') is null" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('0.1.1.1') is null" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('EC:foo') is null" classname="gspa.integration.EcClaimIdentitySpec" time="0.001"/>
+  <testcase name="canonical('EC: 2.5.1.78') is null" classname="gspa.integration.EcClaimIdentitySpec" time="0.001"/>
+  <testcase name="canonical('GO:0003824') is null" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('2.5.1.78 x') is null" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('') is null" classname="gspa.integration.EcClaimIdentitySpec" time="0.0"/>
+  <testcase name="canonical('null') is null" classname="gspa.integration.EcClaimIdentitySpec" time="0.001"/>
+  <testcase name="only EC claims are touched: other types and malformed ids pass through verbatim" classname="gspa.integration.EcClaimIdentitySpec" time="0.007"/>
+  <testcase name="conflicting supplied roles across the two spellings stay separate role candidates of one function" classname="gspa.integration.EcClaimIdentitySpec" time="0.014"/>
+  <testcase name="a production model that has only seen one source still abstains on the merged two-source candidate" classname="gspa.integration.EcClaimIdentitySpec" time="0.327"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+
+import shutil,sys
+from pathlib import Path
+if sys.argv[1:]==['--version']:
+ print('gapsmith 0.1.0 (frozen output replay)');sys.exit(0)
+original=Path('/home/leechuck/.cache/gspa-v3-data/cohort-pathway-replay-v2/GCA_000009965.1/GCA_000009965.1.faa')
+source=Path('/home/leechuck/.cache/gspa-v3-data/cohort-pathway-search-archaea-v2/observations/GCA_000009965.1/outputs/GCA_000009965.1-all-Reactions.tbl')
+pathways=Path('/home/leechuck/.cache/gspa-v3-data/cohort-pathway-search-archaea-v2/observations/GCA_000009965.1/outputs/GCA_000009965.1-all-Pathways.tbl')
+taxonomy='Archaea'
+
+def sequences(path):
+ result={};pid=None
+ for line in path.read_text().splitlines():
+  if line.startswith('>'):
+   pid=line[1:].split()[0]
+   if pid in result: raise ValueError('duplicate protein ID')
+   result[pid]=''
+  elif line.strip(): result[pid]+=line.strip()
+ return result
+assert sequences(Path(sys.argv[-1]))==sequences(original)
+assert sys.argv[sys.argv.index('-t')+1]==taxonomy
+assert sys.argv[sys.argv.index('-K')+1]=='3'
+out=Path(sys.argv[sys.argv.index('-o')+1]);out.mkdir(parents=True,exist_ok=True)
+shutil.copyfile(source,out/'proteins-all-Reactions.tbl')
+shutil.copyfile(pathways,out/'proteins-all-Pathways.tbl')

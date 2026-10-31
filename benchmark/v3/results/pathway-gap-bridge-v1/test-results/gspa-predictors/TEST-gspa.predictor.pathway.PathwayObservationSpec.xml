@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.pathway.PathwayObservationSpec" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-26T23:46:12" hostname="lc-dell" time="1.12">
+  <properties/>
+  <testcase name="completed pathway observations automatically reach shared integration as candidate gaps" classname="gspa.predictor.pathway.PathwayObservationSpec" time="1.016"/>
+  <testcase name="pipeline retains raw pathway observations, sequence claims and clears them between genomes" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.051"/>
+  <testcase name="unknown output protein fails the actual run contract rather than being silently dropped" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.011"/>
+  <testcase name="nucleotide hits cannot be asserted as protein annotations without coordinate attribution" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.007"/>
+  <testcase name="protein batch rejects nucleotide mode before process execution" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.003"/>
+  <testcase name="failed repeated protein batch clears the previous observations" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.008"/>
+  <testcase name="malformed pathway tables fail the adapter instead of certifying gap observations [pathways: , #0]" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.005"/>
+  <testcase name="malformed pathway tables fail the adapter instead of certifying gap observations [pathways: ID&#9;Unknown&#10;P&#9;TRUE&#10;, #1]" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.004"/>
+  <testcase name="malformed pathway tables fail the adapter instead of certifying gap observations [pathways: ID&#9;Prediction&#10;P&#9;maybe&#10;, #2]" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.004"/>
+  <testcase name="malformed pathway tables fail the adapter instead of certifying gap observations [pathways: ID&#9;Prediction&#10;P&#9;TRUE&#10;P&#9;FALSE&#10;, #3]" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.003"/>
+  <testcase name="malformed pathway tables fail the adapter instead of certifying gap observations [pathways: ID&#9;Prediction&#10;P&#9;TRUE&#9;extra&#10;, #4]" classname="gspa.predictor.pathway.PathwayObservationSpec" time="0.003"/>
+  <system-out><![CDATA[02:46:12.429 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+02:46:12.432 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_completed_pathway_o_0_temp3580969919643116572/proteins.faa
+02:46:12.458 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded 5 proteins (protein-only input)
+02:46:12.467 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(proteins, 1 contigs, 5 proteins, 0bp)
+02:46:12.471 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+02:46:12.477 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 1 genome-level predictors...
+02:46:12.478 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running gapsmith...
+02:46:12.492 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapseq_8451366567899145356 /home/leechuck/tmp/gspa_gapseq_8451366567899145356/proteins.faa
+02:46:12.577 [Test worker] INFO gspa.predictor.AnnotationPipeline --   gapsmith: 5 annotations assigned
+02:46:12.602 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+02:46:12.602 [Test worker] INFO gspa.predictor.AnnotationPipeline --   5 claims from 5 proteins
+02:46:12.790 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:46:12.941 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:46:12.984 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+02:46:12.988 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Complex classification: 158 GO complex terms
+02:46:12.993 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_15027045198387621683.tsv (profile: bacteria)
+02:46:12.998 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Essential functions (preset=bacteria): 32 GO terms
+02:46:12.999 [Test worker] INFO gspa.predictor.AnnotationPipeline --   SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+02:46:13.027 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 5 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+02:46:13.037 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:46:13.038 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:46:13.050 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Produced 5 integrated annotations
+02:46:13.061 [Test worker] INFO gspa.integration.IntegrationWriter -- Integration writer: updated 5 proteins with 5 integrated annotations
+02:46:13.065 [Test worker] INFO gspa.predictor.AnnotationPipeline --   IntegratedAnnotationSet(5 annotations, 5 provenance entries, 0 suggestions)
+02:46:13.065 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 5/5 proteins annotated, 5 total annotations
+02:46:13.067 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+02:46:13.067 [Test worker] INFO gspa.predictor.AnnotationPipeline --   5 claims from 5 proteins
+02:46:13.103 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:46:13.147 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:46:13.160 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+02:46:13.162 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Complex classification: 158 GO complex terms
+02:46:13.163 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_13330335749001767950.tsv (profile: bacteria)
+02:46:13.167 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Essential functions (preset=bacteria): 32 GO terms
+02:46:13.168 [Test worker] INFO gspa.predictor.AnnotationPipeline --   SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+02:46:13.169 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 5 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+02:46:13.170 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:46:13.170 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:46:13.171 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Produced 5 integrated annotations
+02:46:13.174 [Test worker] INFO gspa.integration.IntegrationWriter -- Integration writer: updated 5 proteins with 5 integrated annotations
+02:46:13.175 [Test worker] INFO gspa.predictor.AnnotationPipeline --   IntegratedAnnotationSet(5 annotations, 5 provenance entries, 0 suggestions)
+02:46:13.182 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+02:46:13.182 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp460127058464544175/proteins.faa
+02:46:13.183 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded 5 proteins (protein-only input)
+02:46:13.183 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(proteins, 1 contigs, 5 proteins, 0bp)
+02:46:13.183 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+02:46:13.183 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 1 genome-level predictors...
+02:46:13.183 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running gapsmith...
+02:46:13.184 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapseq_16374376127997282189 /home/leechuck/tmp/gspa_gapseq_16374376127997282189/proteins.faa
+02:46:13.189 [Test worker] INFO gspa.predictor.AnnotationPipeline --   gapsmith: 5 annotations assigned
+02:46:13.189 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 5/5 proteins annotated, 5 total annotations
+02:46:13.200 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Predictor status manifest written: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp460127058464544175/first/proteins_predictor_status.json
+02:46:13.217 [Test worker] INFO gspa.predictor.AnnotationPipeline -- GFF3 written: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp460127058464544175/first/proteins.gff3
+02:46:13.219 [Test worker] INFO gspa.predictor.AnnotationPipeline -- TSV written: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp460127058464544175/first/proteins_annotations.tsv
+02:46:13.225 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+02:46:13.225 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp460127058464544175/proteins.faa
+02:46:13.226 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded 5 proteins (protein-only input)
+02:46:13.226 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(proteins, 1 contigs, 5 proteins, 0bp)
+02:46:13.226 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 0 protein-level predictors...
+02:46:13.226 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 0/5 proteins annotated, 0 total annotations
+02:46:13.227 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Predictor status manifest written: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp460127058464544175/first/proteins_predictor_status.json
+02:46:13.229 [Test worker] INFO gspa.predictor.AnnotationPipeline -- GFF3 written: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp460127058464544175/first/proteins.gff3
+02:46:13.230 [Test worker] INFO gspa.predictor.AnnotationPipeline -- TSV written: /home/leechuck/tmp/spock_pipeline_retains_ra_0_temp460127058464544175/first/proteins_annotations.tsv
+02:46:13.233 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapseq_1709077129541615481 /home/leechuck/tmp/gspa_gapseq_1709077129541615481/proteins.faa
+02:46:13.240 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith output rejected: pathway output names proteins absent from the submitted search target
+02:46:13.245 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapseq: gapseq find -p all -t Bacteria -M nucl -K 1 -f /home/leechuck/tmp/gspa_gapseq_17975158992918103763 /home/leechuck/tmp/gspa_gapseq_17975158992918103763/genome.fna
+02:46:13.248 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapseq output rejected: nucleotide pathway hits require coordinate-to-protein attribution; use target=proteome for protein claims
+02:46:13.254 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapsmith_6997713320529682649 /home/leechuck/tmp/gspa_gapsmith_6997713320529682649/input.faa
+02:46:13.259 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapsmith_12461255400530083166 /home/leechuck/tmp/gspa_gapsmith_12461255400530083166/input.faa
+02:46:13.259 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith failed with exit code 2: injected tool failure
+02:46:13.264 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapsmith_12053957751362109331 /home/leechuck/tmp/gspa_gapsmith_12053957751362109331/input.faa
+02:46:13.267 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith output rejected: gapsmith: missing pathway table header
+02:46:13.269 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapsmith_7276408367240005733 /home/leechuck/tmp/gspa_gapsmith_7276408367240005733/input.faa
+02:46:13.272 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith output rejected: gapsmith: unsupported pathway header on line 1
+02:46:13.273 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapsmith_4620614429719370973 /home/leechuck/tmp/gspa_gapsmith_4620614429719370973/input.faa
+02:46:13.275 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith output rejected: gapsmith: invalid pathway/reaction boolean 'maybe'
+02:46:13.277 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapsmith_947189466408733030 /home/leechuck/tmp/gspa_gapsmith_947189466408733030/input.faa
+02:46:13.279 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith output rejected: gapsmith: conflicting pathway predictions: P
+02:46:13.280 [Test worker] INFO gspa.predictor.pathway.PathwayObservationSpec$Replay -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapsmith_1421282798860798670 /home/leechuck/tmp/gspa_gapsmith_1421282798860798670/input.faa
+02:46:13.283 [Test worker] ERROR gspa.predictor.pathway.PathwayObservationSpec$Replay -- gapsmith output rejected: gapsmith: malformed pathway row 2
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@1a28aef1]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@4647881c]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@1a28aef1]
+]]></system-err>
+</testsuite>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.pathway.PathwayInputContractSpec" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-27T16:59:43" hostname="node002" time="0.045">
+  <properties/>
+  <testcase name="default gapsmith search receives proteins even when nucleotide contigs exist" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.009"/>
+  <testcase name="gapsmith rejects nucleotide mode before launching a protein aligner" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.002"/>
+  <testcase name="missing protein sequences are partial coverage" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.004"/>
+  <testcase name="gapseq taxonomy uses -t and protein mode is explicit" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.002"/>
+  <testcase name="both pathway tools receive the configured thread budget [tool: gapsmith, #0]" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.001"/>
+  <testcase name="both pathway tools receive the configured thread budget [tool: gapseq, #1]" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.0"/>
+  <testcase name="pipeline honors explicit pathway tool configuration" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.012"/>
+  <testcase name="pipeline forwards pathway references target executable taxonomy and threads" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.009"/>
+  <testcase name="unknown pathway tool is rejected rather than silently invoking gapsmith" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.001"/>
+  <system-out><![CDATA[19:59:43.802 [Test worker] INFO gspa.predictor.pathway.PathwayInputContractSpec$Capture -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapseq_4398392429879246523 /home/leechuck/tmp/gspa_gapseq_4398392429879246523/proteins.faa
+19:59:43.809 [Test worker] INFO gspa.predictor.pathway.PathwayInputContractSpec$Capture -- Running gapsmith: gapsmith find -p all -t Bacteria -K 1 -o /home/leechuck/tmp/gspa_gapseq_3290410340551433371 /home/leechuck/tmp/gspa_gapseq_3290410340551433371/proteins.faa
+19:59:43.820 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+19:59:43.826 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Gene caller: prodigal
+19:59:43.829 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: diamond
+19:59:43.829 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+19:59:43.830 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: operon
+19:59:43.830 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: gapseq
+19:59:43.830 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=prodigal, 4 predictors registered
+19:59:43.833 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+19:59:43.837 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Gene caller: prodigal
+19:59:43.838 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: diamond
+19:59:43.838 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+19:59:43.838 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: operon
+19:59:43.838 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: gapsmith
+19:59:43.838 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=prodigal, 4 predictors registered
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

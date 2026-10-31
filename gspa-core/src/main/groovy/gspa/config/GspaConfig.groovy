@@ -51,6 +51,10 @@ class GspaConfig {
         StructureConfig structure = new StructureConfig()
         DomainConfig domains = new DomainConfig()
         AntiFamConfig antifam = new AntiFamConfig()
+        EggNogConfig eggnog = new EggNogConfig()
+        AmrFinderConfig amrfinder = new AmrFinderConfig()
+        DbCanConfig dbcan = new DbCanConfig()
+        AntiSmashConfig antismash = new AntiSmashConfig()
         OperonConfig operons = new OperonConfig()
         PathwayConfig pathway = new PathwayConfig()
         LocalizationConfig localization = new LocalizationConfig()
@@ -63,6 +67,37 @@ class GspaConfig {
         Set<String> enable = []
         /** Predictors to explicitly disable */
         Set<String> disable = []
+    }
+
+    static class EggNogConfig {
+        String dataDir
+        String executablePath
+        String searchMode = 'diamond'
+        int threads = Runtime.runtime.availableProcessors()
+    }
+
+    /** Enable with predictors.enable: [amrfinder]. Database defaults to the tool installation. */
+    static class AmrFinderConfig {
+        String database
+        String executablePath
+        String organism
+        int threads = Runtime.runtime.availableProcessors()
+    }
+
+    /** Enable with predictors.enable: [dbcan]. Select the installed CLI explicitly. */
+    static class DbCanConfig {
+        String database
+        String executablePath
+        String interfaceVersion = '4'
+        int threads = Runtime.runtime.availableProcessors()
+    }
+
+    /** Enable with predictors.enable: [antismash]. Region membership is unscored. */
+    static class AntiSmashConfig {
+        String database
+        String executablePath
+        String strictness = 'relaxed'
+        int threads = Runtime.runtime.availableProcessors()
     }
 
     static class SimilarityConfig {
@@ -100,8 +135,13 @@ class GspaConfig {
 
     static class DomainConfig {
         boolean enabled = true
+        /** CPU count for domain searches; --threads overrides this value. */
+        int threads = Runtime.runtime.availableProcessors()
         /** InterProScan applications to run */
         List<String> applications = ['Pfam', 'TIGRFAM', 'CDD', 'SUPERFAMILY']
+
+        /** Use only the installed InterProScan databases, without remote match lookup. */
+        boolean disablePrecalc = false
         /** Use InterProScan or direct HMMER */
         String tool = 'interproscan'
         /**
@@ -121,6 +161,8 @@ class GspaConfig {
      * down-weight functional claims for the protein.
      */
     static class AntiFamConfig {
+        /** CPU count for hmmsearch; --threads overrides this value. */
+        int threads = Runtime.runtime.availableProcessors()
         /** Off by default — the database is not bundled. */
         boolean enabled = false
         /**
@@ -145,8 +187,13 @@ class GspaConfig {
 
     static class PathwayConfig {
         boolean enabled = true
-        /** Tool: gapseq */
-        String tool = 'gapseq'
+        /** Pathway search backend; protein input is the default for either tool. */
+        String tool = 'gapsmith'
+        String target = 'proteome'
+        String dataDir
+        String executablePath
+        String taxonomy = 'Bacteria'
+        int threads = 1
         /** Enable crossfeeding analysis for MAGs/metagenomes */
         boolean crossfeeding = false
         /** Export SBML models */
@@ -329,8 +376,10 @@ class GspaConfig {
         boolean enabled = false
         /** Directory with a CLEAN checkpoint (contains CLEAN_infer_fasta.py). */
         String modelDir
+        /** Explicit native maxsep values: gmm_confidence or distance. */
+        String scoreKind
         int batchSize = 16
-        double minScore = 0.1
+        double minScore = 0.0
     }
 
     static class Esm2CentroidConfig {

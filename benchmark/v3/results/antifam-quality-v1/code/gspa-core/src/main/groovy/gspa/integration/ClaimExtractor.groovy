@@ -1,0 +1,252 @@
+package gspa.integration
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import gspa.model.Annotation
+import gspa.model.AnnotationType
+import gspa.model.Genome
+import gspa.model.Protein
+
+/**
+ * Converts {@link Annotation} instances attached to a {@link Genome}'s
+ * proteins into {@link EvidenceClaim}s for the Phase 7 integration layer.
+ *
+ * Each predictor's {@code source} string is mapped to an {@link EvidenceType}
+ * via a static lookup table. Predictors that wish to override the default
+ * can populate {@link Annotation#evidenceType} directly — the extractor
+ * prefers the annotation's own value when set.
+ *
+ * Raw scores are calibrated through {@link CalibrationTable}.
+ */
+class ClaimExtractor {
+
+    /** Source name → evidence type lookup. */
+    static final Map<String, EvidenceType> SOURCE_TO_TYPE = [
+        'diamond'        : EvidenceType.SEQUENCE_SIMILARITY,
+        'mmseqs2'        : EvidenceType.SEQUENCE_SIMILARITY,
+        'hmmer'          : EvidenceType.SEQUENCE_DOMAIN,
+        'pfam'           : EvidenceType.SEQUENCE_DOMAIN,
+        'antifam'        : EvidenceType.GENE_MODEL_QUALITY,
+        'interproscan'   : EvidenceType.SEQUENCE_DOMAIN,
+        'foldseek'       : EvidenceType.STRUCTURE_SIMILARITY,
+        'eggnog-mapper'  : EvidenceType.ORTHOLOGY,
+        'eggnog'         : EvidenceType.ORTHOLOGY,
+        'operon'         : EvidenceType.GENOMIC_CONTEXT,
+        'gapseq'         : EvidenceType.METABOLIC_CONTEXT,
+        'crossfeeding'   : EvidenceType.METABOLIC_CONTEXT,
+        'signalp'        : EvidenceType.LOCALIZATION,
+        'psortb'         : EvidenceType.LOCALIZATION,
+        'deeptmhmm'      : EvidenceType.LOCALIZATION,
+        'amrfinder'      : EvidenceType.DOMAIN_SPECIFIC_AMR,
+        'dbcan'          : EvidenceType.DOMAIN_SPECIFIC_CAZY,
+        'antismash'      : EvidenceType.DOMAIN_SPECIFIC_BGC,
+        'vfdb'           : EvidenceType.DOMAIN_SPECIFIC_VF,
+        // Phase 9 predictors
+        'deepgo-plus'    : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'deepgo-plusplus': EvidenceType.SEQUENCE_DEEPLEARNING,
+        'deepgo-plusplus-light': EvidenceType.SEQUENCE_DEEPLEARNING,
+        'deepgo'         : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'esm2-go'        : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'proteinfer'     : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'clean'          : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'mdf'            : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'mdeepfri'       : EvidenceType.SEQUENCE_DEEPLEARNING,
+        'saprot'         : EvidenceType.PROTEIN_LM_EMBEDDING,
+        'proteinbert'    : EvidenceType.PROTEIN_LM_EMBEDDING,
+        'deepfri'        : EvidenceType.STRUCTURE_DEEPLEARNING,
+        'graphgoseq'     : EvidenceType.STRUCTURE_DEEPLEARNING,
+        'nucleotide-transformer' : EvidenceType.GENOMIC_LANGUAGE_MODEL,
+        'dnabert2'       : EvidenceType.GENOMIC_LANGUAGE_MODEL,
+        'evo'            : EvidenceType.GENOMIC_LANGUAGE_MODEL,
+        'genslm'         : EvidenceType.GENOMIC_LANGUAGE_MODEL,
+    ] as Map<String, EvidenceType>
+
+    final CalibrationTable calibration
+
+    ClaimExtractor(CalibrationTable calibration = new CalibrationTable()) {
+        this.calibration = calibration
+    }
+
+    /**
+     * Resolve the evidence type for an annotation. Prefers the annotation's
+     * explicit {@code evidenceType}, then falls back to the source lookup
+     * table. Returns {@code null} if neither is set; caller must decide
+     * whether to skip or default.
+     */
+    static EvidenceType resolveType(Annotation a) {
+        if (a.type == AnnotationType.PSEUDOGENE || a.source?.trim()?.equalsIgnoreCase('antifam')) {
+            return EvidenceType.GENE_MODEL_QUALITY
+        }
+        if (a.evidenceType != null) return a.evidenceType
+        if (a.source != null) return SOURCE_TO_TYPE[a.source.toLowerCase(Locale.ROOT)]
+        return null
+    }
+
+    /**
+     * Convert a single annotation on a protein into a claim.
+     * Returns {@code null} if the evidence type cannot be resolved — the
+     * caller should log a warning and drop the claim.
+     */
+    EvidenceClaim fromAnnotation(String proteinId, Annotation ann) {
+        EvidenceType type = resolveType(ann)
+        if (type == null) return null
+        new EvidenceClaim(
+            proteinId: proteinId,
+            functionType: ann.type,
+            functionId: ann.value,
+            goAspect: ann.goAspect,
+            evidenceType: type,
+            source: ann.source,
+            rawScore: ann.score,
+            calibratedProb: type == EvidenceType.GENE_MODEL_QUALITY ? null : calibration.calibrate(ann.source ?: '', ann.score),
+            metadata: ann.metadata != null ? new LinkedHashMap<>(ann.metadata) : [:],
+            origin: ann,
+        )
+    }
+
+    /**
+     * Extract all claims from a protein's annotations. Annotations whose
+     * evidence type cannot be resolved are skipped.
+     */
+    List<EvidenceClaim> fromProtein(Protein protein) {
+        if (protein.annotations == null) return []
+        List<EvidenceClaim> out = []
+        for (Annotation ann : protein.annotations.annotations) {
+            EvidenceClaim claim = fromAnnotation(protein.id, ann)
+            if (claim != null) out << claim
+        }
+        out
+    }
+
+    /** Extract all claims from all proteins in a genome. */
+    List<EvidenceClaim> fromGenome(Genome genome) {
+        List<EvidenceClaim> out = []
+        for (Protein p : genome.proteins) {
+            out.addAll(fromProtein(p))
+        }
+        out
+    }
+
+    /**
+     * Write claims in the JSONL contract {@link #readClaimsJsonl} reads, without loss: protein id,
+     * type, function, source, explicit evidence type, GO aspect, raw score, calibrated probability
+     * (full precision) and metadata. Reading the file back gives the same claims, so any route can
+     * integrate exactly what the predictors produced, weak candidates included.
+     */
+    static int writeClaimsJsonl(Collection<EvidenceClaim> claims, File file) {
+        ObjectMapper mapper = new ObjectMapper()
+        file.parentFile?.mkdirs()
+        file.withWriter('UTF-8') { w ->
+            for (EvidenceClaim c : claims) {
+                Map<String, Object> rec = new LinkedHashMap<>()
+                rec.protein_id = c.proteinId
+                rec.function_type = c.functionType?.name()
+                rec.function_id = c.functionId
+                rec.source = c.source
+                rec.evidence_type = c.isQualityObservation() ? EvidenceType.GENE_MODEL_QUALITY.name() : c.evidenceType?.name()
+                rec.go_aspect = c.goAspect
+                rec.raw_score = c.rawScore
+                rec.calibrated_prob = c.isQualityObservation() ? null : c.calibratedProb
+                Map<String, Object> meta = new LinkedHashMap<>()
+                (c.metadata ?: [:]).each { k, v ->
+                    meta[k as String] = (v == null || v instanceof Number || v instanceof String || v instanceof Boolean) ? v : v.toString()
+                }
+                rec.metadata = meta
+                w.writeLine(mapper.writeValueAsString(rec))
+            }
+        }
+        claims.size()
+    }
+
+    /**
+     * Group claims by {@link EvidenceClaim#functionKey()}. This is the
+     * grouping used by {@link EvidenceCombiner} to combine multiple claims
+     * about the same (protein, function) assignment.
+     */
+    static Map<String, List<EvidenceClaim>> groupByFunctionKey(List<EvidenceClaim> claims) {
+        Map<String, List<EvidenceClaim>> out = new LinkedHashMap<>()
+        for (EvidenceClaim c : claims) {
+            out.computeIfAbsent(c.functionKey(), { k -> new ArrayList<EvidenceClaim>() }) << c
+        }
+        out
+    }
+
+    /**
+     * Parse a JSONL claims file (one JSON object per line) into a list of
+     * claims. Format used by the benchmark pipeline and the
+     * {@code gspa-cli integrate} command.
+     *
+     * Required per-line fields: {@code protein_id, function_type,
+     * function_id, source, raw_score}. Optional: {@code go_aspect,
+     * evidence_type, metadata}. The {@code calibrated_prob} is computed via
+     * this extractor's {@link CalibrationTable} unless present on the line.
+     */
+    List<EvidenceClaim> readClaimsJsonl(File file) {
+        ObjectMapper mapper = new ObjectMapper()
+        List<EvidenceClaim> out = []
+        boolean hasBareProteinId = false
+        boolean hasPipeProteinId = false
+        file.withReader { reader ->
+            reader.eachLine { line ->
+                line = line.trim()
+                if (line.isEmpty() || line.startsWith('#')) return
+                Map rec = mapper.readValue(line, Map)
+                String source = rec.source as String
+                double raw = (rec.raw_score as Number)?.doubleValue() ?: 0.0d
+                EvidenceType type = null
+                if (rec.evidence_type) {
+                    try { type = EvidenceType.valueOf(rec.evidence_type as String) } catch (ignored) {}
+                }
+                if (type == null && source) {
+                    type = SOURCE_TO_TYPE[(source as String).toLowerCase(Locale.ROOT)]
+                }
+                if ((rec.function_type as String)?.equalsIgnoreCase('PSEUDOGENE') || source?.trim()?.equalsIgnoreCase('antifam')) {
+                    type = EvidenceType.GENE_MODEL_QUALITY
+                }
+                if (type == null) return    // unresolved claim; skip
+                AnnotationType functionType = AnnotationType.valueOf((rec.function_type as String).toUpperCase(Locale.ROOT))
+                Double calibrated = type == EvidenceType.GENE_MODEL_QUALITY ? null : rec.calibrated_prob != null
+                    ? ((Number) rec.calibrated_prob).doubleValue()
+                    : calibration.calibrate(source ?: '', raw)
+                String pid = rec.protein_id as String
+                if (pid != null) {
+                    if (pid.contains('|')) hasPipeProteinId = true
+                    else hasBareProteinId = true
+                }
+                out << new EvidenceClaim(
+                    proteinId: pid,
+                    functionType: functionType,
+                    functionId: rec.function_id as String,
+                    goAspect: rec.go_aspect as String,
+                    evidenceType: type,
+                    source: source,
+                    rawScore: raw,
+                    calibratedProb: calibrated,
+                    metadata: (rec.metadata ?: [:]) as Map,
+                )
+            }
+        }
+        if (hasBareProteinId && hasPipeProteinId) {
+            for (int i = 0; i < out.size(); i++) {
+                EvidenceClaim c = out[i]
+                if (c.proteinId != null && (c.proteinId.startsWith('sp|') || c.proteinId.startsWith('tr|'))) {
+                    String[] parts = c.proteinId.split('\\|')
+                    if (parts.length >= 2 && parts[1]) {
+                        out[i] = new EvidenceClaim(
+                            proteinId: parts[1],
+                            functionType: c.functionType,
+                            functionId: c.functionId,
+                            goAspect: c.goAspect,
+                            evidenceType: c.evidenceType,
+                            source: c.source,
+                            rawScore: c.rawScore,
+                            calibratedProb: c.calibratedProb,
+                            metadata: c.metadata,
+                            origin: c.origin,
+                        )
+                    }
+                }
+            }
+        }
+        out
+    }
+}

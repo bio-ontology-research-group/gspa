@@ -1,0 +1,365 @@
+{
+  "schema_version" : 2,
+  "genome_id" : "genome",
+  "interpretation" : "Prediction changes are not measurements of accuracy.",
+  "scoring_mode" : "legacy_heuristic",
+  "scoring_mode_note" : "Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores.",
+  "baseline_definitions" : {
+    "stage0_raw_max_score" : "Stage 0: strongest raw predictor score per function; no priors, no combination, no posterior.",
+    "legacy_prior_baseline" : "Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The baseline_candidates and final_changes of this ledger are measured from it."
+  },
+  "changes_measured_from" : "legacy_prior_baseline",
+  "stages" : [ {
+    "name" : "reference_preparation",
+    "status" : "executed",
+    "changes" : [ ],
+    "metabolic_gap_records" : 1,
+    "metabolic_gap_context_available" : true,
+    "ec_to_go_mapping_available" : false,
+    "mapped_ec_count" : 0,
+    "elapsed_seconds" : 0.632351346
+  }, {
+    "name" : "cohort_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "evidence_integration",
+    "status" : "executed",
+    "changes" : [ {
+      "function_key" : "pE|EC|EC:2.3.3.3",
+      "protein_id" : "pE",
+      "function_type" : "EC",
+      "function_id" : "EC:2.3.3.3",
+      "change" : "added",
+      "before_probability" : null,
+      "after_probability" : 0.41999999999999993
+    }, {
+      "function_key" : "pG|EC|EC:2.3.3.3",
+      "protein_id" : "pG",
+      "function_type" : "EC",
+      "function_id" : "EC:2.3.3.3",
+      "change" : "added",
+      "before_probability" : null,
+      "after_probability" : 0.41999999999999993
+    } ],
+    "input_candidates" : 0,
+    "output_candidates" : 2,
+    "suggestions" : 0,
+    "elapsed_seconds" : 0.059252949
+  }, {
+    "name" : "dark_matter",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "reaction_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "cross_genome",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "symbolic_enforcement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_refinement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "agent_completion",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_experiments",
+    "status" : "executed",
+    "changes" : [ ],
+    "reason" : null,
+    "analysis_type" : "guided_absence_comparisons",
+    "context_source" : "run_gap_absence_comparisons",
+    "context" : {
+      "context_source" : "run_gap_absence_comparisons",
+      "gap_context_available" : true,
+      "gap_records" : 1,
+      "rejected_gaps" : [ ],
+      "rejected_candidates" : [ ],
+      "comparisons" : [ {
+        "id" : "pE|EC|EC:2.3.3.3\tVITS",
+        "reaction" : "VITS",
+        "candidate_function_key" : "pE|EC|EC:2.3.3.3",
+        "mapping_sources" : [ "sbml_annotation" ],
+        "gap_sources" : [ {
+          "pathway_id" : "synthetic:P",
+          "reaction_id" : "source:VITS",
+          "ec_number" : "2.3.3.3",
+          "go_term" : null,
+          "gapseq_guessed" : false
+        } ],
+        "candidate_sources" : [ {
+          "source" : "diamond",
+          "evidence_type" : "SEQUENCE_SIMILARITY",
+          "raw_score" : 0.6
+        } ],
+        "peer_support" : null,
+        "local_context_support" : null,
+        "request" : {
+          "reaction" : "VITS",
+          "candidate_function_key" : "pE|EC|EC:2.3.3.3",
+          "assembly" : {
+            "status" : "UNKNOWN",
+            "completeness_fraction" : null,
+            "source" : "synthetic test; not measured"
+          },
+          "function_search" : {
+            "status" : "UNKNOWN",
+            "source" : "synthetic test; not measured"
+          },
+          "conditions" : [ {
+            "id" : "control",
+            "mods" : [ ]
+          }, {
+            "id" : "withdrawal",
+            "mods" : [ {
+              "op" : "close",
+              "exchange" : "EX_vit_e"
+            } ]
+          }, {
+            "id" : "transport_ko",
+            "mods" : [ {
+              "op" : "knockout",
+              "reactions" : [ "T_vit" ]
+            } ]
+          } ],
+          "external_supply" : {
+            "exchange" : "EX_vit_e",
+            "uptake_limit" : 2,
+            "transport_reactions" : [ "T_vit" ],
+            "source" : "synthetic medium"
+          }
+        }
+      }, {
+        "id" : "pG|EC|EC:2.3.3.3\tVITS",
+        "reaction" : "VITS",
+        "candidate_function_key" : "pG|EC|EC:2.3.3.3",
+        "mapping_sources" : [ "sbml_annotation" ],
+        "gap_sources" : [ {
+          "pathway_id" : "synthetic:P",
+          "reaction_id" : "source:VITS",
+          "ec_number" : "2.3.3.3",
+          "go_term" : null,
+          "gapseq_guessed" : false
+        } ],
+        "candidate_sources" : [ {
+          "source" : "diamond",
+          "evidence_type" : "SEQUENCE_SIMILARITY",
+          "raw_score" : 0.6
+        } ],
+        "peer_support" : null,
+        "local_context_support" : null,
+        "request" : {
+          "reaction" : "VITS",
+          "candidate_function_key" : "pG|EC|EC:2.3.3.3",
+          "assembly" : {
+            "status" : "UNKNOWN",
+            "completeness_fraction" : null,
+            "source" : "synthetic test; not measured"
+          },
+          "function_search" : {
+            "status" : "UNKNOWN",
+            "source" : "synthetic test; not measured"
+          },
+          "conditions" : [ {
+            "id" : "control",
+            "mods" : [ ]
+          }, {
+            "id" : "withdrawal",
+            "mods" : [ {
+              "op" : "close",
+              "exchange" : "EX_vit_e"
+            } ]
+          }, {
+            "id" : "transport_ko",
+            "mods" : [ {
+              "op" : "knockout",
+              "reactions" : [ "T_vit" ]
+            } ]
+          } ],
+          "external_supply" : {
+            "exchange" : "EX_vit_e",
+            "uptake_limit" : 2,
+            "transport_reactions" : [ "T_vit" ],
+            "source" : "synthetic medium"
+          }
+        }
+      } ],
+      "truncated" : [ ],
+      "ranking" : "descending measured peer support, then local context support, then function/reaction identity; unavailable support ranks last",
+      "interpretation" : "Gaps and recurrence propose comparisons, not absence labels. Target assembly/search and bounded supply remain explicit assumptions. No GPR or final posterior selects a candidate."
+    },
+    "mode" : "evidence_guided",
+    "strategy" : "fixed",
+    "model_file" : "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/models/toy.xml",
+    "model_sha256" : "d8eb981a1534f0befd8f43342b359283db345661dd6b4842177d859cd371a7de",
+    "model_origin" : "supplied model; not this run's refiner export",
+    "solver_calls_used" : 8,
+    "solver_calls_max" : 8,
+    "conditions_visited" : 1,
+    "max_experiments" : 6,
+    "comparisons" : [ {
+      "id" : "pE|EC|EC:2.3.3.3\tVITS",
+      "status" : "verified",
+      "result_file" : "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/solver_budget.tsv.experiments/comparison-0000/result.json",
+      "result_sha256" : "48e493053aff1f64a710cdfd7346d7bb7847403fad9d85d41d6e4cb99cd0fcf4",
+      "facts" : {
+        "mode" : "manifest",
+        "strategy" : "fixed",
+        "seed" : 0,
+        "model_file" : "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/models/toy.xml",
+        "model_sha256" : "d8eb981a1534f0befd8f43342b359283db345661dd6b4842177d859cd371a7de",
+        "max_experiments" : 6,
+        "max_solver_calls" : 8,
+        "context_source" : "explicit_absence_scenarios",
+        "context" : {
+          "context_source" : "explicit_absence_scenarios",
+          "reaction" : "VITS",
+          "candidate_function_key" : "pE|EC|EC:2.3.3.3",
+          "metadata_source" : "user_manifest",
+          "candidate_sources" : [ {
+            "source" : "diamond",
+            "evidence_type" : "SEQUENCE_SIMILARITY",
+            "raw_score" : 0.6
+          } ],
+          "mapping_sources" : [ "reactions_tsv", "sbml_annotation" ],
+          "alternative_reactions" : [ ]
+        },
+        "reaction_mapping_table_present" : true,
+        "model_origin" : "supplied model; independence is not established by file format or presence of a reaction mapping table",
+        "analysis_type" : "absence_comparison",
+        "problem_sha256" : "286b5144032f73e0d6d986ac25dab06818fc36efd7718bcc223c552f5cd652f7",
+        "solver_calls_used" : 8,
+        "solver_calls_max" : 8,
+        "outcome" : "completed_with_skips_or_inconclusive",
+        "conditions_visited" : [ "control" ],
+        "conditions_unvisited" : [ "withdrawal", "transport_ko" ],
+        "comparisons" : [ {
+          "hypotheses" : [ "missing_annotation", "missing_sequence" ],
+          "comparable_phenotypes" : 2,
+          "status" : "distinguishable_under_assumptions",
+          "distinguishing_interventions" : [ {
+            "condition_id" : "control",
+            "perturbation" : "candidate_assignment_knockout"
+          } ]
+        }, {
+          "hypotheses" : [ "missing_annotation", "pathway_loss" ],
+          "comparable_phenotypes" : 2,
+          "status" : "distinguishable_under_assumptions",
+          "distinguishing_interventions" : [ {
+            "condition_id" : "control",
+            "perturbation" : "wild_type"
+          } ]
+        }, {
+          "hypotheses" : [ "missing_annotation", "external_supply" ],
+          "comparable_phenotypes" : 2,
+          "status" : "distinguishable_under_assumptions",
+          "distinguishing_interventions" : [ {
+            "condition_id" : "control",
+            "perturbation" : "candidate_assignment_knockout"
+          } ]
+        }, {
+          "hypotheses" : [ "missing_sequence", "pathway_loss" ],
+          "comparable_phenotypes" : 2,
+          "status" : "distinguishable_under_assumptions",
+          "distinguishing_interventions" : [ {
+            "condition_id" : "control",
+            "perturbation" : "wild_type"
+          }, {
+            "condition_id" : "control",
+            "perturbation" : "candidate_assignment_knockout"
+          } ]
+        }, {
+          "hypotheses" : [ "missing_sequence", "external_supply" ],
+          "comparable_phenotypes" : 2,
+          "status" : "same_evaluated_growth_classes",
+          "distinguishing_interventions" : [ ]
+        }, {
+          "hypotheses" : [ "pathway_loss", "external_supply" ],
+          "comparable_phenotypes" : 2,
+          "status" : "distinguishable_under_assumptions",
+          "distinguishing_interventions" : [ {
+            "condition_id" : "control",
+            "perturbation" : "wild_type"
+          }, {
+            "condition_id" : "control",
+            "perturbation" : "candidate_assignment_knockout"
+          } ]
+        } ],
+        "assembly" : {
+          "status" : "UNKNOWN",
+          "completeness_fraction" : null,
+          "source" : "synthetic test; not measured"
+        },
+        "function_search" : {
+          "status" : "UNKNOWN",
+          "source" : "synthetic test; not measured"
+        },
+        "gene_attribution" : "unverified",
+        "selected_explanation" : null,
+        "candidates_with_conditional_features" : 0,
+        "promotion" : "none",
+        "seconds" : 0.586,
+        "result_file" : "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/solver_budget.tsv.experiments/comparison-0000/result.json",
+        "result_sha256" : "48e493053aff1f64a710cdfd7346d7bb7847403fad9d85d41d6e4cb99cd0fcf4",
+        "interpretation" : "Four explicit reaction-level scenarios with separate candidate-assignment interventions. Growth is conditional on model and environmental assumptions; no explanation or gene assignment is verified."
+      }
+    } ],
+    "unvisited_comparisons" : [ {
+      "id" : "pG|EC|EC:2.3.3.3\tVITS",
+      "reason" : "solver_budget_exhausted",
+      "conditions" : [ "control", "withdrawal", "transport_ko" ]
+    } ],
+    "outcome" : "completed_with_skips_or_inconclusive",
+    "candidates_with_conditional_features" : 0,
+    "promotion" : "none",
+    "gene_attribution" : "unverified",
+    "selected_explanation" : null,
+    "result_file" : "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/solver_budget.tsv.experiments/result.json",
+    "result_sha256" : "a2e4417a5936ecbad674beb633fcb0071665e02775ac01ecf052a14fce54fc51",
+    "interpretation" : "Gaps and recurrence propose comparisons, not absence labels. Target assembly/search and bounded supply remain explicit assumptions. No GPR or final posterior selects a candidate.",
+    "elapsed_seconds" : 0.929306283
+  }, {
+    "name" : "community_metabolism",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "learned_integration",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them"
+  }, {
+    "name" : "feature_export",
+    "status" : "executed",
+    "changes" : [ ],
+    "rows" : 2,
+    "functions" : 2,
+    "rows_with_sequence_evidence" : 2,
+    "rows_sha256" : "cf72ccdfe9c9f5dd19aaec6b37273acdeecc7e48a7ab2f1842107f2bcbdb8f8e",
+    "contract_id" : "gspa.context-features/3",
+    "contract_fingerprint" : "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+    "model_sha256" : null,
+    "labels_included" : false,
+    "directory" : "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/solver_budget.features",
+    "note" : "Rows carry no label, split or group; join independently curated truth and declared splits by candidate_key.",
+    "elapsed_seconds" : 0.149811404
+  } ],
+  "baseline_candidates" : 2,
+  "final_candidates" : 2,
+  "final_changes" : [ ]
+}

@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.genecalling.GeneCallerContractSpec" tests="21" skipped="0" failures="21" errors="0" timestamp="2026-10-28T06:27:29" hostname="node004" time="2.796">
+  <properties/>
+  <testcase name="both callers join reversed proteins by identity and retain public coordinate-order IDs [type: class gspa.predictor.genecalling.PyrodigalCaller, #0]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.706">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteins*.sequence == ['MMMMMMMMMM', 'AAAAAAAAAA']&#10;| |         |        |&#10;| |         |        false&#10;| |         [AAAAAAAAAA, MMMMMMMMMM]&#10;| [Protein(sample_00001, 10aa, 0 annotations), Protein(sample_00002, 10aa, 0 annotations)]&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteins*.sequence == ['MMMMMMMMMM', 'AAAAAAAAAA']
+| |         |        |
+| |         |        false
+| |         [AAAAAAAAAA, MMMMMMMMMM]
+| [Protein(sample_00001, 10aa, 0 annotations), Protein(sample_00002, 10aa, 0 annotations)]
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.both callers join reversed proteins by identity and retain public coordinate-order IDs(GeneCallerContractSpec.groovy:63)
+</failure>
+  </testcase>
+  <testcase name="both callers join reversed proteins by identity and retain public coordinate-order IDs [type: class gspa.predictor.genecalling.ProdigalCaller, #1]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.073">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteins*.sequence == ['MMMMMMMMMM', 'AAAAAAAAAA']&#10;| |         |        |&#10;| |         |        false&#10;| |         [AAAAAAAAAA, MMMMMMMMMM]&#10;| [Protein(sample_00001, 10aa, 0 annotations), Protein(sample_00002, 10aa, 0 annotations)]&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteins*.sequence == ['MMMMMMMMMM', 'AAAAAAAAAA']
+| |         |        |
+| |         |        false
+| |         [AAAAAAAAAA, MMMMMMMMMM]
+| [Protein(sample_00001, 10aa, 0 annotations), Protein(sample_00002, 10aa, 0 annotations)]
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.both callers join reversed proteins by identity and retain public coordinate-order IDs(GeneCallerContractSpec.groovy:63)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: missing protein, #0]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.055">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteinCount == 0&#10;| |            |&#10;| 1            false&#10;Genome(sample, 1 contigs, 1 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteinCount == 0
+| |            |
+| 1            false
+Genome(sample, 1 contigs, 1 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: extra protein, #1]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.054">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteinCount == 0&#10;| |            |&#10;| 2            false&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteinCount == 0
+| |            |
+| 2            false
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: duplicate protein, #2]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.044">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteinCount == 0&#10;| |            |&#10;| 2            false&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteinCount == 0
+| |            |
+| 2            false
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: duplicate CDS, #3]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.045">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteinCount == 0&#10;| |            |&#10;| 2            false&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteinCount == 0
+| |            |
+| 2            false
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: wrong coordinate, #4]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.045">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteinCount == 0&#10;| |            |&#10;| 2            false&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteinCount == 0
+| |            |
+| 2            false
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: wrong strand, #5]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.048">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteinCount == 0&#10;| |            |&#10;| 2            false&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteinCount == 0
+| |            |
+| 2            false
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: bad GFF, #6]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.046">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteinCount == 0&#10;| |            |&#10;| 2            false&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteinCount == 0
+| |            |
+| 2            false
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: missing coverage, #7]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.046">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteinCount == 0&#10;| |            |&#10;| 2            false&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteinCount == 0
+| |            |
+| 2            false
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: wrong coverage, #8]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.048">
+    <failure message="Condition not satisfied:&#10;&#10;g.proteinCount == 0&#10;| |            |&#10;| 2            false&#10;Genome(sample, 1 contigs, 2 proteins, 120bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+g.proteinCount == 0
+| |            |
+| 2            false
+Genome(sample, 1 contigs, 2 proteins, 120bp)
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:97)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: unknown contig, #9]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.088">
+    <failure message="Condition not satisfied:&#10;&#10;status(caller)?.outcome == PredictorOutcome.FAILED&#10;|      |        |       |  |&#10;null   |        null    |  class gspa.predictor.PredictorOutcome&#10;       |                false&#10;       &lt;gspa.predictor.genecalling.PyrodigalCaller@3f628ce9 metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_malformed_or_incomp_9_dir13420867660342451665/tool-b2668187-7231-4e81-aa3b-466ae4852010&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+status(caller)?.outcome == PredictorOutcome.FAILED
+|      |        |       |  |
+null   |        null    |  class gspa.predictor.PredictorOutcome
+       |                false
+       &lt;gspa.predictor.genecalling.PyrodigalCaller@3f628ce9 metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_malformed_or_incomp_9_dir13420867660342451665/tool-b2668187-7231-4e81-aa3b-466ae4852010&gt;
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:99)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: native error, #10]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.046">
+    <failure message="Condition not satisfied:&#10;&#10;status(caller)?.outcome == PredictorOutcome.FAILED&#10;|      |        |       |  |&#10;null   |        null    |  class gspa.predictor.PredictorOutcome&#10;       |                false&#10;       &lt;gspa.predictor.genecalling.PyrodigalCaller@129bd55d metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_malformed_or_incomp_10_dir6539663275473621135/tool-32b17083-1885-4e6c-8a16-e65a5292b294&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+status(caller)?.outcome == PredictorOutcome.FAILED
+|      |        |       |  |
+null   |        null    |  class gspa.predictor.PredictorOutcome
+       |                false
+       &lt;gspa.predictor.genecalling.PyrodigalCaller@129bd55d metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_malformed_or_incomp_10_dir6539663275473621135/tool-32b17083-1885-4e6c-8a16-e65a5292b294&gt;
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:99)
+</failure>
+  </testcase>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: garbage FAA, #11]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.051">
+    <failure message="Condition not satisfied:&#10;&#10;status(caller)?.outcome == PredictorOutcome.FAILED&#10;|      |        |       |  |&#10;null   |        null    |  class gspa.predictor.PredictorOutcome&#10;       |                false&#10;       &lt;gspa.predictor.genecalling.PyrodigalCaller@3672276e metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_malformed_or_incomp_11_dir4775166220793675041/tool-64a3d1e8-d17b-4a0f-949e-f6e1c1c81008&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+status(caller)?.outcome == PredictorOutcome.FAILED
+|      |        |       |  |
+null   |        null    |  class gspa.predictor.PredictorOutcome
+       |                false
+       &lt;gspa.predictor.genecalling.PyrodigalCaller@3672276e metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_malformed_or_incomp_11_dir4775166220793675041/tool-64a3d1e8-d17b-4a0f-949e-f6e1c1c81008&gt;
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.malformed or incomplete output never mutates the original genome(GeneCallerContractSpec.groovy:99)
+</failure>
+  </testcase>
+  <testcase name="observed native zero output remains successful with no false gene-absence inference" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.055">
+    <failure message="Condition not satisfied:&#10;&#10;status(caller)?.outcome == PredictorOutcome.SUCCESS_ZERO&#10;|      |        |       |  |&#10;null   |        null    |  class gspa.predictor.PredictorOutcome&#10;       |                false&#10;       &lt;gspa.predictor.genecalling.PyrodigalCaller@3baf6936 metaMode=true translationTable=11 executablePath=/home/leechuck/tmp/spock_observed_native_zer_0_dir390374253053867604/tool-797bac06-e7b7-4726-92e5-4a9a12bb13db&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+status(caller)?.outcome == PredictorOutcome.SUCCESS_ZERO
+|      |        |       |  |
+null   |        null    |  class gspa.predictor.PredictorOutcome
+       |                false
+       &lt;gspa.predictor.genecalling.PyrodigalCaller@3baf6936 metaMode=true translationTable=11 executablePath=/home/leechuck/tmp/spock_observed_native_zer_0_dir390374253053867604/tool-797bac06-e7b7-4726-92e5-4a9a12bb13db&gt;
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.observed native zero output remains successful with no false gene-absence inference(GeneCallerContractSpec.groovy:117)
+</failure>
+  </testcase>
+  <testcase name="observed numeric-contig native metadata does not create false ambiguity" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="1.149">
+    <failure message="Condition not satisfied:&#10;&#10;status(caller)?.outcome == PredictorOutcome.SUCCESS&#10;|      |        |       |  |&#10;null   |        null    |  class gspa.predictor.PredictorOutcome&#10;       |                false&#10;       &lt;gspa.predictor.genecalling.PyrodigalCaller@46c269e0 metaMode=true translationTable=11 executablePath=/home/leechuck/tmp/spock_observed_numeric-co_0_dir5605022919209352389/tool-aa3ed6af-8467-47ce-bd23-2ad0a8a0f638&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+status(caller)?.outcome == PredictorOutcome.SUCCESS
+|      |        |       |  |
+null   |        null    |  class gspa.predictor.PredictorOutcome
+       |                false
+       &lt;gspa.predictor.genecalling.PyrodigalCaller@46c269e0 metaMode=true translationTable=11 executablePath=/home/leechuck/tmp/spock_observed_numeric-co_0_dir5605022919209352389/tool-aa3ed6af-8467-47ce-bd23-2ad0a8a0f638&gt;
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.observed numeric-contig native metadata does not create false ambiguity(GeneCallerContractSpec.groovy:135)
+</failure>
+  </testcase>
+  <testcase name="a skipped sequence is partial and stale success cannot survive the next empty run" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.083">
+    <failure message="Condition not satisfied:&#10;&#10;first?.outcome == PredictorOutcome.PARTIAL&#10;|      |       |  |&#10;null   null    |  class gspa.predictor.PredictorOutcome&#10;               false&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+first?.outcome == PredictorOutcome.PARTIAL
+|      |       |  |
+null   null    |  class gspa.predictor.PredictorOutcome
+               false
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.a skipped sequence is partial and stale success cannot survive the next empty run(GeneCallerContractSpec.groovy:152)
+</failure>
+  </testcase>
+  <testcase name="successful process with missing outputs fails instead of reporting zero" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.031">
+    <failure message="Condition not satisfied:&#10;&#10;status(caller)?.outcome == PredictorOutcome.FAILED&#10;|      |        |       |  |&#10;null   |        null    |  class gspa.predictor.PredictorOutcome&#10;       |                false&#10;       &lt;gspa.predictor.genecalling.PyrodigalCaller@252dc8c4 metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_successful_process__0_dir6172300368071029345/tool-8d317c8d-b017-431f-9359-8552f927fbb2&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+status(caller)?.outcome == PredictorOutcome.FAILED
+|      |        |       |  |
+null   |        null    |  class gspa.predictor.PredictorOutcome
+       |                false
+       &lt;gspa.predictor.genecalling.PyrodigalCaller@252dc8c4 metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_successful_process__0_dir6172300368071029345/tool-8d317c8d-b017-431f-9359-8552f927fbb2&gt;
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.successful process with missing outputs fails instead of reporting zero(GeneCallerContractSpec.groovy:166)
+</failure>
+  </testcase>
+  <testcase name="existing CDS is preserved and a missing executable is unavailable" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.012">
+    <failure message="java.io.IOException: Cannot run program &quot;/home/leechuck/tmp/spock_existing_CDS_is_pre_0_dir2104233583242468162/not-installed&quot; (in directory &quot;/home/leechuck/tmp/gspa_pyrodigal_6723251959693951088&quot;): Exec failed, error: 2 (No such file or directory) " type="java.io.IOException">java.io.IOException: Cannot run program &quot;/home/leechuck/tmp/spock_existing_CDS_is_pre_0_dir2104233583242468162/not-installed&quot; (in directory &quot;/home/leechuck/tmp/gspa_pyrodigal_6723251959693951088&quot;): Exec failed, error: 2 (No such file or directory) 
+	at java.base/java.lang.ProcessBuilder.start(ProcessBuilder.java:1170)
+	at java.base/java.lang.ProcessBuilder.start(ProcessBuilder.java:1089)
+	at gspa.predictor.genecalling.PyrodigalCaller.callGenes(PyrodigalCaller.groovy:67)
+	at gspa.predictor.genecalling.GeneCallerContractSpec.existing CDS is preserved and a missing executable is unavailable(GeneCallerContractSpec.groovy:175)
+Caused by: java.io.IOException: Exec failed, error: 2 (No such file or directory) 
+	at java.base/java.lang.ProcessImpl.&lt;init&gt;(ProcessImpl.java:295)
+	at java.base/java.lang.ProcessImpl.start(ProcessImpl.java:225)
+	at java.base/java.lang.ProcessBuilder.start(ProcessBuilder.java:1126)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="availability requires successful recognizable native version output" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.036">
+    <failure message="Condition not satisfied:&#10;&#10;!caller.isAvailable()&#10;||      |&#10;||      true&#10;|&lt;gspa.predictor.genecalling.ProdigalCaller@2849434b metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_availability_requir_0_dir16794615861301784395/tool-beb96c24-8e37-40cf-9776-610e765daffe&gt;&#10;false&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+!caller.isAvailable()
+||      |
+||      true
+|&lt;gspa.predictor.genecalling.ProdigalCaller@2849434b metaMode=false translationTable=11 executablePath=/home/leechuck/tmp/spock_availability_requir_0_dir16794615861301784395/tool-beb96c24-8e37-40cf-9776-610e765daffe&gt;
+false
+
+	at gspa.predictor.genecalling.GeneCallerContractSpec.availability requires successful recognizable native version output(GeneCallerContractSpec.groovy:193)
+</failure>
+  </testcase>
+  <testcase name="timeout bounds output consumption and terminates descendants holding the log open" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.012">
+    <failure message="groovy.lang.MissingPropertyException: No such property: timeoutMillis for class: gspa.predictor.genecalling.PyrodigalCaller" type="groovy.lang.MissingPropertyException">groovy.lang.MissingPropertyException: No such property: timeoutMillis for class: gspa.predictor.genecalling.PyrodigalCaller
+	at gspa.predictor.genecalling.GeneCallerContractSpec.timeout bounds output consumption and terminates descendants holding the log open(GeneCallerContractSpec.groovy:213)
+</failure>
+  </testcase>
+  <system-out><![CDATA[09:27:29.760 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_both_callers_join_r_0_dir10631998321961281041/tool-8ace38a4-ebb5-42d3-ab12-cc7ed19ff946 -i /home/leechuck/tmp/gspa_pyrodigal_4194491584899108927/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_4194491584899108927/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_4194491584899108927/proteins.faa -f gff -g 11
+09:27:29.986 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:30.255 [Test worker] INFO gspa.predictor.genecalling.ProdigalCaller -- Running prodigal: /home/leechuck/tmp/spock_both_callers_join_r_1_dir7172994379753530721/tool-c9a2bb25-ddef-43d4-994e-de547bd779b6 -i /home/leechuck/tmp/gspa_prodigal_16882010285854054203/input.fna -o /home/leechuck/tmp/gspa_prodigal_16882010285854054203/prodigal.gff -a /home/leechuck/tmp/gspa_prodigal_16882010285854054203/proteins.faa -f gff -g 11
+09:27:30.312 [Test worker] INFO gspa.predictor.genecalling.ProdigalCaller -- Prodigal called 2 genes
+09:27:30.331 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_0_dir6538050072755687520/tool-cefe6e2d-b823-4c27-ba99-31509c534830 -i /home/leechuck/tmp/gspa_pyrodigal_15111653138712970558/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_15111653138712970558/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_15111653138712970558/proteins.faa -f gff -g 11
+09:27:30.371 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 1 genes
+09:27:30.380 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_1_dir5514400426829325691/tool-8dceff40-2ada-4096-ac21-d588ddd9234a -i /home/leechuck/tmp/gspa_pyrodigal_13789979083167648257/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_13789979083167648257/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_13789979083167648257/proteins.faa -f gff -g 11
+09:27:30.429 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:30.436 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_2_dir5651379230130751777/tool-46faba3a-ff44-4486-92f5-e2b87251de69 -i /home/leechuck/tmp/gspa_pyrodigal_6490175813903280592/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_6490175813903280592/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_6490175813903280592/proteins.faa -f gff -g 11
+09:27:30.474 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:30.481 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_3_dir7327664190390874541/tool-57d08ff5-57bc-412c-914f-202227f14aba -i /home/leechuck/tmp/gspa_pyrodigal_7658097558915609250/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_7658097558915609250/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_7658097558915609250/proteins.faa -f gff -g 11
+09:27:30.520 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:30.528 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_4_dir5144231401902564017/tool-cc127dcf-fa5e-44fd-bd53-d5be58ce0017 -i /home/leechuck/tmp/gspa_pyrodigal_9523107867179199965/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_9523107867179199965/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_9523107867179199965/proteins.faa -f gff -g 11
+09:27:30.566 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:30.574 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_5_dir11334036440506034949/tool-791d802d-bb2b-4bb0-acbc-13bd12364c03 -i /home/leechuck/tmp/gspa_pyrodigal_16487998078859435419/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_16487998078859435419/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_16487998078859435419/proteins.faa -f gff -g 11
+09:27:30.615 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:30.621 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_6_dir7318513368479822932/tool-ccf13e29-67f3-4464-85a1-206293c8f8bf -i /home/leechuck/tmp/gspa_pyrodigal_12783866026992987101/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_12783866026992987101/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_12783866026992987101/proteins.faa -f gff -g 11
+09:27:30.661 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:30.668 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_7_dir18098173914268825648/tool-9894cae2-e3ce-47a5-a42f-fc12a390a3c7 -i /home/leechuck/tmp/gspa_pyrodigal_2742174216307017905/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_2742174216307017905/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_2742174216307017905/proteins.faa -f gff -g 11
+09:27:30.709 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:30.715 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_8_dir1626708948171485884/tool-3ab340fa-3c59-4cb5-a1cf-f04f00d13a28 -i /home/leechuck/tmp/gspa_pyrodigal_18155164382681158581/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_18155164382681158581/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_18155164382681158581/proteins.faa -f gff -g 11
+09:27:30.758 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:30.769 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_9_dir13420867660342451665/tool-b2668187-7231-4e81-aa3b-466ae4852010 -i /home/leechuck/tmp/gspa_pyrodigal_17623906745765683776/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_17623906745765683776/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_17623906745765683776/proteins.faa -f gff -g 11
+09:27:30.807 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 0 genes
+09:27:30.854 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_10_dir6539663275473621135/tool-32b17083-1885-4e6c-8a16-e65a5292b294 -i /home/leechuck/tmp/gspa_pyrodigal_2978979826609327317/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_2978979826609327317/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_2978979826609327317/proteins.faa -f gff -g 11
+09:27:30.890 [Test worker] ERROR gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal failed (exit 7): native diagnostic
+
+09:27:30.905 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_malformed_or_incomp_11_dir4775166220793675041/tool-64a3d1e8-d17b-4a0f-949e-f6e1c1c81008 -i /home/leechuck/tmp/gspa_pyrodigal_11324928190751723610/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_11324928190751723610/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_11324928190751723610/proteins.faa -f gff -g 11
+09:27:30.945 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 0 genes
+09:27:30.964 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_observed_native_zer_0_dir390374253053867604/tool-797bac06-e7b7-4726-92e5-4a9a12bb13db -i /home/leechuck/tmp/gspa_pyrodigal_13430843843685247331/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_13430843843685247331/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_13430843843685247331/proteins.faa -f gff -g 11 -p meta
+09:27:31.000 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 0 genes
+09:27:31.799 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_observed_numeric-co_0_dir5605022919209352389/tool-aa3ed6af-8467-47ce-bd23-2ad0a8a0f638 -i /home/leechuck/tmp/gspa_pyrodigal_5861765798519141510/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_5861765798519141510/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_5861765798519141510/proteins.faa -f gff -g 11 -p meta
+09:27:32.149 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 291 genes
+09:27:32.160 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_a_skipped_sequence__0_dir4229733819498832293/tool-b7bf6b91-e814-4fd3-bc59-163f312f50f6 -i /home/leechuck/tmp/gspa_pyrodigal_12079961975385619568/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_12079961975385619568/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_12079961975385619568/proteins.faa -f gff -g 11
+09:27:32.199 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 2 genes
+09:27:32.200 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_a_skipped_sequence__0_dir4229733819498832293/tool-b7bf6b91-e814-4fd3-bc59-163f312f50f6 -i /home/leechuck/tmp/gspa_pyrodigal_14439751124543703399/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_14439751124543703399/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_14439751124543703399/proteins.faa -f gff -g 11
+09:27:32.236 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal called 0 genes
+09:27:32.245 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_successful_process__0_dir6172300368071029345/tool-8d317c8d-b017-431f-9359-8552f927fbb2 -i /home/leechuck/tmp/gspa_pyrodigal_6660345367805335469/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_6660345367805335469/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_6660345367805335469/proteins.faa -f gff -g 11
+09:27:32.267 [Test worker] WARN gspa.predictor.genecalling.PyrodigalCaller -- Pyrodigal produced no GFF output
+09:27:32.278 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- Running pyrodigal: /home/leechuck/tmp/spock_existing_CDS_is_pre_0_dir2104233583242468162/not-installed -i /home/leechuck/tmp/gspa_pyrodigal_6723251959693951088/input.fna -o /home/leechuck/tmp/gspa_pyrodigal_6723251959693951088/output.gff -a /home/leechuck/tmp/gspa_pyrodigal_6723251959693951088/proteins.faa -f gff -g 11
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@e362c57]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@1c4ee95c]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@e362c57]
+]]></system-err>
+</testsuite>

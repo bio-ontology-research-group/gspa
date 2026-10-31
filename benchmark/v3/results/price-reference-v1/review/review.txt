@@ -1,0 +1,56 @@
+I found no blocking provenance defect. The one high-severity issue is that reference-protein IDs are never checked against what the predictors emit. I only read the code, plus `ec_identity.py` and the integrated-TSV writer for context. I ran nothing and edited nothing.
+
+## Defects, ranked
+
+**1. Reference-protein IDs are never checked against the candidate files (high).** The code in question is `evaluate_price_reference.py:67,83` and `read_scores`.
+- `retained = {p: {} for p in targets}` is filled only when the score file's `protein_id` equals the manifest's `proteome_protein_id`. The manifest IDs are versioned, e.g. `WP_063460136.1`.
+- If the production FAA/layout IDs differ in version or form, or use the `contig_N` convention from your layout-protein_id memory, every target gets `{}`. That produces 148 proteins with no candidates, 0% top-1, and a "verified" report.
+- A true no-prediction case looks identical, because both give `candidates == 0`. The test at `test_price_reference_metrics.py:94-98` asserts exactly this silent `{'p': {}}` behaviour.
+- **Fix:** after scoring each panel, require that every one of the 148 target IDs appears in at least one of raw, stage0 or stage1 for at least one selected predictor. Emit per-predictor `proteins_without_candidates` into the report. Better still, check the 148 IDs against the cell's layout/FAA ID set; the check is read-only.
+
+**2. Headline top-1 and MRR depend on lexical tie-breaking (high, scientific).** The code is `price_reference_metrics.py:60-63,74-76`, and it feeds `summary`, `paired` and `bootstrap_top1`.
+- `ranked` sorts by `(-score, lexical EC)`. `top1_match`, `top1_reference_accuracy`, `reciprocal_rank`, `changed_top1`, `top1_gained/lost` and both bootstraps all use that arbitrary order.
+- Posteriors and raw scores saturate: the integrated TSV writes full-precision doubles, so ties come from 1.0 and 0.0 saturation. Ties are therefore common, and the tie-break systematically favours low EC classes.
+- You already report `top_tie_any_match` and `top_tie_all_match` as bounds, but the headline numbers, deltas and CIs ignore them.
+- The test at `:57-59` locks in the lexical result: `top1_match` is False for a tie between `.2` and `.4`.
+- **Fix:** make the primary top-1 tie-aware, either fractional credit `|truth ∩ ties| / |ties|` or the lower/upper bounds (all-match/any-match). Bootstrap and `paired` should use the same quantity. Compute MRR the same way (mean reciprocal rank over the tie block). Keep lexical order only for display.
+
+**3. Stage0 vs stage1 comparability is only partly verified (medium, provenance).** The code is `evaluate_price_reference.py:154`.
+- The only check is that `--enable-priors none` is present for stage0 and absent for stage1. Nothing confirms the two commands are otherwise identical, or that `spec['inputs']` are the same across arms.
+- A stray difference such as a flag, ontology, version or threshold would be attributed to the priors.
+- **Fix:** assert `command_stage0` with the `--enable-priors none` pair removed equals `command_stage1`, and that the input digest maps are equal. Also assert each arm's `receipt['artifacts']` binds `output`.
+
+**4. Path-string mismatch can raise `KeyError` (low, robustness).** The code is `:145,157,176,177`.
+- `bind` stores resolved paths, but `raw_path` and `outputs[arm]` are used unresolved in `bound[path]`. A relative or symlinked `cell['part']` or output path passes the `in spec['inputs']` check, then fails with `KeyError`, or `bound` simply has no matching key.
+- It fails loudly, so it is not a silent error. **Fix:** resolve the paths once, when `raw_path` and `output` are set.
+
+**5. The audit file's own provenance is not checked (low).** The code is `:122-125`.
+- Only the audit JSON's hash and its internal resolution consistency are checked. The ENZYME release hash in `audit['inputs']` is never compared with an expected pin, and `audit['schema']` is not validated.
+- So the ENZYME version behind the sensitivity analysis is not stated in the evaluation registration.
+- **Fix:** copy `audit['inputs']` and `schema` into `registration.json`, and assert the schema equals `gspa.ec-identity-audit/1`.
+
+**6. Sensitivity-mode `reference_pairs` is inconsistent with the top-level 151 (low, reporting).**
+- Under `current_unambiguous`, projection can merge reference IDs, so `summary['reference_pairs']` is less than 151. The report's top-level `reference_pairs` is the original count.
+- Report both `original_reference_pairs` (151) and the projected count in each summary, so a reader cannot misread the sensitivity table.
+
+**7. Smaller defects.**
+- `csv.DictReader` accepts rows with extra fields (key `None`) and raises `KeyError` instead of `ValueError` for missing columns. Validate the header and field count (`:73-81`).
+- The 95% CI index is floored (`int(0.025*(n-1))`), which skews the upper bound slightly low. It is a percentile bootstrap over only 22 clusters, so label it a descriptive interval, not a calibrated one (`price_reference_metrics.py:145-146`).
+- Genome-cluster resampling has no minimum protein count per genome. The report should state each genome's reference-protein count so readers can see the weighting.
+- `read_scores` never checks that a stage-output row belongs to the cell's own genome or predictor; the TSV has no such column, so only the digest ties it.
+
+## Test gaps
+
+- No test exercises `evaluate()` end to end: the exclusion row, the 132-cell plan, stage-flag validation, digest drift, an incomplete panel, or the contradictory `failed.json` case.
+- There is no test for a protein-ID join failure (defect 1) or for tie-aware metrics (defect 2).
+- The bootstrap CI is tested only for the degenerate zero-delta case and a point estimate, not for non-degenerate variation or the empty-resample counter.
+- `test_actual_price_population` depends on the repository manifest. That is fine, but it passes the manifest's own genome set, so it does not verify that those are the plan's 22 genomes.
+
+## Checked and fine
+
+- Missing-candidate proteins stay in the denominator and unresolved IDs stay in both populations.
+- Max-merge, not sum, for transfers that collapse to the same target.
+- Raw scores carry no 0.5 threshold, and the integrated 0.5 diagnostic is disclosed as non-calibrated.
+- The digest is computed during the read and compared again at the end, so unlabelled rows are covered too.
+- The 149/148/151 constants and the single declared exclusion are enforced.
+- NaN, infinity, bool and out-of-range scores are rejected.

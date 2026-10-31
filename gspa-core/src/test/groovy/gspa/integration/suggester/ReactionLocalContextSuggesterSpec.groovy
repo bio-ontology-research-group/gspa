@@ -148,4 +148,93 @@ class ReactionLocalContextSuggesterSpec extends Specification {
         then:
         integrated.suggestions == null || integrated.suggestions.isEmpty()
     }
+    @spock.lang.TempDir File outputDir
+
+    private Map<String, Map<String, String>> features(IntegrationState state) {
+        File file = new File(outputDir, 'rlc.tsv')
+        new ReactionLocalContextSuggester(featuresOut: file).suggest(state, new IntegratedAnnotationSet())
+        List<String> lines = file.readLines()
+        List<String> names = lines[0].split('\t').toList()
+        lines.drop(1).collectEntries { line ->
+            List<String> values = line.split('\t', -1).toList()
+            [(values[0]): [names, values].transpose().collectEntries { [(it[0]): it[1]] }]
+        }
+    }
+
+    def "absent predictions supply no reaction-neighbor support, commitment or self penalty"() {
+        when:
+        def row = features(fixture()).p_mid
+        then:
+        row != null
+        row.diversity.toDouble() == 0.9d // two observed 0.9 anchors, each with one-hop weight 0.5
+        row.commitment.toDouble() == 0d
+        row.self.toDouble() == 0d
+    }
+
+    def "explicitly observed probability one half remains evidence in every feature"() {
+        given:
+        def state = fixture(.5d, 0d, true)
+        state.posteriorLogOdds['p_mid|GO|GO:3333333'] = 0d
+        when:
+        def row = features(state).p_mid
+        then:
+        row.diversity.toDouble() == .5d
+        Math.abs(row.commitment.toDouble() - Math.log(2d)) < 1e-6
+        row.self.toDouble() == .5d
+    }
+
+    def "adding unannotated neighboring genes cannot manufacture reaction diversity"() {
+        given:
+        def state = fixture()
+        double original = features(state).p_mid.diversity.toDouble()
+        for (int i = 0; i < 7; i++) {
+            state.genomeLayout.add(new ProteinLocus(genomeId: 'test', proteinId: 'unobserved_' + i,
+                contig: 'chr1', start: 17000 + 1000*i, end: 17900 + 1000*i, strand: Strand.PLUS))
+        }
+        state.genomeLayout.finishLoading()
+        when:
+        def row = features(state).p_mid
+        then:
+        row.diversity.toDouble() == original
+        row.commitment.toDouble() == 0d
+        row.self.toDouble() == 0d
+    }
+
+    def 'an explicitly empty mapping does not fall back to stale legacy mappings'() {
+        given:
+        def state = fixture()
+        state.ecToGoAlternatives = [:].asImmutable()
+        def output = new IntegratedAnnotationSet()
+        when:
+        new ReactionLocalContextSuggester().suggest(state, output)
+        then:
+        output.suggestions.empty
+    }
+
+    def 'overlapping EC alternatives share one diversity group regardless of mapping order'() {
+        given:
+        def state = fixture()
+        state.ecToGoAlternatives = ['2.2.2.2':['GO:2222222','GO:5555555'],
+                                    '4.4.4.4':['GO:5555555','GO:4444444']]
+        when:
+        def original = features(state).p_mid
+        state.ecToGoAlternatives = ['4.4.4.4':['GO:4444444','GO:5555555'],
+                                    '2.2.2.2':['GO:5555555','GO:2222222']]
+        def reversed = features(state).p_mid
+        then:
+        original == reversed
+        original.diversity.toDouble() == 0.495d // 0.5 * (1 - (1 - .9)^2)
+    }
+
+    def 'a distant alternative does not inherit a stronger near-reaction weight'() {
+        given:
+        def state = fixture()
+        state.ecToGoAlternatives = ['1.1.1.1':['GO:1111111','GO:2222222'],
+                                    '2.2.2.2':['GO:2222222'], '4.4.4.4':['GO:4444444']]
+        state.posteriorLogOdds['pN2|GO|GO:1111111'] = state.posteriorLogOdds.remove('pN2|GO|GO:2222222')
+        when:
+        def row = features(state).p_mid
+        then:
+        row.diversity.toDouble() == .675d // .25 * .9 + .5 * .9
+    }
 }

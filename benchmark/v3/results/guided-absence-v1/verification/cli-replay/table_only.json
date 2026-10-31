@@ -1,0 +1,82 @@
+{
+  "model": "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/models/table-only.xml",
+  "config": {},
+  "baseline": {
+    "medium": {
+      "EX_glc_e": 10,
+      "EX_nh4_e": 10,
+      "EX_o2_e": 10,
+      "EX_vit_e": 0
+    },
+    "exchanges": [
+      "EX_glc_e",
+      "EX_ac_e",
+      "EX_o2_e",
+      "EX_vit_e",
+      "EX_sec_e",
+      "EX_nh4_e",
+      "EX_lac_e"
+    ],
+    "carbon_exchanges": [
+      "EX_glc_e"
+    ],
+    "nitrogen_exchanges": [
+      "EX_nh4_e"
+    ],
+    "oxygen_exchange": "EX_o2_e"
+  },
+  "objectives": {
+    "biomass": "BIOMASS",
+    "maintenance": {
+      "reaction": "ATPM",
+      "lower_bound": 1.0
+    }
+  },
+  "absence_comparison": {
+    "assembly": {
+      "status": "UNKNOWN",
+      "completeness_fraction": null,
+      "source": "synthetic test; not measured"
+    },
+    "function_search": {
+      "status": "UNKNOWN",
+      "source": "synthetic test; not measured"
+    },
+    "external_supply_by_reaction": {
+      "VITS": {
+        "exchange": "EX_vit_e",
+        "uptake_limit": 2,
+        "transport_reactions": [
+          "T_vit"
+        ],
+        "source": "synthetic medium"
+      }
+    },
+    "conditions": [
+      {
+        "id": "control",
+        "mods": []
+      },
+      {
+        "id": "withdrawal",
+        "mods": [
+          {
+            "op": "close",
+            "exchange": "EX_vit_e"
+          }
+        ]
+      },
+      {
+        "id": "transport_ko",
+        "mods": [
+          {
+            "op": "knockout",
+            "reactions": [
+              "T_vit"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

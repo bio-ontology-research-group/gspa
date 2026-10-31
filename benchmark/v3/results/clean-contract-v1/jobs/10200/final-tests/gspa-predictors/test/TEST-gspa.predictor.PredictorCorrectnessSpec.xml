@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.PredictorCorrectnessSpec" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-10-27T18:35:07" hostname="node002" time="0.153">
+  <properties/>
+  <testcase name="eggNOG: confidence comes from the evalue column, not the bit score" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.012"/>
+  <testcase name="eggNOG: columns are located by header, even when the layout is shifted" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.009"/>
+  <testcase name="eggNOG: headerless file uses the emapper 2.1 layout and still validates the evalue" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.022"/>
+  <testcase name="eggNOG: invalid E-values are a failed contract, never an invented confidence (negative)" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.007"/>
+  <testcase name="eggNOG: invalid E-values are a failed contract, never an invented confidence (NaN)" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.004"/>
+  <testcase name="eggNOG: invalid E-values are a failed contract, never an invented confidence (infinite)" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.003"/>
+  <testcase name="eggNOG: invalid E-values are a failed contract, never an invented confidence (dash)" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.002"/>
+  <testcase name="eggNOG: invalid E-values are a failed contract, never an invented confidence (empty)" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.001"/>
+  <testcase name="eggNOG: invalid E-values are a failed contract, never an invented confidence (text)" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.002"/>
+  <testcase name="eggNOG: E-value 0 is valid; large E-values are weak (0) not errors; short rows are rejected" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.007"/>
+  <testcase name="eggNOG: a header missing the evalue column is rejected instead of guessed" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.003"/>
+  <testcase name="eggNOG: missing annotations file after a run is an error, header-only file is zero" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.003"/>
+  <testcase name="InterProScan: does not advertise or emit EC; '-' placeholders and GO sources are handled" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.014"/>
+  <testcase name="HMMER: without a database file the predictor is unavailable and says why" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.002"/>
+  <testcase name="HMMER: command passes the configured database" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.003"/>
+  <testcase name="Operon: aspect-less cytoplasm / enzyme GO terms are never copied to neighbours" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.027"/>
+  <testcase name="Operon ensemble: aspect-less shared GO terms do not support a co-operonic call" classname="gspa.predictor.PredictorCorrectnessSpec" time="0.02"/>
+  <system-out><![CDATA[21:35:07.273 [Test worker] INFO gspa.predictor.context.OperonPredictor -- Predicting operons for g
+21:35:07.281 [Test worker] INFO gspa.predictor.context.OperonPredictor -- Detected 1 operons (2 genes total)
+21:35:07.291 [Test worker] WARN gspa.predictor.context.OperonPredictor -- Operon transfer ignored 2 GO annotation(s) without a GO aspect (cannot be confirmed as biological process)
+21:35:07.292 [Test worker] INFO gspa.predictor.context.OperonPredictor -- Generated 1 annotation transfers
+21:35:07.312 [Test worker] INFO gspa.predictor.context.OperonEnsemble -- OperonEnsemble: 1 operons; 2 CDS in operons
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

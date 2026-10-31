@@ -1,0 +1,82 @@
+{
+  "model": "/home/leechuck/.cache/gspa-v3-data/absence-mechanism-v1/models/toy.xml",
+  "config": {},
+  "baseline": {
+    "medium": {
+      "EX_glc_e": 10,
+      "EX_nh4_e": 10,
+      "EX_o2_e": 10,
+      "EX_vit_e": 2
+    },
+    "exchanges": [
+      "EX_glc_e",
+      "EX_ac_e",
+      "EX_o2_e",
+      "EX_vit_e",
+      "EX_sec_e",
+      "EX_nh4_e",
+      "EX_lac_e"
+    ],
+    "carbon_exchanges": [
+      "EX_glc_e"
+    ],
+    "nitrogen_exchanges": [
+      "EX_nh4_e"
+    ],
+    "oxygen_exchange": "EX_o2_e"
+  },
+  "objectives": {
+    "biomass": "BIOMASS",
+    "maintenance": {
+      "reaction": "ATPM",
+      "lower_bound": 1.0
+    }
+  },
+  "absence_comparison": {
+    "reaction": "VITS",
+    "candidate_function_key": "pE|EC|EC:2.3.3.3",
+    "assembly": {
+      "status": "COMPLETE",
+      "completeness_fraction": 1.0,
+      "source": "synthetic closed genome"
+    },
+    "function_search": {
+      "status": "COMPLETE",
+      "source": "synthetic function search"
+    },
+    "external_supply": {
+      "exchange": "EX_vit_e",
+      "uptake_limit": 2,
+      "transport_reactions": [
+        "T_vit"
+      ],
+      "source": "synthetic medium"
+    },
+    "conditions": [
+      {
+        "id": "control",
+        "mods": []
+      },
+      {
+        "id": "withdrawal",
+        "mods": [
+          {
+            "op": "close",
+            "exchange": "EX_vit_e"
+          }
+        ]
+      },
+      {
+        "id": "transport_ko",
+        "mods": [
+          {
+            "op": "knockout",
+            "reactions": [
+              "T_vit"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

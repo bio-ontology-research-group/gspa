@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory
  *   <li><b>Continuous genomic density</b> — kernel-smoothed field over
  *       anchor (neighbour-catalysing) proteins; no operon call required.</li>
  *   <li><b>Diversity / commitment / direction priors</b> — Noisy-OR over
- *       distinct neighbour reactions, commitment penalty from current
+ *       neighbour GO mapping groups, commitment penalty from current
  *       posteriors, strand-consistency, and intergenic-gap penalty.</li>
  * </ol>
  *
@@ -120,7 +120,15 @@ class ReactionLocalContextSuggester {
             log.info("RLGC: no genome layout wired; skipping")
             return integrated
         }
-        Map<String, String> ec2go = state.pathwayDatabase?.ec2go ?: [:]
+        Map<String, List<String>> ec2go = state.ecToGoAlternatives
+        if (ec2go == null) {
+            // Compatibility for callers that supplied a legacy pathway database in memory.
+            ec2go = [:]
+            state.pathwayDatabase?.ec2go?.each { String ec, String go ->
+                String key = ec.replaceFirst(/^EC:/, '')
+                if (go) ec2go.computeIfAbsent(key) { [] }.add(go)
+            }
+        }
 
         int emitted = 0
         int skippedClosed = 0
@@ -176,6 +184,7 @@ class ReactionLocalContextSuggester {
             // 2. Translate neighbour reactions to neighbour GO terms (via EC → GO).
             //    Use the full set of ECs bound to each rxn.
             Map<String, Double> nbrGoWeights = new LinkedHashMap<>()
+            List<Set<String>> mappingGroups = []
             for (Map.Entry<String, Double> e : nbrRxnWeights.entrySet()) {
                 Set<String> ecs = graph.ecsForReaction(e.key)
                 if (ecs.isEmpty()) {
@@ -183,12 +192,19 @@ class ReactionLocalContextSuggester {
                     if (spec != null && spec.ecNumber) ecs = Collections.singleton(spec.ecNumber)
                 }
                 for (String ec : ecs) {
-                    // Try EC:-prefixed (standard GO-consortium ec2go) then bare.
-                    String go = ec2go[ec.startsWith('EC:') ? ec : "EC:${ec}".toString()]
-                    if (go == null) go = ec2go[ec]
-                    if (!go || go == gap.goTerm) continue
-                    Double cur = nbrGoWeights[go]
-                    if (cur == null || e.value > cur) nbrGoWeights[go] = e.value
+                    Set<String> terms = (ec2go[ec.replaceFirst(/^EC:/, '')] ?: [])
+                        .findAll { it && it != gap.goTerm } as TreeSet<String>
+                    if (terms.isEmpty()) continue
+                    for (String go : terms) {
+                        Double cur = nbrGoWeights[go]
+                        if (cur == null || e.value > cur) nbrGoWeights[go] = e.value
+                    }
+                    // GO labels reached through the same EC are correlated mapping
+                    // alternatives. Merge overlaps to avoid counting them twice.
+                    List<Set<String>> overlaps = mappingGroups.findAll { !Collections.disjoint(it, terms) }
+                    mappingGroups.removeAll(overlaps)
+                    overlaps.each { terms.addAll(it) }
+                    mappingGroups.add(terms)
                 }
             }
             if (nbrGoWeights.isEmpty()) { skippedNoGraphEntry++; continue }
@@ -259,7 +275,7 @@ class ReactionLocalContextSuggester {
                 double d = tup.v2
                 ProteinLocus loc = layout.get(cid)
                 candDensity[cid] = d
-                double div = computeDiversity(cid, loc, nbrGoWeights, state, field)
+                double div = computeDiversity(cid, loc, nbrGoWeights, mappingGroups, state, field)
                 double commit = computeCommitmentPenalty(cid, gap.goTerm, nbrGoWeights, state)
                 double self = computeSelf(cid, gap.goTerm, state)
                 double strand = computeStrandConsistency(loc, anchorWeights, layout, halfWidth)
@@ -411,32 +427,39 @@ class ReactionLocalContextSuggester {
     // ------------------------------------------------------------------
 
     /**
-     * Diversity: Noisy-OR over distinct neighbour GOs whose anchors land
-     * within 2·bandwidth of {@code loc}. Bounded [0, log(|N|)].
+     * Sum of weighted noisy-OR support across non-overlapping EC-to-GO mapping
+     * groups within 2·bandwidth of {@code loc}. Within each group and protein,
+     * use the strongest weighted observed label; alternatives are not independent
+     * evidence. Overlapping groups merge conservatively, without asserting GO
+     * equivalence. Single-label groups retain the original GO calculation.
+     * Bounded by the sum of maximum graph-distance weights across groups.
      */
     private double computeDiversity(String cid, ProteinLocus loc,
                                     Map<String, Double> nbrGoWeights,
+                                    List<Set<String>> mappingGroups,
                                     IntegrationState state,
                                     GenomicDensityField field) {
         int halfWidth = 2 * field.halfWidth
         GenomeLayout layout = state.genomeLayout
         List<ProteinLocus> window = layout.windowAround(loc.contig, loc.midpoint(), halfWidth)
-        Map<String, Double> perGoOneMinusHit = new LinkedHashMap<>()
-        for (String go : nbrGoWeights.keySet()) perGoOneMinusHit[go] = 1.0d
-        for (ProteinLocus p : window) {
-            if (p.proteinId == cid) continue
-            for (String go : nbrGoWeights.keySet()) {
-                String key = "${p.proteinId}|GO|${go}".toString()
-                double prob = sigmoid(state.posteriorLogOdds.getOrDefault(key, 0.0d))
-                if (prob <= 0.0d) continue
-                perGoOneMinusHit[go] *= (1.0d - prob)
-            }
-        }
         double div = 0.0d
-        for (Map.Entry<String, Double> e : perGoOneMinusHit) {
-            double hit = 1.0d - e.value
-            if (hit < 1e-9) continue
-            div += hit * nbrGoWeights[e.key]
+        for (Set<String> group : mappingGroups.sort(false) { it.first() }) {
+            double weight = group.collect { nbrGoWeights[it] }.max()
+            if (weight <= 0d) continue
+            double oneMinusHit = 1d
+            for (ProteinLocus p : window) {
+                if (p.proteinId == cid) continue
+                double strongest = 0d
+                for (String go : group) {
+                    String key = "${p.proteinId}|GO|${go}".toString()
+                    // Absence is zero support; recorded zero log-odds is 0.5.
+                    Double lo = state.posteriorLogOdds[key]
+                    if (lo != null) strongest = Math.max(strongest, sigmoid(lo) * nbrGoWeights[go])
+                }
+                oneMinusHit *= (1d - strongest / weight)
+            }
+            double hit = 1d - oneMinusHit
+            if (hit >= 1e-9) div += hit * weight
         }
         div
     }
@@ -449,7 +472,9 @@ class ReactionLocalContextSuggester {
         for (String go : nbrGoWeights.keySet()) {
             if (go == gapGo) continue
             String key = "${cid}|GO|${go}".toString()
-            double p = sigmoid(state.posteriorLogOdds.getOrDefault(key, 0.0d))
+            Double lo = state.posteriorLogOdds[key]
+            if (lo == null) continue
+            double p = sigmoid(lo)
             if (p > maxOther) maxOther = p
         }
         double freeProb = Math.max(minFreeProbability, 1.0d - maxOther)
@@ -459,8 +484,8 @@ class ReactionLocalContextSuggester {
     /** If cid already strongly catalyses f_R, strongly down-weight it. */
     private double computeSelf(String cid, String gapGo, IntegrationState state) {
         String key = "${cid}|GO|${gapGo}".toString()
-        double p = sigmoid(state.posteriorLogOdds.getOrDefault(key, 0.0d))
-        p    // 0..1; multiplied by δ in the scoring loop
+        Double lo = state.posteriorLogOdds[key]
+        lo == null ? 0.0d : sigmoid(lo) // no self penalty without an observed claim
     }
 
     /**

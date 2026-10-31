@@ -24,6 +24,12 @@ class ConsistencyViolation {
     /** GO terms involved in the violation */
     List<String> involvedGoTerms = []
 
+    /** Claims (GO or EC) directly attributed to the violation */
+    List<String> involvedClaims = []
+
+    /** For EC violations, maps the EC claim ID to the mapped GO term(s) that caused the violation */
+    Map<String, List<String>> ecToGoCauses = [:]
+
     /** Suggested corrective action */
     String suggestedAction
 

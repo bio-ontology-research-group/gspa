@@ -1,0 +1,150 @@
+{
+  "schema_version" : 2,
+  "genome_id" : "genome",
+  "interpretation" : "Prediction changes are not measurements of accuracy.",
+  "scoring_mode" : "legacy_heuristic",
+  "scoring_mode_note" : "Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores.",
+  "baseline_definitions" : {
+    "stage0_raw_max_score" : "Stage 0: strongest raw predictor score per function; no priors, no combination, no posterior.",
+    "legacy_prior_baseline" : "Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The baseline_candidates and final_changes of this ledger are measured from it."
+  },
+  "changes_measured_from" : "legacy_prior_baseline",
+  "stages" : [ {
+    "name" : "reference_preparation",
+    "status" : "executed",
+    "changes" : [ ],
+    "metabolic_gap_records" : 0,
+    "metabolic_gap_context_available" : false,
+    "ec_to_go_mapping_available" : false,
+    "mapped_ec_count" : 0,
+    "elapsed_seconds" : 0.721243138
+  }, {
+    "name" : "cohort_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "evidence_integration",
+    "status" : "executed",
+    "changes" : [ {
+      "function_key" : "query|EC|EC:6.2.1.1",
+      "protein_id" : "query",
+      "function_type" : "EC",
+      "function_id" : "EC:6.2.1.1",
+      "change" : "added",
+      "before_probability" : null,
+      "after_probability" : 0.08373647553455477
+    } ],
+    "input_candidates" : 0,
+    "output_candidates" : 1,
+    "suggestions" : 0,
+    "elapsed_seconds" : 0.069017492
+  }, {
+    "name" : "dark_matter",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "reaction_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "cross_genome",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "symbolic_enforcement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_refinement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "agent_completion",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_experiments",
+    "status" : "executed",
+    "changes" : [ ],
+    "mode" : "evidence_guided",
+    "strategy" : "fixed",
+    "seed" : 0,
+    "model_file" : "/home/leechuck/tmp/gspa-experiment-roles-v1/cli-replay/models/xref/xref.xml",
+    "model_sha256" : "b1e91300c91cb05defe126808a263de4df2bd6b88f2d7397671a698df1bb9fa3",
+    "max_experiments" : 2,
+    "max_solver_calls" : 80,
+    "context_source" : "evidence_guided_masked_assignments",
+    "context" : {
+      "context_source" : "evidence_guided_masked_assignments",
+      "candidate_protein" : "query",
+      "mask_gene" : "pD",
+      "candidates_rejected" : [ {
+        "function_key" : "query|EC|EC:6.2.1.1",
+        "reason" : "non-catalytic role is not an enzyme assignment",
+        "roles" : [ "TRANSPORTER" ],
+        "role_source" : "raw_claims",
+        "raw_role_observations" : [ {
+          "source" : "synthetic_predictor",
+          "evidence_type" : "SEQUENCE_SIMILARITY",
+          "candidate_role" : "TRANSPORTER"
+        } ]
+      } ],
+      "excluded_claims" : [ ],
+      "measured_evidence" : [ ],
+      "evidence_unmapped" : [ {
+        "id" : "complex",
+        "reason" : "not an eligible candidate of the requested protein"
+      } ],
+      "assignment_support" : [ {
+        "id" : "complex",
+        "function_key" : "query|EC|EC:6.2.1.1",
+        "source" : "synthetic independent partner evidence",
+        "partners" : [ "gB" ],
+        "group" : null
+      } ],
+      "assignment_groups_rejected" : [ ],
+      "joint_mapping_truncated" : [ ],
+      "hypotheses" : [ ],
+      "hypotheses_truncated" : [ ],
+      "max_non_null_hypotheses" : 20,
+      "conditions" : 1,
+      "ranking_rule" : "strongest measured channel, then canonical assignment; repeated channels take max; not calibrated probabilities",
+      "assignment_assumption" : "target-alone only without structural support; required partners form AND clauses; named evidence groups support joint activities; alternative mappings remain distinct and bounded; no hidden GPR used",
+      "excluded_sources" : "target GPR, model gene annotations, reactions.tsv, final integration probabilities, FBA and learned/inferred claims; no function is inferred from a gene identifier",
+      "interpretation" : "conditional comparisons; no function recovery, calibrated probability or promotion"
+    },
+    "reaction_mapping_table_present" : false,
+    "model_origin" : "supplied model; independence is not established by file format or presence of a reaction mapping table",
+    "outcome" : "no_admissible_experiment",
+    "solver_calls_used" : 0,
+    "analysis_type" : "masked_assignment",
+    "promotion" : "none",
+    "reason" : "no measured candidate maps to an admissible assignment; null alone is not a comparison",
+    "elapsed_seconds" : 0.313400499
+  }, {
+    "name" : "community_metabolism",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "learned_integration",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them"
+  }, {
+    "name" : "feature_export",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  } ],
+  "baseline_candidates" : 1,
+  "final_candidates" : 1,
+  "final_changes" : [ ]
+}

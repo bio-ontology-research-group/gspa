@@ -33,7 +33,7 @@ class IntegrationRunAudit {
 
     IntegratedAnnotationSet runStage(String name, boolean enabled, String unavailable,
                                     IntegratedAnnotationSet input, IntegrationState state,
-                                    Closure<IntegratedAnnotationSet> operation) {
+                                    Closure<IntegratedAnnotationSet> operation, String noWorkReason = null) {
         if (!stages.containsKey(name)) throw new IllegalArgumentException("Unknown integration stage: ${name}")
         Map record = stages[name]
         if (record.status != 'not_run') throw new IllegalStateException("Stage already recorded: ${name}")
@@ -46,6 +46,18 @@ class IntegrationRunAudit {
         Map<String, Double> before = scores(input)
         try {
             if (unavailable) throw new IllegalStateException("${name}: ${unavailable}")
+            // Eligibility is distinct from execution. Validate required resources first: an empty
+            // workload must never hide a broken configuration. Preserve the preceding prediction
+            // state and record why this requested stage had nothing to evaluate.
+            if (noWorkReason) {
+                record.status = 'skipped'
+                record.reason = noWorkReason.toString()
+                record.requested = true
+                record.input_candidates = before.size()
+                record.output_candidates = before.size()
+                record.suggestions = input?.suggestions?.size() ?: 0
+                return input
+            }
             IntegratedAnnotationSet output = operation.call()
             if (output == null) throw new IllegalStateException("${name} returned no integration result")
             output.synchronize(state)
@@ -135,6 +147,7 @@ class IntegrationRunAudit {
          scoring_mode: scoringMode,
          scoring_mode_note: scoringMode == 'learned' ?
              'Annotation scores were replaced by a frozen learned model (see learned_integration).' :
+             scoringMode == 'mixed' ? 'Supported candidates use the frozen model; unsupported candidates retain legacy scores (see learned_integration).' :
              'Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores.',
          baseline_definitions: BASELINE_DEFINITIONS,
          changes_measured_from: 'legacy_prior_baseline',
@@ -155,17 +168,6 @@ class IntegrationRunAudit {
     }
 
     private static List<Map> changes(Map<String, Double> before, Map<String, Double> after) {
-        Set<String> keys = new LinkedHashSet<>(before.keySet())
-        keys.addAll(after.keySet())
-        List<Map> out = []
-        keys.each { key ->
-            Double old = before[key], now = after[key]
-            if (old != null && now != null && Math.abs(old - now) <= 1e-12d) return
-            String[] parts = IntegrationState.splitFunctionKey(key)
-            out << [function_key: key, protein_id: parts[0], function_type: parts[1], function_id: parts[2],
-                    change: old == null ? 'added' : (now == null ? 'removed' : (now > old ? 'increased' : 'decreased')),
-                    before_probability: old, after_probability: now]
-        }
-        out
+        AuditChanges.between(before, after)
     }
 }

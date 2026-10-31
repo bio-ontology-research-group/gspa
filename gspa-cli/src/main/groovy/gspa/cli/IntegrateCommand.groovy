@@ -121,6 +121,10 @@ class IntegrateCommand implements Runnable {
             description = 'Assert organism NCBI taxon (e.g. NCBITaxon_2, 2, bacteria, eukaryote, NCBITaxon_4932).')
     String organismTaxon
 
+    @Option(names = ['--taxon-lineage'],
+            description = 'Optional NCBI Taxonomy lineage IDs (comma/semicolon-separated, e.g. NCBITaxon_131567,NCBITaxon_2,NCBITaxon_1224) or TSV file mapping taxid -> lineage IDs for strain taxa not in the bundled hierarchy.')
+    String taxonLineage
+
     @Option(names = ['--infer-taxon'],
             description = 'Infer the organism taxon from high-confidence claims via GO + anatomical taxon constraints.')
     boolean inferTaxon = false
@@ -148,6 +152,10 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--gaps'],
             description = 'Metabolic gaps JSONL (one gap per line).')
     File gapsFile
+
+    @Option(names = ['--pathway-observations'],
+            description = 'Observed pathway-search JSON for this genome; derive candidate gaps from complete proteome searches.')
+    File pathwayObservationsFile
 
     @Option(names = ['--orthogroups'],
             description = 'Orthogroup TSV (protein_id <TAB> cluster_id), from MMseqs2 easy-cluster across multiple genomes. Required with homology_transfer prior.')
@@ -363,6 +371,22 @@ class IntegrateCommand implements Runnable {
     @Option(names = ['--fba-medium'],
             description = 'Medium name for StoichiometricLocusRefiner (default: minimal).')
     String fbaMedium = 'minimal'
+
+    @Option(names = ['--fba-synteny-from-layout'],
+            description = 'Stage 2B follow-up: let the sidecar compute the synteny covariate (operon partner boost) for EC claims from --genome-layout and --fba-kegg-modules (default: off, covariates come from the priors only).')
+    boolean fbaSyntenyFromLayout = false
+
+    @Option(names = ['--fba-kegg-modules'],
+            description = 'KEGG module table (pathway_id, ec_number columns) used with --fba-synteny-from-layout.')
+    File fbaKeggModules
+
+    @Option(names = ['--fba-candidate-min-score'],
+            description = 'Stage 2B follow-up: candidates below this probability receive no responsibility (default: the sidecar floor 1e-5).')
+    Double fbaCandidateMinScore
+
+    @Option(names = ['--fba-candidate-top-k'],
+            description = 'Stage 2B follow-up: at most this many candidates per enzyme number receive responsibility, ties kept (default: unlimited).')
+    Integer fbaCandidateTopK
     @Option(names = ['--genome-id'],
             description = 'Identifier of the genome in a single run (cohort metadata and reports are keyed by it). Default: genome.')
     String genomeId = 'genome'
@@ -490,6 +514,12 @@ class IntegrateCommand implements Runnable {
             description = 'TSV of reaction directions: reaction_id, direction (FORWARD, REVERSE, REVERSIBLE, UNKNOWN).')
     File cohortReactionDirectionsFile
 
+    @Option(names = ['--cohort-pathways'], description = 'Named pathway reaction groups TSV: pathway_id, group_id, reaction_id, source. Repeated groups contain alternatives. Implies --cohort.')
+    File cohortPathwaysFile
+
+    @Option(names = ['--cohort-context-mode'], description = 'Reaction context relation: UNIVERSAL (default), PATHWAY, or ORGANISM. Requires --cohort or a cohort input.')
+    String cohortContextMode
+
     @Option(names = ['--cohort-holdout'],
             description = 'Which genomes are removed from the peers of a target: GENOME, STRAIN_CLUSTER (default) or CLADE.')
     String cohortHoldout
@@ -574,6 +604,10 @@ class IntegrateCommand implements Runnable {
             config[field.name] = value instanceof List ? new ArrayList(value) : value
         }
         // Cohort engine settings are nested in the workflow config; a value given on the command line wins.
+        if (cohortContextMode != null) {
+            try { config.cohortConfig.contextMode = gspa.integration.cohort.ContextMode.valueOf(cohortContextMode.toUpperCase(Locale.ROOT)) }
+            catch (IllegalArgumentException e) { throw new IllegalArgumentException('--cohort-context-mode must be UNIVERSAL, PATHWAY or ORGANISM') }
+        }
         if (cohortHoldout != null) {
             try { config.cohortConfig.holdout = gspa.integration.cohort.HoldoutLevel.valueOf(cohortHoldout.toUpperCase(Locale.ROOT)) }
             catch (IllegalArgumentException e) {
@@ -614,11 +648,17 @@ class IntegrateCommand implements Runnable {
         IntegrationWorkflow.Result result = workflow.run(claims)
         workflow.writeArtifacts(result)
 
+        def satChecker = result.state?.satConsistencyChecker
+        boolean taxonInHier = satChecker == null || satChecker.organismTaxon == null || satChecker.isOrganismTaxonInHierarchy()
+        String taxonConsistencyState = satChecker?.organismTaxon == null ? 'no_organism_taxon_asserted' :
+            (taxonInHier ? gspa.ontology.SatConsistencyChecker.STATUS_APPLIED :
+                gspa.ontology.SatConsistencyChecker.STATUS_TAXON_NOT_IN_HIERARCHY)
         Runtime rt = Runtime.getRuntime()
         [genome_id: result.genomeId, out_path: config.outFile.path,
          n_claims: claims.size(), n_integrated: result.integrated.annotations.size(),
          n_provenance: result.integrated.provenance.size(), max_iter: result.maxIter,
          enforce_stage2: config.enforceStage2, enforce_mode: config.enforceConsistencyMode,
+         taxon_in_hierarchy: taxonInHier, taxon_consistency_state: taxonConsistencyState,
          runtime_sec: result.elapsedNanos / 1e9d,
          used_heap_mb: (rt.totalMemory() - rt.freeMemory()) / (1024d * 1024d),
          total_heap_mb: rt.totalMemory() / (1024d * 1024d)]
@@ -646,9 +686,10 @@ class IntegrateCommand implements Runnable {
      *  13: cluster_consensus_path (optional)
      *  14: fba_medium (optional)
      *  15: fba_gram (optional)
+     *  16: taxon_lineage (optional NCBI Taxonomy lineage IDs or TSV path)
      */
     /** One genome's configuration: the batch settings, its manifest row, and artifact paths of its own. */
-    private static IntegrationWorkflowConfig workerConfig(IntegrationWorkflowConfig base, String[] row) {
+    private static IntegrationWorkflowConfig workerConfig(IntegrationWorkflowConfig base, String[] row, Integer taxonLineageCol = null) {
         IntegrationWorkflowConfig worker = base.copy()
         worker.genomeId = row[0].trim()
         worker.claimsFile = new File(row[1].trim())
@@ -656,7 +697,11 @@ class IntegrateCommand implements Runnable {
         Map<Integer, String> overrides = [3: 'organismTaxon', 4: 'essentialProfile',
             5: 'operonsFile', 6: 'gapsFile', 8: 'enforceStage2',
             9: 'enforceConsistencyMode', 10: 'enabledPriors', 11: 'genomeLayoutFile',
-            12: 'orthogroupsFile', 13: 'clusterConsensusFile', 14: 'fbaMedium', 15: 'fbaGram']
+            12: 'orthogroupsFile', 13: 'clusterConsensusFile', 14: 'fbaMedium', 15: 'fbaGram',
+            16: 'taxonLineage']
+        if (taxonLineageCol != null && taxonLineageCol >= 3) {
+            overrides[taxonLineageCol] = 'taxonLineage'
+        }
         overrides.each { int column, String property ->
             if (row.length > column && row[column].trim() && row[column].trim() != '-') {
                 String value = row[column].trim()
@@ -689,11 +734,16 @@ class IntegrateCommand implements Runnable {
         List<String[]> rows = []
         Set<String> genomeIds = new HashSet<>()
         Set<String> outputPaths = new HashSet<>()
+        Integer taxonLineageCol = null
         batchManifestFile.eachLine { line, idx ->
             if (!line.trim() || line.trim().startsWith('#')) return
             String[] parts = line.split('\t', -1)
             if (parts[0].trim() in ['genome_id', 'tag', 'id'] && parts.length > 1 &&
-                parts[1].trim() in ['claims_path', 'claims']) return
+                parts[1].trim() in ['claims_path', 'claims']) {
+                int colIdx = parts.findIndexOf { it.trim().toLowerCase(Locale.ROOT) in ['taxon_lineage', 'taxonlineage', 'lineage'] }
+                if (colIdx >= 3) taxonLineageCol = colIdx
+                return
+            }
             if (parts.length < 3 || !parts[0].trim() || !parts[1].trim() || !parts[2].trim()) {
                 throw new IllegalArgumentException("Invalid batch manifest row ${idx}: genome_id, claims_path and out_path are required")
             }
@@ -710,7 +760,7 @@ class IntegrateCommand implements Runnable {
             // No genome can run without the shared references: give each its own failed ledger
             // (reference_preparation failed, requested stages not run) and fail the batch once.
             rows.each { String[] row ->
-                IntegrationWorkflow.recordPreparationFailure(workerConfig(base, row), e)
+                IntegrationWorkflow.recordPreparationFailure(workerConfig(base, row, taxonLineageCol), e)
             }
             throw new IllegalStateException("Batch not run: shared reference loading failed (${e.message}); " +
                 "${rows.size()} genome ledgers record the failure", e)
@@ -722,11 +772,11 @@ class IntegrateCommand implements Runnable {
             try {
                 def stage = new gspa.integration.contextbridge.CohortStage()
                 stage.info = { String m -> println m } as Closure<Void>
-                cohort = stage.run(base, gspa.integration.contextbridge.CohortStage.targetsOf(rows.collect { workerConfig(base, it) }),
+                cohort = stage.run(base, gspa.integration.contextbridge.CohortStage.targetsOf(rows.collect { workerConfig(base, it, taxonLineageCol) }),
                     sharedState.reactionGraph)
             } catch (Exception e) {
                 rows.each { String[] row ->
-                    IntegrationWorkflow.recordPreparationFailure(workerConfig(base, row), e, 'cohort_context')
+                    IntegrationWorkflow.recordPreparationFailure(workerConfig(base, row, taxonLineageCol), e, 'cohort_context')
                 }
                 throw new IllegalStateException("Batch not run: the cohort pass failed (${e.message}); " +
                     "${rows.size()} genome ledgers record the failure", e)
@@ -741,7 +791,7 @@ class IntegrateCommand implements Runnable {
                 community = stage.run(base, new File(batchManifestFile.absoluteFile.parentFile, batchManifestFile.name + '.community'))
             } catch (Exception e) {
                 rows.each { String[] row ->
-                    IntegrationWorkflow.recordPreparationFailure(workerConfig(base, row), e, 'community_metabolism')
+                    IntegrationWorkflow.recordPreparationFailure(workerConfig(base, row, taxonLineageCol), e, 'community_metabolism')
                 }
                 throw new IllegalStateException("Batch not run: the community analysis failed (${e.message}); " +
                     "${rows.size()} genome ledgers record the failure", e)
@@ -751,7 +801,7 @@ class IntegrateCommand implements Runnable {
         List<Map> stats = []
         try {
             List<java.util.concurrent.Future<Map>> futures = rows.collect { String[] row ->
-                pool.submit({ -> runGenome(workerConfig(base, row), sharedState, cohort, community) } as java.util.concurrent.Callable<Map>)
+                pool.submit({ -> runGenome(workerConfig(base, row, taxonLineageCol), sharedState, cohort, community) } as java.util.concurrent.Callable<Map>)
             }
             futures.each { stats << it.get() }
         } finally {
@@ -763,6 +813,7 @@ class IntegrateCommand implements Runnable {
             batchStatsOut.withWriter { w ->
                 w.writeLine(['genome_id', 'out_path', 'n_claims', 'n_integrated', 'n_provenance',
                              'max_iter', 'enforce_stage2', 'enforce_mode',
+                             'taxon_in_hierarchy', 'taxon_consistency_state',
                              'runtime_sec', 'used_heap_mb', 'total_heap_mb'].join('\t'))
                 for (Map s : stats) {
                     w.writeLine([
@@ -774,6 +825,8 @@ class IntegrateCommand implements Runnable {
                         s.max_iter,
                         s.enforce_stage2,
                         s.enforce_mode,
+                        s.taxon_in_hierarchy,
+                        s.taxon_consistency_state,
                         String.format(Locale.ROOT, '%.4f', s.runtime_sec as double),
                         String.format(Locale.ROOT, '%.1f', s.used_heap_mb as double),
                         String.format(Locale.ROOT, '%.1f', s.total_heap_mb as double)

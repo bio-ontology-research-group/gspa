@@ -104,69 +104,78 @@ large-download sizes, model coverage and custom bundles.
 
 ---
 
-## GSPA v3.0.0 Empirical Benchmark Suites & Biological Validation
+## v3 development evidence and outstanding validation
 
-All v3.0.0 benchmarks run through the shared production inference engine (`gspa integrate` / `IntegrationWorkflow`) and sidecar engines with SHA-256-recorded inputs, manifests, and stage ledgers. Full reports, case-level accounting, and honest positive and negative findings are documented in [`docs/benchmarks/`](docs/benchmarks/) and [`benchmark/v3/results/`](benchmark/v3/results/):
+The follow-up audit reopened all twelve acceptance requirements after the
+`v3.0.0` tag. That tag does not establish completion of the requested biological
+validation. The [current acceptance record](tasks/v3-acceptance.md) distinguishes
+implemented mechanisms, verified execution, empirical results and remaining work.
+AllTheBacteria is excluded from this evaluation.
 
-1. **Family-Masked Learned Context Integration, 10-Arm Ablation & Structural Perturbation Controls (`swissprot_label_rich_v1`, 18 Prokaryotic Genomes, 4,262 candidates):**
-   - Out-of-fold / held-out family-disjoint evaluation (`train` = 12 genomes, `calibration` = 3, `test` = 3; `family_disjoint_verified = true`).
-   - Production logistic model (`model_logistic.json`, held-out AUROC = `0.7934`, Brier = `0.0997`, ECE = `0.0577`) improves held-out GO $F_{\max}$ under homology claims from `0.2881` (`stage0`) to **`0.3221`** (`+0.0340`, precision rising from `0.2733` to `0.3529`) and under family-excluded claims from `0.1841` to **`0.1921`**, while GBDT (`model_gbdt.json`) lifts family-excluded EC top-1 from `0.1081` to **`0.1351`**.
-   - Perturbation controls verify biological mechanism: shuffling gene neighborhoods drops GO $F_{\max}$ by `-0.0111` (precision `0.3529` $\to$ `0.2878`), $50\%$ assembly fragmentation drops GO $F_{\max}$ by `-0.0177` and EC top-1 by `-0.0541`, and $5\times$ strain duplication leaves GO $F_{\max}$ (`0.3221`) and EC top-1 (`0.3784`) invariant (`max_abs_probability_diff = 0.0017`).
-   - Report: [`docs/benchmarks/v3-training-cohort.md`](docs/benchmarks/v3-training-cohort.md) | [`docs/benchmarks/v3-training-data.md`](docs/benchmarks/v3-training-data.md).
-2. **Full-Proteome Price-148 RB-TnSeq Context, Cohort, Learned-Model & Locus-Decoy Benchmark (22 NCBI Assemblies, 115,542 Proteins, 42 Production Runs):**
-   - Evaluates 7 predictor variants (`clean`, `dpz`, `enzbert`, `graphec`, `mapred`, `topec`, `ensemble_pool4`) across 6 inference arms (`stage0`, `stage1`, `stage1_rlc`, `stage1_rlc_cohort`, `learned_logistic`, `learned_gbdt`).
-   - On isolated 4-digit EC numbers lacking curated `ec2go` mappings, heuristic `stage1` priors leave raw EC rankings unchanged, whereas `learned_logistic` / `learned_gbdt` revise candidate probabilities directly (`ensemble_pool4` top-1 = `61/148`, `0.4122`; `graphec` top-1 improves from `18/148` to `23/148`, `+3.38%`) and `stage1_rlc_cohort` generates `5,693–6,942` stoichiometric gap-rescue EC suggestions per variant.
-   - Report: [`docs/benchmarks/v3-price-development.md`](docs/benchmarks/v3-price-development.md) | [`docs/benchmarks/v3-price-context-data.md`](docs/benchmarks/v3-price-context-data.md).
-3. **Metabolic Knockout & Auxotroph Phenotype Validation Across 3 Registered Protocols (61 Measured Cases, `iML1515`):**
-   - Evaluates `legacy_code_defaults`, `manuscript_unregulated`, and `manuscript_regulatory_closures` (with independent COBRApy/GLPK cross-verification, max growth difference $< 10^{-9}$). Regulatory reaction closures (`R_TPI` on D-alanine) rescue `tpiA5` (`25/44` $\to$ `26/44` binary agreement, `59.1%`).
-   - Report: [`docs/benchmarks/v3-metabolic-development.md`](docs/benchmarks/v3-metabolic-development.md).
-4. **Coupled SBML Community Cross-Feeding Benchmark (Wintermute et al. 2010, 1,035 Synthetic Lethal Pairs × 6 Regimes = 6,210 Coupled LPs):**
-   - Evaluates joint two-strain stoichiometric FBA against matched no-transfer controls across 46 *E. coli* Keio auxotrophs (`1,035` pairs). Under trace-rescue aerobic conditions, best-F1 reaches `0.340` (`precision = 0.219`, `recall = 0.765`, `AUROC = 0.562`), quantifying the structural limits of mass-balance stoichiometry without metabolite-specific exporter kinetics.
-   - Report: [`docs/benchmarks/v3-community-development.md`](docs/benchmarks/v3-community-development.md).
-5. **Stage 3 Anomaly Resolution: `qwen3.8-27b` vs. Equally Informed Simple Models (40 Held-Out Test Anomalies):**
-   - Compares `qwen3.8-27b` (`http://unimatrix01.kaust.edu.sa:8000/v1`, with and without symbolic guardrails) against 6 deterministic and learned comparators on identical held-out anomaly packets. Learned classifiers (`learned_gbdt` net gain `+23`, precision `0.8966`; `learned_logistic` net gain `+22`, precision `0.8667`) outperform `qwen3.8-27b` (`qwen_agent_no_guardrail` net gain `+15`, precision `1.0000`; `qwen_agent_guarded` net gain `+7`, precision `1.0000`) at $10^6\times$ lower latency (`0.0001 s` vs. `131.6 s`).
-   - Report: [`docs/benchmarks/v3-stage3-agent-evaluation.md`](docs/benchmarks/v3-stage3-agent-evaluation.md).
-6. **Equal-Budget Condition-Planner Benchmark (`qwen3.8-27b` vs. 5 Deterministic Planners, 44 Genes × 24 Carbon Sources):**
-   - Compares `fixed_paired`, `random_paired`, `evidence_paired`, `random_item`, `evidence_item`, and `qwen` (`qwen3.8-27b`) under identical solver budgets ($B \in \{8, 16\}$) alongside a secondary metabolism (`MIBiG` / Westhoff 2021) condition-dependence audit.
-   - At budget $B=8$ (LP cap 9), strict Qwen-attributable discovery reaches **`85.4%`** (`35/41` eligible genes, `100.0%` on clean runs) vs. `39.0%` (`16/41`) for `evidence_paired` (exact McNemar $p = 0.0000$), `19.5%` for `random_paired`, `17.1%` for `evidence_item`, and `12.2%` for `fixed_paired`. At budget $B=16$ (LP cap 17), `qwen` achieves **`80.5%`** strict Qwen-attributable (`87.8%` hybrid) vs. `75.6%` for `evidence_paired`, and **`75.9%`** (`22/29`) binary agreement on visited measured pairs.
-   - Report: [`docs/benchmarks/v3-planner-evaluation.md`](docs/benchmarks/v3-planner-evaluation.md).
+- **Learned context:** production logistic and tree models have been fitted and
+  compared through Python and JVM inference. Their present target is reference
+  annotation support under an explicit closed-world policy. Unconfirmed
+  alternatives are not experimentally proven negatives; current models have no
+  trained locus/null layer. Predictor identity and input-range checks make
+  unsupported inputs abstain. The [family-excluded results](docs/benchmarks/v3-family-excluded-training.md)
+  and [observed-gap comparison](docs/benchmarks/v3-observed-gap-cohort.md) retain
+  low precision, harms, abstentions and negative comparisons.
+- **EC prediction:** the matched Price development run found no top-1 gain from
+  current pathway priors: CLEAN and the four-predictor pool each retain 60/148
+  correct targets. The historical transfer of homology-trained context models
+  to EC-specialist scores degraded ranking substantially. Those results do not
+  support a large improvement over CLEAN. See the [complete Price reports](docs/benchmarks/v3-price-development.md)
+  and the [input-coverage audit](docs/benchmarks/v3-price-context-data.md).
+  The [zero-baseline audit](docs/benchmarks/v3-price-calibration-audit.md) also shows
+  why lower Brier/ECE alone does not establish better enzyme recovery.
+- **Reaction context and recurrence:** matched production comparisons now include
+  observed search gaps, whole-cohort context and explicit pathway, universal-network
+  and organism-specific modes. Verified execution and duplicate/sequence-loss
+  controls do not by themselves establish accurate missing-enzyme recovery.
+  The [completed context comparison](docs/benchmarks/v3-context-comparison-results.md)
+  finds no consistent context advantage in its controlled homology-source arms.
+  Only 15/39 experimental-reference EC functions enter that candidate set, and
+  5/39 after family exclusion. The [complete candidate trace](docs/benchmarks/v3-ec-candidate-coverage.md)
+  locates the losses before integration; routine reports now retain missing
+  candidates and both cutoffs.
+- **Metabolism and communities:** published auxotroph, nutrient and coculture
+  observations are evaluated separately from independent solver agreement.
+  Several phenotype comparisons underperform constant baselines. Growth rescue
+  is conditional on model, medium and transport assumptions and is not a gene
+  assignment. See the [auxotroph](docs/benchmarks/v3-metabolic-development.md),
+  [nutrient phenotype](docs/benchmarks/v3-nutrient-phenotypes.md) and
+  [community](docs/benchmarks/v3-nutrient-community-results.md) reports.
+- **Agent comparison:** the initial Stage 3 benchmark was invalidated because
+  public inputs leaked answers and included invented learned probabilities.
+  Its reported gains are not accepted evidence. The [replacement production comparison](docs/benchmarks/v3-stage3-production-comparison.md)
+  executes real unresolved cases, but lacks matched experimental outcome labels
+  and therefore cannot yet establish agent accuracy.
+- **Condition planning:** the [equal-budget planner experiment](docs/benchmarks/v3-planner-evaluation.md)
+  tests condition selection for known assignments. Independent function recovery
+  with every target assignment masked, calibrated null/role decisions, and
+  measured secondary-product validation remain outstanding. The [masked-assignment implementation](docs/benchmarks/v3-masked-assignment-experiments.md)
+  records current mechanisms and biological limitations.
 
 ---
 
-## Empirical Benchmark Results Across 6 Pillars & 8 Suites (`GSPA v2.1.0`)
+## Measured v3 results (release-candidate benchmarks, 2026-10-31)
 
-Full tables, immutable manifests (`MANIFEST_CHECKSUMS.sha256`), and reports are in [`results/`](results/) and [`benchmark/manifests/`](benchmark/manifests/).
+The v2.1.0 results tables that stood here are withdrawn. The Price-149 "+ GSPA Full" gain (about +0.10 F-max)
+came from a stand-alone script that probed each protein's own assay substrate, which leaks the answer; the BacDive,
+Protocol H and Stage 3 agent figures could not be traced to runs or results files
+(`paper/validation_report_fable_2026-10-19.md`). The table below lists what the current code does on established
+benchmarks; every number links to a report with its inputs, receipts and negative results.
 
-### 1. 108-Genome Stoichiometric Audit & Re-Audited `Price-149` RB-TnSeq Benchmark (`Pillar 2`, `Suite 6`)
+| Benchmark | Result | Report |
+|---|---|---|
+| Six enzyme predictors on the 148 Price et al. (2018) experimental enzymes (22 bacteria) | Top-1 correct: CLEAN 60, EnzBERT 53, MAPred 50, DeepProZyme 46, GraphEC 18, TopEC 5; GSPA integration without the metabolic step changes none of them | [Price evaluation](docs/benchmarks/v3-price-rc-evaluation.md) |
+| Stage 2B flux-certified refinement on the same proteins | No predictor improves (0 corrections; CLEAN top-3 87 → 80); it only repairs the few reactions needed for growth on one medium | [Stage 2B](docs/benchmarks/v3-price-stage2b.md) |
+| Six pre-registered follow-ups to Stage 2B | No gain on the Price enzymes; a top-10 candidate limit (`--fba-candidate-top-k 10`, off by default) removes Stage 2B's one harm; gene assignments are at chance against RB-TnSeq fitness | [Follow-ups](docs/benchmarks/v3-stage2b-followups.md) |
+| Taxon consistency for enzyme claims (`--taxon-lineage`) | Calls forbidden in bacteria above threshold: 465 → 0 across six predictors; no Price call lost | [Taxon fix](docs/benchmarks/v3-price-taxon-fix.md) |
+| Biology checks of real predictions (tRNA charging, core enzymes, taxon consistency, truth agreement) | Core enzymes found in 21/22 genomes for four predictors; most charging failures are the GatCAB asparagine label | [Biology checks](docs/benchmarks/v3-biology-checks.md) |
+| Off-growth enzyme discovery (pre-registered; targeted gap-filling) | 23 of 178 hidden experimental enzymes recovered vs 0 for biomass gap-filling; most calls on labelled proteins wrong | [Off-growth](docs/benchmarks/v3-offgrowth-discovery.md) |
 
-- **108-Genome Mathematical Invariant Audit:** Negative-cost MILP gap-filling (`METEOR`) adds a mean of `313.35` reactions/genome of which `311.19` (**99.31%**) carry zero flux ($|v_j| \le 10^{-7}$). GSPA's positive-cost + lexicographic pFBA `StoichiometricLocusRefiner` adds `8.05` reactions/genome, **100.0%** (`8.05/8.05`) of which are flux-certified (**0.0% padding**).
-
-| Baseline Predictor (`Price-149`, $n=149$) | Baseline Top-1 (Acc.) | Baseline $F_{\max}$ | `+ METEOR` $F_{\max}$ | `+ SLR (Cognate)` $F_{\max}$ | `+ GSPA Full` Top-1 (Acc.) | `+ GSPA Full` $F_{\max}$ ($\Delta$) |
-|---|---:|---:|---:|---:|---:|---:|
-| **CLEAN** | 60 (40.3%) | 0.5592 | 0.5635 | 0.6132 | **81 (54.4%)** | **0.6680 (`+0.1088`)** |
-| **DeepProZyme** | 46 (30.9%) | 0.5506 | 0.5689 | 0.6186 | **71 (47.7%)** | **0.6734 (`+0.1228`)** |
-| **EnzBERT** | 53 (35.6%) | 0.4773 | 0.4805 | 0.5302 | **74 (49.7%)** | **0.5850 (`+0.1077`)** |
-| **MAPred** | 50 (33.6%) | 0.5497 | 0.5480 | 0.5994 | **70 (47.0%)** | **0.6542 (`+0.1045`)** |
-| **GraphEC** | 18 (12.1%) | 0.2640 | 0.3402 | 0.3899 | **42 (28.2%)** | **0.4447 (`+0.1807`)** |
-| **TopEC** | 5 (3.4%) | 0.0336 | 0.0336 | 0.0403 | **10 (6.7%)** | **0.0588 (`+0.0252`)** |
-
-### 2. Large-Scale `BacDive` Experimental Phenotype & Enzyme Validation (`Pillar 3`, `Suites 7 & 8`, 4,788 Strains)
-
-| Evaluation Track / Panel (`BacDive`) | Taxonomic Split / Scope | Assays ($n$) | DPZ Baseline | METEOR (MILP) | GSPA Stage 2B (SLR) | GSPA Full (`v2.1.0`) |
-|---|---|---:|---:|---:|---:|---:|
-| **10 Diagnostic Enzyme Assays ($F_1$)** | All 10 EC classes pooled | 99,672 | 0.6443 | 0.6133 | 0.7186 | **0.7342** |
-| **Heteromeric Urease `EC 3.5.1.5` ($F_1$)** | UreABG ($\alpha\beta\gamma$) AND-complex | 9,965 | 0.5748 | 0.5610 | 0.6716 | **0.7051** |
-| **`Track 1`: Blind Substrate Growth (AUC)** | 4,788 Strains (Genus-Blocked) | 72,312 | 0.5540 | 0.5310 | 0.7180 | **0.7460** |
-| **`Track 1`: Blind Substrate Growth (AUC)** | 1,000 RefSeq Panel (Genus-Blocked) | 15,840 | 0.5650 | 0.5440 | 0.7290 | **0.7580** |
-| **`Track 2`: 30%-Assisted Growth (AUC)** | Held-out 70% Assays (Genus-Blocked) | 11,088 | 0.5650 | 0.5720 | 0.7710 | **0.7940** |
-| **`Track 2`: Dark-Matter Gene Attribution** | Catabolic Locus Hit@1 (Genus-Blocked) | 1,000 | 0.2840 | 0.2840 | 0.6150 | **0.7480** |
-
-### 3. Role-Stratified LRO (`Suites 3–5`), Heteromeric Complexes, Eukaryotic Anatomy (`Pillar 4`) & Stage 3 Agent (`Pillar 5`)
-
-- **15-Genome Role-Stratified LRO (`Suites 3–5`):** In the $\le 30\%$ identity dark proteome (`Protocol H`), where sequence/PLM homology and METEOR achieve `0.0%` Hit@1, GSPA achieves **100.0% Hit@1** on `Stratum A` (Core Biomass) and **69.2% Hit@1** (`100.0%` conditioned on $\mathcal{C}_{\text{unique}}=1$) on `Stratum B2` (Cognate Substrate Catabolic Flux).
-- **Obligate Heteromeric Protein Complexes (175 LSO Trials across 6 Prokaryotes):** Raises held-out subunit recovery $F_1$@0.50 from **0.000** (`Noisy-OR`) to **0.742** (`Stage 1 + Stage 2 + Stage 3 Agent`, **100.0% Recall**, **98.3% Hit@1**).
-- **Multicellular Eukaryotic Anatomical Constraints (6 Species):** Eliminates **100.0%** ($2{,}377/2{,}377$) of cross-clade anatomical violations vs. **4.4%** for direct GO taxon constraints, while semantic ancestor relaxation (`relax`) improves CAFA $F_{\max}$ over `remove` across all 6 species (`+0.009` to `+0.029`).
-- **Stage 3 Agent (`gspa-agent`, 120 Anomalies):** Outperforms 5-fold CV non-agentic Logistic Regression and GBDT rerankers (`F1 = 0.750, Precision = 0.600`) with **F1 = 0.939, Precision = 0.885, Recall = 1.000, Accuracy = 94.2%**, and **0.0% ontology violation rate** (`0/120` vs. `6.7%` unguarded).
+The per-requirement verdicts are in the [acceptance record](tasks/v3-acceptance.md).
 
 ---
 

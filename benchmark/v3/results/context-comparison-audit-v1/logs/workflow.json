@@ -1,0 +1,115 @@
+{
+  "slurm_job_id": "10176",
+  "hostname": "node002",
+  "stages": [
+    {
+      "name": "train",
+      "command": [
+        "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+        "/home/leechuck/Public/software/gspa/benchmark/v3/run_observed_gap_context_modes.py",
+        "train",
+        "--out",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1"
+      ],
+      "status": "completed",
+      "started_at": "2026-10-27T13:41:29.577827+00:00",
+      "returncode": 0,
+      "finished_at": "2026-10-27T14:00:46.532861+00:00"
+    },
+    {
+      "name": "evaluate",
+      "command": [
+        "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+        "/home/leechuck/Public/software/gspa/benchmark/v3/run_observed_gap_context_modes.py",
+        "evaluate",
+        "--out",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1"
+      ],
+      "status": "completed",
+      "started_at": "2026-10-27T14:00:47.312477+00:00",
+      "returncode": 0,
+      "finished_at": "2026-10-27T14:03:32.192483+00:00"
+    },
+    {
+      "name": "parity-homology",
+      "command": [
+        "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+        "/home/leechuck/Public/software/gspa/benchmark/v3/check_context_mode_models.py",
+        "--exports",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1/homology",
+        "--jar",
+        "/home/leechuck/.cache/gspa-v3-data/engines/b23a7f6d94eb06c375e63ad344cfbf4c15d7644e33c1848766a36c4287cfd090.jar",
+        "--out",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1-parity-homology"
+      ],
+      "status": "completed",
+      "started_at": "2026-10-27T14:03:32.842200+00:00",
+      "returncode": 0,
+      "finished_at": "2026-10-27T14:07:11.731028+00:00"
+    },
+    {
+      "name": "parity-family_excluded",
+      "command": [
+        "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+        "/home/leechuck/Public/software/gspa/benchmark/v3/check_context_mode_models.py",
+        "--exports",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1/family_excluded",
+        "--jar",
+        "/home/leechuck/.cache/gspa-v3-data/engines/b23a7f6d94eb06c375e63ad344cfbf4c15d7644e33c1848766a36c4287cfd090.jar",
+        "--out",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1-parity-family_excluded"
+      ],
+      "status": "completed",
+      "started_at": "2026-10-27T14:07:12.370836+00:00",
+      "returncode": 0,
+      "finished_at": "2026-10-27T14:09:31.614915+00:00"
+    },
+    {
+      "name": "production-replay",
+      "command": [
+        "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+        "/home/leechuck/Public/software/gspa/benchmark/v3/check_observed_gap_context_models.py",
+        "--training",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1",
+        "--out",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-model-replay-v1"
+      ],
+      "status": "completed",
+      "started_at": "2026-10-27T14:09:31.976233+00:00",
+      "returncode": 0,
+      "finished_at": "2026-10-27T17:16:58.576358+00:00"
+    },
+    {
+      "name": "analysis-registration",
+      "command": [
+        "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+        "/home/leechuck/Public/software/gspa/benchmark/v3/analyze_observed_gap_context_models.py",
+        "register",
+        "--training",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-modes-v1",
+        "--replay",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-model-replay-v1",
+        "--out",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-model-analysis-v1"
+      ],
+      "status": "completed",
+      "started_at": "2026-10-27T17:16:59.146483+00:00",
+      "returncode": 0,
+      "finished_at": "2026-10-27T17:31:18.179224+00:00"
+    },
+    {
+      "name": "analysis",
+      "command": [
+        "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+        "/home/leechuck/Public/software/gspa/benchmark/v3/analyze_observed_gap_context_models.py",
+        "run",
+        "--out",
+        "/home/leechuck/.cache/gspa-v3-data/observed-gap-context-model-analysis-v1"
+      ],
+      "status": "completed",
+      "started_at": "2026-10-27T17:31:19.352027+00:00",
+      "returncode": 0,
+      "finished_at": "2026-10-27T17:56:40.898009+00:00"
+    }
+  ]
+}

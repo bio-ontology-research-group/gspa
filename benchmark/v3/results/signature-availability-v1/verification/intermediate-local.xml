@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.workflow.LocalReactionContextSpec" tests="12" skipped="0" failures="1" errors="0" timestamp="2026-10-27T01:15:59" hostname="lc-dell" time="1.488">
+  <properties/>
+  <testcase name="single genome preserves measured local anchors with peer evidence unavailable" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.665"/>
+  <testcase name="an isolated reaction keeps layout and identity but has unavailable local context" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.145">
+    <failure message="Condition not satisfied:&#10;&#10;co.weighted.localAnchorCount == null&#10;|  |        |                |&#10;|  |        0.0              false&#10;|  &lt;gspa.integration.learned.ExternalContext$Weighted@19fec3d6 effectiveN=null insufficientPeers=false adjustedAvailable=false phylogenyKnownFraction=null nPeerGenomes=null coverage=null supportFraction=null supportFractionLo90=null supportFractionHi90=null supportFractionRaw=null supportUnknownAsNegative=null supportUnknownAsSupport=null fracSupported=null fracNegative=null fracUnknownContext=null fracTrueAbsent=null fracUnobservedAbsent=null fracPathwayWithoutFamily=null bgRate=null bgWindows=null enrichmentLog=null supportMinusBg=null complementarity=null complementaryUnannotated=null jointCoverage=null permP=null permExcess=null multicopyFraction=null peerOrganismSetKnownFraction=null peerReactionInOrganismFraction=null layoutAvailable=true localAnchorWeight=0.0 localAnchorCount=0.0 localAnchorCurated=0.0 localAnchorUpstream=0.0 localAnchorDownstream=0.0 localContextPositive=0.0 localWindowTruncated=0.0 localWindowUnknown=1.0 localEnrichmentLog=null ecDirect=true ecReactionCount=1.0 nReactionAlternatives=0.0 nFamilyAlternatives=0.0 familyKnown=false membershipWeight=0.0 roleEvidenceMissing=true roleEvidence=[:]&gt;&#10;&lt;gspa.integration.learned.ExternalContext$Cohort@1e3f86d5 localOnly=true nGenomes=0 nWithOrthogroup=0 nWithFunctionSeq=0 nWithContext=0 nIncomplete=0 weighted=gspa.integration.learned.ExternalContext$Weighted@19fec3d6 reactionId=r4 reactionAlternatives=[]&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+co.weighted.localAnchorCount == null
+|  |        |                |
+|  |        0.0              false
+|  &lt;gspa.integration.learned.ExternalContext$Weighted@19fec3d6 effectiveN=null insufficientPeers=false adjustedAvailable=false phylogenyKnownFraction=null nPeerGenomes=null coverage=null supportFraction=null supportFractionLo90=null supportFractionHi90=null supportFractionRaw=null supportUnknownAsNegative=null supportUnknownAsSupport=null fracSupported=null fracNegative=null fracUnknownContext=null fracTrueAbsent=null fracUnobservedAbsent=null fracPathwayWithoutFamily=null bgRate=null bgWindows=null enrichmentLog=null supportMinusBg=null complementarity=null complementaryUnannotated=null jointCoverage=null permP=null permExcess=null multicopyFraction=null peerOrganismSetKnownFraction=null peerReactionInOrganismFraction=null layoutAvailable=true localAnchorWeight=0.0 localAnchorCount=0.0 localAnchorCurated=0.0 localAnchorUpstream=0.0 localAnchorDownstream=0.0 localContextPositive=0.0 localWindowTruncated=0.0 localWindowUnknown=1.0 localEnrichmentLog=null ecDirect=true ecReactionCount=1.0 nReactionAlternatives=0.0 nFamilyAlternatives=0.0 familyKnown=false membershipWeight=0.0 roleEvidenceMissing=true roleEvidence=[:]&gt;
+&lt;gspa.integration.learned.ExternalContext$Cohort@1e3f86d5 localOnly=true nGenomes=0 nWithOrthogroup=0 nWithFunctionSeq=0 nWithContext=0 nIncomplete=0 weighted=gspa.integration.learned.ExternalContext$Weighted@19fec3d6 reactionId=r4 reactionAlternatives=[]&gt;
+
+	at gspa.integration.workflow.LocalReactionContextSpec.an isolated reaction keeps layout and identity but has unavailable local context(LocalReactionContextSpec.groovy:70)
+</failure>
+  </testcase>
+  <testcase name="missing layout stays unavailable while direct EC alternatives survive" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.097"/>
+  <testcase name="curated local edges and intrinsic roles survive without peers" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.105"/>
+  <testcase name="local-only context survives strict JSON round trip and merge" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.089"/>
+  <testcase name="known reaction direction is preserved without peers" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.072"/>
+  <testcase name="local-only payload cannot smuggle in measured peer values [property: effectiveN, value: 0.0, #0]" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.058"/>
+  <testcase name="local-only payload cannot smuggle in measured peer values [property: supportFraction, value: 0.5, #1]" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.054"/>
+  <testcase name="local-only payload cannot smuggle in measured peer values [property: nPeerGenomes, value: 0.0, #2]" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.057"/>
+  <testcase name="local-only payload cannot smuggle in measured peer values [property: bgWindows, value: 0.0, #3]" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.045"/>
+  <testcase name="local-only payload cannot smuggle in measured peer values [property: fracUnknownContext, value: 0.0, #4]" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.05"/>
+  <testcase name="local-only payload cannot smuggle in measured peer values [property: insufficientPeers, value: true, #5]" classname="gspa.integration.workflow.LocalReactionContextSpec" time="0.045"/>
+  <system-out><![CDATA[04:15:59.353 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:15:59.460 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:15:59.792 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:15:59.841 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:15:59.937 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:15:59.974 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:16:00.023 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:16:00.055 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:16:00.120 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:16:00.153 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:16:00.210 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:16:00.239 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:16:00.278 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:16:00.305 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:16:00.336 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:16:00.361 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:16:00.393 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:16:00.420 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:16:00.444 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:16:00.468 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:16:00.489 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:16:00.514 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+04:16:00.539 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+04:16:00.563 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@4fe533ff]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@5377414a]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@4fe533ff]
+]]></system-err>
+</testsuite>

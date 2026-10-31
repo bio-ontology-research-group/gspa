@@ -30,7 +30,7 @@ import java.security.MessageDigest
  */
 class FeatureContract {
 
-    static final String CANDIDATE_ID = 'gspa.context-features/2'
+    static final String CANDIDATE_ID = 'gspa.context-features/3'
     static final String LOCUS_GROUP_ID = 'gspa.locus-group-features/1'
 
     /** Evidence (correlation) groups that carry functional sequence evidence. */
@@ -166,13 +166,8 @@ class FeatureContract {
         add('ctx.nbr.reaction_distance_available', FeatureGroup.CONTEXT_NEIGHBORHOOD, '1 if a reaction-graph distance was supplied')
         add('ctx.nbr.reaction_distance', FeatureGroup.CONTEXT_NEIGHBORHOOD, 'supplied: reaction-graph distance to the nearest supported neighbour reaction (0 if unavailable)')
 
-        add('cohort.available', FeatureGroup.CONTEXT_COHORT, '1 if cohort recurrence was supplied for this candidate')
-        add('cohort.log_n_genomes', FeatureGroup.CONTEXT_COHORT, 'log(1 + genomes in the cohort); a count, never normalised to certainty')
-        add('cohort.frac_with_orthogroup', FeatureGroup.CONTEXT_COHORT, 'fraction of cohort genomes with the candidate\'s orthogroup (0 if unavailable)')
-        add('cohort.frac_with_function_seq', FeatureGroup.CONTEXT_COHORT, 'fraction of those with baseline sequence support for the function (not posteriors)')
-        add('cohort.frac_with_context', FeatureGroup.CONTEXT_COHORT, 'fraction of those where the function is also supported by neighbourhood context')
-        add('cohort.n_genomes_incomplete', FeatureGroup.CONTEXT_COHORT, 'supplied count of cohort genomes with incomplete assembly (absence uninformative)')
-
+        // Unweighted cohort summaries are descriptive provenance, not independent
+        // evidence. Version 3 deliberately excludes them from learned inference.
         CohortFeatureColumns.declare(add, FeatureGroup.CONTEXT_COHORT)
 
         add('asm.available', FeatureGroup.ASSEMBLY, '1 if the genome, the protein\'s contig sequence and valid CDS coordinates are available; the four asm.* values below are 0 otherwise')

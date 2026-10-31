@@ -37,6 +37,12 @@ real_protein_007 - 350 ANF00099 ANF00099 320 1.0e-05 25.1  0.0 1 1 5.0e-06  5.0e
         results['protein_001'][0].score == 1.0       // --cut_ga path defaults to confident
         results['protein_001'][0].metadata.name == 'ANF00001'
         results['protein_001'][0].metadata.domainEvalue == 1.5e-50d
+        results['protein_001'][0].evidenceType == gspa.integration.EvidenceType.GENE_MODEL_QUALITY
+        results['protein_001'][0].metadata.gating == 'gathering_threshold'
+        results['protein_001'][0].metadata.scoreSemantics == 'threshold_pass_indicator'
+        results['protein_001'][0].metadata.domainCount == 2
+        new groovy.json.JsonSlurper().parseText(results['protein_001'][0].metadata.domainsJson)*.bitScore == [179.8d, 110d]
+        new groovy.json.JsonSlurper().parseText(results['protein_001'][0].metadata.domainsJson)*.alignmentEnd == [200, 200]
 
         results['protein_002'][0].value == 'ANF00042'
         results['protein_002'][0].type == AnnotationType.PSEUDOGENE
@@ -72,8 +78,8 @@ real_protein_007 - 350 ANF00099 ANF00099 320 1.0e-05 25.1  0.0 1 1 5.0e-06  5.0e
     def "buildCommand uses --cut_ga by default and switches to --domE when disabled"() {
         given:
         def predictor = new AntiFamPredictor(hmmDatabase: '/refs/AntiFam.hmm', threads: 4)
-        def input = new File('/tmp/in.faa')
-        def out = new File('/tmp')
+        def out = new File(System.getProperty('java.io.tmpdir'))
+        def input = new File(out, 'in.faa')
 
         when:
         def withGa = predictor.buildCommand(input, out)

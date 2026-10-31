@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.workflow.ExperimentWorkflowSpec" tests="30" skipped="0" failures="0" errors="0" timestamp="2026-10-26T22:50:41" hostname="lc-dell" time="10.013">
+  <properties/>
+  <testcase name="evidence-guided: hypotheses come only from candidates that map to a gene and reaction of the model; nothing is invented" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.484"/>
+  <testcase name="cohort context of a candidate becomes experiment evidence only where it was measured" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.482"/>
+  <testcase name="results become conditional features; an objective that requires the candidate is flagged and kept out of the evidence" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.548"/>
+  <testcase name="the experiment stage changes no annotation score and leaves the raw result for the integration step" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.495"/>
+  <testcase name="the solver-call budget is a hard cap and exhaustion is reported, not read as a result" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.602"/>
+  <testcase name="with nothing admissible no solver is started and the ledger says so" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.12"/>
+  <testcase name="masked assignment comparisons run through production and remain conditional" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.484"/>
+  <testcase name="a user-supplied manifest runs as written and the ledger does not claim evidence guidance" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.457"/>
+  <testcase name="guided masked assignments use actual weak candidates and execute all alternatives including null" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.489"/>
+  <testcase name="guided masked assignment without a mapped candidate records abstention and starts no solver" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.166"/>
+  <testcase name="a result for another model, or one that claims a probability, is refused and removed [modelSha: other, probability: None, fragment: different model, #0]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.138"/>
+  <testcase name="a result for another model, or one that claims a probability, is refused and removed [modelSha: real, probability: 0.9, fragment: claims a probability, #1]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.134"/>
+  <testcase name="inconsistent experiment and community options are rejected before anything runs [options: [experimentManifestFile:null, experimentEvidenceFile:THE_FILE], fragment: need experimentManifestFile, #0]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.103"/>
+  <testcase name="inconsistent experiment and community options are rejected before anything runs [options: [experimentMode:manifest, experimentEvidenceFile:THE_FILE], fragment: only applies to experimentMode evidence_guided, #1]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.102"/>
+  <testcase name="inconsistent experiment and community options are rejected before anything runs [options: [experimentMode:guess], fragment: experimentMode must be one of, #2]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.1"/>
+  <testcase name="inconsistent experiment and community options are rejected before anything runs [options: [experimentMaxSolverCalls:0], fragment: must be positive, #3]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.101"/>
+  <testcase name="inconsistent experiment and community options are rejected before anything runs [options: [communityTimeoutSeconds:0], fragment: must be positive, #4]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.107"/>
+  <testcase name="the agent strategy is only forwarded as options: model and endpoint, never a credential, and no call is made here" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.169"/>
+  <testcase name="an output left by an earlier run is never mistaken for this run" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.133"/>
+  <testcase name="exact xrefs choose the media; a protein absent from the model is tested as a reaction and its alternative ECs stay separate" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.47"/>
+  <testcase name="a broad EC and shared EC are ambiguous, never individual activity or exclusive competition" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.458"/>
+  <testcase name="the same model in an acetate medium asks different questions and gives different answers" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.479"/>
+  <testcase name="baseline context is honest when no condition changes anything and unavailable when it could not be run" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.783"/>
+  <testcase name="community: organism-specific, bounded, no gene assigned and no candidate feature fabricated" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.544"/>
+  <testcase name="community: a result that assigns an enzyme or was computed on other models is refused [aSha: bad, assignment: none, fragment: different model, #0]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.148"/>
+  <testcase name="community: a result that assigns an enzyme or was computed on other models is refused [aSha: real, assignment: EC:1.1.1.1, fragment: assigns an enzyme, #1]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.14"/>
+  <testcase name="a failing, silent, stale, slow or mismatched sidecar fails the stage and never yields a result [body: import sys; sys.stderr.write(&quot;solver exploded&quot;); sys.exit(3), timeout: 30, fragment: status 3, #0]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.144"/>
+  <testcase name="a failing, silent, stale, slow or mismatched sidecar fails the stage and never yields a result [body: pass, timeout: 30, fragment: wrote no output, #1]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.137"/>
+  <testcase name="a failing, silent, stale, slow or mismatched sidecar fails the stage and never yields a result [body: import time; time.sleep(20), timeout: 1, fragment: exceeded, #2]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="1.14"/>
+  <testcase name="a failing, silent, stale, slow or mismatched sidecar fails the stage and never yields a result [body: import sys, json; json.dump({&quot;schema&quot;: &quot;other/1&quot;}, open(sys.argv[sys.argv.index(&quot;--out&quot;)+1], &quot;w&quot;)), timeout: 30, fragment: schema, #3]" classname="gspa.integration.workflow.ExperimentWorkflowSpec" time="0.15"/>
+  <system-out><![CDATA[01:50:41.299 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:41.304 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:41.306 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:41.307 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:41.307 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:41.790 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:41.797 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:41.801 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:41.802 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:41.802 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:42.264 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:42.269 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:42.272 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:42.272 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:42.273 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:42.811 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:42.823 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:42.826 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:42.826 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:42.826 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:42.831 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:42.837 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:42.839 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:42.840 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:42.840 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:43.313 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:43.320 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:43.323 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:43.324 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:43.324 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:43.909 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:43.915 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:43.917 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:43.918 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:43.918 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:44.034 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:44.041 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:44.044 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:44.045 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:44.045 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:44.526 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:44.531 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:44.533 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:44.534 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:44.534 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:44.972 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:44.977 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:44.979 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 3 claims across 3 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:44.980 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:44.980 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:45.460 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:45.475 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:45.480 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:45.480 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:45.480 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:45.495 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:45.512 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:45.516 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:45.517 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:45.517 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:45.626 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:45.631 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:45.634 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:45.634 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:45.634 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:45.764 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:45.769 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:45.772 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:45.773 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:45.773 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:46.426 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:46.440 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:46.446 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:46.447 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:46.447 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:46.587 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:46.592 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:46.594 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:46.595 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:46.595 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:46.715 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:46.720 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:46.723 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 5 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:46.723 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:46.723 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:47.185 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:47.196 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:47.198 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 5 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:47.199 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:47.199 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:47.642 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:47.647 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:47.649 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 5 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:47.650 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:47.650 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:48.123 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:48.128 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:48.130 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 5 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:48.133 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:48.133 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:48.474 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:48.481 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:48.484 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 5 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:48.485 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:48.485 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:48.913 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:48.919 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:48.923 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:48.924 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:48.924 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:49.462 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:49.467 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:49.471 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:49.472 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:49.472 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:49.604 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:49.610 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:49.614 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:49.615 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:49.615 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:49.751 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:49.757 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:49.759 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:49.760 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:49.760 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:49.890 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:49.895 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:49.898 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:49.898 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:49.899 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:50.025 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:50.031 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:50.034 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:50.035 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:50.035 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:50:51.165 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:50:51.172 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:50:51.176 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 7 claims across 7 (protein, function) groups (maxIter=6, damping=0.5)
+01:50:51.177 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:50:51.177 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

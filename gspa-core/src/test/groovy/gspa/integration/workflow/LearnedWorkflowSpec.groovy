@@ -9,6 +9,7 @@ import gspa.integration.learned.FeatureContract
 import gspa.integration.learned.LearnedContextModel
 import gspa.integration.learned.LearnedIntegrationStage
 import gspa.integration.learned.LearnedStageSettings
+import gspa.integration.learned.LearnedStageReport
 import gspa.integration.learned.LearnedTestSupport
 import gspa.integration.learned.ModelUnavailableException
 import spock.lang.Specification
@@ -70,6 +71,36 @@ class LearnedWorkflowSpec extends Specification {
     }
 
     private static double sigmoid(double x) { 1.0d / (1.0d + Math.exp(-x)) }
+
+    def 'partial learned coverage remains reportable when no candidate is projected'() {
+        given: 'a stage report with one scored-only candidate and one unsupported candidate'
+        def files = fx.genome('g1')
+        def wc = fx.worker(fx.config(learnedModelFile: placeholderModelFile()), 'g1', files, new File(dir, 'out.tsv'))
+        def m = model()
+        def wf = mechanismWorkflow(wc, m)
+        def report = new LearnedStageReport(modelId: m.modelId, modelSha256: m.sha256,
+            modelKind: m.kind, contractId: m.contract.id, contractFingerprint: m.contract.fingerprint())
+        report.candidates.addAll([
+            new LearnedStageReport.CandidateRecord(scoreStatus: 'scored', probability: 0.4d),
+            new LearnedStageReport.CandidateRecord(scoreStatus: 'unsupported')])
+        report.outcomes.addAll([
+            new LearnedStageReport.KeyOutcome(action: 'scored_only'),
+            new LearnedStageReport.KeyOutcome(action: 'unchanged_unsupported')])
+        def stage = Stub(LearnedTestSupport.MechanismStage, constructorArgs: [new LearnedStageSettings(model: m)]) {
+            run(_, _, _, _) >> report
+        }
+        wf.learnedStageFactory = { LearnedStageSettings ignored -> stage }
+
+        when:
+        def r = wf.run(claimsOf(files.claims))
+        def ledger = r.audit.report()
+
+        then: 'the report stays available even though final annotations retain their preceding scores'
+        ledger.scoring_mode == 'mixed'
+        ledger.stages.find { it.name == 'learned_integration' }.with {
+            status == 'executed' && candidates_scored == 1 && candidates_unsupported == 1 && changes.empty
+        }
+    }
 
     def 'the learned stage runs last over the raw claims, replaces the heuristic score, keeps the weak candidate and records the model hash'() {
         given:

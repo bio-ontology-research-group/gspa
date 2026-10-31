@@ -32,8 +32,11 @@ Label policy (nothing is invented)
 ----------------------------------
 A candidate row is labelled 1 only when an allowed-evidence truth assertion names the same
 protein and function (GO optionally propagated over ``is_a``/``part_of``; obsolete GO terms are
-dropped and counted). Absence of an assertion is NOT a negative. A row becomes 0 only when its
-dataset declares ``negative_policy: closed_world_declared`` for that function type with a written
+dropped and counted). Explicit ``label=0`` or ``qualifier=NOT`` assertions require an
+``explicit_negative_truth`` policy source and a row ``reference``; their polarity is preserved,
+GO negatives stay exact, and contradictory assertions fail. Absence of an assertion is NOT a
+negative. An unconfirmed row becomes 0 only when its dataset declares
+``negative_policy: closed_world_declared`` for that function type with a written
 justification, only for the type's default role, and only for proteins that carry at least one
 truth assertion of that type (labelled proteins); every such row is stamped
 ``label_basis: closed_world_unconfirmed``. Everything else is excluded and counted
@@ -46,7 +49,10 @@ when the policy opts in via ``complex_membership_from_cc`` (with a source) and a
 an experimental cellular-component assertion to a protein-containing-complex term (GO:0032991
 descendant) for a candidate naming that same complex term. An unrelated MF/BP label never labels a
 subunit role, and no role negatives are ever inferred. ``locus_group_id`` is only set from an
-explicit locus-group file whose group declares complete truth.
+explicit locus-group file whose group declares complete truth. Every exported candidate of the
+function/role/genome must be declared, independently labelled and retained after family masking.
+Incomplete groups retain marginal rows but lose locus supervision; unconfirmed closed-world rows
+cannot certify a null outcome. Complete groups carry membership and source certificates.
 
 Evidence: ``allowed_evidence`` is ``experimental`` (strict, the default: EXP/IDA/IPI/IMP/IGI/IEP/H*
 and ECO:0000269), ``cafa_eligible`` (adds the curated-inferential TAS/IC/ECO:0000303/305, which are
@@ -399,7 +405,11 @@ def evidence_ok(code: str, allowed) -> bool:
 
 
 def read_labels(path, split_rows, policy, go: GoView | None = None):
-    """Positive truth ``{(genome, kind, role): {protein: {function id: {codes, basis}}}}`` plus drop counts."""
+    """Explicit positive/negative truth, preserving polarity and assay references.
+
+    Missing labels stay unknown. Negatives are exact assertions, never propagated
+    to GO ancestors, and need both a policy source and a row-level reference.
+    """
     source_of = {r["genome_id"]: r["source"] for r in split_rows}
     truth = defaultdict(lambda: defaultdict(dict))
     dropped = Counter()
@@ -424,13 +434,25 @@ def read_labels(path, split_rows, policy, go: GoView | None = None):
             if EV.category(code) == "curated_inferential":
                 dropped["evidence_curated_inferential_not_experimental"] += 1
             continue
+        qualifier = (r.get('qualifier') or '').strip()
+        if qualifier not in ('', 'NOT'):
+            raise PreparationError(f'unsupported truth qualifier {qualifier!r}; resolve its semantics before training')
+        label_text = (r.get('label') or ('0' if qualifier == 'NOT' else '1')).strip()
+        if label_text not in ('0', '1') or (qualifier == 'NOT' and label_text != '0'):
+            raise PreparationError('truth label must be exactly 0/1 and agree with the NOT qualifier')
+        label = int(label_text)
+        reference = (r.get('reference') or '').strip()
+        if label == 0 and (not isinstance(p.get('explicit_negative_truth'), str) or
+                           not p['explicit_negative_truth'].strip() or not reference):
+            raise PreparationError('explicit negative truth requires explicit_negative_truth policy source and a row reference')
         protein = r["protein_id"].strip()
         explicit = (r.get("role") or "").strip() if has_role else ""
         if kind == "GO" and go is not None:
             if go.obsolete(fid):
                 dropped["obsolete_go_term"] += 1
                 continue
-            ids = go.closure(fid)
+            fid = go.primary(fid)
+            ids = go.closure(fid) if label == 1 else {fid}
         else:
             ids = {fid}
         if explicit and explicit != DEFAULT_ROLE_MAP[kind][0]:
@@ -438,20 +460,24 @@ def read_labels(path, split_rows, policy, go: GoView | None = None):
             if src is None:
                 dropped["explicit_role_not_declared_in_policy"] += 1
                 continue
-            _add(truth[(g, kind, explicit)], protein, {fid}, code, f"explicit_role_truth:{src}")   # exact term, no propagation
+            _add(truth[(g, kind, explicit)], protein, {fid}, code, f"explicit_role_truth:{src}", label, reference)   # exact term, no propagation
             continue
-        _add(truth[(g, kind, DEFAULT_ROLE_MAP[kind][0])], protein, ids, code, "default_role")
-        if kind == "GO" and p.get("complex_membership_from_cc") and go is not None and go.is_complex_term(fid):
+        _add(truth[(g, kind, DEFAULT_ROLE_MAP[kind][0])], protein, ids, code, "default_role", label, reference)
+        if label == 1 and kind == "GO" and p.get("complex_membership_from_cc") and go is not None and go.is_complex_term(fid):
             cids = {t for t in ids if go.is_complex_term(t)}
             _add(truth[(g, kind, COMPLEX_ROLE)], protein, cids, code,
                  f"cc_complex_membership:{p['complex_membership_from_cc']}")
     return truth, dropped
 
 
-def _add(bucket, protein, ids, code, basis):
+def _add(bucket, protein, ids, code, basis, label=1, reference=''):
     for t in ids:
-        rec = bucket[protein].setdefault(t, {"codes": set(), "basis": basis})
+        rec = bucket[protein].setdefault(t, {"codes": set(), "basis": basis, "label": label, "references": set()})
+        if rec['label'] != label:
+            raise PreparationError(f'conflicting positive/negative truth for {protein}/{t}')
         rec["codes"].add(code)
+        if reference:
+            rec['references'].add(reference)
 
 
 # ------------------------------------------------------------------------------------ feature rows
@@ -498,6 +524,8 @@ def validate_export_dir(d: Path, contract: dict) -> int:
                     raise PreparationError(f"{where}: missing or empty '{key}'")
             if row["role"] not in CANDIDATE_ROLES:
                 raise PreparationError(f"{where}: unknown role {row['role']!r}")
+            if row.get("cohort_context_mode", "UNIVERSAL") not in ("UNIVERSAL", "PATHWAY", "ORGANISM"):
+                raise PreparationError(f"{where}: invalid cohort context mode")
             fkey = f"{row['protein_id']}|{row['function_type']}|{row['function_id']}"
             if row["function_key"] != fkey or row["candidate_key"] != f"{fkey}|{row['role']}":
                 raise PreparationError(f"{where}: function_key/candidate_key do not follow the writer's layout")
@@ -513,11 +541,16 @@ def validate_export_dir(d: Path, contract: dict) -> int:
             if bad:
                 raise PreparationError(f"{where}: non-finite feature value(s) {bad[:3]}")
             ctxs = row.get("available_contexts")
-            if (not isinstance(ctxs, dict) or set(ctxs) != set(EXPORT_CONTEXT_KEYS)
+            if (not isinstance(ctxs, dict) or set(ctxs) not in
+                    (set(EXPORT_CONTEXT_KEYS), set(EXPORT_CONTEXT_KEYS) | {'local_reaction'})
                     or not all(isinstance(v, bool) for v in ctxs.values())):
                 raise PreparationError(f"{where}: available_contexts does not match the writer's layout")
+            if 'local_reaction' in ctxs and ctxs['local_reaction'] != (feats.get('cohort.w.local_available', 0) > 0):
+                raise PreparationError(f"{where}: available_contexts.local_reaction disagrees with the local availability feature")
             if not isinstance(row.get("notes"), list):
                 raise PreparationError(f"{where}: notes must be a list")
+            if row.get('quality_evidence'):
+                raise PreparationError(f"{where}: gene-model quality observations are not supported for training; retain them and extend the model contract before joining labels")
             n += 1
     if manifest.get("rows") != n:
         raise PreparationError(f"{d}: export manifest says {manifest.get('rows')} rows, file has {n}")
@@ -543,13 +576,69 @@ def load_locus_groups(path, policy_declares_complete):
     out = {}
     if path is None:
         return out
+    seen, states = set(), {}
     for r in read_tsv(path, ("genome_id", "locus_group_id", "candidate_key", "truth_complete")):
-        if r["truth_complete"].strip().lower() == "true":
-            if not policy_declares_complete:
+        gid, group, candidate, complete = (r[k].strip() for k in ('genome_id', 'locus_group_id', 'candidate_key', 'truth_complete'))
+        if not gid or not group or not candidate or complete.lower() not in ('true', 'false'):
+            raise PreparationError('locus declarations need nonempty identities and truth_complete true/false')
+        key, gkey = (gid, candidate), (gid, group)
+        if key in seen:
+            raise PreparationError(f'duplicate candidate or multiple locus groups for {key}')
+        seen.add(key)
+        state = complete.lower() == 'true'
+        if gkey in states and states[gkey] != state:
+            raise PreparationError(f'locus group {gkey} has conflicting truth_complete declarations')
+        states[gkey] = state
+        if state:
+            if not isinstance(policy_declares_complete, str) or not policy_declares_complete.strip():
                 raise PreparationError("locus groups declared complete but the label policy has no "
                                        "'locus_truth_complete' justification")
-            out[(r["genome_id"].strip(), r["candidate_key"].strip())] = r["locus_group_id"].strip()
+            out[key] = group
     return out
+
+
+def certify_locus_groups(rows, declarations, candidate_universe, truth_source):
+    """Certify complete production competition groups after all label/family filtering.
+
+    Production compares all candidates of a function/role within one genome.
+    Retain incomplete groups' marginal rows, but remove their locus supervision.
+    """
+    declared = defaultdict(set)
+    for (genome, candidate), group in declarations.items():
+        declared[(genome, group)].add(candidate)
+    by_candidate = {(r['genome_id'], r['candidate_key']): r for r in rows}
+    report = []
+    for (genome, group), members in sorted(declared.items()):
+        signatures = set()
+        for candidate in members:
+            parts = candidate.split('|')
+            if len(parts) != 4:
+                raise PreparationError(f'invalid locus candidate key {candidate!r}')
+            signatures.add(tuple(parts[1:]))
+        if len(signatures) != 1:
+            raise PreparationError(f'locus {genome}/{group} mixes function identities or roles')
+        signature = next(iter(signatures))
+        universe = candidate_universe.get((genome, *signature), set())
+        retained = {c for c in members if (genome, c) in by_candidate}
+        reasons = []
+        if members != universe:
+            reasons.append('candidate_universe_incomplete')
+        if retained != members:
+            reasons.append('members_not_labelled_or_masked')
+        if any(by_candidate[(genome, c)]['label_basis'] == 'closed_world_unconfirmed' for c in retained):
+            reasons.append('unconfirmed_negative_labels')
+        example_ids = sorted(by_candidate[(genome, c)]['example_id'] for c in retained)
+        for c in retained:
+            row = by_candidate[(genome, c)]
+            row['locus_group_id'] = None if reasons else group
+            if not reasons:
+                row['locus_members'] = example_ids
+                row['locus_truth_source'] = truth_source
+        report.append({'genome_id': genome, 'locus_group_id': group, 'eligible': not reasons,
+                       'reasons': reasons, 'declared_members': sorted(members), 'retained_members': sorted(retained),
+                       'exported_members': sorted(universe)})
+    return {'declared_groups': len(declared), 'eligible_groups': sum(r['eligible'] for r in report),
+            'groups': report, 'scope': 'all exported candidates of one function/role in one genome; complete explicit truth only'}
 
 
 # ------------------------------------------------------------------------------------ family masking
@@ -635,12 +724,13 @@ def build_table(feature_dir, contract_path, labels_path, split_path, policy_path
     policy = load_label_policy(policy_path)
     go = GoView(go_obo) if go_obo else None
     truth, label_drops = read_labels(labels_path, split_rows, policy, go)
-    locus = load_locus_groups(locus_groups, bool(policy.get("locus_truth_complete")))
+    locus = load_locus_groups(locus_groups, policy.get("locus_truth_complete"))
     info = {r["genome_id"]: r for r in split_rows}
 
     rows_out, excluded = [], Counter()
     seen = set()
     positives_with_candidate = defaultdict(set)
+    candidate_universe = defaultdict(set)
     for genome, row in iter_feature_rows(feature_dir, contract):
         gid = row.get("genome_id") or genome
         if gid not in info:
@@ -654,6 +744,7 @@ def build_table(feature_dir, contract_path, labels_path, split_path, policy_path
         if key in seen:
             raise PreparationError(f"duplicate candidate {key}")
         seen.add(key)
+        candidate_universe[(gid, kind, row['function_id'], row['role'])].add(row['candidate_key'])
         fid = function_id(kind, row["function_id"])
         if kind == "GO" and go is not None:
             if go.obsolete(fid):
@@ -669,15 +760,17 @@ def build_table(feature_dir, contract_path, labels_path, split_path, policy_path
         protein = row["protein_id"]
         rec = truth.get((gid, kind, role), {}).get(protein, {}).get(fid)
         if rec is not None:
-            label, basis, codes, role_basis = 1, "positive_truth", sorted(rec["codes"]), rec["basis"]
-            positives_with_candidate[(gid, kind, role)].add((protein, fid))
+            label = rec['label']
+            basis, codes, role_basis = ('positive_truth' if label else 'explicit_negative_truth'), sorted(rec["codes"]), rec["basis"]
+            if label:
+                positives_with_candidate[(gid, kind, role)].add((protein, fid))
         elif role != default_role:
             excluded["role_not_labelled"] += 1
             if role == COMPLEX_ROLE:
                 excluded["complex_subunit_without_role_truth"] += 1
             continue
         else:
-            labelled_protein = protein in truth.get((gid, kind, default_role), {})
+            labelled_protein = any(r['label'] == 1 for r in truth.get((gid, kind, default_role), {}).get(protein, {}).values())
             if labelled_protein and pol.get("negative_policy") == "closed_world_declared":
                 label, basis, codes, role_basis = 0, "closed_world_unconfirmed", [], "default_role"
             else:
@@ -688,14 +781,22 @@ def build_table(feature_dir, contract_path, labels_path, split_path, policy_path
             "split": info_g["split"], "label": label, "label_basis": basis, "dataset": info_g["source"],
             "label_evidence": codes, "label_evidence_categories": sorted({EV.category(c) for c in codes}),
             "label_role_basis": role_basis,
+            "label_references": sorted(rec['references']) if rec else [],
             "candidate_key": row["candidate_key"], "protein_id": protein,
             "function_id": fid, "function_type": kind, "role": role,
             "locus_group_id": locus.get(key), "features": row["features"]})
+        if 'sequence_sources' in row:
+            rows_out[-1]['sequence_sources'] = row['sequence_sources']
+        if 'sequence_contracts' in row:
+            rows_out[-1]['sequence_contracts'] = row['sequence_contracts']
+        if 'cohort_context_mode' in row:
+            rows_out[-1]['cohort_context_mode'] = row['cohort_context_mode']
 
     masking = None
     masked = []
     if example_clusters:
         rows_out, masked, masking = mask_homologous_examples(rows_out, read_protein_clusters(example_clusters))
+    locus_audit = certify_locus_groups(rows_out, locus, candidate_universe, policy.get('locus_truth_complete'))
     out_dir.mkdir(parents=True, exist_ok=True)
     table = out_dir / "training_table.jsonl"
     with open(table, "w") as fh:
@@ -715,12 +816,13 @@ def build_table(feature_dir, contract_path, labels_path, split_path, policy_path
         sub = [r for r in rows_out if r["split"] == s]
         per_split[s] = {"rows": len(sub), "positives": sum(r["label"] for r in sub),
                         "closed_world_negatives": sum(1 for r in sub if r["label_basis"] == "closed_world_unconfirmed"),
+                        "explicit_negatives": sum(1 for r in sub if r["label_basis"] == "explicit_negative_truth"),
                         "genomes": len({r["genome_id"] for r in sub}), "groups": len({r["group"] for r in sub}),
                         "locus_group_rows": sum(1 for r in sub if r["locus_group_id"]),
                         "role_basis": dict(Counter(r["label_role_basis"].split(":")[0] for r in sub if r["label"] == 1))}
     unreachable = {}
     for (gid, kind, role), by_protein in truth.items():
-        total = sum(len(fs) for fs in by_protein.values())
+        total = sum(r['label'] == 1 for fs in by_protein.values() for r in fs.values())
         reached = len(positives_with_candidate.get((gid, kind, role), ()))
         unreachable[f"{gid}/{kind}/{role}"] = {"truth_pairs": total, "with_candidate_row": reached}
     manifest = {
@@ -730,19 +832,22 @@ def build_table(feature_dir, contract_path, labels_path, split_path, policy_path
                    "labels_sha256": sha256_file(labels_path), "splits": str(split_path),
                    "splits_sha256": sha256_file(split_path), "label_policy": str(policy_path),
                    "label_policy_sha256": sha256_file(policy_path), "registry": str(registry_path),
+                   "locus_groups": str(locus_groups) if locus_groups else None,
+                   "locus_groups_sha256": sha256_file(locus_groups) if locus_groups else None,
                    "go_obo": str(go_obo) if go_obo else None,
                    "go_obo_sha256": sha256_file(go_obo) if go_obo else None,
                    "go_propagation": "is_a+part_of" if go_obo else "exact_term",
                    "example_clusters": str(example_clusters) if example_clusters else None,
                    "example_clusters_sha256": sha256_file(example_clusters) if example_clusters else None},
+        "locus_audit": locus_audit,
         "split_audit": audit, "per_split": per_split, "excluded_rows": dict(excluded),
         "label_records_dropped": dict(label_drops),
         "family_masking": masking if masking else {"applied": False,
                                                    "note": "no --example-clusters: labelled-example family disjointness NOT enforced"},
         "masked_examples_file": str(masked_path) if masked_path else None,
         "truth_recall_ceiling": unreachable,
-        "label_basis_note": ("label 0 rows exist only where a dataset declared closed_world_declared; "
-                             "they are 'unconfirmed', not verified-false"),
+        "label_basis_note": ("explicit_negative_truth rows carry polarity, assay policy and references; "
+                             "closed_world_unconfirmed rows are unconfirmed, not verified-false, and cannot supervise locus null outcomes"),
         "dataset_status": "real" if all(registry[s]["role"] != "synthetic" for s in {r["source"] for r in split_rows}) else "synthetic",
     }
     (out_dir / "training_table_manifest.json").write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n")

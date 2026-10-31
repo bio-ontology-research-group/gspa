@@ -121,13 +121,14 @@ class ContextFeatureExtractorSpec extends Specification {
         def none = one(claims, state())
         def measuredZero = one(claims, state(), new ExternalContext(
             neighborhood: ['p1|EC|EC:1.1.1.1': new ExternalContext.Neighborhood(supportMax: 0.0d, nSupporting: 0, conflictMax: 0.0d)],
-            cohort: ['p1|EC|EC:1.1.1.1': new ExternalContext.Cohort(nGenomes: 12, nWithOrthogroup: 0)]))
+            cohort: ['p1|EC|EC:1.1.1.1': new ExternalContext.Cohort(
+                weighted: new ExternalContext.Weighted(effectiveN: 0d, supportFraction: 0d))]))
 
         expect:
         none.get('ctx.nbr.available') == 0
-        none.get('cohort.available') == 0
+        none.get('cohort.w.available') == 0
         measuredZero.get('ctx.nbr.available') == 1
-        measuredZero.get('cohort.available') == 1
+        measuredZero.get('cohort.w.available') == 1
         measuredZero.get('ctx.nbr.support_max') == none.get('ctx.nbr.support_max')     // both 0 ...
         measuredZero.values != none.values                                              // ... but not the same observation
     }
@@ -141,6 +142,40 @@ class ContextFeatureExtractorSpec extends Specification {
         f.get('seq.cov.status_available') == 1
         f.get('seq.cov.n_sources_not_fully_run') == 3
         f.get('seq.cov.n_sources_ran_clean') == 2
+    }
+
+    def "a skipped predictor is missing coverage, not a completed negative scan"() {
+        when:
+        def f = one([claim('p1', 'EC:1.1.1.1', 0.8)], state(), new ExternalContext(
+            predictorStatus: [diamond: 'SUCCESS', hmmer: 'SKIPPED']))
+
+        then:
+        f.get('seq.cov.status_available') == 1
+        f.get('seq.cov.n_sources_not_fully_run') == 1
+        f.get('seq.cov.n_sources_ran_clean') == 1
+    }
+
+    def "raw cohort counts cannot change learned features"() {
+        given:
+        def claims = [claim('p1', 'EC:1.1.1.1', 0.8)]
+        def context = { int copies -> new ExternalContext(cohort: ['p1|EC|EC:1.1.1.1':
+            new ExternalContext.Cohort(nGenomes: 2 + copies, nWithOrthogroup: 1 + copies,
+                nWithFunctionSeq: 1 + copies, nWithContext: 1 + copies, nIncomplete: copies,
+                weighted: new ExternalContext.Weighted(effectiveN: 2d, supportFraction: 0.5d,
+                    nPeerGenomes: 2d + copies, bgWindows: 40d + 20 * copies))]) }
+
+        expect:
+        one(claims, state(), context(0)).values == one(claims, state(), context(5)).values
+    }
+
+    def "legacy unweighted cohort summaries are provenance only"() {
+        given:
+        def claims = [claim('p1', 'EC:1.1.1.1', 0.8)]
+        def legacy = new ExternalContext(cohort: ['p1|EC|EC:1.1.1.1':
+            new ExternalContext.Cohort(nGenomes: 12, nWithOrthogroup: 12, nWithContext: 12)])
+
+        expect:
+        one(claims, state(), legacy).values == one(claims, state()).values
     }
 
     def "complex membership is not catalytic function; roles are distinct candidates"() {

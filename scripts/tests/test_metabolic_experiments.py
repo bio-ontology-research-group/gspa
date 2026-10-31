@@ -446,8 +446,42 @@ class TestStrategies(Base):
         self.assertIn("not in admissible menu", log[1]["error"])
         self.assertTrue(log[-1]["stop"])
         for p in prompts:  # menu only: no matrices, no keys
-            self.assertEqual(set(p), {"admissible_menu", "completed_results", "solver_calls_left"})
+            self.assertEqual(set(p), {"schema", "admissible_menu", "completed_results", "solver_calls_left",
+                                      "context", "model_conditions"})
         self.assertNotIn("carbon_source:EX_ac_e", [m["experiment_id"] for m in prompts[-1]["admissible_menu"]])
+
+    def test_qwen_receives_product_and_fva_feedback_before_next_selection(self):
+        prompts = []
+
+        def chat(messages):
+            prompts.append(messages)
+            if len(prompts) == 1:
+                return json.dumps({"experiment_id": "product:EX_sec_e"})
+            return json.dumps({"experiment_id": "knockout:H_sec"})
+
+        out = self.run_all("qwen", chat=chat, max_experiments=2, max_solver_calls=100)
+        self.assertEqual(self.executed(out), ["product:EX_sec_e", "knockout:H_sec"])
+        self.assertEqual(len(prompts), 2)
+        self.assertTrue(all(log.get("valid") and log["source"] == "qwen" for log in out["selection_log"]))
+        payloads = [json.loads(m[1]["content"]) for m in prompts]
+        self.assertTrue(any(e["type"] == "bgc" for e in payloads[0]["context"]["evidence"]))
+        result = next(r for r in payloads[1]["completed_results"] if r["experiment_id"] == "product:EX_sec_e")
+        product = result["measurements"]["product"]
+        self.assertTrue(product["conditional_feasibility"])
+        self.assertFalse(product["secretion_unavoidable_in_model"])
+        self.assertGreater(product["max_secretion"], 0)
+        self.assertEqual(product["min_secretion_at_required_state"], 0)
+        self.assertEqual(result["measurements"]["focus_checks"][0]["reaction"], "SEC")
+        for log, prompt in zip(out["selection_log"], prompts):
+            self.assertEqual(log["prompt_schema"], ME.QWEN_PROMPT_SCHEMA)
+            self.assertEqual(log["prompt_sha256"], ME.canonical_hash(prompt))
+
+    def test_prompt_construction_failure_does_not_become_endpoint_fallback(self):
+        chat = mock.Mock(return_value='{"stop": true}')
+        with mock.patch.object(ME, "qwen_prompt", side_effect=ValueError("invalid observation")):
+            with self.assertRaisesRegex(ValueError, "invalid observation"):
+                self.run_all("qwen", chat=chat, max_experiments=1)
+        chat.assert_not_called()
 
     def test_qwen_falls_back_to_evidence_order_after_invalid_replies(self):
         out = self.run_all("qwen", chat=lambda m: "no json here", max_experiments=2)

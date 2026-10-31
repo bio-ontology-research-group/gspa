@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.pathway.PathwayInputContractSpec" tests="9" skipped="0" failures="9" errors="0" timestamp="2026-10-26T22:38:26" hostname="lc-dell" time="0.532">
+  <properties/>
+  <testcase name="default gapsmith search receives proteins even when nucleotide contigs exist" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.308">
+    <failure message="Condition not satisfied:&#10;&#10;p.input == '&gt;p1\nMK\n&gt;p2\nMA\n'&#10;| |     |&#10;| |     false&#10;| |     10 differences (28% similarity)&#10;| |     &gt;(c-)\n(ATG~AAGT~A)A\n&#10;| |     &gt;(p1)\n(MK\n&gt;p2\nM)A\n&#10;| &gt;c&#10;| ATGAAGTAA&#10;&lt;gspa.predictor.pathway.PathwayInputContractSpec$Capture@7bc6d27a input=&gt;c&#10;ATGAAGTAA&#10; command=[gapsmith, find, -p, all, -t, Bacteria, -o, /home/leechuck/tmp/gspa_gapseq_8110111113008086032, /home/leechuck/tmp/gspa_gapseq_8110111113008086032/genome.fna] tool=gapsmith dataDir=null medium=null exportSbml=false taxonomy=Bacteria target=genome representativeIds=null log=Logger[gspa.predictor.pathway.PathwayInputContractSpec$Capture] lastRunStatus=gspa.predictor.PredictorRunStatus(gapsmith, SUCCESS_ZERO, 0, null, 0, 165, []) workDir=null timeoutMinutes=120 environment=[:] executablePath=null&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+p.input == '&gt;p1\nMK\n&gt;p2\nMA\n'
+| |     |
+| |     false
+| |     10 differences (28% similarity)
+| |     &gt;(c-)\n(ATG~AAGT~A)A\n
+| |     &gt;(p1)\n(MK\n&gt;p2\nM)A\n
+| &gt;c
+| ATGAAGTAA
+&lt;gspa.predictor.pathway.PathwayInputContractSpec$Capture@7bc6d27a input=&gt;c
+ATGAAGTAA
+ command=[gapsmith, find, -p, all, -t, Bacteria, -o, /home/leechuck/tmp/gspa_gapseq_8110111113008086032, /home/leechuck/tmp/gspa_gapseq_8110111113008086032/genome.fna] tool=gapsmith dataDir=null medium=null exportSbml=false taxonomy=Bacteria target=genome representativeIds=null log=Logger[gspa.predictor.pathway.PathwayInputContractSpec$Capture] lastRunStatus=gspa.predictor.PredictorRunStatus(gapsmith, SUCCESS_ZERO, 0, null, 0, 165, []) workDir=null timeoutMinutes=120 environment=[:] executablePath=null&gt;
+
+	at gspa.predictor.pathway.PathwayInputContractSpec.default gapsmith search receives proteins even when nucleotide contigs exist(PathwayInputContractSpec.groovy:35)
+</failure>
+  </testcase>
+  <testcase name="gapsmith rejects nucleotide mode before launching a protein aligner" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.006">
+    <failure message="Expected exception of type 'java.lang.IllegalArgumentException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'java.lang.IllegalArgumentException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.PathwayInputContractSpec.gapsmith rejects nucleotide mode before launching a protein aligner(PathwayInputContractSpec.groovy:45)
+</failure>
+  </testcase>
+  <testcase name="missing protein sequences are partial coverage" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.02">
+    <failure message="Condition not satisfied:&#10;&#10;p.lastRunStatus.outcome == PredictorOutcome.PARTIAL&#10;| |             |       |  |&#10;| |             |       |  class gspa.predictor.PredictorOutcome&#10;| |             |       false&#10;| |             SUCCESS_ZERO&#10;| gspa.predictor.PredictorRunStatus(gapsmith, SUCCESS_ZERO, 0, null, 0, 5, [])&#10;&lt;gspa.predictor.pathway.PathwayInputContractSpec$Capture@7c129ef6 input=&gt;p1&#10;MK&#10; command=[gapsmith, find, -p, all, -t, Bacteria, -o, /home/leechuck/tmp/gspa_gapseq_12919670293477852361, /home/leechuck/tmp/gspa_gapseq_12919670293477852361/proteins.faa] tool=gapsmith dataDir=null medium=null exportSbml=false taxonomy=Bacteria target=proteome representativeIds=null log=Logger[gspa.predictor.pathway.PathwayInputContractSpec$Capture] lastRunStatus=gspa.predictor.PredictorRunStatus(gapsmith, SUCCESS_ZERO, 0, null, 0, 5, []) workDir=null timeoutMinutes=120 environment=[:] executablePath=null&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+p.lastRunStatus.outcome == PredictorOutcome.PARTIAL
+| |             |       |  |
+| |             |       |  class gspa.predictor.PredictorOutcome
+| |             |       false
+| |             SUCCESS_ZERO
+| gspa.predictor.PredictorRunStatus(gapsmith, SUCCESS_ZERO, 0, null, 0, 5, [])
+&lt;gspa.predictor.pathway.PathwayInputContractSpec$Capture@7c129ef6 input=&gt;p1
+MK
+ command=[gapsmith, find, -p, all, -t, Bacteria, -o, /home/leechuck/tmp/gspa_gapseq_12919670293477852361, /home/leechuck/tmp/gspa_gapseq_12919670293477852361/proteins.faa] tool=gapsmith dataDir=null medium=null exportSbml=false taxonomy=Bacteria target=proteome representativeIds=null log=Logger[gspa.predictor.pathway.PathwayInputContractSpec$Capture] lastRunStatus=gspa.predictor.PredictorRunStatus(gapsmith, SUCCESS_ZERO, 0, null, 0, 5, []) workDir=null timeoutMinutes=120 environment=[:] executablePath=null&gt;
+
+	at gspa.predictor.pathway.PathwayInputContractSpec.missing protein sequences are partial coverage(PathwayInputContractSpec.groovy:59)
+</failure>
+  </testcase>
+  <testcase name="gapseq taxonomy uses -t and protein mode is explicit" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.014">
+    <failure message="Condition not satisfied:&#10;&#10;command[command.indexOf('-t')+1] == 'Archaea'&#10;|      ||       |            |   |&#10;|      ||       -1           0   false&#10;|      ||                        6 differences (14% similarity)&#10;|      ||                        (gaps-)e(q)&#10;|      ||                        (Archa)e(a)&#10;|      |[gapseq, find, -p, all, -b, Archaea, /home/leechuck/tmp/spock_gapseq_taxonomy_use_0_temp8792267725040665972/input.faa]&#10;|      gapseq&#10;[gapseq, find, -p, all, -b, Archaea, /home/leechuck/tmp/spock_gapseq_taxonomy_use_0_temp8792267725040665972/input.faa]&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+command[command.indexOf('-t')+1] == 'Archaea'
+|      ||       |            |   |
+|      ||       -1           0   false
+|      ||                        6 differences (14% similarity)
+|      ||                        (gaps-)e(q)
+|      ||                        (Archa)e(a)
+|      |[gapseq, find, -p, all, -b, Archaea, /home/leechuck/tmp/spock_gapseq_taxonomy_use_0_temp8792267725040665972/input.faa]
+|      gapseq
+[gapseq, find, -p, all, -b, Archaea, /home/leechuck/tmp/spock_gapseq_taxonomy_use_0_temp8792267725040665972/input.faa]
+
+	at gspa.predictor.pathway.PathwayInputContractSpec.gapseq taxonomy uses -t and protein mode is explicit(PathwayInputContractSpec.groovy:69)
+</failure>
+  </testcase>
+  <testcase name="both pathway tools receive the configured thread budget [tool: gapsmith, #0]" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.004">
+    <failure message="groovy.lang.MissingPropertyException: No such property: threads for class: gspa.predictor.pathway.GapseqPredictor" type="groovy.lang.MissingPropertyException">groovy.lang.MissingPropertyException: No such property: threads for class: gspa.predictor.pathway.GapseqPredictor
+	at gspa.predictor.pathway.PathwayInputContractSpec.both pathway tools receive the configured thread budget(PathwayInputContractSpec.groovy:76)
+</failure>
+  </testcase>
+  <testcase name="both pathway tools receive the configured thread budget [tool: gapseq, #1]" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.001">
+    <failure message="groovy.lang.MissingPropertyException: No such property: threads for class: gspa.predictor.pathway.GapseqPredictor" type="groovy.lang.MissingPropertyException">groovy.lang.MissingPropertyException: No such property: threads for class: gspa.predictor.pathway.GapseqPredictor
+	at gspa.predictor.pathway.PathwayInputContractSpec.both pathway tools receive the configured thread budget(PathwayInputContractSpec.groovy:76)
+</failure>
+  </testcase>
+  <testcase name="pipeline honors explicit pathway tool configuration" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.165">
+    <failure message="Condition not satisfied:&#10;&#10;pipeline.genomePredictors.find { it instanceof GapseqPredictor }.tool == 'gapseq'&#10;|        |                |                                      |    |&#10;|        |                |                                      |    false&#10;|        |                |                                      |    4 differences (50% similarity)&#10;|        |                |                                      |    gaps(mith)&#10;|        |                |                                      |    gaps(eq--)&#10;|        |                |                                      gapsmith&#10;|        |                &lt;gspa.predictor.pathway.GapseqPredictor@7e9f2c32 tool=gapsmith dataDir=null medium=null exportSbml=false taxonomy=Bacteria target=genome representativeIds=null log=Logger[gspa.predictor.pathway.GapseqPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=null&gt;&#10;|        [gspa.predictor.context.OperonPredictor@6dc1dc69, gspa.predictor.pathway.GapseqPredictor@7e9f2c32]&#10;&lt;gspa.predictor.AnnotationPipeline@5731d3a config=gspa.config.GspaConfig@6a0f2853 registry=gspa.predictor.PredictorRegistry@1eff3cfb geneCaller=gspa.predictor.genecalling.ProdigalCaller@70c69586 genomePredictors=[gspa.predictor.context.OperonPredictor@6dc1dc69, gspa.predictor.pathway.GapseqPredictor@7e9f2c32] parallel=true runStatuses=[] integrationOutputDir=null rawClaims=null lastIntegration=null lastIntegrationAudit=null sharedIntegrationReferences=null hmmerDatabase=null&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+pipeline.genomePredictors.find { it instanceof GapseqPredictor }.tool == 'gapseq'
+|        |                |                                      |    |
+|        |                |                                      |    false
+|        |                |                                      |    4 differences (50% similarity)
+|        |                |                                      |    gaps(mith)
+|        |                |                                      |    gaps(eq--)
+|        |                |                                      gapsmith
+|        |                &lt;gspa.predictor.pathway.GapseqPredictor@7e9f2c32 tool=gapsmith dataDir=null medium=null exportSbml=false taxonomy=Bacteria target=genome representativeIds=null log=Logger[gspa.predictor.pathway.GapseqPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=null&gt;
+|        [gspa.predictor.context.OperonPredictor@6dc1dc69, gspa.predictor.pathway.GapseqPredictor@7e9f2c32]
+&lt;gspa.predictor.AnnotationPipeline@5731d3a config=gspa.config.GspaConfig@6a0f2853 registry=gspa.predictor.PredictorRegistry@1eff3cfb geneCaller=gspa.predictor.genecalling.ProdigalCaller@70c69586 genomePredictors=[gspa.predictor.context.OperonPredictor@6dc1dc69, gspa.predictor.pathway.GapseqPredictor@7e9f2c32] parallel=true runStatuses=[] integrationOutputDir=null rawClaims=null lastIntegration=null lastIntegrationAudit=null sharedIntegrationReferences=null hmmerDatabase=null&gt;
+
+	at gspa.predictor.pathway.PathwayInputContractSpec.pipeline honors explicit pathway tool configuration(PathwayInputContractSpec.groovy:93)
+</failure>
+  </testcase>
+  <testcase name="pipeline forwards pathway references target executable taxonomy and threads" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.005">
+    <failure message="groovy.lang.MissingPropertyException: No such property: target for class: gspa.config.GspaConfig$PathwayConfig" type="groovy.lang.MissingPropertyException">groovy.lang.MissingPropertyException: No such property: target for class: gspa.config.GspaConfig$PathwayConfig
+	at app//groovy.lang.GroovyObject.setProperty(GroovyObject.java:61)
+	at gspa.predictor.pathway.PathwayInputContractSpec.pipeline forwards pathway references target executable taxonomy and threads_closure2(PathwayInputContractSpec.groovy:100)
+	at gspa.predictor.pathway.PathwayInputContractSpec.pipeline forwards pathway references target executable taxonomy and threads(PathwayInputContractSpec.groovy:99)
+</failure>
+  </testcase>
+  <testcase name="unknown pathway tool is rejected rather than silently invoking gapsmith" classname="gspa.predictor.pathway.PathwayInputContractSpec" time="0.001">
+    <failure message="Expected exception of type 'java.lang.IllegalArgumentException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'java.lang.IllegalArgumentException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.PathwayInputContractSpec.unknown pathway tool is rejected rather than silently invoking gapsmith(PathwayInputContractSpec.groovy:120)
+</failure>
+  </testcase>
+  <system-out><![CDATA[01:38:26.892 [Test worker] INFO gspa.predictor.pathway.PathwayInputContractSpec$Capture -- Running gapsmith: gapsmith find -p all -t Bacteria -o /home/leechuck/tmp/gspa_gapseq_8110111113008086032 /home/leechuck/tmp/gspa_gapseq_8110111113008086032/genome.fna
+01:38:27.042 [Test worker] INFO gspa.predictor.pathway.PathwayInputContractSpec$Capture -- Running gapsmith: gapsmith find -p all -t Bacteria -o /home/leechuck/tmp/gspa_gapseq_12848460137052097170 /home/leechuck/tmp/gspa_gapseq_12848460137052097170/genome.fna
+01:38:27.054 [Test worker] INFO gspa.predictor.pathway.PathwayInputContractSpec$Capture -- Running gapsmith: gapsmith find -p all -t Bacteria -o /home/leechuck/tmp/gspa_gapseq_12919670293477852361 /home/leechuck/tmp/gspa_gapseq_12919670293477852361/proteins.faa
+01:38:27.210 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+01:38:27.230 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Gene caller: prodigal
+01:38:27.245 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: diamond
+01:38:27.246 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+01:38:27.246 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: operon
+01:38:27.246 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: gapsmith
+01:38:27.248 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=prodigal, 4 predictors registered
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@1623134f]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@7a527389]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@1623134f]
+]]></system-err>
+</testsuite>

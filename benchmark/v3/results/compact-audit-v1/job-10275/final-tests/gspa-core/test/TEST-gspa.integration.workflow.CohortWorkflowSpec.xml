@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.workflow.CohortWorkflowSpec" tests="30" skipped="0" failures="0" errors="0" timestamp="2026-10-27T22:38:40" hostname="node004" time="14.186">
+  <properties/>
+  <testcase name="a batch has one snapshot, one joint inference and a held-out context per genome, from raw EC claims with no GO step" classname="gspa.integration.workflow.CohortWorkflowSpec" time="5.865"/>
+  <testcase name="an EC that maps to several reactions is one candidate: alternatives are reported with their own support and never summed" classname="gspa.integration.workflow.CohortWorkflowSpec" time="1.649"/>
+  <testcase name="independent curated edges and supplied role evidence are read strictly and reach the features" classname="gspa.integration.workflow.CohortWorkflowSpec" time="1.41"/>
+  <testcase name="malformed side inputs fail with the line, never skipped [option: cohortRoleEvidenceFile, text: genome_id&#9;protein_id&#9;source&#9;role&#9;score&#10;g1&#9;p3&#9;s&#9;CATALYTIC&#9;1.5&#10;, fragment: score must be in [0,1], #0]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.298"/>
+  <testcase name="malformed side inputs fail with the line, never skipped [option: cohortRoleEvidenceFile, text: genome_id&#9;protein_id&#9;source&#9;role&#9;score&#10;g1&#9;p3&#9;s&#9;WIZARD&#9;0.5&#10;, fragment: unknown role, #1]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.293"/>
+  <testcase name="malformed side inputs fail with the line, never skipped [option: cohortInteractionEdgesFile, text: reaction_a&#9;reaction_b&#9;source&#9;directed&#10;r1&#9;r2&#9;s&#9;maybe&#10;, fragment: directed must be true or false, #2]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.294"/>
+  <testcase name="malformed side inputs fail with the line, never skipped [option: cohortReactionDirectionsFile, text: reaction_id&#9;direction&#10;r1&#9;SIDEWAYS&#10;, fragment: unknown direction, #3]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.296"/>
+  <testcase name="malformed side inputs fail with the line, never skipped [option: cohortOrthogroupsFile, text: genome_id&#9;protein_id&#9;orthogroup_id&#10;g1&#9;p3&#9;OG&#9;sub&#9;big&#10;, fragment: is not a number, #4]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.225"/>
+  <testcase name="genome order and reference order do not change any feature" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.496"/>
+  <testcase name="a duplicated strain adds no independent evidence" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.45"/>
+  <testcase name="unknown metadata is read conservatively: one unresolved block, adjusted outputs withheld, never invented clades" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.478"/>
+  <testcase name="a single run with reference genomes equals the same genome inside a batch (metadata present or absent)" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.722"/>
+  <testcase name="absence is certified only for a complete assembly with an all-protein family search" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.245"/>
+  <testcase name="a genome without peers retains local features while recurrence remains unavailable" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.077"/>
+  <testcase name="metadata is validated strictly [text: {&quot;genomes&quot;:{&quot;g1&quot;:{&quot;cladd&quot;:&quot;x&quot;}}}, fragment: not valid, #0]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.062"/>
+  <testcase name="metadata is validated strictly [text: {&quot;genomes&quot;:{&quot;g1&quot;:{&quot;assemblyStatus&quot;:&quot;FINISHED&quot;}}}, fragment: assemblyStatus, #1]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.053"/>
+  <testcase name="metadata is validated strictly [text: {&quot;genomes&quot;:{&quot;nope&quot;:{&quot;clade&quot;:&quot;x&quot;}}}, fragment: not in the cohort, #2]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.062"/>
+  <testcase name="metadata is validated strictly [text: {&quot;genomes&quot;:{&quot;g1&quot;:{&quot;familySearchComplete&quot;:true,&quot;familySearchCoverage&quot;:0.5}}}, fragment: contradicts, #3]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.055"/>
+  <testcase name="metadata is validated strictly [text: {&quot;genomes&quot;:{&quot;g1&quot;:{&quot;assemblyStatus&quot;:&quot;COMPLETE&quot;,&quot;contigs&quot;:{&quot;c1&quot;:{&quot;closed&quot;:false}}}}}, fragment: COMPLETE contradicts, #4]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.051"/>
+  <testcase name="metadata is validated strictly [text: {&quot;genomes&quot;:{&quot;g1&quot;:{&quot;clade&quot;:&quot; &quot;}}}, fragment: blank, #5]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.052"/>
+  <testcase name="claims, layout and orthogroups must share the FAA ids: a mismatch fails loudly instead of joining zero rows" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.067"/>
+  <testcase name="a declared unplaced protein is accepted: family present, context unknown, no coordinate invented, other genomes unaffected" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.135"/>
+  <testcase name="an unplaced family member in a complete, certified assembly is present with unknown context, never true absence" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.258"/>
+  <testcase name="without the declaration the same genome is still rejected, and typos in the declaration are rejected [text: {&quot;genomes&quot;:{&quot;g2&quot;:{&quot;clade&quot;:&quot;x&quot;}}}, fragment: not in its layout, #0]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.065"/>
+  <testcase name="without the declaration the same genome is still rejected, and typos in the declaration are rejected [text: {&quot;genomes&quot;:{&quot;g2&quot;:{&quot;unplacedProteins&quot;:[&quot;p9&quot;]}}}, fragment: not in its layout, #1]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.065"/>
+  <testcase name="without the declaration the same genome is still rejected, and typos in the declaration are rejected [text: {&quot;genomes&quot;:{&quot;g2&quot;:{&quot;unplacedProteins&quot;:[&quot;p3&quot;,&quot;p2&quot;]}}}, fragment: have a coordinate in the layout, #2]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.063"/>
+  <testcase name="without the declaration the same genome is still rejected, and typos in the declaration are rejected [text: {&quot;genomes&quot;:{&quot;g2&quot;:{&quot;unplacedProteins&quot;:[&quot;p3&quot;,&quot;p3&quot;]}}}, fragment: twice, #3]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.052"/>
+  <testcase name="without the declaration the same genome is still rejected, and typos in the declaration are rejected [text: {&quot;genomes&quot;:{&quot;g2&quot;:{&quot;unplacedProteins&quot;:[&quot;p3&quot;,&quot;&quot;]}}}, fragment: blank, #4]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.053"/>
+  <testcase name="without the declaration the same genome is still rejected, and typos in the declaration are rejected [text: {&quot;genomes&quot;:{&quot;g2&quot;:{&quot;unplacedProteins&quot;:[&quot;p3&quot;],&quot;unplaced&quot;:[&quot;p3&quot;]}}}, fragment: not valid, #5]" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.051"/>
+  <testcase name="the workflow records the cohort stage, its baseline label and the legacy scoring mode" classname="gspa.integration.workflow.CohortWorkflowSpec" time="0.228"/>
+  <system-out><![CDATA[01:38:40.879 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:44.377 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:46.657 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:47.529 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:48.325 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:48.729 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:49.135 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:49.357 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:49.618 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:49.840 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:49.914 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:50.135 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:50.209 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:50.432 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:50.503 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:50.726 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:50.800 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:50.950 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:51.030 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:51.069 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:51.270 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:51.309 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:51.524 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:51.559 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:51.729 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:51.765 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:51.974 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:52.009 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:52.219 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:52.255 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:52.453 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:52.488 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:52.659 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:52.695 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:52.843 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 6 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+01:38:52.848 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:38:52.849 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:38:52.879 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:52.902 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.015 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.038 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.108 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 6 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+01:38:53.110 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:38:53.111 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+01:38:53.137 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.160 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.259 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.282 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.380 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.403 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.459 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.482 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.520 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.543 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.573 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.596 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.635 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.658 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.691 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.714 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.743 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.766 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.796 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.820 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:53.865 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:53.889 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.000 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.023 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.125 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.149 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.257 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.281 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.322 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.346 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.388 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.411 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.452 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.475 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.506 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.529 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.558 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.581 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.612 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.636 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.767 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+01:38:54.790 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+01:38:54.811 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 6 claims across 5 (protein, function) groups (maxIter=6, damping=0.5)
+01:38:54.813 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+01:38:54.813 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

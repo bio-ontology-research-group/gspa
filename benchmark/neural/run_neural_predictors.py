@@ -280,77 +280,8 @@ def rewrite_proteinfer_output(src: Path, dst: Path, min_score: float) -> None:
 
 
 def run_clean(rows: list[ManifestRow], args: argparse.Namespace) -> None:
-    """Wrap CLEAN (Yu et al. 2023, *Science*) for EC prediction.
-
-    CLEAN's driver is positional: ``python CLEAN_infer_fasta.py
-    --fasta_data <basename>`` expects the FASTA to be pre-staged at
-    ``<app>/data/inputs/<basename>.fasta`` and writes to
-    ``<app>/results/inputs/<basename>_maxsep.csv``. We stage a copy,
-    run in the app cwd, then collect the fixed output path.
-    """
-    import shutil
-    if not args.model_dir:
-        raise SystemExit("clean requires --model-dir (path to the CLEAN app/ dir)")
-    app = Path(args.model_dir)
-    driver = app / "CLEAN_infer_fasta.py"
-    if not driver.exists():
-        raise SystemExit(f"clean driver missing: {driver}")
-    stage = app / "data" / "inputs"
-    result = app / "results" / "inputs"
-    stage.mkdir(parents=True, exist_ok=True)
-    result.mkdir(parents=True, exist_ok=True)
-    for row in rows:
-        out_path = output_path(row, "clean")
-        basename = row.tag
-        staged = stage / f"{basename}.fasta"
-        LOG.info("  %s → %s", row.tag, out_path)
-        # CLEAN uses the full FASTA header as the sequence ID and writes
-        # per-seq .pt files at ./data/esm_data/<id>.pt. Strip descriptions
-        # so ID = accession only (no spaces, no special chars).
-        with row.fasta_path.open() as src, staged.open("w") as dst:
-            for line in src:
-                if line.startswith(">"):
-                    dst.write(">" + line[1:].split()[0] + "\n")
-                else:
-                    dst.write(line)
-        cmd = [
-            "python3", str(driver),
-            "--fasta_data", basename,
-        ]
-        LOG.info("    %s (cwd=%s)", " ".join(cmd), app)
-        subprocess.run(cmd, check=True, cwd=str(app))
-        produced = result / f"{basename}_maxsep.csv"
-        if not produced.exists():
-            raise SystemExit(f"clean output missing: {produced}")
-        rewrite_clean_output(produced, out_path, args.min_score)
-        staged.unlink(missing_ok=True)
-
-
-def rewrite_clean_output(src: Path, dst: Path, min_score: float) -> None:
-    # CLEAN's default format: comma-separated, one row per protein with
-    # top-k predictions as "EC:1.1.1.1/score" pairs.
-    with src.open() as fin, dst.open("w", newline="") as fout:
-        writer = csv.writer(fout, delimiter="\t", lineterminator="\n")
-        writer.writerow(OUTPUT_HEADER)
-        for line in fin:
-            parts = line.rstrip("\n").split(",")
-            if len(parts) < 2:
-                continue
-            pid = parts[0]
-            for token in parts[1:]:
-                token = token.strip()
-                if "/" not in token:
-                    continue
-                label, _, sc = token.partition("/")
-                try:
-                    score = float(sc)
-                except ValueError:
-                    continue
-                if score < min_score:
-                    continue
-                if not label.startswith("EC:"):
-                    label = f"EC:{label}"
-                writer.writerow([pid, label, f"{score:.4f}", "EC"])
+    from clean_contract import run
+    run(rows, args)
 
 
 # -------- runner: esm2-centroid ----------------------------------------
@@ -797,8 +728,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--seed", type=int, default=0,
                     help="Seed for torch / numpy RNGs (determinism)")
     ap.add_argument("--batch-size", type=int, default=16)
-    ap.add_argument("--min-score", type=float, default=0.1,
-                    help="Emit only predictions with score >= min-score")
+    ap.add_argument("--min-score", type=float, default=None,
+                    help="Minimum native confidence (default: CLEAN 0, other predictors 0.1)")
 
     # esm2-deepgoplus
     ap.add_argument("--checkpoint", type=Path,
@@ -811,6 +742,9 @@ def parse_args() -> argparse.Namespace:
     # proteinfer / clean
     ap.add_argument("--model-dir",
                     help="proteinfer / clean: directory with the trained model")
+
+    ap.add_argument("--clean-score-kind", choices=("gmm_confidence", "distance"),
+                    help="Required for CLEAN; checked against the driver's explicit gmm argument")
 
     # esm2-centroid
     ap.add_argument("--centroid-db", type=Path,
@@ -861,7 +795,10 @@ def parse_args() -> argparse.Namespace:
                     help="deepgo-plusplus-light: CNN weights override "
                          "(default: <assets>/cnn_model.pt)")
 
-    return ap.parse_args()
+    args = ap.parse_args()
+    if args.min_score is None:
+        args.min_score = 0.0 if args.predictor == 'clean' else 0.1
+    return args
 
 
 def main() -> None:

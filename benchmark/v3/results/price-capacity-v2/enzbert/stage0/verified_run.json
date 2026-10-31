@@ -1,0 +1,65 @@
+{
+  "artifacts": {
+    "/data/hohndor/gspa-v3/price-capacity-v1/enzbert-GCF_000236665.1/stage0/GCF_000236665.1.integrated.tsv": "da805328987d9b0b7cbbcbdded80586c5b441412d6313ed76640b3b5552be4ca",
+    "/data/hohndor/gspa-v3/price-capacity-v1/enzbert-GCF_000236665.1/stage0/GCF_000236665.1.integrated.tsv.stages.json": "33f09a16428fc2f7d9eb4c90c929caee5e33eeec8d0077a9ae64d84ef4b007fd"
+  },
+  "returncode": 0,
+  "spec": {
+    "command": [
+      "/usr/bin/time",
+      "-v",
+      "-o",
+      "/data/hohndor/gspa-v3/price-capacity-v1/enzbert-GCF_000236665.1/stage0/resources.txt",
+      "java",
+      "-Xmx32g",
+      "-jar",
+      "/data/hohndor/gspa-v3/price-capacity-v1/gspa-3.0.0.jar",
+      "integrate",
+      "--batch-manifest",
+      "/data/hohndor/gspa-v3/price-capacity-v1/enzbert-GCF_000236665.1/stage0/manifest.tsv",
+      "--batch-threads",
+      "1",
+      "--go-owl",
+      "/data/hohndor/gspa/reference/go.owl",
+      "--ec2go",
+      "/data/hohndor/gspa/reference/ec2go.txt",
+      "--pathways",
+      "/data/hohndor/gspa/reference/kegg_pathways.tsv",
+      "--modules",
+      "/data/hohndor/gspa/reference/kegg_modules.tsv",
+      "--reasoner-cache",
+      "/data/hohndor/gspa/reference/reasoner-cache",
+      "--batch-stats-out",
+      "/data/hohndor/gspa-v3/price-capacity-v1/enzbert-GCF_000236665.1/stage0/batch_stats.tsv",
+      "--enable-priors",
+      "none"
+    ],
+    "cwd": "/home/hohndor",
+    "inputs": {
+      "/data/hohndor/gspa-v3/price-capacity-v1/code/run_price_matrix_capacity.py": "e7d3817759eb17752d307c8c50384572a90e106ce5a9ec89238cebb7a2588ffb",
+      "/data/hohndor/gspa-v3/price-capacity-v1/code/v3_runner.py": "6647ff553bee637626eb8e609785fd1625e9bc191bed2879338b8cea3c551a05",
+      "/data/hohndor/gspa-v3/price-capacity-v1/code/verified_batch.py": "726b3565c2faf26413a89cf18c9a567f8ec740671e75a054f58d3143132901b3",
+      "/data/hohndor/gspa-v3/price-capacity-v1/enzbert-GCF_000236665.1/stage0/manifest.tsv": "a58b8031314d5aab8a656bd2549f102be1b3f08c492b979df7978ca32962fccd",
+      "/data/hohndor/gspa-v3/price-capacity-v1/gspa-3.0.0.jar": "c469273224723bff080efd9440d1c1ae07fc0c943c2cacffa04a98003481f801",
+      "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCF_000236665.1.layout.tsv": "08703ce9e5a732c8cfedc8051808bd48b756453c7c7bdab28273b9074ef03461",
+      "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+      "/data/hohndor/gspa-v3/price-full-matrix-v2/parts/enzbert/GCF_000236665.1/claims.jsonl": "5f0cdac6d250b75983c2264e9f99f7ded9161224435519842e4e4e9978ac0a4d",
+      "/data/hohndor/gspa-v3/price-full-matrix-v2/parts/enzbert/GCF_000236665.1/job-receipt.json": "0d46361f91367cace581482611658adc54514e452aea737abc7b4cb87a9f0b70",
+      "/data/hohndor/gspa-v3/price-full-matrix-v2/parts/enzbert/GCF_000236665.1/matrix-verification.json": "c91c21be837617de6f9f3697186cd3c19472c66a752e5cb3df7481b82d081da0",
+      "/data/hohndor/gspa/reference/ec2go.txt": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+      "/data/hohndor/gspa/reference/go.owl": "5ba93c63deb800c4c23d2e3917e44df6de9cce45d2de75d1549701ddbdfe4420",
+      "/data/hohndor/gspa/reference/kegg_modules.tsv": "27184381b2625a5c6a0a7a9677e88d76417bd94db2454d09522f78943fdd38ea",
+      "/data/hohndor/gspa/reference/kegg_pathways.tsv": "f112964cd19c0f8cb47db54926550961cf28d5f88a6c2de15ed48ccad3aed82d",
+      "/usr/bin/time": "3b11dec50514a8473e9f6efa7a34d584d0657538c09988f61b72d38ad4991a10",
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java": "635baf419576ec4ad4f785014283fb93f1be1103e6d02252f7a00517f0e2a245"
+    },
+    "outputs": {
+      "GCF_000236665.1": "/data/hohndor/gspa-v3/price-capacity-v1/enzbert-GCF_000236665.1/stage0/GCF_000236665.1.integrated.tsv"
+    },
+    "required_stages": [
+      "evidence_integration",
+      "reference_preparation"
+    ],
+    "schema": "gspa.verified-batch/1"
+  }
+}

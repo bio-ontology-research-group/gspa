@@ -50,7 +50,8 @@ or a two-column CSV samplesheet (`sample_id,fasta`).
 | `mmseqs2_db` | directory | `null` | MMseqs2 target sequence database (alternative to DIAMOND). |
 | `eggnog_db` | directory | `null` | eggNOG-mapper diamond and taxon database directory. |
 | `amrfinder_db` | directory | `null` | NCBI AMRFinderPlus database directory. |
-| `antismash_db` | directory | `null` | antiSMASH cluster detection database directory. |
+| `antismash_db` | directory | `null` | antiSMASH cluster detection database directory; required when enabled. |
+| `antismash_strictness` | string | `relaxed` | Native detection rule strictness: `strict`, `relaxed`, or `loose`; matches the JVM adapter. |
 | `dbcan_db` | directory | `null` | dbCAN CAZyme HMM and diamond database directory. |
 | `gtdbtk_db` | directory | `null` | GTDB-Tk reference taxonomy database (`GTDBTK_DATA_PATH`). |
 | `checkm2_db` | file | `null` | CheckM2 DIAMOND database (`uniref100.KO.1.dmnd`). |
@@ -80,10 +81,12 @@ or a two-column CSV samplesheet (`sample_id,fasta`).
 | `esm2_centroid_top_k` | integer | `5` | Nearest functional centroids retained per query protein. |
 | `esm2_centroid_batch_size` | integer | `32` | Batch size for centroid embedding extraction. |
 | `clean_model_dir` | directory | `null` | CLEAN checkpoint directory containing model weights and distance maps. |
-| `clean_batch_size` | integer | `16` | Batch size for CLEAN contrastive inference. |
+| `clean_score_kind` | string | `null` | Required with CLEAN: `gmm_confidence` or `distance`, matching the native driver. |
+| `clean_min_score` | float | `0` | GMM confidence cutoff; must be zero for distance observations. |
+| `clean_batch_size` | integer | `16` | Shared sidecar parameter; upstream CLEAN controls ESM extraction batching. |
 | `proteinfer_model_dir` | directory | `null` | ProteInfer TensorFlow SavedModel directory. |
 | `proteinfer_batch_size` | integer | `16` | Batch size for ProteInfer CNN prediction. |
-| `neural_min_score` | float | `0.1` | Minimum prediction score emitted by neural sidecar runners. |
+| `neural_min_score` | float | `0.1` | Minimum prediction score for other neural sidecar runners; CLEAN uses `clean_min_score`. |
 
 ### Ensemble fusion
 
@@ -288,3 +291,12 @@ Pulls images to a local `/tmp` scratch location before copying to shared storage
 verifying image readability using `singularity inspect`. This prevents file
 truncation and corruption issues commonly encountered when multiple cluster
 worker nodes pull images simultaneously across network file systems.
+
+When `run_antismash` and `run_integrate` are enabled, native schema-4 regions are imported by
+`antismash-claims` through the JVM parser and merged into the sample's raw claims. These are
+unscored CDS overlaps, not EC predictions. The importer uses the Pyrodigal FASTA header ID
+and coordinates to match GFF CDS identities; it never matches by row order. The published
+`antismash/<sample>_claims_antismash.jsonl.import.json` records input hashes, detection coverage,
+and every region, including regions with no overlapping CDS. Missing record coverage stays
+`partial`. A failed/missing native output fails the task. The command does not establish
+biological accuracy, expression or production of a secondary metabolite.

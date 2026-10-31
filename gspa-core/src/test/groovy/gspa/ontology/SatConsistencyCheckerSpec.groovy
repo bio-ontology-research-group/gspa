@@ -207,4 +207,92 @@ class SatConsistencyCheckerSpec extends Specification {
         and: 'so it is inconsistent on a bacterium, while a cellular-organism term is fine'
         !checker.check(['GO:0000001'] as Set).consistent
     }
+
+    def 'EC claim mapping to a GO term forbidden in Bacteria is flagged for a bacterial strain given via lineage'() {
+        given: 'bundled constraints + hierarchy, strain NCBITaxon_640081 (Azospira oryzae PS) given via lineage, and ec2go mapping'
+        def tc = new TaxonConstraints()
+        tc.loadFromTsv(resource('/taxon-constraints/go-taxon-constraints.tsv'))
+        def checker = new SatConsistencyChecker(tc)
+        checker.loadTaxonomyTsv(resource('/taxon-constraints/ncbi-taxon-hierarchy.tsv'))
+        checker.ecToGoAlternatives = [
+            'EC:2.1.1.98': ['GO:0004164'],   // diphthine synthase: never_in NCBITaxon_2
+            'EC:2.5.1.32': ['GO:0046905'],   // phytoene synthase: only_in Viridiplantae|Fungi (NCBITaxon_Union_0000010)
+            'EC:2.7.1.1' : ['GO:0004396'],   // hexokinase: allowed
+        ]
+        checker.organismTaxon = 'NCBITaxon_640081'
+        checker.applyTaxonLineage('NCBITaxon_131567,NCBITaxon_2,NCBITaxon_1224,NCBITaxon_28216,NCBITaxon_206389,NCBITaxon_75787,NCBITaxon_146937,NCBITaxon_146939', 'NCBITaxon_640081')
+
+        when:
+        def resDiphthine = checker.checkEcClaim('EC:2.1.1.98')
+        def resPhytoene = checker.check(['EC:2.5.1.32'] as Set)
+        def resAllowed = checker.checkEcClaim('EC:2.7.1.1')
+
+        then: 'strain is resolved under Bacteria and both forbidden EC claims are flagged with their GO cause'
+        checker.isOrganismTaxonInHierarchy()
+        !resDiphthine.consistent
+        resDiphthine.status == SatConsistencyChecker.STATUS_APPLIED
+        resDiphthine.violations.size() == 1
+        resDiphthine.violations[0].involvedClaims.contains('EC:2.1.1.98')
+        resDiphthine.violations[0].ecToGoCauses['EC:2.1.1.98'] == ['GO:0004164']
+        resDiphthine.violations[0].description.contains('EC:2.1.1.98')
+        resDiphthine.violations[0].description.contains('GO:0004164')
+
+        and: 'EC:2.5.1.32 is also flagged via GO:0046905'
+        !resPhytoene.consistent
+        resPhytoene.violations[0].involvedClaims.contains('EC:2.5.1.32')
+        resPhytoene.violations[0].ecToGoCauses['EC:2.5.1.32'] == ['GO:0046905']
+
+        and: 'allowed EC claim is consistent by proof'
+        resAllowed.consistent
+        resAllowed.consistentByProof
+        resAllowed.status == SatConsistencyChecker.STATUS_APPLIED
+    }
+
+    def 'unmapped EC claim is reported as not checkable and never treated as consistent-by-proof or as a violation'() {
+        given:
+        def tc = new TaxonConstraints()
+        tc.loadFromTsv(resource('/taxon-constraints/go-taxon-constraints.tsv'))
+        def checker = new SatConsistencyChecker(tc)
+        checker.loadTaxonomyTsv(resource('/taxon-constraints/ncbi-taxon-hierarchy.tsv'))
+        checker.ecToGoAlternatives = ['EC:2.1.1.98': ['GO:0004164']]
+        checker.organismTaxon = 'NCBITaxon_2'
+
+        when:
+        def res = checker.checkEcClaim('EC:1.97.1.12')
+
+        then:
+        res.status == 'not checkable'
+        res.notCheckable
+        res.notCheckableClaims == ['EC:1.97.1.12']
+        !res.consistentByProof
+        !res.constraintsApplied
+        res.violations.isEmpty()
+    }
+
+    def 'strain not in hierarchy without lineage reports explicit taxon not in hierarchy: constraints not applied state'() {
+        given: 'a bacterial strain (NCBITaxon_640081) absent from the bundled slim hierarchy and no lineage provided'
+        def tc = new TaxonConstraints()
+        tc.loadFromTsv(resource('/taxon-constraints/go-taxon-constraints.tsv'))
+        def checker = new SatConsistencyChecker(tc)
+        checker.loadTaxonomyTsv(resource('/taxon-constraints/ncbi-taxon-hierarchy.tsv'))
+        checker.ecToGoAlternatives = ['EC:2.1.1.98': ['GO:0004164']]
+        checker.organismTaxon = 'NCBITaxon_640081'
+
+        when:
+        def goRes = checker.check(['GO:0000001'] as Set)
+        def ecRes = checker.checkEcClaim('EC:2.1.1.98')
+
+        then: 'neither GO nor EC constraints are silently treated as proven consistent; explicit state is reported'
+        !checker.isOrganismTaxonInHierarchy()
+        checker.getForbiddenConstrainedTerms().isEmpty()
+        goRes.status == 'taxon not in hierarchy: constraints not applied'
+        !goRes.taxonInHierarchy
+        !goRes.constraintsApplied
+        !goRes.consistentByProof
+        goRes.violations.isEmpty()
+        ecRes.status == 'taxon not in hierarchy: constraints not applied'
+        !ecRes.taxonInHierarchy
+        !ecRes.constraintsApplied
+        !ecRes.consistentByProof
+    }
 }

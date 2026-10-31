@@ -1,0 +1,241 @@
+{
+  "schema_version" : 2,
+  "genome_id" : "genome",
+  "interpretation" : "Prediction changes are not measurements of accuracy.",
+  "scoring_mode" : "legacy_heuristic",
+  "scoring_mode_note" : "Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores.",
+  "baseline_definitions" : {
+    "stage0_raw_max_score" : "Stage 0: strongest raw predictor score per function; no priors, no combination, no posterior.",
+    "legacy_prior_baseline" : "Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The baseline_candidates and final_changes of this ledger are measured from it."
+  },
+  "changes_measured_from" : "legacy_prior_baseline",
+  "stages" : [ {
+    "name" : "reference_preparation",
+    "status" : "executed",
+    "changes" : [ ],
+    "elapsed_seconds" : 0.327323156
+  }, {
+    "name" : "cohort_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "evidence_integration",
+    "status" : "executed",
+    "changes" : [ {
+      "function_key" : "query|EC|EC:6.2.1.1",
+      "protein_id" : "query",
+      "function_type" : "EC",
+      "function_id" : "EC:6.2.1.1",
+      "change" : "added",
+      "before_probability" : null,
+      "after_probability" : 0.1175871304062528
+    }, {
+      "function_key" : "query|EC|EC:1.9.3.1",
+      "protein_id" : "query",
+      "function_type" : "EC",
+      "function_id" : "EC:1.9.3.1",
+      "change" : "added",
+      "before_probability" : null,
+      "after_probability" : 0.1175871304062528
+    } ],
+    "input_candidates" : 0,
+    "output_candidates" : 2,
+    "suggestions" : 0,
+    "elapsed_seconds" : 0.035403567
+  }, {
+    "name" : "dark_matter",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "reaction_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "cross_genome",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "symbolic_enforcement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_refinement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "agent_completion",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_experiments",
+    "status" : "executed",
+    "changes" : [ ],
+    "mode" : "evidence_guided",
+    "strategy" : "evidence",
+    "seed" : 42,
+    "model_file" : "/home/leechuck/.cache/gspa-v3-data/supported-assignments-v2/supported.xml",
+    "model_sha256" : "e4ab547e6115f48c215d60495ed5f6e418096febf89121455fdf6677ce5515b2",
+    "max_experiments" : 20,
+    "max_solver_calls" : 256,
+    "context_source" : "evidence_guided_masked_assignments",
+    "context" : {
+      "context_source" : "evidence_guided_masked_assignments",
+      "candidate_protein" : "query",
+      "mask_gene" : "pD",
+      "candidates_rejected" : [ ],
+      "excluded_claims" : [ ],
+      "measured_evidence" : [ {
+        "function_key" : "query|EC|EC:1.9.3.1",
+        "channel" : "sequence",
+        "source" : "fixture_predictor",
+        "evidence_type" : "SEQUENCE_SIMILARITY",
+        "raw_score" : 0.1
+      }, {
+        "function_key" : "query|EC|EC:6.2.1.1",
+        "channel" : "sequence",
+        "source" : "fixture_predictor",
+        "evidence_type" : "SEQUENCE_SIMILARITY",
+        "raw_score" : 0.1
+      }, {
+        "function_key" : "query|EC|EC:6.2.1.1",
+        "channel" : "domain",
+        "source" : "synthetic independent complex support",
+        "id" : "complex",
+        "raw_score" : 0.6
+      }, {
+        "function_key" : "query|EC|EC:1.9.3.1",
+        "channel" : "domain",
+        "source" : "synthetic independent multifunction support",
+        "id" : "second_activity",
+        "raw_score" : 0.6
+      } ],
+      "evidence_unmapped" : [ ],
+      "assignment_support" : [ {
+        "id" : "complex",
+        "function_key" : "query|EC|EC:6.2.1.1",
+        "source" : "synthetic independent complex support",
+        "partners" : [ "gPartner" ],
+        "group" : "synthetic_architecture"
+      }, {
+        "id" : "second_activity",
+        "function_key" : "query|EC|EC:1.9.3.1",
+        "source" : "synthetic independent multifunction support",
+        "partners" : [ ],
+        "group" : "synthetic_architecture"
+      } ],
+      "assignment_groups_rejected" : [ ],
+      "joint_mapping_truncated" : [ ],
+      "hypotheses" : [ {
+        "id" : "H1",
+        "reaction" : null,
+        "reactions" : [ "ACS", "RESP" ],
+        "assignments" : {
+          "ACS" : [ [ "MASKED_TARGET", "gPartner" ] ],
+          "RESP" : [ [ "MASKED_TARGET" ] ]
+        },
+        "candidates" : [ {
+          "function_key" : "query|EC|EC:1.9.3.1",
+          "mapping_sources" : [ "sbml_annotation" ],
+          "roles" : [ ]
+        }, {
+          "function_key" : "query|EC|EC:6.2.1.1",
+          "mapping_sources" : [ "sbml_annotation" ],
+          "roles" : [ ]
+        } ],
+        "evidence" : {
+          "domain" : 0.6,
+          "sequence" : 0.1
+        },
+        "supporting_records" : [ "complex", "second_activity" ],
+        "assignment_groups" : [ "synthetic_architecture" ]
+      }, {
+        "id" : "H2",
+        "reaction" : "ACS",
+        "reactions" : [ "ACS" ],
+        "assignments" : {
+          "ACS" : [ [ "MASKED_TARGET", "gPartner" ] ]
+        },
+        "candidates" : [ {
+          "function_key" : "query|EC|EC:6.2.1.1",
+          "mapping_sources" : [ "sbml_annotation" ],
+          "roles" : [ ]
+        } ],
+        "evidence" : {
+          "domain" : 0.6,
+          "sequence" : 0.1
+        },
+        "supporting_records" : [ "complex" ],
+        "assignment_groups" : [ ]
+      }, {
+        "id" : "H3",
+        "reaction" : "RESP",
+        "reactions" : [ "RESP" ],
+        "assignments" : {
+          "RESP" : [ [ "MASKED_TARGET" ] ]
+        },
+        "candidates" : [ {
+          "function_key" : "query|EC|EC:1.9.3.1",
+          "mapping_sources" : [ "sbml_annotation" ],
+          "roles" : [ ]
+        } ],
+        "evidence" : {
+          "domain" : 0.6,
+          "sequence" : 0.1
+        },
+        "supporting_records" : [ "second_activity" ],
+        "assignment_groups" : [ ]
+      } ],
+      "hypotheses_truncated" : [ ],
+      "max_non_null_hypotheses" : 20,
+      "conditions" : 6,
+      "ranking_rule" : "strongest measured channel, then canonical assignment; repeated channels take max; not calibrated probabilities",
+      "assignment_assumption" : "target-alone only without structural support; required partners form AND clauses; named evidence groups support joint activities; alternative mappings remain distinct and bounded; no hidden GPR used",
+      "excluded_sources" : "target GPR, model gene annotations, reactions.tsv, final integration probabilities, FBA and learned/inferred claims; no function is inferred from a gene identifier",
+      "interpretation" : "conditional comparisons; no function recovery, calibrated probability or promotion"
+    },
+    "model_origin" : "supplied model without a refiner table",
+    "analysis_type" : "masked_assignment",
+    "masked_model_sha256" : "643df89847461ae74debb6fa5c700dd24c7e00856710ae4c5e9f794643aac174",
+    "public_problem_sha256" : "9f0ad5a0ee3da80bc20cbc3d02be9b088be2aaac7f031b7ce8a5af8fd3918120",
+    "solver_calls_used" : 86,
+    "solver_calls_max" : 256,
+    "outcome" : "completed_with_skips_or_inconclusive",
+    "hypotheses" : 4,
+    "conditions_visited" : [ "C1", "C2", "C3", "C4", "C5", "C0" ],
+    "conditions_unvisited" : [ ],
+    "comparisons_completed" : 18,
+    "comparisons_inconclusive" : 6,
+    "candidates_with_conditional_features" : 0,
+    "promotion" : "none",
+    "seconds" : 0.372,
+    "result_file" : "/home/leechuck/.cache/gspa-v3-data/supported-assignments-v2/evidence/predictions.tsv.experiments/result.json",
+    "result_sha256" : "02e6564c4888bac5448bfeb722d656fe3d63bfe5793bf0a45bffa62512a56104",
+    "interpretation" : "Target gene assignments were masked before scenario construction. These are conditional phenotype signatures, not verified function recovery or learned evidence features.",
+    "elapsed_seconds" : 0.569242241
+  }, {
+    "name" : "community_metabolism",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "learned_integration",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them"
+  }, {
+    "name" : "feature_export",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  } ],
+  "baseline_candidates" : 2,
+  "final_candidates" : 2,
+  "final_changes" : [ ]
+}

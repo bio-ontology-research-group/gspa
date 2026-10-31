@@ -1,0 +1,83 @@
+[
+  {
+    "name": "before",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/58dbebf1cf6ad97cd216d676b0cf1221600a97c7350f6f45abf27b54c9669654.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-observed-v1/input.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/before",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/before/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "after",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/8a9dedbd9358b1e1249dba3c3a2e1006e23c71e601e4d68beeb36fd00d27e65a.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-observed-v1/input.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/after",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/after/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "annotate_integrated",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/8a9dedbd9358b1e1249dba3c3a2e1006e23c71e601e4d68beeb36fd00d27e65a.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-observed-v1/input.faa",
+      "--config",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/config.json",
+      "--output",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/annotate_integrated",
+      "--claims-out",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/annotate_integrated/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics",
+      "--integration-config",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/workflow.json"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "direct_integrate",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/.cache/gspa-v3-data/engines/8a9dedbd9358b1e1249dba3c3a2e1006e23c71e601e4d68beeb36fd00d27e65a.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/after/raw.jsonl",
+      "--workflow-config",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/workflow.json",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/hmmer-route-v2/direct.tsv"
+    ],
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,1 @@
+Cancelled10519 only while verifiedPENDING beforeexecution: superseded by interrupt-preservation productionfix and stronger boundarytests. 10517 continues unchanged. All longrunning Price/CLEAN jobs untouched. NewCLIjobwilldependonfinalv4build.

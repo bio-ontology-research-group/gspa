@@ -22,8 +22,8 @@ class GapseqToolSpec extends Specification {
     def "gapsmith buildCommand uses -t/-o and places fasta last"() {
         given:
         def gp = new GapseqPredictor()
-        def inFa = new File('/tmp/x.faa')
-        def outDir = new File('/tmp/out')
+        def inFa = new File(System.getProperty('java.io.tmpdir'), 'x.faa')
+        def outDir = new File(System.getProperty('java.io.tmpdir'), 'out')
 
         when:
         def cmd = gp.buildCommand(inFa, outDir)
@@ -43,7 +43,7 @@ class GapseqToolSpec extends Specification {
         def gp = new GapseqPredictor(dataDir: '/ref/gapsmith-data')
 
         when:
-        def cmd = gp.buildCommand(new File('/tmp/x.faa'), new File('/tmp/out'))
+        def cmd = gp.buildCommand(new File(System.getProperty('java.io.tmpdir'), 'x.faa'), new File(System.getProperty('java.io.tmpdir'), 'out'))
 
         then:
         cmd[0] == 'gapsmith'
@@ -52,7 +52,7 @@ class GapseqToolSpec extends Specification {
         cmd[3] == 'find'
     }
 
-    def "tool=gapseq falls back to legacy -b flag and no -o"() {
+    def "tool=gapseq falls back to taxonomy -t flag and explicit output -f"() {
         given:
         def gp = new GapseqPredictor(tool: 'gapseq')
 
@@ -61,14 +61,14 @@ class GapseqToolSpec extends Specification {
         gp.executable == 'gapseq'
 
         when:
-        def cmd = gp.buildCommand(new File('/tmp/x.faa'), new File('/tmp/out'))
+        def cmd = gp.buildCommand(new File(System.getProperty('java.io.tmpdir'), 'x.faa'), new File(System.getProperty('java.io.tmpdir'), 'out'))
 
         then:
         cmd[0] == 'gapseq'
-        cmd.contains('-b') && cmd[cmd.indexOf('-b') + 1] == 'Bacteria'
-        !cmd.contains('-t')
+        cmd.contains('-t') && cmd[cmd.indexOf('-t') + 1] == 'Bacteria'
+        !cmd.contains('-b')
         !cmd.contains('-o')
-        cmd.last() == '/tmp/x.faa'
+        cmd.last() == new File(System.getProperty('java.io.tmpdir'), 'x.faa').absolutePath
     }
 
     def "explicit executablePath overrides the binary name"() {
@@ -76,7 +76,7 @@ class GapseqToolSpec extends Specification {
         def gp = new GapseqPredictor(executablePath: '/opt/gapsmith-0.2/gapsmith')
 
         when:
-        def cmd = gp.buildCommand(new File('/tmp/x.faa'), new File('/tmp/out'))
+        def cmd = gp.buildCommand(new File(System.getProperty('java.io.tmpdir'), 'x.faa'), new File(System.getProperty('java.io.tmpdir'), 'out'))
 
         then:
         cmd[0] == '/opt/gapsmith-0.2/gapsmith'

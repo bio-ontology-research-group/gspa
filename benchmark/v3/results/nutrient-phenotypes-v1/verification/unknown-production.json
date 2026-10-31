@@ -1,0 +1,131 @@
+{
+  "case_id": "NUTRIENT2026:Bs:Glcn + Gly:R+R",
+  "arm": "printed:oxygen=0",
+  "failure": null,
+  "experiments": [
+    {
+      "candidate_genes": [],
+      "candidate_reactions": [],
+      "competing_hypotheses": [],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "bearing": "uninformative",
+        "calibrated_probability": null,
+        "candidate_genes": [],
+        "candidate_reactions": [],
+        "evidence_ids": [],
+        "evidence_type": "metabolic_experiment_conditional",
+        "hypothesis_ids": [],
+        "independent_proof_of_function": false,
+        "model_conditional": true,
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+        "outcome": "no_growth_feasible",
+        "promotion": "none",
+        "status": "completed",
+        "unmapped_candidate_genes": []
+      },
+      "description": "baseline medium with maintenance",
+      "evidence_ids": [],
+      "experiment_id": "baseline",
+      "hypothesis_ids": [],
+      "kind": "baseline",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 0.0
+      },
+      "mods": [],
+      "outcome": "no_growth_feasible",
+      "perturbation": {},
+      "solver_calls": [
+        0
+      ],
+      "status": "completed",
+      "unmapped_candidate_genes": []
+    },
+    {
+      "candidate_genes": [
+        "G_BSU29440"
+      ],
+      "candidate_reactions": [
+        "R_ARGSL"
+      ],
+      "competing_hypotheses": [],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "bearing": "no_result",
+        "calibrated_probability": null,
+        "candidate_genes": [
+          "G_BSU29440"
+        ],
+        "candidate_reactions": [
+          "R_ARGSL"
+        ],
+        "evidence_ids": [],
+        "evidence_type": "metabolic_experiment_conditional",
+        "hypothesis_ids": [
+          "observed_genotype"
+        ],
+        "independent_proof_of_function": false,
+        "model_conditional": true,
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+        "outcome": "solver_error",
+        "promotion": "none",
+        "status": "inconclusive",
+        "unmapped_candidate_genes": []
+      },
+      "description": "knock out G_BSU29440",
+      "evidence_ids": [],
+      "experiment_id": "knockout:observed_genotype",
+      "hypothesis_ids": [
+        "observed_genotype"
+      ],
+      "kind": "knockout",
+      "measurements": {
+        "knocked_out_reactions": [
+          "R_ARGSL"
+        ]
+      },
+      "mods": [
+        {
+          "genes": [
+            "G_BSU29440"
+          ],
+          "op": "knockout",
+          "reactions": [
+            "R_ARGSL"
+          ]
+        }
+      ],
+      "note": "solver status 4",
+      "outcome": "solver_error",
+      "perturbation": {
+        "observed_genotype": "gene_or_reaction"
+      },
+      "solver_calls": [
+        1
+      ],
+      "status": "inconclusive",
+      "unmapped_candidate_genes": []
+    }
+  ],
+  "solver": {
+    "calls": [
+      {
+        "call": 0,
+        "label": "baseline:max_growth",
+        "note": "",
+        "objective": 0.0,
+        "status": "optimal"
+      },
+      {
+        "call": 1,
+        "label": "knockout:observed_genotype:max_growth",
+        "note": "solver status 4",
+        "objective": null,
+        "status": "error"
+      }
+    ],
+    "max_calls": 2,
+    "used": 2
+  }
+}

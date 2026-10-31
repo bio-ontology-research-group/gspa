@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.cli.WorkflowRouteParitySpec" tests="25" skipped="0" failures="0" errors="0" timestamp="2026-10-28T04:11:32" hostname="node004" time="2.43">
+  <properties/>
+  <testcase name="the enzyme-gap case gives identical posteriors, suggestions and stages on every route" classname="gspa.cli.WorkflowRouteParitySpec" time="0.381"/>
+  <testcase name="dark-matter mode applies only dark-matter suggestions and leaves other suggestion sources on the channel" classname="gspa.cli.WorkflowRouteParitySpec" time="0.082"/>
+  <testcase name="a requested stage without its data fails on every route and is recorded as failed" classname="gspa.cli.WorkflowRouteParitySpec" time="0.067"/>
+  <testcase name="a model stage with no EC predictions is a failure, not a silent success" classname="gspa.cli.WorkflowRouteParitySpec" time="0.065"/>
+  <testcase name="medium and biomass template reach the model of each genome and parallel genomes stay isolated" classname="gspa.cli.WorkflowRouteParitySpec" time="0.272"/>
+  <testcase name="a workflow config file reproduces the flag-built run and rejects unknown names" classname="gspa.cli.WorkflowRouteParitySpec" time="0.29"/>
+  <testcase name="annotate maps its integration options onto the shared workflow configuration" classname="gspa.cli.WorkflowRouteParitySpec" time="0.02"/>
+  <testcase name="preset defaults rank below the workflow file, which ranks below explicit options" classname="gspa.cli.WorkflowRouteParitySpec" time="0.024"/>
+  <testcase name="a missing reference leaves a readable failed ledger and no output from an earlier run" classname="gspa.cli.WorkflowRouteParitySpec" time="0.027"/>
+  <testcase name="a reference that exists but cannot be loaded is a failed preparation, on the pipeline route too" classname="gspa.cli.WorkflowRouteParitySpec" time="0.385"/>
+  <testcase name="a shared reference failure in a batch fails once and records every genome as not run" classname="gspa.cli.WorkflowRouteParitySpec" time="0.085"/>
+  <testcase name="claims-only integration refuses clustering and gapseq targets it cannot compute [flags: [--intragenome-cluster, 0.9], message: needs the proteome sequences, #0]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.015"/>
+  <testcase name="claims-only integration refuses clustering and gapseq targets it cannot compute [flags: [--gapseq-target, proteome], message: gapseq runs outside this command, #1]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.013"/>
+  <testcase name="claims-only integration refuses clustering and gapseq targets it cannot compute [flags: [--dark-matter, --iterate-gapseq, --intragenome-cluster, 0.9, --gapseq-target, reps], message: not supported by claims-only integration, #2]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.012"/>
+  <testcase name="the defaults for the inert options still run, and annotate maps clustering onto its own configuration" classname="gspa.cli.WorkflowRouteParitySpec" time="0.165"/>
+  <testcase name="an overlay changes behavior but cannot name files or rebind a sample [key: genomeId, value: other-sample, message: per-genome binding, #0]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.017"/>
+  <testcase name="an overlay changes behavior but cannot name files or rebind a sample [key: claimsFile, value: /host/c.jsonl, message: names a file, #1]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.007"/>
+  <testcase name="an overlay changes behavior but cannot name files or rebind a sample [key: outFile, value: /host/o.tsv, message: names a file, #2]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.007"/>
+  <testcase name="an overlay changes behavior but cannot name files or rebind a sample [key: goOwlFile, value: /host/go.owl, message: names a file, #3]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.008"/>
+  <testcase name="an overlay changes behavior but cannot name files or rebind a sample [key: fbaDataDir, value: /host/fba, message: names a file, #4]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.003"/>
+  <testcase name="an overlay changes behavior but cannot name files or rebind a sample [key: moduleFiles, value: [/host/m.tsv], message: names a file, #5]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.005"/>
+  <testcase name="an overlay changes behavior but cannot name files or rebind a sample [key: enablePriors, value: x, message: Unknown integration workflow setting, #6]" classname="gspa.cli.WorkflowRouteParitySpec" time="0.005"/>
+  <testcase name="the overlay option reaches the command and rejects a file-valued key before any output" classname="gspa.cli.WorkflowRouteParitySpec" time="0.048"/>
+  <testcase name="predictor claims exported by the pipeline integrate to the same result as integrating the annotated genome directly" classname="gspa.cli.WorkflowRouteParitySpec" time="0.311"/>
+  <testcase name="annotate-route artifacts carry the names gspa integrate gives them" classname="gspa.cli.WorkflowRouteParitySpec" time="0.105"/>
+  <system-out><![CDATA[07:11:32.880 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:32.903 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+07:11:32.916 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:32.917 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+07:11:32.921 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:32.922 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:32.923 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+07:11:32.927 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+07:11:32.931 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/single.tsv
+  Loaded 4 claims
+  EC-to-GO associations: 3 ECs (all alternatives retained)
+07:11:32.971 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:32.993 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+07:11:33.007 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:33.007 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+  Pathways: 1 loaded from pathways.tsv
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Operons: 1
+  Metabolic gaps: 1
+  Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+  Genome layout: 4 loci across 1 contig(s)
+07:11:33.013 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.027 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.027 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+07:11:33.037 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+  Dark-matter suggester emitted 1 suggestions
+07:11:33.042 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+  RLGC suggester emitted 2 suggestions
+  Wrote: /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/single.tsv
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/manifest.tsv (threads=2)
+  Loaded 2 batch tasks from /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/manifest.tsv
+  EC-to-GO associations: 3 ECs (all alternatives retained)
+07:11:33.074 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:33.096 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+07:11:33.110 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:33.110 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+  Pathways: 1 loaded from pathways.tsv
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/batchA.tsv
+  Loaded 4 claims
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/batchB.tsv
+  Loaded 4 claims
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Operons: 1
+  Metabolic gaps: 1
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Operons: 1
+  Metabolic gaps: 1
+  Genome layout: 4 loci across 1 contig(s)
+07:11:33.125 [pool-9-thread-2] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+  Genome layout: 4 loci across 1 contig(s)
+07:11:33.127 [pool-9-thread-1] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.128 [pool-9-thread-1] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.128 [pool-9-thread-1] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+07:11:33.130 [pool-9-thread-2] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.130 [pool-9-thread-2] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Produced 4 integrated annotations
+07:11:33.136 [pool-9-thread-1] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+  Dark-matter suggester emitted 1 suggestions
+07:11:33.137 [pool-9-thread-2] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+  Dark-matter suggester emitted 1 suggestions
+07:11:33.145 [pool-9-thread-1] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+  RLGC suggester emitted 2 suggestions
+07:11:33.146 [pool-9-thread-2] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+  RLGC suggester emitted 2 suggestions
+  Wrote: /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/batchB.tsv
+  Wrote: /home/leechuck/tmp/spock_the_enzyme-gap_case_0_dir9134449242143309045/batchA.tsv
+07:11:33.157 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+07:11:33.157 [Test worker] INFO gspa.predictor.AnnotationPipeline --   4 claims from 4 proteins
+07:11:33.160 [Test worker] INFO gspa.predictor.AnnotationPipeline --   EC-to-GO associations: 3 ECs (all alternatives retained)
+07:11:33.170 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:33.193 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+07:11:33.201 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+07:11:33.206 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Complex classification: 158 GO complex terms
+07:11:33.208 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_18226763176265383435.tsv (profile: bacteria)
+07:11:33.208 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Essential functions (preset=bacteria): 32 GO terms
+07:11:33.208 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:33.209 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+07:11:33.209 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Pathways: 1 loaded from pathways.tsv
+07:11:33.209 [Test worker] INFO gspa.predictor.AnnotationPipeline --   SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+07:11:33.209 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Operons: 1
+07:11:33.210 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Metabolic gaps: 1
+07:11:33.211 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+07:11:33.212 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.214 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.214 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+07:11:33.216 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Produced 4 integrated annotations
+07:11:33.218 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+07:11:33.218 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Dark-matter suggester emitted 1 suggestions
+07:11:33.223 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+07:11:33.223 [Test worker] INFO gspa.predictor.AnnotationPipeline --   RLGC suggester emitted 2 suggestions
+07:11:33.226 [Test worker] INFO gspa.integration.IntegrationWriter -- Integration writer: updated 4 proteins with 4 integrated annotations
+07:11:33.229 [Test worker] INFO gspa.integration.suggester.DarkMatterWriter -- DarkMatterWriter: 2 suggestions kept on separate channel
+07:11:33.229 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Dark-matter mode separate: 0 proteins updated
+07:11:33.230 [Test worker] INFO gspa.predictor.AnnotationPipeline --   IntegratedAnnotationSet(4 annotations, 4 provenance entries, 2 suggestions)
+07:11:33.248 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+07:11:33.248 [Test worker] INFO gspa.predictor.AnnotationPipeline --   4 claims from 4 proteins
+07:11:33.252 [Test worker] INFO gspa.predictor.AnnotationPipeline --   EC-to-GO associations: 3 ECs (all alternatives retained)
+07:11:33.262 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:33.285 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+07:11:33.293 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+07:11:33.297 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Complex classification: 158 GO complex terms
+07:11:33.299 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_17136937193831051162.tsv (profile: bacteria)
+07:11:33.299 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Essential functions (preset=bacteria): 32 GO terms
+07:11:33.300 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:33.300 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+07:11:33.300 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Pathways: 1 loaded from pathways.tsv
+07:11:33.301 [Test worker] INFO gspa.predictor.AnnotationPipeline --   SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+07:11:33.301 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Operons: 1
+07:11:33.302 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Metabolic gaps: 1
+07:11:33.302 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+07:11:33.305 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.306 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.306 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+07:11:33.308 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Produced 4 integrated annotations
+07:11:33.312 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+07:11:33.312 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Dark-matter suggester emitted 1 suggestions
+07:11:33.316 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+07:11:33.316 [Test worker] INFO gspa.predictor.AnnotationPipeline --   RLGC suggester emitted 2 suggestions
+07:11:33.318 [Test worker] INFO gspa.integration.IntegrationWriter -- Integration writer: updated 4 proteins with 4 integrated annotations
+07:11:33.321 [Test worker] INFO gspa.integration.suggester.DarkMatterWriter -- DarkMatterWriter[top-q]: attached 1 suggestions to proteins
+07:11:33.321 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Dark-matter mode top-q: 1 proteins updated
+07:11:33.321 [Test worker] INFO gspa.predictor.AnnotationPipeline --   IntegratedAnnotationSet(4 annotations, 4 provenance entries, 2 suggestions)
+07:11:33.330 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+07:11:33.330 [Test worker] INFO gspa.predictor.AnnotationPipeline --   1 claims from 4 proteins
+07:11:33.343 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:33.365 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+07:11:33.374 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+07:11:33.378 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Complex classification: 158 GO complex terms
+07:11:33.380 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_10531899989642715000.tsv (profile: bacteria)
+07:11:33.381 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Essential functions (preset=bacteria): 32 GO terms
+07:11:33.381 [Test worker] INFO gspa.predictor.AnnotationPipeline --   SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+07:11:33.383 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.384 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.384 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+07:11:33.385 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Produced 1 integrated annotations
+07:11:33.408 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:33.430 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+07:11:33.444 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:33.444 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+07:11:33.447 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.449 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.449 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/fba-manifest.tsv (threads=2)
+  Loaded 2 batch tasks from /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/fba-manifest.tsv
+07:11:33.486 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:33.509 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/ecA.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/A.tsv
+  Loaded 1 claims
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/ecB.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/B.tsv
+  Loaded 1 claims
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+07:11:33.531 [pool-10-thread-2] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.531 [pool-10-thread-1] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.532 [pool-10-thread-2] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.532 [pool-10-thread-1] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.533 [pool-10-thread-1] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+07:11:33.533 [pool-10-thread-2] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+  Stage 2B StoichiometricLocusRefiner (gram=neg, medium=M9-glucose): coreRxns=7, repairedRxns=0, uncertified=0, updatedLoci=0 (0.00s)
+  Stage 2B StoichiometricLocusRefiner (gram=pos, medium=LB): coreRxns=7, repairedRxns=0, uncertified=0, updatedLoci=0 (0.00s)
+  Wrote: /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/B.tsv
+  Wrote: /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/A.tsv
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/ecA.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/S.tsv
+  Loaded 1 claims
+07:11:33.638 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:33.660 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+07:11:33.674 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.675 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.676 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+  Stage 2B StoichiometricLocusRefiner (gram=pos, medium=LB): coreRxns=7, repairedRxns=0, uncertified=0, updatedLoci=0 (0.00s)
+  Wrote: /home/leechuck/tmp/spock_medium_and_biomass__0_dir15804405677969014625/S.tsv
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_workflow_config_f_0_dir12658605435822764303/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_workflow_config_f_0_dir12658605435822764303/flags.tsv
+  Loaded 4 claims
+  EC-to-GO associations: 3 ECs (all alternatives retained)
+07:11:33.777 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:33.848 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+07:11:33.861 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:33.862 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+  Pathways: 1 loaded from pathways.tsv
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Operons: 1
+  Metabolic gaps: 1
+  Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+  Genome layout: 4 loci across 1 contig(s)
+07:11:33.866 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.868 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.868 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+07:11:33.872 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+  Dark-matter suggester emitted 1 suggestions
+07:11:33.877 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+  RLGC suggester emitted 2 suggestions
+  Wrote: /home/leechuck/tmp/spock_a_workflow_config_f_0_dir12658605435822764303/flags.tsv
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_workflow_config_f_0_dir12658605435822764303/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_workflow_config_f_0_dir12658605435822764303/file.tsv
+  Loaded 4 claims
+  EC-to-GO associations: 3 ECs (all alternatives retained)
+07:11:33.921 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:33.943 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+07:11:33.957 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:33.957 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+  Pathways: 1 loaded from pathways.tsv
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Operons: 1
+  Metabolic gaps: 1
+  Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+  Genome layout: 4 loci across 1 contig(s)
+07:11:33.962 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:33.963 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:33.963 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+07:11:33.968 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+  Dark-matter suggester emitted 1 suggestions
+07:11:33.974 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+  RLGC suggester emitted 2 suggestions
+  Wrote: /home/leechuck/tmp/spock_a_workflow_config_f_0_dir12658605435822764303/file.tsv
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_workflow_config_f_0_dir12658605435822764303/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_workflow_config_f_0_dir12658605435822764303/y.tsv
+  Loaded 4 claims
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_a_missing_reference_0_dir11018916317949569207/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_a_missing_reference_0_dir11018916317949569207/missing.tsv
+  Loaded 4 claims
+07:11:34.095 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+07:11:34.096 [Test worker] INFO gspa.predictor.AnnotationPipeline --   4 claims from 4 proteins
+07:11:34.111 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading file META-INF/services/org.semanticweb.owlapi.model.OWLOntologyManager
+07:11:34.112 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyManager
+07:11:34.112 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-impl/4.5.29/92ef49c7307a8c2cd44aa0e3980708d60b4221c9/owlapi-impl-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyManager
+07:11:34.113 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyManager
+07:11:34.113 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-impl/4.5.29/92ef49c7307a8c2cd44aa0e3980708d60b4221c9/owlapi-impl-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyManager
+07:11:34.113 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyManager
+07:11:34.113 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-impl/4.5.29/92ef49c7307a8c2cd44aa0e3980708d60b4221c9/owlapi-impl-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyManager
+07:11:34.123 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading file META-INF/services/org.semanticweb.owlapi.model.OWLDataFactory
+07:11:34.123 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLDataFactory
+07:11:34.123 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-impl/4.5.29/92ef49c7307a8c2cd44aa0e3980708d60b4221c9/owlapi-impl-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLDataFactory
+07:11:34.123 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLDataFactory
+07:11:34.123 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-impl/4.5.29/92ef49c7307a8c2cd44aa0e3980708d60b4221c9/owlapi-impl-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLDataFactory
+07:11:34.123 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLDataFactory
+07:11:34.123 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-impl/4.5.29/92ef49c7307a8c2cd44aa0e3980708d60b4221c9/owlapi-impl-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLDataFactory
+07:11:34.178 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting object uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl@35630ee8
+07:11:34.180 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading file META-INF/services/org.semanticweb.owlapi.model.OWLOntologyIRIMapper
+07:11:34.181 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- No files found for META-INF/services/org.semanticweb.owlapi.model.OWLOntologyIRIMapper
+07:11:34.181 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting values [[]] on method public void uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl.setIRIMappers(java.util.Set).
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading file META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-rio/4.5.29/f7ac996d25d809c8df90cb43347e61281b4205a6/owlapi-rio-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-oboformat/4.5.29/fa51cccb7508633d1370588262193f02de4ef86a/owlapi-oboformat-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-parsers/4.5.29/c32713386d872ba50675d14b392d3833d9bf5dd/owlapi-parsers-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-rio/4.5.29/f7ac996d25d809c8df90cb43347e61281b4205a6/owlapi-rio-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-oboformat/4.5.29/fa51cccb7508633d1370588262193f02de4ef86a/owlapi-oboformat-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-parsers/4.5.29/c32713386d872ba50675d14b392d3833d9bf5dd/owlapi-parsers-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-rio/4.5.29/f7ac996d25d809c8df90cb43347e61281b4205a6/owlapi-rio-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-oboformat/4.5.29/fa51cccb7508633d1370588262193f02de4ef86a/owlapi-oboformat-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.182 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-parsers/4.5.29/c32713386d872ba50675d14b392d3833d9bf5dd/owlapi-parsers-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.io.OWLParserFactory
+07:11:34.200 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting values [[org.semanticweb.owlapi.rdf.turtle.parser.TurtleOntologyParserFactory@7c013560, org.semanticweb.owlapi.rio.RioN3ParserFactory@5274acd1, org.semanticweb.owlapi.rio.RioRDFaParserFactory@218e186b, org.semanticweb.owlapi.owlxml.parser.OWLXMLParserFactory@1f370472, org.semanticweb.owlapi.rio.RioBinaryRdfParserFactory@46146832, org.semanticweb.owlapi.rio.RioJsonParserFactory@4a65c40, org.semanticweb.owlapi.rio.RioTrixParserFactory@21f0cc97, org.semanticweb.owlapi.rio.RioNQuadsParserFactory@78141c58, org.semanticweb.owlapi.rio.RioTurtleParserFactory@75559cd9, org.semanticweb.owlapi.rdf.rdfxml.parser.RDFXMLParserFactory@7505dcab, org.semanticweb.owlapi.oboformat.OBOFormatOWLAPIParserFactory@1f602930, org.semanticweb.owlapi.manchestersyntax.parser.ManchesterOWLSyntaxOntologyParserFactory@3b850bb7, org.semanticweb.owlapi.functional.parser.OWLFunctionalSyntaxOWLParserFactory@11ad327f, org.semanticweb.owlapi.krss2.parser.KRSS2OWLParserFactory@3a225534, org.semanticweb.owlapi.rio.RioRDFXMLParserFactory@6b9fc5c7, org.semanticweb.owlapi.rio.RioJsonLDParserFactory@2396408a, org.semanticweb.owlapi.rio.RioNTriplesParserFactory@28befd62, org.semanticweb.owlapi.rio.RioTrigParserFactory@5ace6611]] on method public void uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl.setOntologyParsers(java.util.Set).
+07:11:34.200 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading file META-INF/services/org.semanticweb.owlapi.model.OWLOntologyFactory
+07:11:34.201 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyFactory
+07:11:34.201 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-impl/4.5.29/92ef49c7307a8c2cd44aa0e3980708d60b4221c9/owlapi-impl-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyFactory
+07:11:34.201 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyFactory
+07:11:34.201 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-impl/4.5.29/92ef49c7307a8c2cd44aa0e3980708d60b4221c9/owlapi-impl-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyFactory
+07:11:34.201 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyFactory
+07:11:34.201 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-impl/4.5.29/92ef49c7307a8c2cd44aa0e3980708d60b4221c9/owlapi-impl-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLOntologyFactory
+07:11:34.203 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting values [[uk.ac.manchester.cs.owl.owlapi.OWLOntologyFactoryImpl@7ac47f14]] on method public void uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl.setOntologyFactories(java.util.Set).
+07:11:34.203 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading file META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.203 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.203 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-rio/4.5.29/f7ac996d25d809c8df90cb43347e61281b4205a6/owlapi-rio-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.203 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-oboformat/4.5.29/fa51cccb7508633d1370588262193f02de4ef86a/owlapi-oboformat-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.203 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-parsers/4.5.29/c32713386d872ba50675d14b392d3833d9bf5dd/owlapi-parsers-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.204 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.204 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-rio/4.5.29/f7ac996d25d809c8df90cb43347e61281b4205a6/owlapi-rio-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.204 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-oboformat/4.5.29/fa51cccb7508633d1370588262193f02de4ef86a/owlapi-oboformat-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.204 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-parsers/4.5.29/c32713386d872ba50675d14b392d3833d9bf5dd/owlapi-parsers-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.204 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-distribution/4.5.29/6aabc42bad5a6d27af9b7819f51af60ea914f8cf/owlapi-distribution-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.204 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-rio/4.5.29/f7ac996d25d809c8df90cb43347e61281b4205a6/owlapi-rio-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.204 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-oboformat/4.5.29/fa51cccb7508633d1370588262193f02de4ef86a/owlapi-oboformat-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.204 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading URL for service jar:file:/home/leechuck/.gradle/caches/modules-2/files-2.1/net.sourceforge.owlapi/owlapi-parsers/4.5.29/c32713386d872ba50675d14b392d3833d9bf5dd/owlapi-parsers-4.5.29.jar!/META-INF/services/org.semanticweb.owlapi.model.OWLStorerFactory
+07:11:34.210 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting values [[org.semanticweb.owlapi.latex.renderer.LatexStorerFactory@10abd94f, org.semanticweb.owlapi.rio.RioN3StorerFactory@2e76d0d3, org.semanticweb.owlapi.rio.RioTrigStorerFactory@52b49891, org.semanticweb.owlapi.rio.RioBinaryRdfStorerFactory@3d8e1fa6, org.semanticweb.owlapi.rio.RioTurtleStorerFactory@7940b729, org.semanticweb.owlapi.rio.RioRDFXMLStorerFactory@4adc3951, org.semanticweb.owlapi.rio.RioTrixStorerFactory@75973f7a, org.semanticweb.owlapi.dlsyntax.renderer.DLSyntaxHTMLStorerFactory@6e5fba90, org.semanticweb.owlapi.rdf.turtle.renderer.TurtleStorerFactory@514b247b, org.semanticweb.owlapi.krss2.renderer.KRSS2OWLSyntaxStorerFactory@2e667e95, org.semanticweb.owlapi.oboformat.OBOFormatStorerFactory@6b8f87dc, org.semanticweb.owlapi.owlxml.renderer.OWLXMLStorerFactory@24fb752f, org.semanticweb.owlapi.manchestersyntax.renderer.ManchesterSyntaxStorerFactory@145ef9e8, org.semanticweb.owlapi.dlsyntax.renderer.DLSyntaxStorerFactory@7dcc0296, org.semanticweb.owlapi.rio.RioJsonStorerFactory@22a22f1, org.semanticweb.owlapi.rio.RioNQuadsStorerFactory@63c88994, org.semanticweb.owlapi.rdf.rdfxml.renderer.RDFXMLStorerFactory@527d1fe1, org.semanticweb.owlapi.rio.RioJsonLDStorerFactory@4587f0f9, org.semanticweb.owlapi.rio.RioNTriplesStorerFactory@1932ad2c, org.semanticweb.owlapi.functional.renderer.FunctionalSyntaxStorerFactory@68dbe225]] on method public void uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl.setOntologyStorers(java.util.Set).
+07:11:34.218 [Test worker] INFO gspa.ontology.GoOntology -- Loading GO ontology from: /home/leechuck/tmp/spock_a_reference_that_ex_0_dir1628161253903893635/broken.owl
+07:11:34.375 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.binary.BinaryRDFParserFactory
+07:11:34.376 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.n3.N3ParserFactory
+07:11:34.377 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.nquads.NQuadsParserFactory
+07:11:34.377 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.ntriples.NTriplesParserFactory
+07:11:34.378 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.rdfjson.RDFJSONParserFactory
+07:11:34.378 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.jsonld.JSONLDParserFactory
+07:11:34.378 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.ndjsonld.NDJSONLDParserFactory
+07:11:34.379 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.rdfxml.RDFXMLParserFactory
+07:11:34.379 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.trix.TriXParserFactory
+07:11:34.380 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.trig.TriGParserFactory
+07:11:34.380 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.trigstar.TriGStarParserFactory
+07:11:34.380 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.turtle.TurtleParserFactory
+07:11:34.381 [Test worker] DEBUG org.eclipse.rdf4j.rio.RDFParserRegistry -- Registered service class org.eclipse.rdf4j.rio.turtlestar.TurtleStarParserFactory
+07:11:34.389 [Test worker] DEBUG org.eclipse.rdf4j.rio.DatatypeHandlerRegistry -- Registered service class org.eclipse.rdf4j.rio.datatypes.XMLSchemaDatatypeHandler
+07:11:34.389 [Test worker] DEBUG org.eclipse.rdf4j.rio.DatatypeHandlerRegistry -- Registered service class org.eclipse.rdf4j.rio.datatypes.RDFDatatypeHandler
+07:11:34.389 [Test worker] DEBUG org.eclipse.rdf4j.rio.DatatypeHandlerRegistry -- Registered service class org.eclipse.rdf4j.rio.datatypes.DBPediaDatatypeHandler
+07:11:34.390 [Test worker] DEBUG org.eclipse.rdf4j.rio.DatatypeHandlerRegistry -- Registered service class org.eclipse.rdf4j.rio.datatypes.VirtuosoGeometryDatatypeHandler
+07:11:34.390 [Test worker] DEBUG org.eclipse.rdf4j.rio.DatatypeHandlerRegistry -- Registered service class org.eclipse.rdf4j.rio.datatypes.GeoSPARQLDatatypeHandler
+07:11:34.391 [Test worker] DEBUG org.eclipse.rdf4j.rio.LanguageHandlerRegistry -- Registered service class org.eclipse.rdf4j.rio.languages.RFC3066LanguageHandler
+07:11:34.392 [Test worker] DEBUG org.eclipse.rdf4j.rio.LanguageHandlerRegistry -- Registered service class org.eclipse.rdf4j.rio.languages.BCP47LanguageHandler
+07:11:34.432 [Test worker] DEBUG org.xml.sax.XMLReader -- XMLReader initialized using JAXP: com.sun.org.apache.xerces.internal.jaxp.SAXParserImpl$JAXPSAXParser@4fe8e318
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_a_shared_reference__0_dir12339995613233466993/fail-manifest.tsv (threads=8)
+  Loaded 2 batch tasks from /home/leechuck/tmp/spock_a_shared_reference__0_dir12339995613233466993/fail-manifest.tsv
+07:11:34.500 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting object uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl@5af47414
+07:11:34.500 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Loading file META-INF/services/org.semanticweb.owlapi.model.OWLOntologyIRIMapper
+07:11:34.500 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- No files found for META-INF/services/org.semanticweb.owlapi.model.OWLOntologyIRIMapper
+07:11:34.501 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting values [[]] on method public void uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl.setIRIMappers(java.util.Set).
+07:11:34.501 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting values [[org.semanticweb.owlapi.rio.RioNQuadsParserFactory@5d50e7f6, org.semanticweb.owlapi.rdf.rdfxml.parser.RDFXMLParserFactory@52737c1, org.semanticweb.owlapi.oboformat.OBOFormatOWLAPIParserFactory@158cb50a, org.semanticweb.owlapi.manchestersyntax.parser.ManchesterOWLSyntaxOntologyParserFactory@18174bd9, org.semanticweb.owlapi.rio.RioRDFXMLParserFactory@4a937d43, org.semanticweb.owlapi.krss2.parser.KRSS2OWLParserFactory@3af6d7a7, org.semanticweb.owlapi.rio.RioTrixParserFactory@19877453, org.semanticweb.owlapi.functional.parser.OWLFunctionalSyntaxOWLParserFactory@2b8b5d9e, org.semanticweb.owlapi.owlxml.parser.OWLXMLParserFactory@9e092b5, org.semanticweb.owlapi.rio.RioTrigParserFactory@10264cb0, org.semanticweb.owlapi.rio.RioTurtleParserFactory@49bf5ec8, org.semanticweb.owlapi.rdf.turtle.parser.TurtleOntologyParserFactory@18711946, org.semanticweb.owlapi.rio.RioJsonParserFactory@74ed1d35, org.semanticweb.owlapi.rio.RioRDFaParserFactory@48e3017a, org.semanticweb.owlapi.rio.RioBinaryRdfParserFactory@178617da, org.semanticweb.owlapi.rio.RioJsonLDParserFactory@d408c5d, org.semanticweb.owlapi.rio.RioN3ParserFactory@7acf07b2, org.semanticweb.owlapi.rio.RioNTriplesParserFactory@54fbaa65]] on method public void uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl.setOntologyParsers(java.util.Set).
+07:11:34.501 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting values [[uk.ac.manchester.cs.owl.owlapi.OWLOntologyFactoryImpl@649a6d88]] on method public void uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl.setOntologyFactories(java.util.Set).
+07:11:34.502 [Test worker] DEBUG org.semanticweb.owlapi.utilities.Injector -- Injecting values [[org.semanticweb.owlapi.dlsyntax.renderer.DLSyntaxStorerFactory@63ff861e, org.semanticweb.owlapi.krss2.renderer.KRSS2OWLSyntaxStorerFactory@37e28b20, org.semanticweb.owlapi.rio.RioRDFXMLStorerFactory@3ce4eb42, org.semanticweb.owlapi.rio.RioTrixStorerFactory@3054cdd3, org.semanticweb.owlapi.latex.renderer.LatexStorerFactory@4257163f, org.semanticweb.owlapi.rio.RioNQuadsStorerFactory@6a3c1b56, org.semanticweb.owlapi.rio.RioNTriplesStorerFactory@3b8ce72, org.semanticweb.owlapi.manchestersyntax.renderer.ManchesterSyntaxStorerFactory@21a462ce, org.semanticweb.owlapi.oboformat.OBOFormatStorerFactory@46e38c28, org.semanticweb.owlapi.dlsyntax.renderer.DLSyntaxHTMLStorerFactory@40e7aea9, org.semanticweb.owlapi.rio.RioTurtleStorerFactory@755a4ef5, org.semanticweb.owlapi.rio.RioJsonLDStorerFactory@55c78556, org.semanticweb.owlapi.rio.RioTrigStorerFactory@3a388769, org.semanticweb.owlapi.rio.RioJsonStorerFactory@25134e01, org.semanticweb.owlapi.rio.RioN3StorerFactory@12d28106, org.semanticweb.owlapi.rdf.turtle.renderer.TurtleStorerFactory@31428f76, org.semanticweb.owlapi.rio.RioBinaryRdfStorerFactory@69e23e94, org.semanticweb.owlapi.functional.renderer.FunctionalSyntaxStorerFactory@62eb918, org.semanticweb.owlapi.rdf.rdfxml.renderer.RDFXMLStorerFactory@6eff05e7, org.semanticweb.owlapi.owlxml.renderer.OWLXMLStorerFactory@1002c49e]] on method public void uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl.setOntologyStorers(java.util.Set).
+07:11:34.502 [Test worker] INFO gspa.ontology.GoOntology -- Loading GO ontology from: /home/leechuck/tmp/spock_a_shared_reference__0_dir12339995613233466993/broken2.owl
+07:11:34.528 [Test worker] DEBUG org.xml.sax.XMLReader -- XMLReader initialized using JAXP: com.sun.org.apache.xerces.internal.jaxp.SAXParserImpl$JAXPSAXParser@6956081d
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_the_defaults_for_th_0_dir5448242144388009887/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_the_defaults_for_th_0_dir5448242144388009887/defaults.tsv
+  Loaded 4 claims
+07:11:34.640 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:34.664 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+07:11:34.681 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:34.683 [Test worker] DEBUG gspa.integration.prior.CoherencePrior -- CoherencePrior: 0 process-missing, 0 pathway-missing, 0 complex-adjusted keys
+07:11:34.683 [Test worker] DEBUG gspa.integration.prior.ConsistencyPrior -- ConsistencyPrior disabled: no SatConsistencyChecker in state
+07:11:34.683 [Test worker] DEBUG gspa.integration.prior.AnatomicalPrior -- AnatomicalPrior disabled: missing anatomicalConstraints or organismTaxon
+07:11:34.687 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:34.687 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Wrote: /home/leechuck/tmp/spock_the_defaults_for_th_0_dir5448242144388009887/defaults.tsv
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_predictor_claims_ex_0_dir7933739111627148303/exported.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_predictor_claims_ex_0_dir7933739111627148303/exported-route.tsv
+  Loaded 4 claims
+  EC-to-GO associations: 3 ECs (all alternatives retained)
+07:11:34.979 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:35.016 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+07:11:35.046 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:35.047 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+  Pathways: 1 loaded from pathways.tsv
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Operons: 1
+  Metabolic gaps: 1
+  Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+  Genome layout: 4 loci across 1 contig(s)
+07:11:35.052 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:35.054 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:35.054 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+07:11:35.058 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+  Dark-matter suggester emitted 1 suggestions
+07:11:35.064 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+  RLGC suggester emitted 2 suggestions
+  Wrote: /home/leechuck/tmp/spock_predictor_claims_ex_0_dir7933739111627148303/exported-route.tsv
+07:11:35.069 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+07:11:35.069 [Test worker] INFO gspa.predictor.AnnotationPipeline --   4 claims from 4 proteins
+07:11:35.073 [Test worker] INFO gspa.predictor.AnnotationPipeline --   EC-to-GO associations: 3 ECs (all alternatives retained)
+07:11:35.089 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:35.128 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+07:11:35.143 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+07:11:35.148 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Complex classification: 158 GO complex terms
+07:11:35.150 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_6702205052479403974.tsv (profile: bacteria)
+07:11:35.151 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Essential functions (preset=bacteria): 32 GO terms
+07:11:35.151 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:35.152 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+07:11:35.152 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Pathways: 1 loaded from pathways.tsv
+07:11:35.152 [Test worker] INFO gspa.predictor.AnnotationPipeline --   SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+07:11:35.152 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Operons: 1
+07:11:35.153 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Metabolic gaps: 1
+07:11:35.154 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+07:11:35.155 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:35.157 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:35.157 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+07:11:35.159 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Produced 4 integrated annotations
+07:11:35.161 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+07:11:35.161 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Dark-matter suggester emitted 1 suggestions
+07:11:35.167 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+07:11:35.167 [Test worker] INFO gspa.predictor.AnnotationPipeline --   RLGC suggester emitted 2 suggestions
+07:11:35.174 [Test worker] INFO gspa.integration.IntegrationWriter -- Integration writer: updated 4 proteins with 4 integrated annotations
+07:11:35.174 [Test worker] INFO gspa.integration.suggester.DarkMatterWriter -- DarkMatterWriter: 2 suggestions kept on separate channel
+07:11:35.174 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Dark-matter mode separate: 0 proteins updated
+07:11:35.175 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Wrote: /home/leechuck/tmp/spock_predictor_claims_ex_0_dir7933739111627148303/annotate-route.tsv
+07:11:35.176 [Test worker] INFO gspa.predictor.AnnotationPipeline --   IntegratedAnnotationSet(4 annotations, 4 provenance entries, 2 suggestions)
+07:11:35.191 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+07:11:35.191 [Test worker] INFO gspa.predictor.AnnotationPipeline --   4 claims from 4 proteins
+07:11:35.195 [Test worker] INFO gspa.predictor.AnnotationPipeline --   EC-to-GO associations: 3 ECs (all alternatives retained)
+07:11:35.211 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:35.248 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+07:11:35.261 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+07:11:35.266 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Complex classification: 158 GO complex terms
+07:11:35.268 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_17002288943777384423.tsv (profile: bacteria)
+07:11:35.268 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Essential functions (preset=bacteria): 32 GO terms
+07:11:35.269 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+07:11:35.269 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+07:11:35.269 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Pathways: 1 loaded from pathways.tsv
+07:11:35.269 [Test worker] INFO gspa.predictor.AnnotationPipeline --   SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+07:11:35.270 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Operons: 1
+07:11:35.270 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Metabolic gaps: 1
+07:11:35.271 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+07:11:35.273 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:35.274 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:35.275 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+07:11:35.276 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Produced 4 integrated annotations
+07:11:35.278 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+07:11:35.278 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Dark-matter suggester emitted 1 suggestions
+07:11:35.283 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+07:11:35.283 [Test worker] INFO gspa.predictor.AnnotationPipeline --   RLGC suggester emitted 2 suggestions
+07:11:35.287 [Test worker] INFO gspa.integration.IntegrationWriter -- Integration writer: updated 4 proteins with 4 integrated annotations
+07:11:35.287 [Test worker] INFO gspa.integration.suggester.DarkMatterWriter -- DarkMatterWriter: 2 suggestions kept on separate channel
+07:11:35.287 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Dark-matter mode separate: 0 proteins updated
+07:11:35.288 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Wrote: /home/leechuck/tmp/spock_annotate-route_arti_0_dir8988799657053576819/annotate-out/named_integrated.tsv
+07:11:35.289 [Test worker] INFO gspa.predictor.AnnotationPipeline --   IntegratedAnnotationSet(4 annotations, 4 provenance entries, 2 suggestions)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -5,6 +5,24 @@ import spock.lang.Specification
 /** The versioned feature contract: uniqueness, documentation, fingerprint, and sync with the trainer's copy. */
 class FeatureContractSpec extends Specification {
 
+    def "version 3 excludes descriptive cohort counts and their unweighted ratios"() {
+        expect:
+        FeatureContract.CURRENT.id == 'gspa.context-features/3'
+        FeatureContract.CURRENT.names().findAll { it.startsWith('cohort.') }.every { it.startsWith('cohort.w.') }
+        !FeatureContract.CURRENT.names().contains('cohort.w.n_peer_genomes')
+        !FeatureContract.CURRENT.names().contains('cohort.w.bg_windows')
+    }
+
+    def "a genuine version 2 fixture cannot be silently reinterpreted under version 3"() {
+        when:
+        LearnedTestSupport.mechanismFixture('legacy_model_v2.json')
+
+        then:
+        def e = thrown(ModelUnavailableException)
+        e.message.contains('feature contract gspa.context-features/2')
+        e.message.contains('does not match gspa.context-features/3')
+    }
+
     def "every feature is documented, uniquely named and typed by group"() {
         expect:
         FeatureContract.CURRENT.names().toSet().size() == FeatureContract.CURRENT.size()

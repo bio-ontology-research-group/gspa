@@ -101,8 +101,14 @@ class CladeModel {
         out
     }
 
-    /** Groups the given genomes into weighted independent units (deterministic order). */
-    List<Unit> units(Collection<String> genomeIds) {
+    /**
+     * Groups the supplied subset into weighted units. When complete observed-input
+     * identities are supplied, one member per identity represents the evidence
+     * inside each strain cluster. Other clusters/clades are never collapsed.
+     * Choose representatives from the supplied subset, so holdouts and missing
+     * observations cannot accidentally remove their eligible equivalent peers.
+     */
+    List<Unit> units(Collection<String> genomeIds, Map<String, String> evidenceIdentities = Collections.<String, String>emptyMap()) {
         Map<String, Map<String, List<String>>> byClade = new TreeMap<>()
         for (String g : genomeIds) {
             byClade.computeIfAbsent(clade.get(g), { new TreeMap<String, List<String>>() })
@@ -112,6 +118,15 @@ class CladeModel {
         byClade.each { String cl, Map<String, List<String>> clusters ->
             clusters.each { String k, List<String> gs ->
                 Collections.sort(gs)
+                if (!evidenceIdentities.isEmpty()) {
+                    Map<String, String> representatives = new TreeMap<>()
+                    for (String g : gs) {
+                        String identity = evidenceIdentities.get(g)
+                        if (identity == null) throw new IllegalArgumentException("Missing evidence identity for ${g}")
+                        representatives.putIfAbsent(identity, g)
+                    }
+                    gs = new ArrayList<String>(representatives.values())
+                }
                 out.add(new Unit(cladeId: cl, clusterId: k, genomes: gs, weight: cladeCap / clusters.size()))
             }
         }

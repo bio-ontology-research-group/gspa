@@ -1,0 +1,88 @@
+{
+  "baseline" : {
+    "carbon_exchanges" : [ "EX_glc_e" ],
+    "exchanges" : [ "EX_glc_e", "EX_ac_e", "EX_o2_e", "EX_vit_e", "EX_sec_e", "EX_coup_e", "EX_nh4_e", "EX_lac_e" ],
+    "medium" : {
+      "EX_glc_e" : 10,
+      "EX_nh4_e" : 10,
+      "EX_o2_e" : 10,
+      "EX_vit_e" : 10
+    },
+    "nitrogen_exchanges" : [ "EX_nh4_e" ],
+    "oxygen_exchange" : "EX_o2_e"
+  },
+  "config" : {
+    "max_baseline_focus_reactions" : 0,
+    "max_focus_reactions" : 0,
+    "product_requirement" : "maintenance_only",
+    "strategy" : "fixed"
+  },
+  "context" : {
+    "hypotheses" : [ {
+      "id" : "auto:locus_g6|EC|EC:4.4.4.4",
+      "reactions" : [ "SEC" ],
+      "function_key" : "locus_g6|EC|EC:4.4.4.4",
+      "perturbation" : "reaction",
+      "mapping_sources" : {
+        "SEC" : [ "sbml_annotation" ]
+      },
+      "genes_in_model" : {
+        "locus_g6" : true
+      },
+      "gene_in_model" : true,
+      "gene" : "locus_g6"
+    }, {
+      "id" : "auto:locus_g6|EC|EC:6.2.1.1",
+      "reactions" : [ "ACS" ],
+      "function_key" : "locus_g6|EC|EC:6.2.1.1",
+      "perturbation" : "reaction",
+      "mapping_sources" : {
+        "ACS" : [ "sbml_annotation" ]
+      },
+      "genes_in_model" : {
+        "locus_g6" : true
+      },
+      "gene_in_model" : true,
+      "gene" : "locus_g6"
+    } ],
+    "evidence" : [ {
+      "id" : "sequence:locus_g6|EC|EC:4.4.4.4",
+      "hypothesis_id" : "auto:locus_g6|EC|EC:4.4.4.4",
+      "type" : "sequence"
+    }, {
+      "id" : "transport:locus_g6|EC|EC:4.4.4.4:EX_ac_e",
+      "hypothesis_id" : "auto:locus_g6|EC|EC:4.4.4.4",
+      "type" : "transport",
+      "substrate_exchange" : "EX_ac_e",
+      "role" : "carbon"
+    }, {
+      "id" : "bgc:locus_g6|EC|EC:4.4.4.4:EX_sec_e",
+      "hypothesis_id" : "auto:locus_g6|EC|EC:4.4.4.4",
+      "type" : "bgc",
+      "product_exchange" : "EX_sec_e"
+    }, {
+      "id" : "sequence:locus_g6|EC|EC:6.2.1.1",
+      "hypothesis_id" : "auto:locus_g6|EC|EC:6.2.1.1",
+      "type" : "sequence"
+    }, {
+      "id" : "transport:locus_g6|EC|EC:6.2.1.1:EX_ac_e",
+      "hypothesis_id" : "auto:locus_g6|EC|EC:6.2.1.1",
+      "type" : "transport",
+      "substrate_exchange" : "EX_ac_e",
+      "role" : "carbon"
+    }, {
+      "id" : "bgc:locus_g6|EC|EC:6.2.1.1:EX_sec_e",
+      "hypothesis_id" : "auto:locus_g6|EC|EC:6.2.1.1",
+      "type" : "bgc",
+      "product_exchange" : "EX_sec_e"
+    } ]
+  },
+  "model" : "/home/leechuck/tmp/extracellular-cli/results/model.xml",
+  "objectives" : {
+    "biomass" : "BIOMASS",
+    "maintenance" : {
+      "lower_bound" : 1.0,
+      "reaction" : "ATPM"
+    }
+  }
+}

@@ -55,7 +55,7 @@ class RawBaselineSnapshot {
         Map<String, Double> best = new TreeMap<>()
         for (EvidenceClaim c : claims) {
             out.nClaims++
-            if (c.functionType != AnnotationType.EC) {
+            if (c.isQualityObservation() || c.functionType != AnnotationType.EC) {
                 out.nNonEcClaimsIgnored++
                 continue
             }
@@ -65,7 +65,7 @@ class RawBaselineSnapshot {
                 out.nPartialEcIgnored++
                 continue
             }
-            if (!Double.isFinite(c.rawScore) || c.rawScore < 0d || c.rawScore > 1d) {
+            if (!c.hasFunctionalScore() || !Double.isFinite(c.rawScore) || c.rawScore < 0d || c.rawScore > 1d) {
                 out.nInvalidScoreIgnored++
                 continue
             }

@@ -1,0 +1,60 @@
+I read the three files and the pieces they call (`run_price_matrix_capacity.py`, `verify_candidate_universe.py`). I ran nothing, and `ijson` isn't installed here. Items 1–5 would each let a bad run be certified or a bounded-memory claim fail, so I'd fix those before the 2.68 GB replay.
+
+**Must fix**
+
+1. **No step proves all 132 cells and 2 arms completed.** `run_price_production_collection.py:178-212` runs one index at a time and writes a per-attempt `completed.json`. There is no `finalize` action.
+   - Nothing requires indices 0..131 to each have a verified attempt.
+   - Nothing picks a canonical attempt when a cell has several completed ones (the attempt names are free-form).
+   - Nothing re-checks each `verification.json` hash or each arm's `verified_run.json` hash.
+   - Nothing writes a collection-level receipt.
+   - The docstring says it "registers all 132 cells", but completeness is only implicit. Add a `finalize` action that fails closed on a missing, duplicate-completed or failed-only cell. It should also check that `set(runs)==arms`, and re-hash `registration.json`, `plan.json` and the inputs. Without it, "all132" can't be asserted for the sparse 66 or the rest.
+
+2. **The speed and bound depend on the C backend, and nothing enforces it.** `verified_batch.py:35-85, 88-97`
+   - `ijson` falls back silently to the pure-Python backend. On a multi-GB ledger that is orders of magnitude slower, and it gives no bound beyond the 64 KB buffer.
+   - Require `ijson.backend == 'yajl2_c'` for any ledger over `LEDGER_MEMORY_LIMIT`, and record the backend in the receipt.
+   - The shared `libyajl` `.so` is outside `ijson/`, so `streaming_parser_sources()` (`:26-33`) doesn't hash it. Hash it too or record its version. The `*.so` filter also misses `.cpython-*.so` names only if the suffix check differs on your build; `Path.suffix` handles that case, so it is fine.
+   - Check that the pin `3.4.0.post0` resolves to a wheel with the C extension on the ibex/ws Python. A source build without yajl silently gives the slow backend.
+
+3. **The 8 MiB fallback is a different verifier from the streaming path.** `verified_batch.py:100-109`
+   - `json.loads` accepts `NaN`, `Infinity` and duplicate keys (last wins). The streaming path rejects all three.
+   - A stage record with `{"status":"failed","status":"executed"}` therefore passes without `ijson` and fails with it.
+   - Use `object_pairs_hook` and `parse_constant` in the fallback, or reuse the same structural validator on both paths. Add a test that runs both paths on one corpus.
+
+4. **`.learned.json` is still loaded whole.** `verified_batch.py:165`
+   - `json.loads(Path(value + ".learned.json").read_text())` is unbounded. If that report carries per-protein changes in a dense cell, it breaks the bounded-memory claim.
+   - Stream it with a small `ijson` pass for `model.sha256` only, or apply the same size guard.
+   - Also, `option_values(...)["--learned-model"][-1]` at `:167` raises `KeyError` if the flag is absent. It stays fail-closed but gives a bad message.
+
+5. **The memory test doesn't test what you need.** `tests/test_streaming_ledger.py:47-61`
+   - `tracemalloc` doesn't see the C backend's `malloc`. The ~11 MB synthetic file and the 5 MiB peak bound only catch Python-level accumulation.
+   - Add a subprocess test that streams a generated file of ≥256 MB and asserts `resource.getrusage(...).ru_maxrss` stays under a fixed bound. Include the shape that matters: one stage with millions of changes.
+   - The test also uses whichever backend happens to be installed, so it should assert the backend (see item 2).
+   - On the 2.68 GB replay, log `ru_maxrss` and wall time into the receipt or `run.log`, so the bounded-memory claim has real evidence.
+
+**Should fix, smaller**
+
+6. `cells()` / `prepare()`:
+   - `run()` doesn't compare `verified['matrix_rows']`, `assembly` and `predictor` to the cell (`:198-203`). It only checks claim counts. Add them; it's cheap.
+   - Registration pins only the listed files (`:152-165`). It doesn't pin files added later under `reasoner-cache` or new `*.py` files, and it doesn't pin the venv's `ijson`.
+   - `Path(shutil.which('java'))` raises `TypeError` if `java` is missing, rather than giving a clear error (`:152`).
+
+7. In `run()`, `except Exception` (`:208`) misses `KeyboardInterrupt` and `SIGTERM`. A SLURM timeout leaves `started.json` with no terminal record. Add a `finally` that writes `failed.json` if `completed.json` is absent, so finalize can tell "died" from "never ran".
+
+8. The model-hash check (`verified_batch.py:164-170`) covers only the `learned_integration` stage. Both arms have `required_stages` of just reference preparation and evidence integration, so nothing in the receipt distinguishes stage0 from stage1 except the command line. Optionally assert that `--enable-priors none` is present on stage0 only.
+
+**Checked and fine**
+
+- Streaming parser identity and failure checks:
+  - Duplicate metadata keys, non-scalar `status` and `name`, and non-object stage records all raise.
+  - Truncated JSON raises via `IncompleteJSONError`.
+  - Trailing data is covered by the `next(events, None)` exhaustion check.
+  - Fields that come after the large `changes` arrays are read correctly, and nested lookalike keys are skipped.
+- Candidate-universe comparison rejects duplicates (`_unique_lines` raises), and the key sort is bounded with `LC_ALL=C` and a 64M buffer.
+- The `cells()` tests already cover missing, duplicate, swapped, claim-count and unbound-receipt cases.
+
+**Missing tests**
+
+- `finalize`, once it exists: an incomplete matrix, two completed attempts for one cell, and a failed-only cell.
+- The `prepare()` 132 / 22 / 6 gate. Use a patched hash and a synthetic export, and check that a 131-cell or 21-assembly plan fails.
+- A `run()` success path with a patched `C.run` that checks `completed.json` and the post-run `check`.
+- A backend-parity corpus (item 3).

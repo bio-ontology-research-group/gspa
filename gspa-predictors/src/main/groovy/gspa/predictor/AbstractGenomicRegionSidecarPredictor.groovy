@@ -121,6 +121,7 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
     @Override
     Map<String, List<Annotation>> predictGenome(Genome genome) {
         lastRunStatus = null
+        genome.metadata.remove("genomic_regions:${name}".toString())
         long t0 = System.currentTimeMillis()
         List<String> noSequence = genome.contigs.findAll { !it.sequence }*.id
         if (noSequence.size() == genome.contigs.size()) {
@@ -262,9 +263,8 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
         // Sidecar contract (run_genomic_predictors.py): the 6-column TSV is opened, header first,
         // only after the wrapped tool produced results; on tool failure the sidecar logs a warning,
         // writes NOTHING and still exits 0. So: no TSV = failed run; header-only = no region passed.
-        // UNVERIFIED limits of the sidecar itself: for geNomad it writes a header-only TSV even if
-        // neither summary file exists, and PhiSpy's missing prophage_coordinates.tsv is treated as
-        // "no prophages"; both are indistinguishable from a true zero here (see successNote()).
+        // The bundled geNomad runner requires both validated native summaries before publishing.
+        // PhiSpy still treats a missing native coordinate file as zero (see successNote()).
         def tsv = requireOutput(outputDir, "${tag}.${predictorName}.genomic.tsv",
             'run_genomic_predictors.py writes a header row whenever the wrapped tool produced output')
         Map<String, List<Annotation>> results = [:].withDefault { [] }
@@ -272,11 +272,17 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
         int lineNo = 0
         tsv.eachLine { line ->
             lineNo++
-            if (firstLine) { firstLine = false; return }
+            if (firstLine) {
+                firstLine = false
+                if (line != 'contig_id\tregion_start\tregion_end\tregion_type\tscore\tattributes') {
+                    throw new ToolOutputContractException("${name} ${tsv.name}: invalid genomic TSV header")
+                }
+                return
+            }
             if (!line || line.startsWith('#')) return
-            def parts = line.split('\t')
-            if (parts.size() < 5) {
-                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: ${parts.size()} columns, expected 5-6")
+            def parts = line.split('\t', -1)
+            if (parts.size() != 6) {
+                throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: ${parts.size()} columns, expected 6")
             }
             try {
                 String contig = parts[0]
@@ -284,14 +290,16 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
                 int end = parts[2] as int
                 String regionType = parts[3]
                 double score = parts[4] as double
-                String attributesRaw = parts.size() >= 6 ? parts[5] : ''
-                if (Double.isNaN(score)) {
-                    throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: NaN score for ${contig}")
+                String attributesRaw = parts[5]
+                if (!Double.isFinite(score) || score < 0.0d || score > 1.0d) {
+                    throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: nonfinite or out-of-range score for ${contig}")
                 }
-                if (score < minScore) return
+                if (!(regionType in ['prophage', 'plasmid', 'viral_contig'])) {
+                    throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: unknown region type '${regionType}'")
+                }
                 // Resolve annotation type from region_type when the predictor
                 // emits multiple kinds (e.g. geNomad: prophage / plasmid /
-                // viral_contig); fall back to the predictor's primary type.
+                // viral_contig).
                 AnnotationType t = outputAnnotationType
                 switch (regionType) {
                     case 'prophage':
@@ -306,11 +314,16 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
                 }
                 Map<String, Object> meta = [:]
                 if (attributesRaw) {
-                    attributesRaw.tokenize('|').each { kv ->
+                    attributesRaw.split('\\|', -1).each { kv ->
                         def i = kv.indexOf('=')
-                        if (i > 0) meta[kv.substring(0, i)] = kv.substring(i + 1)
+                        if (i <= 0 || meta.containsKey(kv.substring(0, i))) {
+                            throw new ToolOutputContractException("${name} ${tsv.name} line ${lineNo}: malformed or duplicate attribute '${kv}'")
+                        }
+                        meta[kv.substring(0, i)] = kv.substring(i + 1)
                     }
                 }
+                // Validate complete rows even when they will be filtered out.
+                if (score < minScore) return
                 meta.putAll(regionMetadata())
                 // Genomic-region annotations are keyed by contig (not protein);
                 // we use the contig id as the map key so downstream consumers

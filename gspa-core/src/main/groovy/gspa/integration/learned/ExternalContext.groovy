@@ -20,11 +20,11 @@ import gspa.model.AnnotationType
  */
 class ExternalContext {
 
-    private static final Set<String> STATUS_NAMES = ['UNAVAILABLE', 'FAILED', 'PARTIAL', 'SUCCESS_ZERO', 'SUCCESS'] as Set
+    private static final Set<String> STATUS_NAMES = ['SKIPPED', 'UNAVAILABLE', 'FAILED', 'PARTIAL', 'SUCCESS_ZERO', 'SUCCESS'] as Set
 
     /**
      * Predictor completion outcomes by predictor name (PredictorOutcome names:
-     * UNAVAILABLE, FAILED, PARTIAL, SUCCESS_ZERO, SUCCESS). Null or empty = not supplied.
+     * SKIPPED, UNAVAILABLE, FAILED, PARTIAL, SUCCESS_ZERO, SUCCESS). Null or empty = not supplied.
      */
     Map<String, String> predictorStatus = null
 
@@ -64,6 +64,9 @@ class ExternalContext {
      * field there means "unavailable", never zero.
      */
     static class Cohort {
+        gspa.integration.cohort.ContextMode contextMode = gspa.integration.cohort.ContextMode.UNIVERSAL
+        /** Only within-genome reaction and intrinsic evidence; peer statistics must be absent. */
+        boolean localOnly = false
         int nGenomes
         int nWithOrthogroup
         int nWithFunctionSeq
@@ -199,6 +202,16 @@ class ExternalContext {
             }
         }
         cohort?.each { String k, Cohort c -> if (c.weighted != null) validateWeighted(k, c.weighted) }
+        cohort?.each { String k, Cohort c ->
+            if (c.contextMode == null) throw new IllegalArgumentException("cohort[${k}] contextMode is required")
+            if (!c.localOnly) return
+            if (c.weighted == null || [c.nGenomes, c.nWithOrthogroup, c.nWithFunctionSeq, c.nWithContext, c.nIncomplete].any { it != 0 } ||
+                c.weighted.insufficientPeers || c.weighted.adjustedAvailable ||
+                CohortFeatureColumns.peerProperties().any { c.weighted.getProperty(it) != null } ||
+                c.reactionAlternatives.any { it.supportFraction != null || it.effectiveN != null }) {
+                throw new IllegalArgumentException("cohort[${k}] localOnly requires weighted local evidence and absent peer statistics")
+            }
+        }
         fba?.each { String k, FbaConditional f ->
             if (f == null) throw new IllegalArgumentException("fba[${k}] is null")
             if (f.nConditions < 0 || !Double.isFinite(f.requiredFraction) || f.requiredFraction < 0d || f.requiredFraction > 1d) {

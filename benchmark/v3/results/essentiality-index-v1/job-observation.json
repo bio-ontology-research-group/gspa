@@ -1,0 +1,17 @@
+{
+  "observed_at": "2026-10-26T19:13:41.328252+00:00",
+  "command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "unimatrix01",
+    "squeue -j 9967,10058,10080 -o \"%.20i %.10T %.12M %.25R\""
+  ],
+  "exit_code": 0,
+  "stdout": "               JOBID      STATE         TIME          NODELIST(REASON)\n9967_[78-79,112-131]    PENDING         0:00       (JobArrayTaskLimit)\n               10080    PENDING         0:00              (Dependency)\n            9967_111    RUNNING         0:06                   node003\n            9967_110    RUNNING         0:09                   node003\n            9967_109    RUNNING         2:08                   node003\n            9967_108    RUNNING         8:45                   node003\n               10058    RUNNING        56:09                   node003\n",
+  "stderr": "",
+  "completed_jobs_verified_by_controller_and_artifacts": [
+    10079,
+    10082
+  ]
+}

@@ -18,6 +18,22 @@ import gspa.integration.cohort.Role
  */
 class CohortSideInputs {
 
+    /** One named group contains alternative reaction mappings, never independent anchors. */
+    static List<CohortInput.PathwayGroup> readPathwayGroups(File file) {
+        Map<List<String>, CohortInput.PathwayGroup> groups = new LinkedHashMap<>()
+        rows(file, ['pathway_id', 'group_id', 'reaction_id', 'source'], 4, 4).each { String[] r ->
+            List<String> values = r.toList().drop(1).collect { it.trim() }
+            if (values.any { !it }) throw new IllegalArgumentException("${file}:${r[0]}: pathway_id, group_id, reaction_id and source are required")
+            List<String> key = values.subList(0, 2)
+            def group = groups.computeIfAbsent(key) {
+                new CohortInput.PathwayGroup(pathwayId: values[0], groupId: values[1], source: values[3])
+            }
+            if (group.source != values[3]) throw new IllegalArgumentException("${file}:${r[0]}: conflicting source for pathway group ${key}")
+            if (!group.reactionIds.add(values[2])) throw new IllegalArgumentException("${file}:${r[0]}: duplicate reaction in pathway group ${key}")
+        }
+        new ArrayList<>(groups.values())
+    }
+
     private static List<String[]> rows(File file, List<String> header, int min, int max) {
         if (file == null || !file.isFile()) throw new IllegalArgumentException("file does not exist: ${file}")
         List<String[]> out = []

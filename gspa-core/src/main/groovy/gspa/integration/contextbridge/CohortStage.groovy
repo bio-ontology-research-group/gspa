@@ -14,8 +14,8 @@ import gspa.ontology.ReactionGraph
  * {@link CohortContextBuilder} members and builds the per-genome learned-stage context in ONE joint
  * inference. Used identically by the batch pass (all manifest genomes, then each genome's learned
  * stage consumes its own held-out features) and by a single run (the genome plus the reference
- * genomes of {@code cohortManifestFile}). With no peers the result carries no features for the genome
- * and says so; a one-genome run is routed to the cohort-free feature set, never read as negative.
+ * genomes of {@code cohortManifestFile}). With no peers, local reaction and intrinsic features remain
+ * available; recurrence statistics and their availability flags are withheld, never read as negative.
  *
  * <p>Reference manifest TSV (header required): {@code genome_id  claims_path  [layout_path]  [orthogroups_path]};
  * relative paths resolve against the manifest. Reference genomes are peers only.</p>
@@ -62,6 +62,7 @@ class CohortStage {
         if (c.cohortRoleEvidenceFile != null) settings.roleEvidence = CohortSideInputs.readRoleEvidence(c.cohortRoleEvidenceFile)
         if (c.cohortInteractionEdgesFile != null) settings.edges = CohortSideInputs.readEdges(c.cohortInteractionEdgesFile)
         if (c.cohortReactionDirectionsFile != null) settings.directions = CohortSideInputs.readDirections(c.cohortReactionDirectionsFile)
+        if (c.cohortPathwaysFile != null) settings.pathwayGroups = CohortSideInputs.readPathwayGroups(c.cohortPathwaysFile)
 
         List<CohortContextBuilder.Member> members = []
         targets.each { Target t ->

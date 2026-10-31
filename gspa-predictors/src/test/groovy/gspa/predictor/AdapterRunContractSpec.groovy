@@ -76,6 +76,7 @@ class AdapterRunContractSpec extends Specification {
     }
     static class FEggnog extends EggNogMapperPredictor {
         Hook hook
+        @Override String getVersion() { 'emapper-2.1.13' }
         @Override protected ProcessResult execute(List<String> c, File w) { hook.run(c, w) }
     }
     static class FAmr extends AmrFinderPredictor {
@@ -157,8 +158,8 @@ class AdapterRunContractSpec extends Specification {
         ['hmmer',       { Hook h -> new FHmmer(hook: h, hmmDatabase: '/db/Pfam-A.hmm') },                   'hmmer_domtbl.tsv',           '# target name accession tlen\n# [ok]\n',                            false],
         ['antifam',     { Hook h -> new FAntiFam(hook: h, hmmDatabase: '/db/AntiFam.hmm') },                'antifam_domtbl.tsv',         '# target name accession tlen\n# [ok]\n',                            false],
         ['eggnog',      { Hook h -> new FEggnog(hook: h) },                                                 'eggnog_results.emapper.annotations', '#query\tseed_ortholog\tevalue\tscore\teggNOG_OGs\tmax_annot_lvl\tCOG_category\tDescription\tPreferred_name\tGOs\tEC\tKEGG_ko\tKEGG_Pathway\tKEGG_Module\tKEGG_Reaction\tKEGG_rclass\tBRITE\tKEGG_TC\tCAZy\tBiGG_Reaction\tPFAMs\n## 0 queries scanned\n', false],
-        ['amrfinder',   { Hook h -> new FAmr(hook: h) },                                                    'amrfinder_results.tsv',      'Protein identifier\tGene symbol\tSequence name\n',                  false],
-        ['dbcan',       { Hook h -> new FDbCan(hook: h) },                                                  'overview.txt',               'Gene ID\tEC#\tdbCAN\tHotpep\tDIAMOND\t#ofTools\n',                  false],
+        ['amrfinder',   { Hook h -> new FAmr(hook: h) },                                                    'amrfinder_results.tsv',      gspa.predictor.specialized.AmrFinderObservedSpec.fixture().readLines().first() + '\n',                  false],
+        ['dbcan',       { Hook h -> new FDbCan(hook: h, dbDir: '/db/dbcan') },                                                  'overview.txt',               'Gene ID\tEC#\tdbCAN\tHotpep\tDIAMOND\t#ofTools\n',                  false],
         ['signalp',     { Hook h -> new FSignalP(hook: h) },                                                'prediction_results.txt',     '# SignalP-6.0\tOrganism: Other\n# ID\tPrediction\tOTHER\n',         false],
         ['deeptmhmm',   { Hook h -> new FDeepTm(hook: h) },                                                 'predicted_topologies.3line', '>p1 | GLOB\nMKVLGAAK\nGGGGGGGG\n',                                  false],
         ['metapredict', { Hook h -> new FMeta(hook: h) },                                                   'idrs.tsv',                   'protein_id\tregion_start\tregion_end\tmean_score\n',                false],
@@ -258,7 +259,7 @@ class AdapterRunContractSpec extends Specification {
         Math.abs(res['protein_003'][0].score - 0.8d) < 0.05d
     }
 
-    def "real hmmsearch domtblout and SignalP/DeepTMHMM fixtures yield SUCCESS through predictBatch"() {
+    def "format fixtures yield SUCCESS through predictBatch with stubbed executables"() {
         expect:
         def p = make(factory, new Hook(files: [(file): resource("/mock-output/${dir}/${file}")]))
         p.predictBatch(proteins())
@@ -326,7 +327,7 @@ class AdapterRunContractSpec extends Specification {
         then:
         p.lastRunStatus.outcome == PredictorOutcome.SUCCESS_ZERO
 
-        when: "real MinCED GFF fixture"
+        when: "MinCED-format fixture"
         p = new FCrispr(hook: new Hook(files: ['minced_results.gff': resource('/mock-output/minced/minced_results.gff')]))
         p.predictGenome(full)
 
@@ -360,18 +361,20 @@ class AdapterRunContractSpec extends Specification {
 
     def "antiSMASH: JSON results, unreadable JSON and missing JSON are told apart"() {
         given:
-        def full = genome(c1: 'ACGT' * 100)
+        def full = genome(contig_1: 'ACGT' * 100, contig_2: 'ACGT' * 100)
+        def zero = new groovy.json.JsonSlurper().parseText(resource('/mock-output/antismash/test_output.json'))
+        zero.records.each { it.areas = [] }
 
-        when: "real antiSMASH-style fixture, written into the --output-dir"
+        when: "antiSMASH-format fixture, written into the --output-dir"
         def p = new FAntiSmash(hook: new Hook(files: ['output/test_output.json': resource('/mock-output/antismash/test_output.json')]))
         p.predictGenome(full)
 
         then:
         p.lastRunStatus.outcome == PredictorOutcome.SUCCESS
-        p.lastRunStatus.detail.contains('unverified')
+        p.lastRunStatus.detail.contains('unscored')
 
         when: "a results file with zero regions"
-        p = new FAntiSmash(hook: new Hook(files: ['output/x.json': '{"records": [{"areas": []}]}']))
+        p = new FAntiSmash(hook: new Hook(files: ['output/x.json': groovy.json.JsonOutput.toJson(zero)]))
         p.predictGenome(full)
 
         then:
@@ -394,20 +397,21 @@ class AdapterRunContractSpec extends Specification {
         p.lastRunStatus.outcome == PredictorOutcome.FAILED
 
         when: "partial genome"
-        p = new FAntiSmash(hook: new Hook(files: ['output/x.json': '{"records": []}']))
-        p.predictGenome(genome(c1: 'ACGT' * 10, c2: null, c3: null))
+        zero.records = [zero.records[0]]
+        p = new FAntiSmash(hook: new Hook(files: ['output/x.json': groovy.json.JsonOutput.toJson(zero)]))
+        p.predictGenome(genome(contig_1: 'ACGT' * 100, c2: null, c3: null))
 
         then:
         p.lastRunStatus.outcome == PredictorOutcome.PARTIAL
         p.lastRunStatus.skippedInputs == ['c2', 'c3']
     }
 
-    def "gapseq/gapsmith: missing and zero-byte Reactions.tbl are FAILED; real table is SUCCESS; skipped contigs are PARTIAL"() {
+    def "gapseq/gapsmith: missing and zero-byte Reactions.tbl are FAILED; header-only table is SUCCESS_ZERO; skipped contigs are PARTIAL"() {
         given:
         def full = genome(c1: 'ACGT' * 100)
 
         when:
-        def p = new FGapseq(hook: new Hook(exit: 0), target: 'genome')
+        def p = new FGapseq(hook: new Hook(exit: 0), target: 'genome', tool: 'gapseq')
         p.predictGenome(full)
 
         then:
@@ -415,7 +419,7 @@ class AdapterRunContractSpec extends Specification {
         p.lastRunStatus.outcome == PredictorOutcome.FAILED
 
         when: "gapseq leaves a zero-byte table when an internal step failed but the shell exited 0"
-        p = new FGapseq(hook: new Hook(files: ['x-Reactions.tbl': '']), target: 'genome')
+        p = new FGapseq(hook: new Hook(files: ['x-Reactions.tbl': '']), target: 'genome', tool: 'gapseq')
         p.predictGenome(full)
 
         then:
@@ -424,14 +428,14 @@ class AdapterRunContractSpec extends Specification {
         p.lastRunStatus.outcome == PredictorOutcome.FAILED
 
         when:
-        p = new FGapseq(hook: new Hook(files: ['test-Reactions.tbl': resource('/mock-output/gapseq/test-Reactions.tbl')]), target: 'genome')
+        p = new FGapseq(hook: new Hook(files: ['test-Reactions.tbl': resource('/mock-output/gapseq/test-Reactions.tbl').readLines().find { it.startsWith('pathway') } + '\n']), target: 'genome', tool: 'gapseq')
         p.predictGenome(full)
 
         then:
-        p.lastRunStatus.outcome == PredictorOutcome.SUCCESS
+        p.lastRunStatus.outcome == PredictorOutcome.SUCCESS_ZERO
 
         when: "contig without sequence under target=genome"
-        p = new FGapseq(hook: new Hook(files: ['test-Reactions.tbl': resource('/mock-output/gapseq/test-Reactions.tbl')]), target: 'genome')
+        p = new FGapseq(hook: new Hook(files: ['test-Reactions.tbl': resource('/mock-output/gapseq/test-Reactions.tbl').readLines().find { it.startsWith('pathway') } + '\n']), target: 'genome', tool: 'gapseq')
         p.predictGenome(genome(c1: 'ACGT' * 100, c2: null))
 
         then:
@@ -447,7 +451,7 @@ class AdapterRunContractSpec extends Specification {
         p.lastRunStatus.detail.contains('no protein sequences')
 
         when: "non-zero exit"
-        p = new FGapseq(hook: new Hook(exit: 2, stderr: 'blast failed'), target: 'genome')
+        p = new FGapseq(hook: new Hook(exit: 2, stderr: 'blast failed'), target: 'genome', tool: 'gapseq')
         p.predictGenome(full)
 
         then:
@@ -463,15 +467,18 @@ class AdapterRunContractSpec extends Specification {
             PredictorRunStatus.failed('c', 'boom', 2),
             PredictorRunStatus.unavailable('d', 'no db'),
             PredictorRunStatus.partial('e', 1, 'skipped', ['c2', 'c3']),
+            PredictorRunStatus.skipped('f', 'no protein sequences'),
         ]
 
         when:
         def m = PredictorRunManifest.toMap('g', statuses)
 
         then:
-        m.summary == [UNAVAILABLE: 1, FAILED: 1, PARTIAL: 1, SUCCESS_ZERO: 1, SUCCESS: 1]
+        m.summary == [SKIPPED: 1, UNAVAILABLE: 1, FAILED: 1, PARTIAL: 1, SUCCESS_ZERO: 1, SUCCESS: 1]
         m.predictors.find { it.predictor == 'e' }.skipped_inputs == ['c2', 'c3']
         m.predictors.find { it.predictor == 'e' }.skipped_input_count == 2
         m.predictors.find { it.predictor == 'b' }.detail == 'caveat'
+        m.predictors.find { it.predictor == 'f' }.outcome == 'SKIPPED'
+        !statuses.last().outcome.isSuccessful()
     }
 }

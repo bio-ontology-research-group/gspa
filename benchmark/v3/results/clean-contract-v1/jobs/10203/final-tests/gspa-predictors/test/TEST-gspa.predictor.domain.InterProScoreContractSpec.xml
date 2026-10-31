@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.domain.InterProScoreContractSpec" tests="19" skipped="0" failures="0" errors="0" timestamp="2026-10-27T18:39:27" hostname="node002" time="0.078">
+  <properties/>
+  <testcase name="observed installed InterProScan output preserves scores and produces no negative-control or EC claims" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.032"/>
+  <testcase name="E-values remain bounded and zero is stronger than a tiny nonzero value [raw: 0.0, expected: 1.0, #0]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.004"/>
+  <testcase name="E-values remain bounded and zero is stronger than a tiny nonzero value [raw: 1e-40, expected: 1.0, #1]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="E-values remain bounded and zero is stronger than a tiny nonzero value [raw: 1e-10, expected: 0.5, #2]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="E-values remain bounded and zero is stronger than a tiny nonzero value [raw: 10, expected: 0.0, #3]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="profile scores and missing statistics do not become E-values [analysis: Hamap, raw: 47.316956, kind: profile_score, #0]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.003"/>
+  <testcase name="profile scores and missing statistics do not become E-values [analysis: ProSiteProfiles, raw: 6.0, kind: profile_score, #1]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="profile scores and missing statistics do not become E-values [analysis: ProSitePatterns, raw: -, kind: not_reported, #2]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="profile scores and missing statistics do not become E-values [analysis: future_method, raw: 20, kind: uninterpreted_score, #3]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: NaN, #0]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.002"/>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: Infinity, #1]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: -1, #2]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: garbage, #3]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.002"/>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: -, #4]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: , #5]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Hamap, raw: garbage, #6]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: ProSiteProfiles, raw: -Infinity, #7]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="member statistics and GO mappings survive on every annotation without inventing ECs" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.005"/>
+  <testcase name="a corrupt score after a valid row fails the batch with no partial success" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.007"/>
+  <system-out><![CDATA[21:39:27.896 [Test worker] INFO gspa.predictor.domain.InterProScoreContractSpec$Captured -- Running interproscan: interproscan.sh -i /home/leechuck/tmp/spock_a_corrupt_score_aft_0_tmp14930032652001744076/gspa_interproscan_1793126367895/input.faa -o /home/leechuck/tmp/spock_a_corrupt_score_aft_0_tmp14930032652001744076/gspa_interproscan_1793126367895/interproscan_results.tsv -f TSV -appl Pfam,TIGRFAM,CDD,SUPERFAMILY,SMART,ProSiteProfiles -cpu 4 -T /home/leechuck/tmp/spock_a_corrupt_score_aft_0_tmp14930032652001744076/gspa_interproscan_1793126367895/tmp -goterms -pa
+21:39:27.897 [Test worker] ERROR gspa.predictor.domain.InterProScoreContractSpec$Captured -- interproscan output rejected: interproscan line 2: invalid Pfam statistic 'garbage'
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

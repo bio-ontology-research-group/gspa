@@ -1,0 +1,201 @@
+[
+  {
+    "name": "annotate-4",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/q.faa",
+      "--config",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/config-4.json",
+      "--output",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/annotation-4",
+      "--claims-out",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/annotate-4.jsonl",
+      "--threads",
+      "2",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "import-4",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "dbcan-claims",
+      "--proteins",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/q.faa",
+      "--overview",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/native-4.tsv",
+      "--output",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/import-4.jsonl"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "integrate-4",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/import-4.jsonl",
+      "--out",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/integrated-4.tsv",
+      "--lite",
+      "--enable-priors",
+      "none"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "annotate-5",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/q.faa",
+      "--config",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/config-5.json",
+      "--output",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/annotation-5",
+      "--claims-out",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/annotate-5.jsonl",
+      "--threads",
+      "2",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "import-5",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "dbcan-claims",
+      "--proteins",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/q.faa",
+      "--overview",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/native-5.tsv",
+      "--output",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/import-5.jsonl"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "integrate-5",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/import-5.jsonl",
+      "--out",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/integrated-5.tsv",
+      "--lite",
+      "--enable-priors",
+      "none"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "empty-builtin-default",
+    "command": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "/home/leechuck/Public/software/gspa/benchmark/02b_parse_predictors_to_claims.py",
+      "--results-dir",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/empty-builtin-inputs",
+      "--goa",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/goa.gaf",
+      "--output",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/empty-builtin.jsonl"
+    ],
+    "exit_code": 1
+  },
+  {
+    "name": "empty-builtin-allowed",
+    "command": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "/home/leechuck/Public/software/gspa/benchmark/02b_parse_predictors_to_claims.py",
+      "--results-dir",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/empty-builtin-inputs",
+      "--goa",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/goa.gaf",
+      "--output",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/empty-builtin.jsonl",
+      "--allow-empty"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "nextflow",
+    "command": [
+      "/home/leechuck/bin/nextflow",
+      "-c",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/nextflow.config",
+      "run",
+      "/home/leechuck/Public/software/gspa/gspa-nf/main.nf",
+      "-work-dir",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/nf-work",
+      "-with-trace",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/trace.tsv",
+      "--input",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/q.fna",
+      "--dbcan_db",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/database",
+      "--gspa_jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "--goa",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/goa.gaf",
+      "--go_owl",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/go.owl",
+      "--ec2go",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/ec2go",
+      "--pathways",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/pathways.tsv",
+      "--outdir",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/nextflow-output"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "nextflow-missing-output",
+    "command": [
+      "/home/leechuck/bin/nextflow",
+      "-c",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/nextflow.config",
+      "run",
+      "/home/leechuck/Public/software/gspa/gspa-nf/main.nf",
+      "-work-dir",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/nf-missing-work",
+      "-with-trace",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/missing-trace.tsv",
+      "--input",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/q.fna",
+      "--dbcan_db",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/database",
+      "--gspa_jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "--goa",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/goa.gaf",
+      "--go_owl",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/go.owl",
+      "--ec2go",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/ec2go",
+      "--pathways",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/pathways.tsv",
+      "--outdir",
+      "/home/leechuck/tmp/dbcan-clean-disabled-route/missing-output"
+    ],
+    "exit_code": 1
+  }
+]

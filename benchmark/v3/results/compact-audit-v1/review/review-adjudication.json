@@ -1,0 +1,18 @@
+{
+  "reviewer": "Claude Sonnet 5.5 (read only)",
+  "accepted": [
+    "Byte narrowing compile issue fixed with explicit result casts; initial failure retained as job10273.",
+    "Reverse NaN, infinity, exact tolerance, signed zero, null and changed/unchanged malformed identity tests.",
+    "Read-only List and record mutation reject explicitly; index checks tested.",
+    "Actual production write/report path tested by full TopEC pilot comparison, pending10275.",
+    "Controlled 1M-record actual helper retention measurement and complete9.79M-candidate parity planned."
+  ],
+  "qualified": [
+    "NaN direction is preserved according to dynamic legacy oracle, not changed to a new unboxing rule; new edge tests pass focused gate.",
+    "Records now explicitly read-only; review found no mutating/identity-dependent consumers.",
+    "Malformed changed key remains eager NPE but now has explicit message. No claim of exact malformed-error text preservation.",
+    "25 bytes per changed row with 8-byte references includes the key reference, not 25 plus reference; source strings shared.",
+    "Buffered or scratch publication is not implemented: thread dump observed TSV close, not evidence that Jackson buffer is sole cause.",
+    "Allocation samples are not retained object measurements."
+  ]
+}

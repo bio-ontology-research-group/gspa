@@ -9,11 +9,16 @@ import gspa.predictor.ToolOutputContractException
  * InterProScan domain annotation predictor.
  * Runs InterProScan to identify protein domains and report InterPro-curated GO terms
  * via domain signatures from Pfam, TIGRFAM, CDD, SUPERFAMILY, etc.
- *
- * InterProScan is the most reliable automated annotation method
- * according to the evaluation paper.
  */
 class InterProScanPredictor extends AbstractToolPredictor {
+
+    // InterProScan 5's TSV writer emits E-values for HMM/BLAST/PRINTS methods,
+    // profile scores for HAMAP/ProSiteProfiles, and '-' for unscored methods.
+    // These statistics are not comparable calibrated probabilities.
+    private static final Set<String> EVALUE_ANALYSES = [
+        'pfam', 'tigrfam', 'ncbifam', 'cdd', 'superfamily', 'smart', 'panther',
+        'gene3d', 'funfam', 'prints', 'pirsf', 'sfld', 'prodom', 'antifam'] as Set
+    private static final Set<String> PROFILE_ANALYSES = ['hamap', 'prositeprofiles'] as Set
 
     /** InterProScan applications to run */
     List<String> applications = ['Pfam', 'TIGRFAM', 'CDD', 'SUPERFAMILY', 'SMART', 'ProSiteProfiles']
@@ -82,7 +87,7 @@ class InterProScanPredictor extends AbstractToolPredictor {
         outputFile.eachLine { line ->
             lineNo++
             if (line.trim().isEmpty()) return
-            def fields = line.split('\t')
+            def fields = line.split('\t', -1)
             if (fields.length < 11) {
                 throw new ToolOutputContractException(
                     "interproscan line ${lineNo}: ${fields.length} columns, the TSV schema has at least 11")
@@ -96,7 +101,7 @@ class InterProScanPredictor extends AbstractToolPredictor {
             String signatureDesc = fields[5]
             // fields[6] = start
             // fields[7] = stop
-            double evalue = safeDouble(fields[8])
+            Map statistic = parseStatistic(analysis, fields[8], lineNo)
             // fields[9] = status (T/?)
             // fields[10] = date
             // InterProScan writes '-' for "no value" in the optional columns
@@ -104,7 +109,11 @@ class InterProScanPredictor extends AbstractToolPredictor {
             String iprDesc = unset(fields, 12)      // InterPro desc
             String goTerms = unset(fields, 13)      // GO terms, e.g. GO:0005524(InterPro)|GO:0016887(PANTHER)
 
-            double score = evalue > 0 ? Math.min(1.0, -Math.log10(evalue) / 20.0) : 0.9
+            double score = statistic.score as double
+            Map provenance = [analysis: analysis, via: signatureId,
+                rawStatistic: fields[8], statisticValue: statistic.value,
+                statisticType: statistic.type, scoreModel: statistic.model,
+                scoreCalibrated: false]
 
             // Domain annotation
             AnnotationType domainType = mapAnalysisToType(analysis)
@@ -112,7 +121,7 @@ class InterProScanPredictor extends AbstractToolPredictor {
                 results[proteinId] << new Annotation(
                     type: domainType, value: signatureId,
                     source: name, score: score,
-                    metadata: [
+                    metadata: provenance + [
                         analysis: analysis,
                         description: signatureDesc,
                         interpro: iprId,
@@ -126,7 +135,7 @@ class InterProScanPredictor extends AbstractToolPredictor {
                 results[proteinId] << new Annotation(
                     type: AnnotationType.INTERPRO, value: iprId,
                     source: name, score: score,
-                    metadata: [description: iprDesc]
+                    metadata: provenance + [description: iprDesc]
                 )
             }
 
@@ -139,7 +148,7 @@ class InterProScanPredictor extends AbstractToolPredictor {
                             type: AnnotationType.GO, value: goTerm,
                             source: name, score: score,
                             evidence: 'IEA',
-                            metadata: [via: signatureId, analysis: analysis]
+                            metadata: new LinkedHashMap(provenance)
                         )
                     }
                 }
@@ -163,7 +172,31 @@ class InterProScanPredictor extends AbstractToolPredictor {
         v == '-' ? '' : v
     }
 
-    protected static double safeDouble(String s) {
-        try { return s as double } catch (Exception e) { return 0.0 }
+    protected static Map parseStatistic(String analysis, String raw, int lineNo) {
+        String method = analysis.toLowerCase(Locale.ROOT)
+        boolean evalue = EVALUE_ANALYSES.contains(method)
+        if (raw == '-' && !evalue) {
+            return [value: null, type: 'not_reported', score: 0.9d, model: 'legacy_match_only_0.9']
+        }
+        double value
+        try {
+            value = Double.parseDouble(raw)
+        } catch (NumberFormatException error) {
+            throw new ToolOutputContractException("interproscan line ${lineNo}: invalid ${analysis} statistic '${raw}'")
+        }
+        if (!Double.isFinite(value) || (evalue && value < 0d)) {
+            throw new ToolOutputContractException("interproscan line ${lineNo}: invalid ${analysis} statistic '${raw}'")
+        }
+        if (evalue) {
+            return [value: value, type: 'evalue',
+                score: value == 0d ? 1d : Math.max(0d, Math.min(1d, -Math.log10(value) / 20d)),
+                model: 'legacy_neg_log10_evalue_over_20']
+        }
+        // Preserve the existing match-only fallback for methods without an
+        // E-value transform. A larger profile score must not become negative
+        // confidence. Keep the raw value and label the heuristic explicitly;
+        // it still requires independent per-method calibration.
+        [value: value, type: PROFILE_ANALYSES.contains(method) ? 'profile_score' : 'uninterpreted_score',
+         score: 0.9d, model: 'legacy_match_only_0.9']
     }
 }

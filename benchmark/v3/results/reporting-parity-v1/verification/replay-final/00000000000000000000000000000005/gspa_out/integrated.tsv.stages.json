@@ -1,0 +1,246 @@
+{
+  "schema_version" : 2,
+  "genome_id" : "genome",
+  "interpretation" : "Prediction changes are not measurements of accuracy.",
+  "scoring_mode" : "legacy_heuristic",
+  "scoring_mode_note" : "Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores.",
+  "baseline_definitions" : {
+    "stage0_raw_max_score" : "Stage 0: strongest raw predictor score per function; no priors, no combination, no posterior.",
+    "legacy_prior_baseline" : "Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The baseline_candidates and final_changes of this ledger are measured from it."
+  },
+  "changes_measured_from" : "legacy_prior_baseline",
+  "stages" : [ {
+    "name" : "reference_preparation",
+    "status" : "executed",
+    "changes" : [ ],
+    "metabolic_gap_records" : 0,
+    "metabolic_gap_context_available" : false,
+    "ec_to_go_mapping_available" : false,
+    "mapped_ec_count" : 0,
+    "elapsed_seconds" : 0.720718274
+  }, {
+    "name" : "cohort_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "evidence_integration",
+    "status" : "executed",
+    "changes" : [ {
+      "function_key" : "pE|EC|EC:2.3.3.3",
+      "protein_id" : "pE",
+      "function_type" : "EC",
+      "function_id" : "EC:2.3.3.3",
+      "change" : "added",
+      "before_probability" : null,
+      "after_probability" : 0.41999999999999993
+    } ],
+    "input_candidates" : 0,
+    "output_candidates" : 1,
+    "suggestions" : 0,
+    "elapsed_seconds" : 0.067134484
+  }, {
+    "name" : "dark_matter",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "reaction_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "cross_genome",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "symbolic_enforcement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_refinement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "agent_completion",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_experiments",
+    "status" : "executed",
+    "changes" : [ ],
+    "mode" : "manifest",
+    "strategy" : "fixed",
+    "seed" : 0,
+    "model_file" : "/home/leechuck/.cache/gspa-v3-data/absence-mechanism-v1/models/toy.xml",
+    "model_sha256" : "f839af7351751ade13066199f997a7f42561541740c6031c7d695f82b06629f7",
+    "max_experiments" : 3,
+    "max_solver_calls" : 24,
+    "context_source" : "explicit_absence_scenarios",
+    "context" : {
+      "context_source" : "explicit_absence_scenarios",
+      "reaction" : "VITS",
+      "candidate_function_key" : "pE|EC|EC:2.3.3.3",
+      "metadata_source" : "user_manifest",
+      "candidate_sources" : [ {
+        "source" : "diamond",
+        "evidence_type" : "SEQUENCE_SIMILARITY",
+        "raw_score" : 0.6
+      } ],
+      "mapping_sources" : [ "reactions_tsv" ],
+      "alternative_reactions" : [ ]
+    },
+    "model_origin" : "refiner export with reactions.tsv (gene rules inferred from this run's EC evidence)",
+    "analysis_type" : "absence_comparison",
+    "problem_sha256" : "b1602a8f48890bf28ee6dedb3563e96a3d19e1e22619d61eda5ceba3c0dfd8c8",
+    "solver_calls_used" : 24,
+    "solver_calls_max" : 24,
+    "outcome" : "completed",
+    "conditions_visited" : [ "control", "withdrawal", "transport_ko" ],
+    "conditions_unvisited" : [ ],
+    "comparisons" : [ {
+      "hypotheses" : [ "missing_annotation", "missing_sequence" ],
+      "comparable_phenotypes" : 6,
+      "status" : "distinguishable_under_assumptions",
+      "distinguishing_interventions" : [ {
+        "condition_id" : "control",
+        "perturbation" : "candidate_assignment_knockout"
+      }, {
+        "condition_id" : "withdrawal",
+        "perturbation" : "candidate_assignment_knockout"
+      }, {
+        "condition_id" : "transport_ko",
+        "perturbation" : "candidate_assignment_knockout"
+      } ]
+    }, {
+      "hypotheses" : [ "missing_annotation", "pathway_loss" ],
+      "comparable_phenotypes" : 6,
+      "status" : "distinguishable_under_assumptions",
+      "distinguishing_interventions" : [ {
+        "condition_id" : "control",
+        "perturbation" : "wild_type"
+      }, {
+        "condition_id" : "withdrawal",
+        "perturbation" : "wild_type"
+      }, {
+        "condition_id" : "transport_ko",
+        "perturbation" : "wild_type"
+      } ]
+    }, {
+      "hypotheses" : [ "missing_annotation", "external_supply" ],
+      "comparable_phenotypes" : 6,
+      "status" : "distinguishable_under_assumptions",
+      "distinguishing_interventions" : [ {
+        "condition_id" : "control",
+        "perturbation" : "candidate_assignment_knockout"
+      }, {
+        "condition_id" : "withdrawal",
+        "perturbation" : "wild_type"
+      }, {
+        "condition_id" : "transport_ko",
+        "perturbation" : "wild_type"
+      } ]
+    }, {
+      "hypotheses" : [ "missing_sequence", "pathway_loss" ],
+      "comparable_phenotypes" : 6,
+      "status" : "distinguishable_under_assumptions",
+      "distinguishing_interventions" : [ {
+        "condition_id" : "control",
+        "perturbation" : "wild_type"
+      }, {
+        "condition_id" : "control",
+        "perturbation" : "candidate_assignment_knockout"
+      }, {
+        "condition_id" : "withdrawal",
+        "perturbation" : "wild_type"
+      }, {
+        "condition_id" : "withdrawal",
+        "perturbation" : "candidate_assignment_knockout"
+      }, {
+        "condition_id" : "transport_ko",
+        "perturbation" : "wild_type"
+      }, {
+        "condition_id" : "transport_ko",
+        "perturbation" : "candidate_assignment_knockout"
+      } ]
+    }, {
+      "hypotheses" : [ "missing_sequence", "external_supply" ],
+      "comparable_phenotypes" : 6,
+      "status" : "distinguishable_under_assumptions",
+      "distinguishing_interventions" : [ {
+        "condition_id" : "withdrawal",
+        "perturbation" : "wild_type"
+      }, {
+        "condition_id" : "withdrawal",
+        "perturbation" : "candidate_assignment_knockout"
+      }, {
+        "condition_id" : "transport_ko",
+        "perturbation" : "wild_type"
+      }, {
+        "condition_id" : "transport_ko",
+        "perturbation" : "candidate_assignment_knockout"
+      } ]
+    }, {
+      "hypotheses" : [ "pathway_loss", "external_supply" ],
+      "comparable_phenotypes" : 6,
+      "status" : "distinguishable_under_assumptions",
+      "distinguishing_interventions" : [ {
+        "condition_id" : "control",
+        "perturbation" : "wild_type"
+      }, {
+        "condition_id" : "control",
+        "perturbation" : "candidate_assignment_knockout"
+      } ]
+    } ],
+    "assembly" : {
+      "status" : "UNKNOWN",
+      "completeness_fraction" : null,
+      "source" : "synthetic closed genome"
+    },
+    "function_search" : {
+      "status" : "UNKNOWN",
+      "source" : "synthetic function search"
+    },
+    "gene_attribution" : "unverified",
+    "selected_explanation" : null,
+    "candidates_with_conditional_features" : 0,
+    "promotion" : "none",
+    "seconds" : 0.409,
+    "result_file" : "/home/leechuck/.cache/gspa-v3-data/absence-mechanism-v1/unknown.tsv.experiments/result.json",
+    "result_sha256" : "d42172b1bb9f432b9d33e1a3cc24f1ceac3dd3fd3fa0418973c1ace424b79076",
+    "interpretation" : "Four explicit reaction-level scenarios with separate candidate-assignment interventions. Growth is conditional on model and environmental assumptions; no explanation or gene assignment is verified.",
+    "elapsed_seconds" : 0.597503542
+  }, {
+    "name" : "community_metabolism",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "learned_integration",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them"
+  }, {
+    "name" : "feature_export",
+    "status" : "executed",
+    "changes" : [ ],
+    "rows" : 1,
+    "functions" : 1,
+    "rows_with_sequence_evidence" : 1,
+    "rows_sha256" : "9217b08d2b3c1ac0d590ab0df4b7c04640974c3eee68c6be7ea5ecf75835796e",
+    "contract_id" : "gspa.context-features/3",
+    "contract_fingerprint" : "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+    "model_sha256" : null,
+    "labels_included" : false,
+    "directory" : "/home/leechuck/.cache/gspa-v3-data/absence-mechanism-v1/unknown.features",
+    "note" : "Rows carry no label, split or group; join independently curated truth and declared splits by candidate_key.",
+    "elapsed_seconds" : 0.134791181
+  } ],
+  "baseline_candidates" : 1,
+  "final_candidates" : 1,
+  "final_changes" : [ ]
+}

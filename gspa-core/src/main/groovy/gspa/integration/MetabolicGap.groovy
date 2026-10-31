@@ -5,9 +5,9 @@ import groovy.transform.builder.Builder
 import groovy.transform.builder.SimpleStrategy
 
 /**
- * A metabolic gap identified by gapseq: a reaction required by the
- * organism's reconstructed metabolic network that is not covered by any
- * current annotation.
+ * A candidate metabolic gap supplied by the caller or inferred from a completed
+ * pathway search. Missing search support does not establish biological absence
+ * or that the organism requires this reaction.
  *
  * Populated by the caller (typically the AnnotationPipeline after running
  * {@code GapseqPredictor}) and handed to {@link IntegrationState} for use
@@ -22,10 +22,10 @@ class MetabolicGap {
     /** Reaction ID in the pathway / reconstruction. */
     String reactionId
 
-    /** EC number for the missing reaction, if known. */
+    /** EC number for the candidate gap, if known. */
     String ecNumber
 
-    /** GO term for the missing function (resolved via ec2go). */
+    /** GO term for the candidate function (resolved via ec2go). */
     String goTerm
 
     /**

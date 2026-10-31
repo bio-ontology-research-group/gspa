@@ -51,6 +51,29 @@ class PathwayLoader {
         mapping
     }
 
+    /** Preserve every EC-to-GO alternative, unlike a single-value pathway lookup. */
+    static Map<String, List<String>> loadEc2GoAlternatives(File file) {
+        Map<String, List<String>> result = [:]
+        if (file == null) return result.asImmutable()
+        file.eachLine('UTF-8') { String line ->
+            if (!line.trim() || line.startsWith('!') || line.startsWith('#')) return
+            def standard = line =~ /^(EC:\S+)\s*>\s*GO:[^;]+;\s*(GO:\d{7})/
+            String ec, go
+            if (standard.find()) { ec = standard.group(1).substring(3); go = standard.group(2) }
+            else {
+                String[] fields = line.trim().split('\t')
+                if (fields.length < 2 || !(fields[1].trim() ==~ /GO:\d{7}/)) return
+                ec = fields[0].trim().replaceFirst(/^EC:/, ''); go = fields[1].trim()
+            }
+            List<String> terms = result.computeIfAbsent(ec) { [] }
+            if (!terms.contains(go)) terms << go
+        }
+        Map<String, List<String>> ordered = [:]
+        result.keySet().sort().each { String ec -> ordered[ec] = result[ec].sort(false).asImmutable() }
+        ordered.asImmutable()
+    }
+
+
     /**
      * Load pathway definitions from a TSV file.
      * Format: pathway_id\tpathway_name\tgo_term\treaction_id\tec_number\tdepends_on_reaction

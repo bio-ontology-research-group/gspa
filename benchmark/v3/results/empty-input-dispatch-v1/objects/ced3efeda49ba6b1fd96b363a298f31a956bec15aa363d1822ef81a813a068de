@@ -1,0 +1,41 @@
+{
+  "full_gate": {
+    "tests": 1363,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 6
+  },
+  "suites": 145,
+  "before_failures": [
+    {
+      "name": "nucleotide tools still scan a genome without proteins while protein tools explicitly skip",
+      "type": "org.spockframework.runtime.SpockComparisonFailure",
+      "message": "genomic.calls == 1"
+    },
+    {
+      "name": "missing protein executable remains unavailable rather than being called on empty input",
+      "type": "org.spockframework.runtime.SpockComparisonFailure",
+      "message": "p.runStatuses*.outcome == [PredictorOutcome.UNAVAILABLE]"
+    },
+    {
+      "name": "zero gene-caller output does not suppress independent nucleotide tools",
+      "type": "org.spockframework.runtime.SpockComparisonFailure",
+      "message": "genomic.calls == 1"
+    },
+    {
+      "name": "a new empty input cannot retain old claims or integration results",
+      "type": "org.spockframework.runtime.SpockComparisonFailure",
+      "message": "p.rawClaims == []"
+    },
+    {
+      "name": "a rejected input also clears state from the previous genome",
+      "type": "org.spockframework.runtime.SpockComparisonFailure",
+      "message": "p.rawClaims == null"
+    },
+    {
+      "name": "protein input still executes protein predictors and resets disabled integration state",
+      "type": "org.spockframework.runtime.SpockComparisonFailure",
+      "message": "p.lastIntegration == null"
+    }
+  ]
+}

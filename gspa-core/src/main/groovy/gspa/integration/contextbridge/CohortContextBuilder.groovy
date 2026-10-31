@@ -32,8 +32,8 @@ import gspa.ontology.ReactionGraph
  *
  * <p><b>Honest absence.</b> Unknown clade/strain/assembly metadata is read as unknown by the engine (one
  * unresolved block, adjusted outputs withheld); nothing here invents a clade, a probability or a family
- * absence. A genome with no peers gets no cohort entry at all, so the learned model sees "cohort
- * unavailable", not "recurrence negative".</p>
+ * absence. A genome with no peers gets a localOnly entry: available within-genome and intrinsic
+ * features survive, but all peer statistics remain unavailable, not recurrence-negative.</p>
  */
 class CohortContextBuilder {
 
@@ -56,6 +56,7 @@ class CohortContextBuilder {
         CohortMetadata metadata
         ReactionGraph graph
         List<CohortInput.InteractionEdge> edges = []
+        List<CohortInput.PathwayGroup> pathwayGroups = null
         Map<String, ReactionDirection> directions = [:]
         List<CohortInput.RoleEvidence> roleEvidence = []
     }
@@ -152,6 +153,7 @@ class CohortContextBuilder {
         }
         settings.roleEvidence.each { input.addRoleEvidence(it) }
         settings.edges.each { input.addEdge(it) }
+        input.pathwayGroups = settings.pathwayGroups
         settings.directions.each { String r, ReactionDirection d -> input.reactionDirections.put(r, d) }
 
         settings.config.includeAggregates = false
@@ -204,7 +206,7 @@ class CohortContextBuilder {
                                      Settings settings, Result out) {
         ExternalContext ctx = new ExternalContext()
         List<Map> ambiguities = []
-        int bridged = 0, noPeers = 0, familyUnknown = 0, ambiguousKeys = 0
+        int bridged = 0, cohortKeys = 0, localKeys = 0, noPeers = 0, familyUnknown = 0, ambiguousKeys = 0
         List<String> heldOut = null
         Number nPeers = null
         m.baseline.functionKeys.each { String protEc, Set<String> keys ->
@@ -218,28 +220,34 @@ class CohortContextBuilder {
                 nPeers = recs[0].provenance.get('nPeerGenomes') as Number
             }
             // No independent peer genome (also: every other genome shares this genome's unresolved metadata block).
-            if (recs.any { it.features.get('cohort_no_peers') == 1d } || (nPeers != null && nPeers.intValue() == 0)) {
+            boolean localOnly = recs.any { it.features.get('cohort_no_peers') == 1d } || (nPeers != null && nPeers.intValue() == 0)
+            if (localOnly) {
                 noPeers += keys.size()
-                return
             }
+            String rankFeature = localOnly ? 'local_anchor_weight' : 'cohort_support_fraction'
             CohortResult.FeatureRecord rep = recs.sort(false) { CohortResult.FeatureRecord a, CohortResult.FeatureRecord b ->
-                int c = Double.compare(b.features.get('cohort_support_fraction') ?: -1d, a.features.get('cohort_support_fraction') ?: -1d)
+                int c = Double.compare(b.features.get(rankFeature) ?: -1d, a.features.get(rankFeature) ?: -1d)
                 c != 0 ? c : (a.reactionId <=> b.reactionId)
             }.first()
-            ExternalContext.Cohort co = new ExternalContext.Cohort(reactionId: rep.reactionId, weighted: weighted(rep))
+            ExternalContext.Cohort co = new ExternalContext.Cohort(reactionId: rep.reactionId, weighted: weighted(rep, localOnly), localOnly: localOnly,
+                contextMode: settings.config.contextMode)
             recs.findAll { !it.is(rep) }.sort { it.reactionId }.each { CohortResult.FeatureRecord r ->
                 co.reactionAlternatives << new ExternalContext.ReactionAlternative(reactionId: r.reactionId,
-                    supportFraction: r.features.get('cohort_support_fraction'), effectiveN: r.features.get('cohort_effective_n'))
+                    supportFraction: localOnly ? null : r.features.get('cohort_support_fraction'),
+                    effectiveN: localOnly ? null : r.features.get('cohort_effective_n'))
             }
             if (!rep.features.containsKey('cohort_n_peer_genomes')) familyUnknown += keys.size()
             keys.each { String key ->
                 ctx.cohort.put(key, co)
                 bridged++
+                if (!localOnly) cohortKeys++
+                if (co.weighted.localAnchorCount != null) localKeys++
                 if (!co.reactionAlternatives.isEmpty()) {
                     ambiguousKeys++
                     if (ambiguities.size() < 128) {
                         ambiguities << [function_key: key, representative_reaction: rep.reactionId,
-                                        representative_rule: 'highest weighted support fraction, then reaction id',
+                                        representative_rule: localOnly ? 'highest local anchor weight, then reaction id (no independent peers)' :
+                                            'highest weighted support fraction, then reaction id',
                                         alternatives: co.reactionAlternatives.collect {
                                             [reaction_id: it.reactionId, support_fraction: it.supportFraction, effective_n: it.effectiveN] }]
                     }
@@ -263,22 +271,23 @@ class CohortContextBuilder {
                                         genomes_without_metadata: withoutMetadata,
                                         phylogeny_supplied: meta?.hasPhylogeny() ?: false,
                                         note: 'Genomes without metadata are read as unknown: one unresolved block, never independent; adjusted intervals and permutation p are withheld when no peer has a resolved clade.'],
-            candidates               : counts + [keys_with_cohort_features: bridged, keys_without_peers: noPeers,
+            candidates               : counts + [keys_with_cohort_features: cohortKeys, keys_with_local_features: localKeys,
+                                                 keys_with_context: bridged, keys_without_peers: noPeers,
                                                  keys_with_unknown_family: familyUnknown, keys_with_reaction_alternatives: ambiguousKeys],
-            no_peers                 : bridged == 0 && noPeers > 0,
+            no_peers                 : cohortKeys == 0 && noPeers > 0,
             reaction_ambiguity       : ambiguities,
             orthogroup_input         : m.orthogroupNotes,
             unplaced_proteins        : unplacedReport(m, (meta?.genomes?.get(m.genomeId)?.unplacedProteins ?: []) as Set<String>),
-            interpretation           : 'Features for the learned stage, not evidence that a function is correct. A genome without peers has no cohort features (unavailable, not negative). Complementary-unannotated is an unsupported label, never evidence of loss.',
+            interpretation           : 'Features for the learned stage, not evidence that a function is correct. A genome without peers retains available local/intrinsic features, with recurrence unavailable (not negative). Complementary-unannotated is an unsupported label, never evidence of loss.',
         ] as Map<String, Object>)
     }
 
     private static Double f(CohortResult.FeatureRecord r, String key) { r.features.get(key) }
 
     /** Typed copy of one record's weighted features; unavailable values stay null. */
-    static ExternalContext.Weighted weighted(CohortResult.FeatureRecord r) {
+    static ExternalContext.Weighted weighted(CohortResult.FeatureRecord r, boolean localOnly = false) {
         def w = new ExternalContext.Weighted()
-        boolean peers = r.features.containsKey('cohort_n_peer_genomes')
+        boolean peers = !localOnly && r.features.containsKey('cohort_n_peer_genomes')
         if (peers) {
             w.effectiveN = f(r, 'cohort_effective_n')
             w.insufficientPeers = f(r, 'cohort_insufficient_peers') == 1d
@@ -319,6 +328,10 @@ class CohortContextBuilder {
         }
         if (f(r, 'local_layout_missing') == 0d) {
             w.layoutAvailable = true
+        }
+        // Measured layout and raw zero anchor counts do not make an absent
+        // or structurally insufficient expected signature testable.
+        if (w.layoutAvailable && f(r, 'signature_testable') == 1d) {
             w.localAnchorWeight = f(r, 'local_anchor_weight')
             w.localAnchorCount = f(r, 'local_anchor_count')
             w.localAnchorCurated = f(r, 'local_anchor_curated')

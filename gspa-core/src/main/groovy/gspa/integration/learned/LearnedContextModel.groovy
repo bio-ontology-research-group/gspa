@@ -44,6 +44,7 @@ class LearnedContextModel {
     LocusLayer locus         // null when the artifact has no trained locus layer
     String locusUnavailableReason
     Map training
+    ModelInputSupport inputSupport
 
     static class Tree {
         int[] feature
@@ -74,6 +75,7 @@ class LearnedContextModel {
         this.intendedUse = a.intended_use as String
         this.kind = a.kind as String
         this.training = (a.training ?: [:]) as Map
+        this.inputSupport = new ModelInputSupport(a.input_support as Map, contract)
         def cal = a.calibration as Map
         if (cal?.method != 'platt') throw new ModelUnavailableException("unsupported calibration ${cal?.method}")
         calibA = num(cal.a, 'calibration.a')
@@ -228,12 +230,30 @@ class LearnedContextModel {
         z
     }
 
-    double probability(double[] x) { sigmoid(calibA * margin(x) + calibB) }
+    String unsupportedReason(double[] x, List<String> sources = null, String contextMode = 'UNIVERSAL', List<Map> contracts = null) {
+        if (x.length != contract.size() || x.any { !Double.isFinite(it) }) {
+            throw new IllegalArgumentException('invalid feature vector')
+        }
+        isProduction() ? inputSupport.unsupportedReason(x, sources, contextMode, contracts) : null
+    }
+
+    String unsupportedReason(CandidateFeatures f) {
+        f.requireFinite()
+        f.qualityEvidence ? gspa.integration.GeneModelQuality.UNSUPPORTED_REASON : unsupportedReason(f.values, f.sequenceSources, f.cohortContextMode.name(), f.sequenceContracts)
+    }
+
+    double probability(double[] x, List<String> sources = null, String contextMode = 'UNIVERSAL', List<Map> contracts = null) {
+        String reason = unsupportedReason(x, sources, contextMode, contracts)
+        if (reason) throw new IllegalArgumentException('unsupported learned probability: ' + reason)
+        sigmoid(calibA * margin(x) + calibB)
+    }
 
     CandidateScore score(CandidateFeatures f) {
         if (f.contract.fingerprint() != contract.fingerprint()) {
             throw new IllegalArgumentException('candidate features were built against a different contract')
         }
+        String reason = unsupportedReason(f)
+        if (reason) throw new IllegalArgumentException('unsupported learned probability: ' + reason)
         double m = margin(f.values)
         new CandidateScore(f, m, sigmoid(calibA * m + calibB), displayThreshold, modelId)
     }

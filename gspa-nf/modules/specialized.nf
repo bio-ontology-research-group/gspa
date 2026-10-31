@@ -63,19 +63,25 @@ process ANTISMASH {
     path antismash_db
 
     output:
-    tuple val(sample_id), path("antismash_out/${sample_id}.json"), emit: results
+    tuple val(sample_id), path("${sample_id}_antismash.json"), emit: results
 
     script:
+    if (!(params.antismash_strictness in ['strict', 'relaxed', 'loose']))
+        error "antismash_strictness must be strict, relaxed or loose"
     """
     antismash \\
         ${fasta} \\
         --output-dir antismash_out \\
         --databases ${antismash_db} \\
         --cpus ${task.cpus} \\
+        --hmmdetection-strictness ${params.antismash_strictness} \\
         --minimal \\
         --genefinding-tool prodigal
-    # Rename output to include sample_id
-    mv antismash_out/*.json antismash_out/${sample_id}.json 2>/dev/null || true
+    # Exactly one native result is required; missing/ambiguous output must fail.
+    results=(antismash_out/*.json)
+    test "\${#results[@]}" -eq 1
+    test -f "\${results[0]}"
+    cp "\${results[0]}" ${sample_id}_antismash.json
     """
 }
 

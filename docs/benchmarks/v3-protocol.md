@@ -71,9 +71,36 @@ Required of every manifest author and recorded only as `declared_controls`: (a) 
 ## Execution integrity
 
 * Before an arm runs, its previous outputs, batch manifest, logs and run record are deleted. If the engine exits non-zero, any outputs it wrote are deleted too: a failed attempt is never scored.
-* Each arm writes `run_record.json` (exit code, exact launch argv, output hashes, hashes of the claims it consumed). `evaluate` reuses an output only if the recorded run exited 0, the output still has its recorded hash and the claims are unchanged; otherwise the cell is `failed` with the reason (`no run record`, `modified`, `claims changed`).
+* Each arm writes `run_record.json` with exit code, exact launch argv, output/sidecar hashes and an inference identity captured before launch. The identity covers launcher/interpreted script/JAR, declared reference/model files, auxiliary inputs, batch genome context, arguments, working directory and runner source. It is checked again after execution. `evaluate` requires the same identity and unchanged outputs; legacy records without it cannot certify a result.
+* A schema-2 stage ledger must match the genome and show executed reference preparation and evidence integration. Requested reaction, cohort and learned stages must also have executed. Missing, failed or skipped required stages fail the benchmark cell even with process exit code zero. A requested stage with no eligible work is a legitimate production skip, but provides no evidence for that stage's ablation. Ledgers and emitted sidecars are hashed and rechecked on reuse.
+* `gspa.input_files` can list additional files or directories consumed indirectly by a wrapper or nested manifest; declare every such dependency. Directory contents are hashed recursively. Undeclared files, interpreter packages and remote services are outside this receipt's guarantees. Record/freeze their versions separately; a receipt does not prove label independence or biological validity.
 * An integrated TSV that is truncated, has non-numeric scores, or scores outside [0, 1] fails its cell (`unparseable output`) instead of being skipped line by line.
-* `report.json` `engine` records the launch argv, the resolved launcher and its hash, the hash of the jar named by `-jar` (a `binary` that disagrees with it is rejected), the `java -version` output, and the git revision and dirty flag. For a Gradle launch the identity is the source revision; compiled classes are not hashed. A launcher that identifies no engine content (e.g. a wrapper script) is flagged with a `warning`.
+* `report.json` `engine` records the launch argv, the resolved launcher and its hash, the hash of the jar named by `-jar` (a `binary` that disagrees with it is rejected), the `java -version` output, and the git revision and dirty flag. For a Gradle launch, the run receipt also hashes build configuration, wrapper files and production sources/resources; compiled classes and resolved external dependencies are not hashed. A launcher that identifies no engine content (e.g. a wrapper script) is flagged with a `warning`.
+
+## Ledger-verification runtime
+
+Both Python benchmark entry points use `benchmark/v3/stage_ledger.py`. Copy that
+module with the runner and metrics sources when preparing a standalone job.
+Install the streaming dependency in the benchmark environment before processing
+large ledgers:
+
+```bash
+python -m pip install -r benchmark/v3/requirements-streaming.txt
+```
+
+The pinned ijson parser validates the entire ledger without retaining per-candidate
+changes. The dependency-free fallback is restricted to 8 MiB ledgers and applies
+the same metadata checks. Larger files fail explicitly without the dependency.
+Runner receipts bind the shared verifier, parser version/backend, package sources
+and bundled native library. System-linked native libraries and Python runtime
+versions still require the environment record; this is not a full system-image
+attestation. The tested environment uses the bundled `yajl2_c` wheel.
+
+The stronger code/parser identity deliberately invalidates older receipts. Do not
+call `run_batch` on a frozen historical run merely to audit it: that method can
+archive the old outputs and rerun inference. Use read-only `output_hashes` or
+`stage_artifacts`, retain the historical receipt, and write a separate audit.
+See the [shared-ledger validation record](v3-generic-ledger.md).
 
 ## Metrics (`v3_metrics.py`)
 

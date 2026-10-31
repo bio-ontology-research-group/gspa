@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.cli.FeatureExportTrainerSpec" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-28T04:11:14" hostname="node004" time="0.982">
+  <properties/>
+  <testcase name="rows exported from the production route are readable by the trainer, bit-exact, and carry no labels" classname="gspa.cli.FeatureExportTrainerSpec" time="0.982"/>
+  <system-out><![CDATA[GSPA integrate --batch-manifest /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/batch.tsv (threads=8)
+  Loaded 3 batch tasks from /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/batch.tsv
+07:11:14.974 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+07:11:15.010 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Cohort: 3 genomes (3 targets, 0 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:12a43e9f21cbfd6171d73c11; contexts for 3 of 3 target genomes
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g1.integrated.tsv
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g2.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g2.integrated.tsv
+  Loaded 4 claims
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g3.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g3.integrated.tsv
+  Loaded 4 claims
+  Loaded 4 claims
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Genome layout: 8 loci across 1 contig(s)
+  Genome layout: 8 loci across 1 contig(s)
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+07:11:15.115 [pool-6-thread-3] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+  Orthogroups: 3 protein assignments
+07:11:15.115 [pool-6-thread-2] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+  Genome layout: 8 loci across 1 contig(s)
+07:11:15.116 [pool-6-thread-3] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:15.117 [pool-6-thread-1] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+07:11:15.118 [pool-6-thread-1] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:15.119 [pool-6-thread-1] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+07:11:15.119 [pool-6-thread-3] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Produced 4 integrated annotations
+07:11:15.121 [pool-6-thread-2] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+07:11:15.121 [pool-6-thread-2] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/export/g2
+  Wrote: /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g2.integrated.tsv
+  Cohort context report: /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g2.integrated.tsv.cohort.json
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/export/g1
+  Wrote: /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g1.integrated.tsv
+  Cohort context report: /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g1.integrated.tsv.cohort.json
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/export/g3
+  Wrote: /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g3.integrated.tsv
+  Cohort context report: /home/leechuck/tmp/spock_rows_exported_from__0_dir252641428006463823/g3.integrated.tsv.cohort.json
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

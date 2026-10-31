@@ -1,0 +1,26 @@
+{
+  "review_model": "claude-sonnet-5-5",
+  "findings": [
+    {
+      "finding": "benchmark monkeypatch signature breaks new caller",
+      "disposition": "fixed optional manifest/cfg wrapper parameters, preserved frozen prompt; all26 planner benchmark tests pass within67-test gate"
+    },
+    {
+      "finding": "assertions in chat callback can be caught as endpoint failures",
+      "disposition": "new regression assertions moved outside callback; exact request count and no invalid/fallback required"
+    },
+    {
+      "finding": "prompt-building errors labelled endpoint errors",
+      "disposition": "prompt creation/hash/schema extraction before endpoint try; regression verifies no request and propagated error"
+    },
+    {
+      "finding": "three-argument prompt caller gets no manifest",
+      "disposition": "retained compatibility for direct diagnostic calls; production supplies manifest/resolvedcfg; no other unpatched runtime callers found"
+    },
+    {
+      "finding": "hash not independently compared and growing prompt cost",
+      "disposition": "archive verifier recomputes actual recorded request hashes; token cost reported, context-window limit remains open"
+    }
+  ],
+  "live_scientific_limit": "Qwen rationales overinterpret optional flux and growth-only knockouts despite conditional instructions; no function promotion or benefit claim."
+}

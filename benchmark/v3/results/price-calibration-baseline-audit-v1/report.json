@@ -1,0 +1,472 @@
+{
+  "baseline": "Predict probability zero for every pair, with no fitting or test-selected threshold.",
+  "derivation": "For binary reference labels and score zero, both Brier and equal-width-bin ECE equal positive_pairs / evaluated_pairs.",
+  "limitations": [
+    "Unlabeled pairs use the reports' closed-world reference convention; they are not proven experimental negatives.",
+    "Report hashes and internal counts are verified; raw predictions, input provenance and biological accuracy are not revalidated here.",
+    "These are historical models before current predictor-support gates; this does not measure current-model accuracy.",
+    "Zero is a diagnostic comparator, not a recommended annotator or evidence of an absent function.",
+    "Different predictors have different pair universes; their absolute Brier/ECE values are not a matched cross-predictor comparison."
+  ],
+  "results": [
+    {
+      "arms": {
+        "learned_gbdt": {
+          "brier": 0.0027487483155202797,
+          "brier_minus_zero": 0.002553898040536216,
+          "brier_ratio_to_zero": 14.106976835137106,
+          "ece": 0.044745487031176416,
+          "ece_minus_zero": 0.04455063675619235,
+          "top1_accuracy": 0.0
+        },
+        "learned_logistic": {
+          "brier": 0.0016559384091769044,
+          "brier_minus_zero": 0.0014610881341928408,
+          "brier_ratio_to_zero": 8.498517178445555,
+          "ece": 0.03726516497590533,
+          "ece_minus_zero": 0.037070314700921266,
+          "top1_accuracy": 0.013513513513513514
+        },
+        "stage0": {
+          "brier": 0.006149950300437197,
+          "brier_minus_zero": 0.005955100025453134,
+          "brier_ratio_to_zero": 31.56244096109277,
+          "ece": 0.07737353559551113,
+          "ece_minus_zero": 0.07717868532052707,
+          "top1_accuracy": 0.40540540540540543
+        },
+        "stage1": {
+          "brier": 0.006149950300437197,
+          "brier_minus_zero": 0.005955100025453134,
+          "brier_ratio_to_zero": 31.56244096109277,
+          "ece": 0.07737353559551113,
+          "ece_minus_zero": 0.07717868532052707,
+          "top1_accuracy": 0.40540540540540543
+        },
+        "stage1_rlc": {
+          "brier": 0.006149950300437197,
+          "brier_minus_zero": 0.005955100025453134,
+          "brier_ratio_to_zero": 31.56244096109277,
+          "ece": 0.07737353559551113,
+          "ece_minus_zero": 0.07717868532052707,
+          "top1_accuracy": 0.40540540540540543
+        },
+        "stage1_rlc_cohort": {
+          "brier": 0.006149950300437197,
+          "brier_minus_zero": 0.005955100025453134,
+          "brier_ratio_to_zero": 31.56244096109277,
+          "ece": 0.07737353559551113,
+          "ece_minus_zero": 0.07717868532052707,
+          "top1_accuracy": 0.40540540540540543
+        }
+      },
+      "evaluated_pairs": 774954,
+      "genomes": 22,
+      "labelled_proteins": 148,
+      "reference_positive_pairs": 151,
+      "report": "benchmark/v3/results/price-context-ablation/price-clean-report.json",
+      "report_sha256": "9c813934f113d203afbaa6f30dbd8237d572bb1625d181be4d6a10a68b447c86",
+      "variant": "clean",
+      "zero_baseline": {
+        "brier": 0.00019485027498406356,
+        "ece": 0.00019485027498406356,
+        "reason": "All scores are tied; no protein/function ranking is provided.",
+        "top1_accuracy": null
+      }
+    },
+    {
+      "arms": {
+        "learned_gbdt": {
+          "brier": 0.0029016412385429037,
+          "brier_minus_zero": 0.0025258697872189936,
+          "brier_ratio_to_zero": 7.721824604609805,
+          "ece": 0.04428570327799759,
+          "ece_minus_zero": 0.04390993182667368,
+          "top1_accuracy": 0.0
+        },
+        "learned_logistic": {
+          "brier": 0.001798166469004064,
+          "brier_minus_zero": 0.0014223950176801541,
+          "brier_ratio_to_zero": 4.785266317248961,
+          "ece": 0.036227313512758895,
+          "ece_minus_zero": 0.03585154206143498,
+          "top1_accuracy": 0.060810810810810814
+        },
+        "stage0": {
+          "brier": 0.006337901356050612,
+          "brier_minus_zero": 0.005962129904726702,
+          "brier_ratio_to_zero": 16.866372721293892,
+          "ece": 0.07753225597423213,
+          "ece_minus_zero": 0.07715648452290823,
+          "top1_accuracy": 0.3310810810810811
+        },
+        "stage1": {
+          "brier": 0.006337901356050612,
+          "brier_minus_zero": 0.005962129904726702,
+          "brier_ratio_to_zero": 16.866372721293892,
+          "ece": 0.07753225597423213,
+          "ece_minus_zero": 0.07715648452290823,
+          "top1_accuracy": 0.3310810810810811
+        },
+        "stage1_rlc": {
+          "brier": 0.006337901356050612,
+          "brier_minus_zero": 0.005962129904726702,
+          "brier_ratio_to_zero": 16.866372721293892,
+          "ece": 0.07753225597423213,
+          "ece_minus_zero": 0.07715648452290823,
+          "top1_accuracy": 0.3310810810810811
+        },
+        "stage1_rlc_cohort": {
+          "brier": 0.006337901356050612,
+          "brier_minus_zero": 0.005962129904726702,
+          "brier_ratio_to_zero": 16.866372721293892,
+          "ece": 0.07753225597423213,
+          "ece_minus_zero": 0.07715648452290823,
+          "top1_accuracy": 0.3310810810810811
+        }
+      },
+      "evaluated_pairs": 401840,
+      "genomes": 22,
+      "labelled_proteins": 148,
+      "reference_positive_pairs": 151,
+      "report": "benchmark/v3/results/price-context-ablation/price-dpz-report.json",
+      "report_sha256": "2008a93bfda619a47096871b986616b439beab0f5c94b76a3b1704c26772b08c",
+      "variant": "dpz",
+      "zero_baseline": {
+        "brier": 0.00037577145132391,
+        "ece": 0.00037577145132391,
+        "reason": "All scores are tied; no protein/function ranking is provided.",
+        "top1_accuracy": null
+      }
+    },
+    {
+      "arms": {
+        "learned_gbdt": {
+          "brier": 0.011793335741470155,
+          "brier_minus_zero": 0.001626354863473926,
+          "brier_ratio_to_zero": 1.159964386968972,
+          "ece": 0.029853596561648446,
+          "ece_minus_zero": 0.019686615683652216,
+          "top1_accuracy": 0.0
+        },
+        "learned_logistic": {
+          "brier": 0.0103867376726825,
+          "brier_minus_zero": 0.00021975679468627142,
+          "brier_ratio_to_zero": 1.0216147544018577,
+          "ece": 0.0075901886615708505,
+          "ece_minus_zero": -0.002576792216425378,
+          "top1_accuracy": 0.20270270270270271
+        },
+        "stage0": {
+          "brier": 0.013913278080978312,
+          "brier_minus_zero": 0.0037462972029820834,
+          "brier_ratio_to_zero": 1.3684768613158271,
+          "ece": 0.07148914607179782,
+          "ece_minus_zero": 0.06132216519380159,
+          "top1_accuracy": 0.3581081081081081
+        },
+        "stage1": {
+          "brier": 0.013913278080978312,
+          "brier_minus_zero": 0.0037462972029820834,
+          "brier_ratio_to_zero": 1.3684768613158271,
+          "ece": 0.07148914607179782,
+          "ece_minus_zero": 0.06132216519380159,
+          "top1_accuracy": 0.3581081081081081
+        },
+        "stage1_rlc": {
+          "brier": 0.013913278080978312,
+          "brier_minus_zero": 0.0037462972029820834,
+          "brier_ratio_to_zero": 1.3684768613158271,
+          "ece": 0.07148914607179782,
+          "ece_minus_zero": 0.06132216519380159,
+          "top1_accuracy": 0.3581081081081081
+        },
+        "stage1_rlc_cohort": {
+          "brier": 0.013913278080978312,
+          "brier_minus_zero": 0.0037462972029820834,
+          "brier_ratio_to_zero": 1.3684768613158271,
+          "ece": 0.07148914607179782,
+          "ece_minus_zero": 0.06132216519380159,
+          "top1_accuracy": 0.3581081081081081
+        }
+      },
+      "evaluated_pairs": 14852,
+      "genomes": 22,
+      "labelled_proteins": 148,
+      "reference_positive_pairs": 151,
+      "report": "benchmark/v3/results/price-context-ablation/price-enzbert-report.json",
+      "report_sha256": "ebc6f46ff3ce2037dc133e7a51cb87c3c7db436d50355eec404c490cb012cd55",
+      "variant": "enzbert",
+      "zero_baseline": {
+        "brier": 0.010166980877996229,
+        "ece": 0.010166980877996229,
+        "reason": "All scores are tied; no protein/function ranking is provided.",
+        "top1_accuracy": null
+      }
+    },
+    {
+      "arms": {
+        "learned_gbdt": {
+          "brier": 0.0027405034305287767,
+          "brier_minus_zero": 0.0025393063746679463,
+          "brier_ratio_to_zero": 13.620991712842986,
+          "ece": 0.04453190239968534,
+          "ece_minus_zero": 0.04433070534382451,
+          "top1_accuracy": 0.0
+        },
+        "learned_logistic": {
+          "brier": 0.0017943987506856785,
+          "brier_minus_zero": 0.0015932016948248483,
+          "brier_ratio_to_zero": 8.918613361454351,
+          "ece": 0.038815271519137044,
+          "ece_minus_zero": 0.038614074463276214,
+          "top1_accuracy": 0.006756756756756757
+        },
+        "stage0": {
+          "brier": 0.008940581822107453,
+          "brier_minus_zero": 0.008739384766246623,
+          "brier_ratio_to_zero": 44.43694160361735,
+          "ece": 0.09343417435518148,
+          "ece_minus_zero": 0.09323297729932065,
+          "top1_accuracy": 0.12162162162162163
+        },
+        "stage1": {
+          "brier": 0.008940581822107453,
+          "brier_minus_zero": 0.008739384766246623,
+          "brier_ratio_to_zero": 44.43694160361735,
+          "ece": 0.09343417435518148,
+          "ece_minus_zero": 0.09323297729932065,
+          "top1_accuracy": 0.12162162162162163
+        },
+        "stage1_rlc": {
+          "brier": 0.008940581822107453,
+          "brier_minus_zero": 0.008739384766246623,
+          "brier_ratio_to_zero": 44.43694160361735,
+          "ece": 0.09343417435518148,
+          "ece_minus_zero": 0.09323297729932065,
+          "top1_accuracy": 0.12162162162162163
+        },
+        "stage1_rlc_cohort": {
+          "brier": 0.008940581822107453,
+          "brier_minus_zero": 0.008739384766246623,
+          "brier_ratio_to_zero": 44.43694160361735,
+          "ece": 0.09343417435518148,
+          "ece_minus_zero": 0.09323297729932065,
+          "top1_accuracy": 0.12162162162162163
+        }
+      },
+      "evaluated_pairs": 750508,
+      "genomes": 22,
+      "labelled_proteins": 148,
+      "reference_positive_pairs": 151,
+      "report": "benchmark/v3/results/price-context-ablation/price-graphec-report.json",
+      "report_sha256": "2d8d60c0d4521ba51736468a78c9b6e89dd13c9ef4119bf97e22623ab0d82cfd",
+      "variant": "graphec",
+      "zero_baseline": {
+        "brier": 0.00020119705586083028,
+        "ece": 0.00020119705586083028,
+        "reason": "All scores are tied; no protein/function ranking is provided.",
+        "top1_accuracy": null
+      }
+    },
+    {
+      "arms": {
+        "learned_gbdt": {
+          "brier": 0.03772445185479333,
+          "brier_minus_zero": -5.388189551940037e-05,
+          "brier_ratio_to_zero": 0.9985737355205891,
+          "ece": 0.006600683779435508,
+          "ece_minus_zero": -0.031177649970877224,
+          "top1_accuracy": 0.08108108108108109
+        },
+        "learned_logistic": {
+          "brier": 0.040819744401851196,
+          "brier_minus_zero": 0.0030414106515384634,
+          "brier_ratio_to_zero": 1.080506744199995,
+          "ece": 0.02145502603577394,
+          "ece_minus_zero": -0.01632330771453879,
+          "top1_accuracy": 0.10810810810810811
+        },
+        "stage0": {
+          "brier": 0.05284823967246359,
+          "brier_minus_zero": 0.015069905922150857,
+          "brier_ratio_to_zero": 1.3989034037803774,
+          "ece": 0.11336086945652232,
+          "ece_minus_zero": 0.0755825357062096,
+          "top1_accuracy": 0.33783783783783783
+        },
+        "stage1": {
+          "brier": 0.05284823967246359,
+          "brier_minus_zero": 0.015069905922150857,
+          "brier_ratio_to_zero": 1.3989034037803774,
+          "ece": 0.11336086945652232,
+          "ece_minus_zero": 0.0755825357062096,
+          "top1_accuracy": 0.33783783783783783
+        },
+        "stage1_rlc": {
+          "brier": 0.05284823967246359,
+          "brier_minus_zero": 0.015069905922150857,
+          "brier_ratio_to_zero": 1.3989034037803774,
+          "ece": 0.11336086945652232,
+          "ece_minus_zero": 0.0755825357062096,
+          "top1_accuracy": 0.33783783783783783
+        },
+        "stage1_rlc_cohort": {
+          "brier": 0.05284823967246359,
+          "brier_minus_zero": 0.015069905922150857,
+          "brier_ratio_to_zero": 1.3989034037803774,
+          "ece": 0.11336086945652232,
+          "ece_minus_zero": 0.0755825357062096,
+          "top1_accuracy": 0.33783783783783783
+        }
+      },
+      "evaluated_pairs": 3997,
+      "genomes": 22,
+      "labelled_proteins": 148,
+      "reference_positive_pairs": 151,
+      "report": "benchmark/v3/results/price-context-ablation/price-mapred-report.json",
+      "report_sha256": "40cb72ecf3feadc871e882338a1af66719022446eb731e96ea23d1a8807d2636",
+      "variant": "mapred",
+      "zero_baseline": {
+        "brier": 0.03777833375031273,
+        "ece": 0.03777833375031273,
+        "reason": "All scores are tied; no protein/function ranking is provided.",
+        "top1_accuracy": null
+      }
+    },
+    {
+      "arms": {
+        "learned_gbdt": {
+          "brier": 0.5138332623749654,
+          "brier_minus_zero": 0.0002278201980946415,
+          "brier_ratio_to_zero": 1.0004435704519195,
+          "ece": 0.49034186218501213,
+          "ece_minus_zero": -0.02326357999185863,
+          "top1_accuracy": 0.033783783783783786
+        },
+        "learned_logistic": {
+          "brier": 0.6038056790122608,
+          "brier_minus_zero": 0.09020023683539002,
+          "brier_ratio_to_zero": 1.1756216531761898,
+          "ece": 0.6674806015591229,
+          "ece_minus_zero": 0.15387515938225216,
+          "top1_accuracy": 0.033783783783783786
+        },
+        "stage0": {
+          "brier": 0.6282098295597479,
+          "brier_minus_zero": 0.11460438738287715,
+          "brier_ratio_to_zero": 1.2231370191428204,
+          "ece": 0.7230476653162481,
+          "ece_minus_zero": 0.20944222313937733,
+          "top1_accuracy": 0.033783783783783786
+        },
+        "stage1": {
+          "brier": 0.6282098295597479,
+          "brier_minus_zero": 0.11460438738287715,
+          "brier_ratio_to_zero": 1.2231370191428204,
+          "ece": 0.7230476653162481,
+          "ece_minus_zero": 0.20944222313937733,
+          "top1_accuracy": 0.033783783783783786
+        },
+        "stage1_rlc": {
+          "brier": 0.6282098295597479,
+          "brier_minus_zero": 0.11460438738287715,
+          "brier_ratio_to_zero": 1.2231370191428204,
+          "ece": 0.7230476653162481,
+          "ece_minus_zero": 0.20944222313937733,
+          "top1_accuracy": 0.033783783783783786
+        },
+        "stage1_rlc_cohort": {
+          "brier": 0.6282098295597479,
+          "brier_minus_zero": 0.11460438738287715,
+          "brier_ratio_to_zero": 1.2231370191428204,
+          "ece": 0.7230476653162481,
+          "ece_minus_zero": 0.20944222313937733,
+          "top1_accuracy": 0.033783783783783786
+        }
+      },
+      "evaluated_pairs": 294,
+      "genomes": 22,
+      "labelled_proteins": 148,
+      "reference_positive_pairs": 151,
+      "report": "benchmark/v3/results/price-context-ablation/price-topec-report.json",
+      "report_sha256": "0b2cc192742368047913421582aaccf5f3cc3483bd2817798ed713ff0de34ddf",
+      "variant": "topec",
+      "zero_baseline": {
+        "brier": 0.5136054421768708,
+        "ece": 0.5136054421768708,
+        "reason": "All scores are tied; no protein/function ranking is provided.",
+        "top1_accuracy": null
+      }
+    },
+    {
+      "arms": {
+        "learned_gbdt": {
+          "brier": 0.0027442286282602416,
+          "brier_minus_zero": 0.0025516629391301284,
+          "brier_ratio_to_zero": 14.25087013505306,
+          "ece": 0.0446788504820935,
+          "ece_minus_zero": 0.04448628479296339,
+          "top1_accuracy": 0.0
+        },
+        "learned_logistic": {
+          "brier": 0.00166252417955708,
+          "brier_minus_zero": 0.0014699584904269668,
+          "brier_ratio_to_zero": 8.633543114909438,
+          "ece": 0.037201691681747986,
+          "ece_minus_zero": 0.037009125992617874,
+          "top1_accuracy": 0.05405405405405406
+        },
+        "stage0": {
+          "brier": 0.006258085250618639,
+          "brier_minus_zero": 0.006065519561488526,
+          "brier_ratio_to_zero": 32.498443927828504,
+          "ece": 0.07781220649812359,
+          "ece_minus_zero": 0.07761964080899347,
+          "top1_accuracy": 0.40540540540540543
+        },
+        "stage1": {
+          "brier": 0.006258085250618639,
+          "brier_minus_zero": 0.006065519561488526,
+          "brier_ratio_to_zero": 32.498443927828504,
+          "ece": 0.07781220649812359,
+          "ece_minus_zero": 0.07761964080899347,
+          "top1_accuracy": 0.40540540540540543
+        },
+        "stage1_rlc": {
+          "brier": 0.006258085250618639,
+          "brier_minus_zero": 0.006065519561488526,
+          "brier_ratio_to_zero": 32.498443927828504,
+          "ece": 0.07781220649812359,
+          "ece_minus_zero": 0.07761964080899347,
+          "top1_accuracy": 0.40540540540540543
+        },
+        "stage1_rlc_cohort": {
+          "brier": 0.006258085250618639,
+          "brier_minus_zero": 0.006065519561488526,
+          "brier_ratio_to_zero": 32.498443927828504,
+          "ece": 0.07781220649812359,
+          "ece_minus_zero": 0.07761964080899347,
+          "top1_accuracy": 0.40540540540540543
+        }
+      },
+      "evaluated_pairs": 784148,
+      "genomes": 22,
+      "labelled_proteins": 148,
+      "reference_positive_pairs": 151,
+      "report": "benchmark/v3/results/price-context-ablation/price-ensemble_pool4-report.json",
+      "report_sha256": "2e853d1c5578b4784eb77c484f2f638b38e73c703dcfe020e4f777a40b8c621b",
+      "variant": "ensemble_pool4",
+      "zero_baseline": {
+        "brier": 0.0001925656891301132,
+        "ece": 0.0001925656891301132,
+        "reason": "All scores are tied; no protein/function ranking is provided.",
+        "top1_accuracy": null
+      }
+    }
+  ],
+  "schema": "gspa.price-report-calibration-baseline-audit/1",
+  "scope": "All seven stored historical Price reports and all six arms; no inference rerun.",
+  "source_sha256": "c8b4c7c1e9b830bc73bae424e0e289112b1be63ac9992ce8f483d2fd987ff86f",
+  "status": "report_arithmetic_verified"
+}

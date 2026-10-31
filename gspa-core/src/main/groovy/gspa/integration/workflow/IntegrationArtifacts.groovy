@@ -135,6 +135,7 @@ class IntegrationArtifacts {
                              structurally_forbidden_go_terms: report.settings?.forbiddenGoTerms?.size() ?: 0],
             locus_layer_unavailable_reason: report.locusUnavailableReason,
             counts        : [candidates: report.candidates.size(), rescored: report.count('rescored'), added: report.count('added'),
+                             unsupported: report.unsupportedCount(), unchanged_unsupported: report.count('unchanged_unsupported'),
                              retracted: report.count('retracted'), removed_no_projection: report.count('removed_no_projection'),
                              scored_only: report.count('scored_only')],
             pinned_floors_cleared: report.pinnedFloorsCleared,
@@ -145,6 +146,9 @@ class IntegrationArtifacts {
             },
             candidates    : report.candidates.collect { r ->
                 [candidate_key: r.candidateKey, function_key: r.functionKey, role: r.role.name(), margin: r.margin,
+                 score_status: r.scoreStatus, unsupported_reason: r.unsupportedReason, sequence_sources: r.sequenceSources,
+                 sequence_contracts: r.sequenceContracts,
+                 quality_evidence: r.qualityEvidence,
                  probability: r.probability, above_display_threshold: r.aboveDisplayThreshold, projected: r.projected,
                  feature_digest: r.featureDigest, locus_probability: r.locusProbability,
                  locus_null_probability: r.locusNullProbability, notes: r.featureNotes,

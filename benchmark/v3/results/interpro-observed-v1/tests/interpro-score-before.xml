@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.domain.InterProScoreContractSpec" tests="18" skipped="0" failures="16" errors="0" timestamp="2026-10-26T19:49:03" hostname="lc-dell" time="0.075">
+  <properties/>
+  <testcase name="E-values remain bounded and zero is stronger than a tiny nonzero value [raw: 0.0, expected: 1.0, #0]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.018">
+    <failure message="Condition not satisfied:&#10;&#10;parse('Pfam', raw).every { it.score == expected }&#10;|             |    |&#10;|             0.0  false&#10;[gspa.model.Annotation(PFAM, SIG001, 0.9, interproscan, null, [], [analysis:Pfam, description:description, interpro:IPR000001, interproDesc:entry], null, null, null, null, null, null, null, null, null, false, false, true), gspa.model.Annotation(INTERPRO, IPR000001, 0.9, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, 0.9, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, 0.9, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false)]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+parse('Pfam', raw).every { it.score == expected }
+|             |    |
+|             0.0  false
+[gspa.model.Annotation(PFAM, SIG001, 0.9, interproscan, null, [], [analysis:Pfam, description:description, interpro:IPR000001, interproDesc:entry], null, null, null, null, null, null, null, null, null, false, false, true), gspa.model.Annotation(INTERPRO, IPR000001, 0.9, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, 0.9, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, 0.9, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false)]
+
+	at gspa.predictor.domain.InterProScoreContractSpec.E-values remain bounded and zero is stronger than a tiny nonzero value(InterProScoreContractSpec.groovy:27)
+</failure>
+  </testcase>
+  <testcase name="E-values remain bounded and zero is stronger than a tiny nonzero value [raw: 1e-40, expected: 1.0, #1]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.002"/>
+  <testcase name="E-values remain bounded and zero is stronger than a tiny nonzero value [raw: 1e-10, expected: 0.5, #2]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001"/>
+  <testcase name="E-values remain bounded and zero is stronger than a tiny nonzero value [raw: 10, expected: 0.0, #3]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.004">
+    <failure message="Condition not satisfied:&#10;&#10;parse('Pfam', raw).every { it.score == expected }&#10;|             |    |&#10;|             10   false&#10;[gspa.model.Annotation(PFAM, SIG001, -0.05, interproscan, null, [], [analysis:Pfam, description:description, interpro:IPR000001, interproDesc:entry], null, null, null, null, null, null, null, null, null, false, false, true), gspa.model.Annotation(INTERPRO, IPR000001, -0.05, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, -0.05, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, -0.05, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false)]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+parse('Pfam', raw).every { it.score == expected }
+|             |    |
+|             10   false
+[gspa.model.Annotation(PFAM, SIG001, -0.05, interproscan, null, [], [analysis:Pfam, description:description, interpro:IPR000001, interproDesc:entry], null, null, null, null, null, null, null, null, null, false, false, true), gspa.model.Annotation(INTERPRO, IPR000001, -0.05, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, -0.05, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, -0.05, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false)]
+
+	at gspa.predictor.domain.InterProScoreContractSpec.E-values remain bounded and zero is stronger than a tiny nonzero value(InterProScoreContractSpec.groovy:27)
+</failure>
+  </testcase>
+  <testcase name="profile scores and missing statistics do not become E-values [analysis: Hamap, raw: 47.316956, kind: profile_score, #0]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.005">
+    <failure message="Condition not satisfied:&#10;&#10;annotations.every { it.score == 0.9d }&#10;|           |&#10;|           false&#10;[gspa.model.Annotation(INTERPRO, IPR000001, -0.08375083988853292, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, -0.08375083988853292, interproscan, IEA, [], [via:SIG001, analysis:Hamap], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, -0.08375083988853292, interproscan, IEA, [], [via:SIG001, analysis:Hamap], null, null, null, null, null, null, null, null, null, true, false, false)]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+annotations.every { it.score == 0.9d }
+|           |
+|           false
+[gspa.model.Annotation(INTERPRO, IPR000001, -0.08375083988853292, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, -0.08375083988853292, interproscan, IEA, [], [via:SIG001, analysis:Hamap], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, -0.08375083988853292, interproscan, IEA, [], [via:SIG001, analysis:Hamap], null, null, null, null, null, null, null, null, null, true, false, false)]
+
+	at gspa.predictor.domain.InterProScoreContractSpec.profile scores and missing statistics do not become E-values(InterProScoreContractSpec.groovy:41)
+</failure>
+  </testcase>
+  <testcase name="profile scores and missing statistics do not become E-values [analysis: ProSiteProfiles, raw: 6.0, kind: profile_score, #1]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.004">
+    <failure message="Condition not satisfied:&#10;&#10;annotations.every { it.score == 0.9d }&#10;|           |&#10;|           false&#10;[gspa.model.Annotation(INTERPRO, IPR000001, -0.03890756251918218, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, -0.03890756251918218, interproscan, IEA, [], [via:SIG001, analysis:ProSiteProfiles], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, -0.03890756251918218, interproscan, IEA, [], [via:SIG001, analysis:ProSiteProfiles], null, null, null, null, null, null, null, null, null, true, false, false)]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+annotations.every { it.score == 0.9d }
+|           |
+|           false
+[gspa.model.Annotation(INTERPRO, IPR000001, -0.03890756251918218, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, -0.03890756251918218, interproscan, IEA, [], [via:SIG001, analysis:ProSiteProfiles], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, -0.03890756251918218, interproscan, IEA, [], [via:SIG001, analysis:ProSiteProfiles], null, null, null, null, null, null, null, null, null, true, false, false)]
+
+	at gspa.predictor.domain.InterProScoreContractSpec.profile scores and missing statistics do not become E-values(InterProScoreContractSpec.groovy:41)
+</failure>
+  </testcase>
+  <testcase name="profile scores and missing statistics do not become E-values [analysis: ProSitePatterns, raw: -, kind: not_reported, #2]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.008">
+    <failure message="Condition not satisfied:&#10;&#10;annotations.every { it.metadata.statisticType == kind &amp;&amp; it.metadata.rawStatistic == raw }&#10;|           |&#10;|           false&#10;[gspa.model.Annotation(INTERPRO, IPR000001, 0.9, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, 0.9, interproscan, IEA, [], [via:SIG001, analysis:ProSitePatterns], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, 0.9, interproscan, IEA, [], [via:SIG001, analysis:ProSitePatterns], null, null, null, null, null, null, null, null, null, true, false, false)]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+annotations.every { it.metadata.statisticType == kind &amp;&amp; it.metadata.rawStatistic == raw }
+|           |
+|           false
+[gspa.model.Annotation(INTERPRO, IPR000001, 0.9, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, 0.9, interproscan, IEA, [], [via:SIG001, analysis:ProSitePatterns], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, 0.9, interproscan, IEA, [], [via:SIG001, analysis:ProSitePatterns], null, null, null, null, null, null, null, null, null, true, false, false)]
+
+	at gspa.predictor.domain.InterProScoreContractSpec.profile scores and missing statistics do not become E-values(InterProScoreContractSpec.groovy:42)
+</failure>
+  </testcase>
+  <testcase name="profile scores and missing statistics do not become E-values [analysis: future_method, raw: 20, kind: uninterpreted_score, #3]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.003">
+    <failure message="Condition not satisfied:&#10;&#10;annotations.every { it.score == 0.9d }&#10;|           |&#10;|           false&#10;[gspa.model.Annotation(INTERPRO, IPR000001, -0.06505149978319906, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, -0.06505149978319906, interproscan, IEA, [], [via:SIG001, analysis:future_method], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, -0.06505149978319906, interproscan, IEA, [], [via:SIG001, analysis:future_method], null, null, null, null, null, null, null, null, null, true, false, false)]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+annotations.every { it.score == 0.9d }
+|           |
+|           false
+[gspa.model.Annotation(INTERPRO, IPR000001, -0.06505149978319906, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, -0.06505149978319906, interproscan, IEA, [], [via:SIG001, analysis:future_method], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, -0.06505149978319906, interproscan, IEA, [], [via:SIG001, analysis:future_method], null, null, null, null, null, null, null, null, null, true, false, false)]
+
+	at gspa.predictor.domain.InterProScoreContractSpec.profile scores and missing statistics do not become E-values(InterProScoreContractSpec.groovy:41)
+</failure>
+  </testcase>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: NaN, #0]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.002">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.domain.InterProScoreContractSpec.invalid and missing E-values cannot create confident annotations(InterProScoreContractSpec.groovy:56)
+</failure>
+  </testcase>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: Infinity, #1]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.domain.InterProScoreContractSpec.invalid and missing E-values cannot create confident annotations(InterProScoreContractSpec.groovy:56)
+</failure>
+  </testcase>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: -1, #2]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.domain.InterProScoreContractSpec.invalid and missing E-values cannot create confident annotations(InterProScoreContractSpec.groovy:56)
+</failure>
+  </testcase>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: garbage, #3]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.002">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.domain.InterProScoreContractSpec.invalid and missing E-values cannot create confident annotations(InterProScoreContractSpec.groovy:56)
+</failure>
+  </testcase>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: -, #4]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.domain.InterProScoreContractSpec.invalid and missing E-values cannot create confident annotations(InterProScoreContractSpec.groovy:56)
+</failure>
+  </testcase>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Pfam, raw: , #5]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.domain.InterProScoreContractSpec.invalid and missing E-values cannot create confident annotations(InterProScoreContractSpec.groovy:56)
+</failure>
+  </testcase>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: Hamap, raw: garbage, #6]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.domain.InterProScoreContractSpec.invalid and missing E-values cannot create confident annotations(InterProScoreContractSpec.groovy:56)
+</failure>
+  </testcase>
+  <testcase name="invalid and missing E-values cannot create confident annotations [analysis: ProSiteProfiles, raw: -Infinity, #7]" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.0">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.domain.InterProScoreContractSpec.invalid and missing E-values cannot create confident annotations(InterProScoreContractSpec.groovy:56)
+</failure>
+  </testcase>
+  <testcase name="member statistics and GO mappings survive on every annotation without inventing ECs" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.005">
+    <failure message="Condition not satisfied:&#10;&#10;annotations.every { it.metadata.analysis == 'Pfam' &amp;&amp; it.metadata.via == 'SIG001' }&#10;|           |&#10;|           false&#10;[gspa.model.Annotation(PFAM, SIG001, 0.5, interproscan, null, [], [analysis:Pfam, description:description, interpro:IPR000001, interproDesc:entry], null, null, null, null, null, null, null, null, null, false, false, true), gspa.model.Annotation(INTERPRO, IPR000001, 0.5, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, 0.5, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, 0.5, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false)]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+annotations.every { it.metadata.analysis == 'Pfam' &amp;&amp; it.metadata.via == 'SIG001' }
+|           |
+|           false
+[gspa.model.Annotation(PFAM, SIG001, 0.5, interproscan, null, [], [analysis:Pfam, description:description, interpro:IPR000001, interproDesc:entry], null, null, null, null, null, null, null, null, null, false, false, true), gspa.model.Annotation(INTERPRO, IPR000001, 0.5, interproscan, null, [], [description:entry], null, null, null, null, null, null, null, null, null, false, false, false), gspa.model.Annotation(GO, GO:0005524, 0.5, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false), gspa.model.Annotation(GO, GO:0003677, 0.5, interproscan, IEA, [], [via:SIG001, analysis:Pfam], null, null, null, null, null, null, null, null, null, true, false, false)]
+
+	at gspa.predictor.domain.InterProScoreContractSpec.member statistics and GO mappings survive on every annotation without inventing ECs(InterProScoreContractSpec.groovy:73)
+</failure>
+  </testcase>
+  <testcase name="a corrupt score after a valid row fails the batch with no partial success" classname="gspa.predictor.domain.InterProScoreContractSpec" time="0.007">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.domain.InterProScoreContractSpec.a corrupt score after a valid row fails the batch with no partial success(InterProScoreContractSpec.groovy:95)
+</failure>
+  </testcase>
+  <system-out><![CDATA[22:49:03.077 [Test worker] INFO gspa.predictor.domain.InterProScoreContractSpec$Captured -- Running interproscan: interproscan.sh -i /home/leechuck/tmp/spock_a_corrupt_score_aft_0_tmp5902097552213244089/gspa_interproscan_1793044143075/input.faa -o /home/leechuck/tmp/spock_a_corrupt_score_aft_0_tmp5902097552213244089/gspa_interproscan_1793044143075/interproscan_results.tsv -f TSV -appl Pfam,TIGRFAM,CDD,SUPERFAMILY,SMART,ProSiteProfiles -cpu 16 -T /home/leechuck/tmp/spock_a_corrupt_score_aft_0_tmp5902097552213244089/gspa_interproscan_1793044143075/tmp -goterms -pa
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

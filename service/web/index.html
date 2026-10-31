@@ -31,9 +31,12 @@ function ledgerText(l){
  if(!l.available)return 'Prediction ledger unavailable: '+(l.reason||'no stage ledger was recorded')+'.';
  const c=l.status_counts,n=l.net;
  const mode=l.scoring?l.scoring.mode:'unknown',lr=l.learned||{status:'unavailable'};
- const scoring='Scoring: '+(mode==='learned'?'learned (frozen model':mode==='legacy_heuristic'?'legacy heuristic (no trained model':'unknown (the ledger does not record it')+
-  (mode==='learned'&&lr.status==='available'?' '+(lr.model_id||'unrecorded')+(lr.model_sha256?', sha256 '+lr.model_sha256:'')+(lr.hash_verified?'':'; model hash unverified'):'')+'). '+
-  (mode==='learned'&&lr.status!=='available'?'Learned-stage report '+(lr.status==='not_trusted'?'not trusted':'unavailable')+': '+(lr.reason||'')+' ':'');
+ const learnedMode=mode==='learned'||mode==='mixed';
+ const scoring='Scoring: '+(mode==='learned'?'learned (frozen model':mode==='mixed'?'mixed (learned scores for supported inputs; legacy scores for unsupported inputs; frozen model':mode==='legacy_heuristic'?(lr.unsupported_only?'legacy heuristic (model abstained; frozen model':'legacy heuristic (no trained model'):'unknown (the ledger does not record it')+
+  ((learnedMode||lr.unsupported_only)&&lr.status==='available'?' '+(lr.model_id||'unrecorded')+(lr.model_sha256?', sha256 '+lr.model_sha256:'')+(lr.hash_verified?'':'; model hash unverified'):'')+'). '+
+  (learnedMode&&lr.status!=='available'?'Learned-stage report '+(lr.status==='not_trusted'?'not trusted':'unavailable')+': '+(lr.reason||'')+' ':'')+
+  (lr.unsupported_only?'The model supplied no learned scores; baseline scores retained. ':'')+
+  (lr.status==='available'&&Number.isInteger(lr.counts?.unsupported)?lr.counts.unsupported.toLocaleString()+' unsupported candidates received no learned score. ':'');
  const stages=['executed','skipped','failed','not_run'].filter(k=>c[k]).map(k=>c[k]+' '+k.replace('_',' ')).join(', ');
  return scoring+'Stages: '+(stages||'none recorded')+'. Between the baseline ('+l.baseline.charAt(0).toLowerCase()+l.baseline.slice(1)+') and the final export, '+n.functions.toLocaleString()+' (protein, function) pairs changed across '+n.proteins.toLocaleString()+' proteins ('+n.by_change.added+' added, '+n.by_change.removed+' removed, '+n.by_change.increased+' increased, '+n.by_change.decreased+' decreased). These are changes to predictions, not measurements of accuracy. Open the Prediction ledger tab for stage details.';
 }

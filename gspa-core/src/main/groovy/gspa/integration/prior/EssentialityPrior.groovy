@@ -146,10 +146,12 @@ class EssentialityPrior implements Prior {
             Set<String> allEssDomain = new LinkedHashSet<>(essentials)
             for (String e : essentials) allEssDomain.addAll(closure(state, e))
             Map<String, Double> boosts = state.computeProteinSpecificityPrior(null, allEssDomain, 0.30d * alphaEss, 0.30d * alphaEss)
+            Map<String, List<RescueCandidate>> candidateIndex = descByUncovered.isEmpty()
+                ? Collections.emptyMap() : indexCandidates(state, descendants)
             if (rescueMode == 'legacy') {
-                legacyRescue(state, descByUncovered, boosts)
+                legacyRescue(state, descByUncovered, candidateIndex, boosts)
             } else {
-                targetedRescue(state, descByUncovered, allEssDomain, boosts)
+                targetedRescue(state, descByUncovered, allEssDomain, candidateIndex, boosts)
             }
             keyBoosts = boosts
         }
@@ -157,9 +159,10 @@ class EssentialityPrior implements Prior {
     }
 
     /** v2.1.0 rescue: tier ranking, boost max(1.30 alphaEss, 0.14 - L0) on the top candidate. */
-    private void legacyRescue(IntegrationState state, Map<String, Set<String>> descByUncovered, Map<String, Double> boosts) {
+    private void legacyRescue(IntegrationState state, Map<String, Set<String>> descByUncovered,
+                              Map<String, List<RescueCandidate>> candidateIndex, Map<String, Double> boosts) {
         for (Map.Entry<String, Set<String>> ue : descByUncovered.entrySet()) {
-            List<Map.Entry<String, Double>> cands = candidates(state, ue.value)
+            List<Map.Entry<String, Double>> cands = candidates(candidateIndex, ue.value)
             state.sortCandidatesForRescue(cands)
             int limit = Math.min(1, cands.size())
             for (int i = 0; i < limit; i++) {
@@ -171,23 +174,46 @@ class EssentialityPrior implements Prior {
         }
     }
 
-    /** Borderline candidate claims under a category closure: (functionKey, likelihood probability). */
-    private List<Map.Entry<String, Double>> candidates(IntegrationState state, Set<String> uSet) {
-        List<Map.Entry<String, Double>> cands = []
+    /** Snapshot for this iteration only; likelihoods and the candidate universe may change between iterations. */
+    private static final class RescueCandidate extends AbstractMap.SimpleImmutableEntry<String, Double> {
+        final int encounterOrder
+        RescueCandidate(String key, double probability, int encounterOrder) {
+            super(key, probability)
+            this.encounterOrder = encounterOrder
+        }
+    }
+
+    /** Read the candidate universe once, without rescanning millions of EC claims for each GO category. */
+    private Map<String, List<RescueCandidate>> indexCandidates(IntegrationState state, Set<String> descendants) {
+        Map<String, List<RescueCandidate>> index = new LinkedHashMap<>()
+        int order = 0
         for (String fkey : state.posteriorLogOdds.keySet()) {
             String[] parts = IntegrationState.splitFunctionKey(fkey)
             if (parts == null || parts[1] != 'GO') continue
-            if (!uSet.contains(parts[2])) continue
+            if (!descendants.contains(parts[2])) continue
             double likeProb = state.getLikelihoodProbability(fkey)
             if (likeProb >= minCandidate && likeProb <= IntegrationState.MAP_THRESHOLD) {
-                cands << new AbstractMap.SimpleImmutableEntry<>(fkey, likeProb)
+                index.computeIfAbsent(parts[2], { new ArrayList<RescueCandidate>() })
+                    .add(new RescueCandidate(fkey, likeProb, order++))
             }
         }
+        index
+    }
+
+    /** Restore encounter order before ranking: legacy score ties retain the original candidate-map order. */
+    private static List<Map.Entry<String, Double>> candidates(Map<String, List<RescueCandidate>> index, Set<String> uSet) {
+        List<RescueCandidate> cands = []
+        for (String term : uSet) {
+            List<RescueCandidate> matches = index.get(term)
+            if (matches != null) cands.addAll(matches)
+        }
+        cands.sort { RescueCandidate a, RescueCandidate b -> Integer.compare(a.encounterOrder, b.encounterOrder) }
         cands
     }
 
     private void targetedRescue(IntegrationState state, Map<String, Set<String>> descByUncovered,
-                                Set<String> allEssDomain, Map<String, Double> boosts) {
+                                Set<String> allEssDomain, Map<String, List<RescueCandidate>> candidateIndex,
+                                Map<String, Double> boosts) {
         // Confident Stage 0 GO terms per protein, and operon partners per protein, indexed once per iteration.
         Map<String, Set<String>> strongByProt = new HashMap<>()
         Map<String, Double> src = (state.likelihoodLogOdds != null && !state.likelihoodLogOdds.isEmpty()) ? state.likelihoodLogOdds : state.posteriorLogOdds
@@ -213,7 +239,7 @@ class EssentialityPrior implements Prior {
             ctxTerms.removeAll(ASPECT_ROOTS)
             String catAspect = state.goOntology != null ? state.goOntology.getAspect(category) : null
 
-            List<Map.Entry<String, Double>> cands = candidates(state, uSet)
+            List<Map.Entry<String, Double>> cands = candidates(candidateIndex, uSet)
             if (cands.isEmpty()) continue
             Map<String, Double> score = new HashMap<>()
             for (Map.Entry<String, Double> c : cands) {

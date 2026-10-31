@@ -1,0 +1,52 @@
+{
+  "scenarios": 18,
+  "oracle_agreements": 18,
+  "production_lp_calls": 90,
+  "native_before_after_pairs_unchanged": 18,
+  "label_regressions": 2,
+  "protocol": {
+    "schema": "gspa.germicidin_capacity_diagnostic/1",
+    "conditions": [
+      "published_model_minimal",
+      "phosphate_closed",
+      "carbon_closed"
+    ],
+    "genotypes": [
+      "native",
+      "gcs_deleted",
+      "native_repeat"
+    ],
+    "requirements": [
+      "growth_fraction",
+      "maintenance_only"
+    ],
+    "growth_fraction": 0.95,
+    "growth_threshold": 1e-06,
+    "flux_tolerance": 1e-07,
+    "max_solver_calls": 500,
+    "product_targets": [
+      "R_DM_germicidinA_c",
+      "R_DM_germicidinB_c",
+      "R_DM_germicidinC_c",
+      "R_DM_germicidinD_c"
+    ],
+    "biomass": "R_BIOMASS_SCO_tRNA",
+    "maintenance": {
+      "reaction": "R_ATPM",
+      "lower_bound": 2.64
+    },
+    "native_gene": "G_SCO7221",
+    "limitations": [
+      "Known source GPRs; no masked discovery or gene assignment accuracy.",
+      "The bundled model minimal medium is not the experimental complex GYM medium.",
+      "Phosphate/carbon closure are declared model interventions, not the published batch time course.",
+      "Intracellular demand flux is synthesis capacity, not extracellular secretion or expression.",
+      "Source-model A/B/C/D congeners are not assumed to match the publication A/B7 labels.",
+      "native_repeat is a state-leakage/determinism control after deletion, not complementation or plasmid expression.",
+      "Growth-floor capacities use 95% of each genotype-specific optimum, not one shared absolute growth rate.",
+      "Flaviolin and the publication total-production quantity have no matched diagnostic endpoint.",
+      "The source model is M145, not a complete reconstruction of M1152 or M1317."
+    ]
+  },
+  "scope": "Known-GPR, intracellular-capacity mechanism diagnostic. No empirical production or function-recovery accuracy."
+}

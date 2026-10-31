@@ -1,0 +1,221 @@
+{
+ "contract_id": "gspa.context-features/2",
+ "expected": {
+  "gbdt": {
+   "empty": {
+    "margin": -4.193778178730322,
+    "probability": 0.011450035110494916
+   },
+   "strong_sequence": {
+    "margin": 2.0858019002193466,
+    "probability": 0.9163138685754695
+   },
+   "strong_sequence_favourable_context": {
+    "margin": 3.924793892389249,
+    "probability": 0.987868873327616
+   },
+   "strong_sequence_unfavourable_context": {
+    "margin": -3.100819716904405,
+    "probability": 0.036765396577262854
+   },
+   "weak_sequence": {
+    "margin": -4.193778178730322,
+    "probability": 0.011450035110494916
+   },
+   "weak_sequence_b": {
+    "margin": -4.193778178730322,
+    "probability": 0.011450035110494916
+   }
+  },
+  "logistic": {
+   "empty": {
+    "margin": -7.08725571136452,
+    "probability": 0.0029271776877032862
+   },
+   "strong_sequence": {
+    "margin": 3.3479622209308597,
+    "probability": 0.9205030069248458
+   },
+   "strong_sequence_favourable_context": {
+    "margin": 11.78728914497538,
+    "probability": 0.9998933142676383
+   },
+   "strong_sequence_unfavourable_context": {
+    "margin": -8.669562534565456,
+    "probability": 0.0008357949672450626
+   },
+   "weak_sequence": {
+    "margin": -5.130652349059137,
+    "probability": 0.013676738390739018
+   }
+  }
+ },
+ "locus_cases": [
+  {
+   "candidate_probabilities": [
+    0.965923610531406
+   ],
+   "case": "singleton_strong",
+   "members": [
+    "strong_sequence"
+   ],
+   "model": "logistic",
+   "null_probability": 0.034076389468593996
+  },
+  {
+   "candidate_probabilities": [
+    0.02377234070437919
+   ],
+   "case": "singleton_weak",
+   "members": [
+    "weak_sequence"
+   ],
+   "model": "logistic",
+   "null_probability": 0.9762276592956208
+  },
+  {
+   "candidate_probabilities": [
+    0.9652380420374169,
+    0.0008173381867031442
+   ],
+   "case": "pair_strong_weak",
+   "members": [
+    "strong_sequence",
+    "weak_sequence"
+   ],
+   "model": "logistic",
+   "null_probability": 0.033944619775879856
+  },
+  {
+   "candidate_probabilities": [
+    0.02329050516699184,
+    0.02329050516699184
+   ],
+   "case": "pair_two_weak",
+   "members": [
+    "weak_sequence",
+    "weak_sequence_b"
+   ],
+   "model": "logistic",
+   "null_probability": 0.9534189896660162
+  },
+  {
+   "candidate_probabilities": [
+    0.9415960560285733
+   ],
+   "case": "singleton_strong",
+   "members": [
+    "strong_sequence"
+   ],
+   "model": "gbdt",
+   "null_probability": 0.058403943971426765
+  },
+  {
+   "candidate_probabilities": [
+    0.040816887423507836
+   ],
+   "case": "singleton_weak",
+   "members": [
+    "weak_sequence"
+   ],
+   "model": "gbdt",
+   "null_probability": 0.9591831125764921
+  },
+  {
+   "candidate_probabilities": [
+    0.9393017441386589,
+    0.0024466975024230804
+   ],
+   "case": "pair_strong_weak",
+   "members": [
+    "strong_sequence",
+    "weak_sequence"
+   ],
+   "model": "gbdt",
+   "null_probability": 0.05825155835891797
+  },
+  {
+   "candidate_probabilities": [
+    0.03922245615775214,
+    0.03922245615775214
+   ],
+   "case": "pair_two_weak",
+   "members": [
+    "weak_sequence",
+    "weak_sequence_b"
+   ],
+   "model": "gbdt",
+   "null_probability": 0.9215550876844956
+  }
+ ],
+ "note": "Planted-structure synthetic data. Verifies mechanisms only; carries no accuracy claim.",
+ "synthetic_mechanism_fixture": true,
+ "vectors": {
+  "empty": {
+   "fn.type_ec": 1.0,
+   "role.catalytic": 1.0
+  },
+  "strong_sequence": {
+   "fn.type_ec": 1.0,
+   "role.catalytic": 1.0,
+   "seq.group.homology.max_raw": 0.8,
+   "seq.group.homology.reported": 1.0,
+   "seq.max_raw_any": 0.8,
+   "seq.n_groups_reporting": 1.0,
+   "seq.n_sources_reporting": 1.0,
+   "seq.src.diamond.max_raw": 0.8,
+   "seq.src.diamond.reported": 1.0
+  },
+  "strong_sequence_favourable_context": {
+   "ctx.nbr.available": 1.0,
+   "ctx.nbr.support_max": 0.9,
+   "fn.type_ec": 1.0,
+   "role.catalytic": 1.0,
+   "seq.group.homology.max_raw": 0.8,
+   "seq.group.homology.reported": 1.0,
+   "seq.max_raw_any": 0.8,
+   "seq.n_groups_reporting": 1.0,
+   "seq.n_sources_reporting": 1.0,
+   "seq.src.diamond.max_raw": 0.8,
+   "seq.src.diamond.reported": 1.0
+  },
+  "strong_sequence_unfavourable_context": {
+   "ctx.competitor.max_raw": 0.9,
+   "ctx.competitor.n_with_claim": 2.0,
+   "ctx.nbr.available": 1.0,
+   "ctx.nbr.conflict_max": 0.9,
+   "ctx.nbr.support_max": 0.05,
+   "fn.type_ec": 1.0,
+   "role.catalytic": 1.0,
+   "seq.group.homology.max_raw": 0.8,
+   "seq.group.homology.reported": 1.0,
+   "seq.max_raw_any": 0.8,
+   "seq.n_groups_reporting": 1.0,
+   "seq.n_sources_reporting": 1.0,
+   "seq.src.diamond.max_raw": 0.8,
+   "seq.src.diamond.reported": 1.0
+  },
+  "weak_sequence": {
+   "fn.type_ec": 1.0,
+   "role.catalytic": 1.0,
+   "seq.group.homology.max_raw": 0.15,
+   "seq.group.homology.reported": 1.0,
+   "seq.max_raw_any": 0.15,
+   "seq.n_groups_reporting": 1.0,
+   "seq.n_sources_reporting": 1.0,
+   "seq.src.diamond.max_raw": 0.15,
+   "seq.src.diamond.reported": 1.0
+  },
+  "weak_sequence_b": {
+   "fn.type_ec": 1.0,
+   "role.catalytic": 1.0,
+   "seq.group.homology.max_raw": 0.15,
+   "seq.group.homology.reported": 1.0,
+   "seq.max_raw_any": 0.15,
+   "seq.n_groups_reporting": 1.0,
+   "seq.n_sources_reporting": 1.0,
+   "seq.src.diamond.max_raw": 0.15,
+   "seq.src.diamond.reported": 1.0
+  }
+ }
+}

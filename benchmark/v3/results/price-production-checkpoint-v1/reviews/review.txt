@@ -1,0 +1,55 @@
+The plan is sound for the sparse stage. Two things need fixing before launch, and the CLEAN capacity run will probably not complete. This is from reading the three scripts, `IntegrateCommand.groovy` and the v2/v3/v4 result READMEs. I ran nothing and did not check the job 10221 JAR.
+
+**Coverage**
+- The 66 sparse parts hold 13.7M of the 1,526.9M claims (0.9%). Their largest cells are topec 8,637, mapred 173,203 and enzbert 864,000 claims.
+- The dense 66 parts (dpz, graphec, clean) hold the other 99.1%. Largest per-part claim counts are dpz 24.2M, graphec 43.8M and clean 45.3M.
+- The prior capacity cases cover one dpz cell of 9.79M claims. Call the sparse run "progress on 66 of 132 parts, 0.9% of claims", and never "production benchmark".
+
+**Concrete hazards in the scripts**
+1. **Untracked code.** All three scripts are untracked (`??` in git status), so there is no commit to freeze.
+   - The frozen copies in `results/*/launch/code` and `frozen-source` may differ from the working copies.
+   - Commit them, or hash-bind them with `v3_runner.py` and the 10221 JAR, before launch.
+2. **No retry into the same directory.** `run()` calls `out.mkdir(exist_ok=False)` and `_run` calls `directory.mkdir()`, so a rerun needs a fresh `--out` per part. That preserves failures.
+   - The driver must name outputs by part plus attempt, and must not delete failed ones.
+3. **Failures lose resources.** On timeout, `killpg` kills `/usr/bin/time`, so `resources.txt` may be absent. On OOM or a kernel kill, the failure `verification.json` records only completed arms and not the resource figures.
+   - Read RSS from `resources.txt` and `run.log` in the arm directory.
+   - A 7200 s timeout is a failure mode, not a capacity result.
+4. **Verifier reads the whole ledger.** `output_hashes()` does `json.loads(ledger.read_text())` on `<out>.stages.json`.
+   - If that is the roughly 2.5 GiB "full stage ledger" from job 10037, CLEAN would give about 12 GiB read as a string, plus a Python object tree several times larger. That runs after the JVM exits but on the same host, and it is not counted in `time -v`.
+   - It is a bounded-memory violation and unmeasured. Check the ledger size first.
+5. **Repeated hashing.** Inputs and outputs are hashed several times per arm: `describe_run` runs 2–3 times, plus `file_hashes(inputs)` twice and the reference-cache directory walk. That is cheap for sparse parts but multiplies for the 45M claims file and the 12 GiB ledger.
+6. **Reuse path.** `reusable()` requires an identical `spec`, including the command, absolute paths, cwd, `-Xmx` and the hashed JAR (`-jar` is in `INPUT_FLAGS`).
+   - It never reuses across different JARs, heaps or parts, which is correct.
+   - Every output directory is new, so reuse never fires. That is fine, but it gives you no resume.
+7. **Arm naming.** `stage1` here means "default priors". It is not a separate stage-1 flag set, so name the arms `nopr` and `default` in the driver and report.
+8. **Scratch.** `TMPDIR` or `~/tmp` is used, and `sort` spills to the scratch directory. Use local job disk on each node, not NFS. This also satisfies your rule against `/tmp`.
+
+**Memory expectation for CLEAN**
+
+| Run | Claims | Peak RSS | Per claim |
+|---|---|---|---|
+| dpz stage0, job 10037 | 9.79M | 53.7 GiB | about 5.6 KB |
+| dpz default, job 10058 | 9.79M | 49.9 GiB | about 5.3 KB |
+| dpz indexed, job 10080 | 9.79M | 60.4 GiB | about 6.6 KB |
+
+- Linear extrapolation to 45.29M claims gives about 248 GiB for stage0 and about 240–300 GiB for default.
+- A 216g heap on a 240G allocation will most likely OOM. The prior measurements were for the dpz cell, not CLEAN, so the estimate is uncertain.
+- The same applies to graphec (43.8M). The largest dpz cell (24.2M) extrapolates to about 130 GiB.
+- A failed run at 216g is still a legitimate "does not fit" result. Keep `run.log`, `resources.txt` and the JFR file, and do not call it a capacity measurement.
+- The stage0 default arm should be run separately, and only after stage0 is understood.
+
+**Where memory is probably going, to profile after the CLEAN run**
+- `runBatchManifest` runs `runGenome` per row, and the `futures.each { stats << it.get() }` code is not the issue.
+- The likely cost is whole-claim materialization (in-memory Groovy objects per candidate) plus the per-candidate stage ledger.
+- Check these with the JFR allocation profile:
+  1. object size per `Claim`
+  2. ledger construction versus streaming
+  3. whether claims could be streamed per protein
+  4. string interning of `protein_id` and `function_id`
+- Do not change the integration semantics without a byte-identity check against the dpz 9.79M TSV hash `64701c3d…6136f`.
+
+**Sparse stage specifics**
+- Two concurrent jobs at 24g heap / 36G allocation is comfortable. By the extrapolation above, 864,000 claims needs about 5 GB.
+- Do not interact with running jobs. Evaluate labels only after every arm of every part has finished.
+
+I wrote the short plan to `/home/leechuck/.claude/plans/read-only-review-in-home-leechuck-public-stateful-whisper.md`. There is no ExitPlanMode tool in this session, so I could not request approval formally.

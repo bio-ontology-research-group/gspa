@@ -6,6 +6,7 @@ Multiple input files can be passed; each gets a --source label assigned
 to its claims.
 """
 import argparse, json, sys
+from pathlib import Path
 
 def main():
     ap = argparse.ArgumentParser()
@@ -14,6 +15,16 @@ def main():
     ap.add_argument('--output', required=True)
     ap.add_argument('--go-aspect-map', help='go.obo path; if given, look up aspect for each GO term')
     a = ap.parse_args()
+
+    # Typed CLEAN needs its receipt and original FASTA. Never discard those
+    # semantics or reinterpret a native distance as an ordinary score.
+    for source, tsv in a.input:
+        path = Path(tsv)
+        if path.is_file() and path.stat().st_size:
+            with path.open() as stream:
+                header = stream.readline().rstrip('\n').split('\t')
+            if source.lower() == 'clean' or 'metadata_json' in header:
+                raise SystemExit('Typed/CLEAN output requires gspa clean-claims with its receipt and original FASTA')
 
     aspect = {}
     if a.go_aspect_map:

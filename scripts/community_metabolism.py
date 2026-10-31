@@ -42,7 +42,7 @@ from scipy.sparse import coo_matrix, csc_matrix
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from metabolic_experiments import (  # noqa: E402
     BudgetedSolver, BudgetExhausted, ManifestError, Model, canonical_hash, close_uptake,
-    load_sbml_model, open_uptake, resolve_objective,
+    load_sbml_model, open_uptake, resolve_objective, resolve_knockouts,
 )
 
 SCHEMA = "gspa.community_metabolism/1"
@@ -493,13 +493,25 @@ def run_community(manifest: dict[str, Any], base_dir: Path, overrides: dict[str,
     orgs = load_organisms(manifest, base_dir, cfg)
     A = Analysis(manifest, orgs, cfg)
     tol = cfg["growth_threshold"]
+    # Validate all explicit deletions before baseline solves. Multiple records
+    # for one organism are one combined intervention, including OR isozymes.
+    experiment_knockouts = []
+    for exp in manifest.get("experiments", []):
+        groups = {}
+        for knockout in exp.get("knockouts", []):
+            oid = knockout.get("organism")
+            if oid not in A.orgs or oid not in (exp.get("organisms") or A.order):
+                raise ManifestError(f"experiment {exp.get('id')}: unknown or excluded knockout organism: {oid}")
+            groups.setdefault(oid, []).append(knockout)
+        experiment_knockouts.append({oid: resolve_knockouts(A.orgs[oid].model, records)
+                                     for oid, records in groups.items()})
 
     mono: dict[str, dict[str, Any]] = {}
     for o in orgs:
         mono[o.id] = A.growth(f"monoculture:{o.id}", "monoculture", [o.id], A.lp([o.id]))
     comm = A.growth("community", "community", A.order, A.lp(A.order))
 
-    for exp in manifest.get("experiments", []):
+    for exp, kos in zip(manifest.get("experiments", []), experiment_knockouts):
         ids = exp.get("organisms") or A.order
         if any(i not in A.orgs for i in ids):
             raise ManifestError(f"experiment {exp.get('id')}: unknown organism in {ids}")
@@ -507,9 +519,6 @@ def run_community(manifest: dict[str, Any], base_dir: Path, overrides: dict[str,
         for oid, rid, _ in closures:
             if oid not in A.orgs or rid not in A.orgs[oid].ports:
                 raise ManifestError(f"experiment {exp.get('id')}: {oid}.{rid} is not a mapped port")
-        kos = {k["organism"]: set(k.get("reactions", [])) | A.orgs[k["organism"]].model.blocked_by_genes(
-            set(A.orgs[k["organism"]].model.gene_alias.get(g, g) for g in k.get("genes", [])))
-            for k in exp.get("knockouts", [])}
         supply = {**A.supply, **_finite_nonneg(exp.get("supply", {}), "experiment.supply")}
         A.growth(f"user:{exp['id']}", "community" if len(ids) > 1 else "monoculture", ids,
                  A.lp(ids, closures, kos, supply),

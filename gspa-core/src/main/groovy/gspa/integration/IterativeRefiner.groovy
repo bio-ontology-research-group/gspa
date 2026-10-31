@@ -45,7 +45,7 @@ class IterativeRefiner {
      * Refine a set of claims into posterior annotations.
      */
     IntegratedAnnotationSet refine(List<EvidenceClaim> claims, IntegrationState state) {
-        Map<String, List<EvidenceClaim>> byKey = ClaimExtractor.groupByFunctionKey(claims)
+        Map<String, List<EvidenceClaim>> byKey = ClaimExtractor.groupByFunctionKey(claims.findAll { it.hasFunctionalScore() })
         log.info("Refining ${claims.size()} claims across ${byKey.size()} (protein, function) groups (maxIter=${maxIter}, damping=${damping})")
 
         // Precompute likelihood contribution and supporting claim count per group — invariant across iterations.
@@ -83,7 +83,9 @@ class IterativeRefiner {
                 String key = entry.key
                 double lLik = likelihood[key]
                 double lPri = priorEngine.totalBoost(entry.value.first().proteinId, key, state)
-                if (byKey.size() >= 100 && lPri > 0.0d && lLik < 0.0d) {
+                // A weak candidate's context ceiling depends on its own evidence,
+                // never on how many unrelated candidates happen to be in the run.
+                if (lPri > 0.0d && lLik < 0.0d) {
                     lPri = Math.min(lPri, 0.12d - lLik)
                 }
                 double lNew = clip(lLik + lPri, key, state)

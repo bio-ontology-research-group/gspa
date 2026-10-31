@@ -1,0 +1,211 @@
+[
+  {
+    "stage": "prepare",
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "benchmark/v3/run_nutrient_phenotypes.py",
+      "prepare",
+      "--inputs",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1/derived-v3/inputs.jsonl",
+      "--registration",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1/models/registered-preflight.json",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-phenotypes-v1/plan"
+    ],
+    "logs": [
+      "prepare.log (initial Python-3.10 incompatibility)",
+      "prepare-v2.log (successful current source)"
+    ]
+  },
+  {
+    "stage": "remote package",
+    "command": "rsync -a package/ unimatrix01:/data/hohndor/gspa-v3/nutrient-phenotypes-v1/",
+    "verification": "remote-package-verification.txt; package/package-sha256.json"
+  },
+  {
+    "stage": "Slurm",
+    "argv": [
+      "sbatch",
+      "--output=/data/hohndor/gspa-v3/nutrient-phenotypes-v1/slurm-%j.log",
+      "/data/hohndor/gspa-v3/nutrient-phenotypes-v1/benchmark/v3/nutrient_phenotypes.sbatch",
+      "/data/hohndor/gspa-v3/nutrient-phenotypes-v1"
+    ],
+    "attempts": [
+      {
+        "job": 10143,
+        "outcome": "failed before simulation: uv-managed environment lacks pip"
+      },
+      {
+        "job": 10144,
+        "outcome": "Production complete; strict original oracle exit 1: one unknown HiGHS solve and two small GLPK-history-dependent quantitative differences."
+      }
+    ]
+  },
+  {
+    "stage": "focused tests",
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "benchmark/v3/tests",
+      "-p",
+      "test_nutrient_phenotypes.py",
+      "-v"
+    ],
+    "log": "focused-tests.log",
+    "environment": {
+      "TMPDIR": "/home/leechuck/tmp"
+    }
+  },
+  {
+    "stage": "benchmark gate",
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "benchmark/v3/tests"
+    ],
+    "log": "benchmark-tests.log",
+    "environment": {
+      "TMPDIR": "/home/leechuck/tmp",
+      "JAVA_TOOL_OPTIONS": "-Djava.io.tmpdir=/home/leechuck/tmp",
+      "GSPA_NEXTFLOW_BIN": "/home/leechuck/.cache/gspa-v3-data/tools/nextflow-26.04.6/nextflow"
+    }
+  },
+  {
+    "stage": "independent numerical diagnosis of one unknown production LP",
+    "argv": [
+      "ssh",
+      "unimatrix01",
+      "srun",
+      "--jobid=10144",
+      "--overlap",
+      "--ntasks=1",
+      "--cpus-per-task=1",
+      "env",
+      "OMP_NUM_THREADS=1",
+      "OPENBLAS_NUM_THREADS=1",
+      "TMPDIR=/scratch/10144",
+      "/data/hohndor/gspa-v3/tools/metabolic-venv/bin/python",
+      "/data/hohndor/gspa-v3/nutrient-phenotypes-v1/diagnose_unknown.py",
+      "/scratch/10144/nutrient-phenotypes"
+    ],
+    "log": "unknown-diagnosis.json",
+    "scope": "Numerical diagnosis only; no label reading, prediction replacement or budget redefinition."
+  },
+  {
+    "stage": "scoring",
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "benchmark/v3/run_nutrient_phenotypes.py",
+      "evaluate",
+      "--plan",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-phenotypes-v1/plan",
+      "--run",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-phenotypes-v1/remote/jobs/10144/predictions",
+      "--observations",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-environments-v1/derived-v3/observations.jsonl",
+      "--out",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-phenotypes-v1/evaluation.json"
+    ],
+    "log": "evaluation.log"
+  },
+  {
+    "stage": "constant baselines",
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "/home/leechuck/tmp/gspa-nutrient-phenotypes-v1/make_summary.py",
+      "/home/leechuck/.cache/gspa-v3-data/nutrient-phenotypes-v1"
+    ],
+    "log": "constant-baselines.log"
+  },
+  {
+    "stage": "fresh GLPK diagnosis",
+    "script": "diagnose_glpk.sbatch",
+    "jobs": [
+      {
+        "job": 10145,
+        "outcome": "Slurm launch failed on node007 before output, signal 53"
+      },
+      {
+        "job": 10146,
+        "outcome": "completed on node004, fresh and tighter GLPK solutions agree with production in both finite disputed cases"
+      }
+    ],
+    "log": "glpk-diagnosis.json"
+  },
+  {
+    "stage": "oracle numerical verification revision",
+    "script": "oracle_v2.sbatch",
+    "jobs": [
+      {
+        "job": 10147,
+        "outcome": "cancelled after profiling repeated per-reaction scalar extraction; partial progress is not final validation"
+      },
+      {
+        "job": 10148,
+        "outcome": "Completed all 6,864 conditions / 13,200 comparisons; all GPR sets agree; 13,198 flux comparisons agree; one production solver-unknown and one finite baseline objective discrepancy remain unverified. Strict exit 1."
+      }
+    ],
+    "profiling": "oracle-v2-profile.txt",
+    "historical_source": "oracle-v2/benchmark/v3/check_nutrient_cobra.py"
+  },
+  {
+    "stage": "final focused tests",
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "benchmark/v3/tests",
+      "-p",
+      "test_nutrient_phenotypes.py",
+      "-v"
+    ],
+    "log": "focused-tests-bulk.log",
+    "environment": {
+      "TMPDIR": "/home/leechuck/tmp"
+    }
+  },
+  {
+    "stage": "final benchmark gate",
+    "argv": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "benchmark/v3/tests"
+    ],
+    "log": "benchmark-tests-bulk.log",
+    "environment": {
+      "TMPDIR": "/home/leechuck/tmp",
+      "JAVA_TOOL_OPTIONS": "-Djava.io.tmpdir=/home/leechuck/tmp",
+      "GSPA_NEXTFLOW_BIN": "/home/leechuck/.cache/gspa-v3-data/tools/nextflow-26.04.6/nextflow"
+    }
+  },
+  {
+    "stage": "batch wrapper review",
+    "checks": [
+      "bash -n benchmark/v3/nutrient_phenotypes.sbatch",
+      "git diff --check"
+    ],
+    "changes": "Current wrapper reserves two hours for the longer revised oracle and excludes node007 following its recorded launch failure. Original job wrapper is preserved."
+  },
+  {
+    "stage": "final discrepant-case numerical diagnosis",
+    "job": 10149,
+    "script": "diagnose_final.sbatch",
+    "outcome": "Completed exit 0: six fresh GLPK comparisons and four HiGHS configurations; the finite GLPK result depends on numerical tolerance. No registered prediction or full-replay verdict replaced.",
+    "logs": [
+      "glpk-final-diagnosis.json",
+      "highs-finite-diagnosis.json",
+      "job-10149-final.txt"
+    ]
+  }
+]

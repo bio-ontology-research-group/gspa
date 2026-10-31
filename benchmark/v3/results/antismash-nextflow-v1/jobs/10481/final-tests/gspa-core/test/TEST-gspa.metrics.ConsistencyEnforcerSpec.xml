@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.metrics.ConsistencyEnforcerSpec" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-28T05:17:45" hostname="node004" time="0.11">
+  <properties/>
+  <testcase name="sanity: the two terms really are SAT-inconsistent together" classname="gspa.metrics.ConsistencyEnforcerSpec" time="0.013"/>
+  <testcase name="remove mode drops the violating annotations" classname="gspa.metrics.ConsistencyEnforcerSpec" time="0.009"/>
+  <testcase name="downrank mode scales the score and flags evidence" classname="gspa.metrics.ConsistencyEnforcerSpec" time="0.005"/>
+  <testcase name="flag mode keeps annotations but marks them" classname="gspa.metrics.ConsistencyEnforcerSpec" time="0.006"/>
+  <testcase name="a consistent protein is left untouched" classname="gspa.metrics.ConsistencyEnforcerSpec" time="0.002"/>
+  <testcase name="minimal-flip resolves a co-annotation conflict by dropping the lower-weight term" classname="gspa.metrics.ConsistencyEnforcerSpec" time="0.061"/>
+  <testcase name="enforcement records provenance actions and trail lines" classname="gspa.metrics.ConsistencyEnforcerSpec" time="0.009"/>
+  <testcase name="organism mode removes only the conflicting term, not a consistent co-annotation" classname="gspa.metrics.ConsistencyEnforcerSpec" time="0.004"/>
+  <system-out><![CDATA[08:17:45.682 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (remove): acted on 2 annotation(s) (relaxed=0) across 1 protein(s); 1 violation(s) found
+08:17:45.687 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (downrank): acted on 2 annotation(s) (relaxed=0) across 1 protein(s); 1 violation(s) found
+08:17:45.693 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (flag): acted on 2 annotation(s) (relaxed=0) across 1 protein(s); 1 violation(s) found
+08:17:45.695 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (remove): acted on 0 annotation(s) (relaxed=0) across 0 protein(s); 0 violation(s) found
+08:17:45.697 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loading taxon hierarchy + disjointness from: /home/leechuck/tmp/spock_minimal-flip_resolv_0_tmp14303968061207563508/h2.tsv
+08:17:45.698 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loaded taxon hierarchy: 0 taxa, 2 with explicit disjointness
+08:17:45.753 [Test worker] INFO gspa.ontology.TaxonConsistencyMaxSat -- MaxSAT consistency repair: 1 of 2 constrained terms demoted (min-cost)
+08:17:45.756 [Test worker] INFO gspa.metrics.ConsistencyEnforcer --   minimal-flip: consistent after 1 residual round(s)
+08:17:45.756 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (minimal-flip): acted on 1 annotation(s) (relaxed=0) across 1 protein(s); 1 violation(s) found
+08:17:45.764 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (flag): acted on 2 annotation(s) (relaxed=0) across 1 protein(s); 1 violation(s) found
+08:17:45.767 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loading taxon hierarchy + disjointness from: /home/leechuck/tmp/spock_organism_mode_remov_0_tmp384879494562911009/h.tsv
+08:17:45.768 [Test worker] INFO gspa.ontology.SatConsistencyChecker -- Loaded taxon hierarchy: 1 taxa, 2 with explicit disjointness
+08:17:45.768 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Organism NCBITaxon_2: 1 GO terms forbidden by taxon/anatomical constraints
+08:17:45.769 [Test worker] INFO gspa.metrics.ConsistencyEnforcer -- Consistency enforcement (remove): acted on 1 annotation(s) (relaxed=0) across 1 protein(s); 1 violation(s) found
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

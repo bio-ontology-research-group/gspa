@@ -32,6 +32,10 @@ class PredictorRunStatus {
         new PredictorRunStatus(predictor: predictor, outcome: PredictorOutcome.UNAVAILABLE, detail: detail)
     }
 
+    static PredictorRunStatus skipped(String predictor, String detail) {
+        new PredictorRunStatus(predictor: predictor, outcome: PredictorOutcome.SKIPPED, detail: detail)
+    }
+
     static PredictorRunStatus failed(String predictor, String detail, Integer exitCode = null) {
         new PredictorRunStatus(predictor: predictor, outcome: PredictorOutcome.FAILED, detail: detail, exitCode: exitCode)
     }

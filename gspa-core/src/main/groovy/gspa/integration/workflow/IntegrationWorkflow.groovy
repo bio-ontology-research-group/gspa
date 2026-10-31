@@ -17,6 +17,7 @@ import gspa.integration.contextbridge.CohortStage
 import gspa.integration.contextbridge.CommunityStage
 import gspa.integration.contextbridge.ExperimentStage
 import gspa.integration.contextbridge.ExternalContextSupport
+import gspa.integration.contextbridge.PathwayGapBuilder
 import gspa.integration.crossgenome.CrossGenomeReScorer
 import gspa.integration.crossgenome.ReactionLocusCatalog
 import gspa.integration.learned.ExternalContext
@@ -68,6 +69,7 @@ class IntegrationWorkflow {
         IntegrationState state
         IntegrationRunAudit audit
         List<EvidenceClaim> claims
+        Map qualityReport
         int maxIter
         long elapsedNanos
         /** Typed context the learned stage and the feature export consumed (null: none was available). */
@@ -105,6 +107,10 @@ class IntegrationWorkflow {
 
     private ExternalContext explicitContext
     private LearnedContextModel learnedModel
+    /** Actual AntiFam outcome supplied by the annotation route, never inferred from absent hits. */
+    String antiFamScanStatus
+    /** Current annotation-run observations only; standalone integration must supply its own inputs. */
+    List<Map> pathwaySearchObservations
 
     IntegrationWorkflow(IntegrationWorkflowConfig config) {
         this.c = config
@@ -179,7 +185,35 @@ class IntegrationWorkflow {
                 def loader = new IntegrationReferenceLoader(c)
                 loader.info = info
                 loader.wire(state, claims, sharedReferences)
+                wirePathwayGaps(state, genomeId)
                 if (state.genomeLayout == null && genome != null) state.genomeLayout = layoutFromGenome(genome)
+                def satChecker = state.satConsistencyChecker
+                boolean taxonInHierarchy = satChecker == null || satChecker.organismTaxon == null || satChecker.isOrganismTaxonInHierarchy()
+                String taxonState = satChecker?.organismTaxon == null ? 'no_organism_taxon_asserted' :
+                    (taxonInHierarchy ? gspa.ontology.SatConsistencyChecker.STATUS_APPLIED :
+                        gspa.ontology.SatConsistencyChecker.STATUS_TAXON_NOT_IN_HIERARCHY)
+                Map<String, List<String>> ecMap = state.ecToGoAlternatives ?: [:]
+                int ecClaimsCheckable = 0
+                int ecClaimsNotCheckable = 0
+                for (EvidenceClaim cl : (claims ?: [])) {
+                    if (cl.functionType?.toString() == 'EC') {
+                        if (gspa.ontology.SatConsistencyChecker.lookupEcToGo(ecMap, cl.functionId).isEmpty()) {
+                            ecClaimsNotCheckable++
+                        } else {
+                            ecClaimsCheckable++
+                        }
+                    }
+                }
+                audit.note('reference_preparation', [metabolic_gap_records:state.metabolicGaps.size(),
+                    metabolic_gap_context_available:state.metabolicGapsAvailable,
+                    ec_to_go_mapping_available:state.ecToGoAlternatives != null,
+                    mapped_ec_count:state.ecToGoAlternatives?.size() ?: 0,
+                    organism_taxon:satChecker?.organismTaxon,
+                    taxon_in_hierarchy:taxonInHierarchy,
+                    taxon_consistency_state:taxonState,
+                    taxon_not_in_hierarchy_count:taxonInHierarchy ? 0 : 1,
+                    ec_claims_checkable:ecClaimsCheckable,
+                    ec_claims_not_checkable:ecClaimsNotCheckable])
 
                 // --- Prior engine and refiner ---
                 refiner = new IterativeRefiner(combiner)
@@ -211,6 +245,7 @@ class IntegrationWorkflow {
             }
         }
         new Result(genomeId: genomeId, integrated: integrated, state: state, audit: audit, claims: claims,
+            qualityReport: gspa.integration.GeneModelQuality.report(claims, antiFamScanStatus ?: outputs.context?.predictorStatus?.get('antifam')),
             maxIter: refiner.maxIter, elapsedNanos: System.nanoTime() - started, context: outputs.context,
             cohortReport: outputs.cohortReport, learned: outputs.learned, featureExport: outputs.featureExport)
     }
@@ -264,19 +299,38 @@ class IntegrationWorkflow {
                             c.anomaliesOut, c.agentResolutionsOut]
         if (c.outFile != null) {
             files << c.outFile
-            ['.stages.json', '.rescues.tsv', '.modules.json', '.learned.json', '.cohort.json'].each { files << new File(c.outFile.absolutePath + it) }
-            // Only the three files a stage writes are removed (and the directory if that leaves it empty): a directory
+            ['.stages.json', '.rescues.tsv', '.modules.json', '.learned.json', '.cohort.json', '.quality.json',
+             '.gaps.jsonl', '.gap-context.json'].each { files << new File(c.outFile.absolutePath + it) }
+            // Only files a stage writes are removed (and the directory if that leaves it empty): a directory
             // that happens to carry the name but holds anything else is left alone.
             ['.experiments', '.community'].each { String suffix ->
                 File d = new File(c.outFile.absolutePath + suffix)
                 ['manifest.json', 'result.json', 'sidecar.log'].each { new File(d, it).delete() }
+                if (suffix == '.experiments') {
+                    new File(d, 'construction.json').delete()
+                    Set<File> inputs = [c.experimentManifestFile, c.experimentEvidenceFile].findAll { it != null }
+                        .collect { it.canonicalFile } as Set<File>
+                    (d.listFiles() ?: []).findAll {
+                        it.isDirectory() && it.name ==~ /comparison-\d{4,}/ &&
+                            !java.nio.file.Files.isSymbolicLink(it.toPath())
+                    }.each { File child ->
+                        ['request.json', 'manifest.json', 'construction.json', 'result.json', 'sidecar.log'].each { String name ->
+                            File artifact = new File(child, name)
+                            if (!inputs.contains(artifact.canonicalFile)) artifact.delete()
+                        }
+                        child.delete()
+                    }
+                }
                 d.delete()
             }
         }
         if (c.featureExportDir != null) {
             [FeatureExporter.ROWS_FILE, FeatureExporter.CONTRACT_FILE, FeatureExporter.MANIFEST_FILE].each { files << new File(c.featureExportDir, it) }
         }
-        files.findAll { it != null }.each { it.delete() }
+        // A prior gap export can be explicitly reused as input with the same output prefix.
+        Set<File> protectedGapInputs = [c.gapsFile, c.pathwayObservationsFile].findAll { it != null }
+            .collect { it.canonicalFile } as Set<File>
+        files.findAll { it != null && !protectedGapInputs.contains(it.canonicalFile) }.each { it.delete() }
     }
 
 
@@ -285,6 +339,18 @@ class IntegrationWorkflow {
         if (c.outFile == null) return
         IntegrationArtifacts.writeIntegratedOutputTsv(result.integrated, c.outFile)
         println "  Wrote: ${c.outFile}"
+        if (result.state.metabolicGapReport != null) {
+            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(
+                new File(c.outFile.absolutePath + '.gap-context.json'), result.state.metabolicGapReport)
+        }
+        if (result.state.metabolicGapsAvailable) {
+            new File(c.outFile.absolutePath + '.gaps.jsonl').withWriter('UTF-8') { writer ->
+                result.state.metabolicGaps.each { gap -> writer.write(groovy.json.JsonOutput.toJson(PathwayGapBuilder.record(gap)) + '\n') }
+            }
+        }
+        if (result.qualityReport != null) {
+            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new File(c.outFile.absolutePath + '.quality.json'), result.qualityReport)
+        }
         [IntegrationArtifacts.writeRescueLog(result.state, c.outFile),
          IntegrationArtifacts.writeModuleReport(result.state, result.integrated, c.outFile)].each {
             if (it != null) println it
@@ -302,6 +368,40 @@ class IntegrationWorkflow {
             File f = IntegrationArtifacts.writeLearnedReport(result.learned, new File(c.outFile.absolutePath + '.learned.json'))
             println "  Learned stage report: ${f} (${result.learned})"
         }
+    }
+
+    private void wirePathwayGaps(IntegrationState state, String genomeId) {
+        List<Map> observations = pathwaySearchObservations
+        if (c.pathwayObservationsFile != null) {
+            if (observations) throw new IllegalArgumentException('pathway observations supplied both by annotation and by file')
+            Object raw = new ObjectMapper().readValue(c.pathwayObservationsFile, Object)
+            if (raw instanceof Map) observations = [raw as Map]
+            else if (raw instanceof List && raw.every { it instanceof Map }) observations = raw as List<Map>
+            else throw new IllegalArgumentException('pathway observations must be an object or a list of objects')
+        }
+        if (c.gapsFile != null) {
+            state.metabolicGapReport = [schema:'gspa.metabolic-gap-context/1', genome_id:genomeId,
+                source:'explicit_gaps', available:true, candidate_gap_records:state.metabolicGaps.size(),
+                observed_searches_superseded:observations?.size() ?: 0,
+                interpretation:'Explicit --gaps takes precedence over automatically derived pathway gaps. Records remain hypotheses.']
+            return
+        }
+        if (observations == null) return
+        List<Map> reports = []
+        def mapping = state.ecToGoAlternatives ?: [:]
+        observations.each { Map observation ->
+            def derived = PathwayGapBuilder.build(observation, genomeId, mapping)
+            reports << derived.report
+            if (derived.available) {
+                state.metabolicGapsAvailable = true
+                state.metabolicGaps.addAll(derived.gaps)
+            }
+        }
+        state.metabolicGaps = state.metabolicGaps.unique(false)
+        state.metabolicGapReport = [schema:'gspa.metabolic-gap-context/1', genome_id:genomeId,
+            source:'pathway_observations', available:state.metabolicGapsAvailable,
+            candidate_gap_records:state.metabolicGaps.size(), searches:reports,
+            ec2go_sha256:c.ec2goFile == null ? null : java.security.MessageDigest.getInstance('SHA-256').digest(c.ec2goFile.bytes).encodeHex().toString()]
     }
 
     private IntegratedAnnotationSet runStages(IntegrationRunAudit audit, List<EvidenceClaim> claims,
@@ -331,6 +431,7 @@ class IntegrationWorkflow {
             [route: route, baseline: 'stage0_raw_max_score', baseline_snapshot_id: cohort.snapshotId,
              cohort_genomes: (report.cohort_genomes as List).size(), n_peer_genomes: report.n_peer_genomes,
              keys_with_cohort_features: (report.candidates as Map).keys_with_cohort_features,
+             keys_with_local_features: (report.candidates as Map).keys_with_local_features,
              no_peers: report.no_peers,
              consumed_by: [c.learnedRequested() ? 'learned_integration' : null, c.featureExportDir != null ? 'feature_export' : null].findAll { it }]
         }
@@ -374,7 +475,7 @@ class IntegrationWorkflow {
         // --- Phase 12: optional Reaction-Local Context suggester (M1) ---
         integrated = audit.runStage('reaction_context', c.rlcSuggester,
             state.reactionGraph == null ? 'reaction graph is required' :
-                (state.genomeLayout == null ? 'genome layout is required' : null), integrated, state) {
+                (state.genomeLayout == null ? 'genome layout is required' : null), integrated, state, {
             def rlc = new ReactionLocalContextSuggester()
             rlc.radiusK = c.rlcRadiusK
             rlc.alpha = c.rlcAlpha
@@ -385,7 +486,7 @@ class IntegrationWorkflow {
             println "  RLGC suggester emitted ${integrated.suggestions.size()} suggestions"
 
             return integrated
-        }
+        }, state.metabolicGaps ? null : 'no metabolic gaps to evaluate')
         integrated = audit.runStage('cross_genome', c.rxnLocusCatalogFile != null,
             c.rxnLocusCatalogFile != null && !c.rxnLocusCatalogFile.isFile() ? 'catalog file does not exist' :
                 (!c.rlcSuggester && !c.darkMatter ? 'enable a context suggester to rescore candidates' : null), integrated, state) {
@@ -407,6 +508,21 @@ class IntegrationWorkflow {
             def stage = new SymbolicEnforcementStage(c)
             stage.info = info
             stage.run(state, integrated)
+            def res = stage.lastResult
+            if (res != null) {
+                audit.note('symbolic_enforcement', [
+                    taxon_consistency_state: res.status,
+                    taxon_in_hierarchy: res.taxonInHierarchy,
+                    constraints_applied: res.constraintsApplied,
+                    taxon_not_in_hierarchy_count: res.taxonInHierarchy ? 0 : 1,
+                    violations: res.violations,
+                    ec_violations: res.ecViolations,
+                    ec_claims_checked: res.ecClaimsChecked,
+                    ec_claims_not_checkable: res.ecClaimsNotCheckable,
+                    annotations_affected: res.annotationsAffected,
+                    annotations_relaxed: res.annotationsRelaxed
+                ])
+            }
             return integrated
         }
 
@@ -421,7 +537,11 @@ class IntegrationWorkflow {
                 sidecarScript: c.fbaSidecar,
                 pythonBin: c.fbaPythonBin,
                 gram: c.fbaGram,
-                medium: c.fbaMedium
+                medium: c.fbaMedium,
+                layoutFile: c.fbaSyntenyFromLayout ? c.genomeLayoutFile : null,
+                keggModulesFile: c.fbaSyntenyFromLayout ? c.fbaKeggModules : null,
+                candidateMinScore: c.fbaCandidateMinScore,
+                candidateTopK: c.fbaCandidateTopK
             )
             def fbaSum = fbaRefiner.refine(state, integrated, new File(c.outFile.absolutePath + ".metabolism"))
             // The medium and biomass template are assumptions of the model, not observations.
@@ -465,7 +585,8 @@ class IntegrationWorkflow {
             stage.info = info
             ExperimentStage.Outcome outcome = stage.run(c, new File(c.outFile.absolutePath + '.experiments'),
                 refinerModel != null && refinerModel.isFile() ? refinerModel : null, integrated, claims, outputs.context,
-                { String ec -> (state.reactionGraph?.reactionsForEc(ec) ?: []) as Collection<String> })
+                { String ec -> (state.reactionGraph?.reactionsForEc(ec) ?: []) as Collection<String> },
+                state.metabolicGaps, state.metabolicGapsAvailable)
             if (!outcome.fba.isEmpty()) {
                 outputs.context = ExternalContextSupport.merge(outputs.context, new ExternalContext(fba: outcome.fba), 'metabolic experiments')
             }
@@ -492,20 +613,27 @@ class IntegrationWorkflow {
                 addUnretainedClaims: c.learnedAddUnretainedClaims, forbiddenGoTerms: new LinkedHashSet<String>(forbidden))
             LearnedStageReport report = learnedStageFactory.call(settings).run(claims, state, integrated, outputs.context)
             outputs.learned = report
-            audit.scoringMode = 'learned'
+            audit.scoringMode = report.candidates && report.unsupportedCount() == 0 ? 'learned' :
+                (report.candidates.size() > report.unsupportedCount() ? 'mixed' : 'legacy_heuristic')
             audit.note('learned_integration', [
                 model_id: report.modelId, model_sha256: report.modelSha256, model_kind: report.modelKind,
                 contract_id: report.contractId, contract_fingerprint: report.contractFingerprint,
-                candidates_scored: report.candidates.size(), rescored: report.count('rescored'), added: report.count('added'),
+                candidates_scored: report.candidates.size() - report.unsupportedCount(),
+                candidates_unsupported: report.unsupportedCount(), unchanged_unsupported: report.count('unchanged_unsupported'),
+                rescored: report.count('rescored'), added: report.count('added'),
                 retracted: report.count('retracted'), removed_no_projection: report.count('removed_no_projection'),
                 scored_only: report.count('scored_only'), pinned_floors_cleared: report.pinnedFloorsCleared.size(),
                 retract_below: c.learnedRetractBelow, add_unretained_claims: c.learnedAddUnretainedClaims,
                 structurally_forbidden_go_terms: forbidden.size(),
                 context_supplied: outputs.context != null,
                 replaced_baseline: 'legacy_prior_baseline',
-                note: 'Scores were replaced by the frozen model, not added to the heuristic posterior. A display threshold, if any, is advisory.'])
+                note: 'Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.'])
             println "  Learned stage (${report.modelId}, sha256 ${report.modelSha256.take(12)}): ${report}"
             return integrated
+        }
+        if (outputs.learned != null && outputs.learned.unsupportedCount() == outputs.learned.candidates.size()) {
+            audit.note('learned_integration', [status: 'skipped', requested: true,
+                reason: 'no candidates supported by the model input-coverage manifest; baseline scores retained'])
         }
         if (!c.learnedRequested()) {
             audit.note('learned_integration', [reason: 'learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them'])

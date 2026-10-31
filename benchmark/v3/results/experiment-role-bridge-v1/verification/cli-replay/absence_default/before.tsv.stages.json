@@ -1,0 +1,94 @@
+{
+  "schema_version" : 2,
+  "genome_id" : "genome",
+  "interpretation" : "Prediction changes are not measurements of accuracy.",
+  "scoring_mode" : "legacy_heuristic",
+  "scoring_mode_note" : "Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores.",
+  "baseline_definitions" : {
+    "stage0_raw_max_score" : "Stage 0: strongest raw predictor score per function; no priors, no combination, no posterior.",
+    "legacy_prior_baseline" : "Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The baseline_candidates and final_changes of this ledger are measured from it."
+  },
+  "changes_measured_from" : "legacy_prior_baseline",
+  "stages" : [ {
+    "name" : "reference_preparation",
+    "status" : "executed",
+    "changes" : [ ],
+    "metabolic_gap_records" : 0,
+    "metabolic_gap_context_available" : false,
+    "ec_to_go_mapping_available" : false,
+    "mapped_ec_count" : 0,
+    "elapsed_seconds" : 0.495407767
+  }, {
+    "name" : "cohort_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "evidence_integration",
+    "status" : "executed",
+    "changes" : [ {
+      "function_key" : "query|EC|EC:6.2.1.1",
+      "protein_id" : "query",
+      "function_type" : "EC",
+      "function_id" : "EC:6.2.1.1",
+      "change" : "added",
+      "before_probability" : null,
+      "after_probability" : 0.08373647553455477
+    } ],
+    "input_candidates" : 0,
+    "output_candidates" : 1,
+    "suggestions" : 0,
+    "elapsed_seconds" : 0.043958714
+  }, {
+    "name" : "dark_matter",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "reaction_context",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "cross_genome",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "symbolic_enforcement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_refinement",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "agent_completion",
+    "status" : "skipped",
+    "changes" : [ ],
+    "reason" : "disabled"
+  }, {
+    "name" : "metabolic_experiments",
+    "status" : "failed",
+    "changes" : [ ],
+    "reason" : "SidecarFailure: /home/leechuck/Public/software/gspa/scripts/metabolic_experiments.py exited with status 1: Traceback (most recent call last):\n  File \"/home/leechuck/Public/software/gspa/scripts/metabolic_experiments.py\", line 1216, in <module>\n    sys.exit(main())\n  File \"/home/leechuck/Public/software/gspa/scripts/metabolic_experiments.py\", line 1205, in main\n    result = run_experiments(manifest, model, cfg_over)\n  File \"/home/leechuck/Public/software/gspa/scripts/metabolic_experiments.py\", line 1067, in run_experiments\n    return run_absence_experiments(manifest, model, overrides)\n  File \"/home/leechuck/Public/software/gspa/scripts/absence_experiments.py\", line 218, in run_absence_experiments\n    run, closed_ports = validate(manifest, model, cfg)\n  File \"/home/leechuck/Public/software/gspa/scripts/absence_experiments.py\", line 59, in validate\n    _fields(assembly, ('status', 'completeness_fraction', 'source'))\n  File \"/home/leechuck/Public/software/gspa/scripts/absence_experiments.py\", line 24, in _fields\n    raise ME.ManifestError('invalid absence fields; required: ' + ', '.join(sorted(required)))\nmetabolic_experiments.ManifestError: invalid absence fields; required: completeness_fraction, source, status",
+    "elapsed_seconds" : 0.73922222
+  }, {
+    "name" : "community_metabolism",
+    "status" : "not_run",
+    "changes" : [ ]
+  }, {
+    "name" : "learned_integration",
+    "status" : "not_run",
+    "changes" : [ ]
+  }, {
+    "name" : "feature_export",
+    "status" : "not_run",
+    "changes" : [ ]
+  } ],
+  "baseline_candidates" : 1,
+  "final_candidates" : 1,
+  "final_changes" : [ ]
+}

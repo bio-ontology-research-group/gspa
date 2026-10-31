@@ -808,6 +808,8 @@ class StoichiometricLocusRefiner:
         tau_null: float = 0.05,
         gamma_fba: float = 2.2,
         return_delta_logit: bool = False,
+        candidate_min_score: float = 1e-5,
+        candidate_top_k: int = 0,
     ) -> Any:
         """
         Stage C: Backward Locus Responsibility Attribution r_j(h).
@@ -816,6 +818,11 @@ class StoichiometricLocusRefiner:
           w_{j,r}(h) = (s_{h,r}/(1-s_{h,r}))^beta1 * BF_RLGC(h,r)^beta2
                        * exp(beta3 * C_syn(h,k) + beta4 * S_PLM(h,r))
         normalized against an explicit unassigned/dummy gene hypothesis h_null (tau_null).
+
+        Follow-up options (2026-10-31; defaults reproduce the original behaviour): a gene is a candidate for an
+        enzyme number only when its score exceeds `candidate_min_score` (original floor 1e-5), and when
+        `candidate_top_k > 0` only the k highest-scoring candidates per enzyme number (ties at the k-th score kept)
+        receive responsibility.
         """
         updated_scores: dict[str, dict[str, float]] = {
             gid: dict(ec_map) for gid, ec_map in gene_ec_scores.items()
@@ -827,13 +834,25 @@ class StoichiometricLocusRefiner:
 
         ec_to_candidates: dict[str, list[str]] = defaultdict(list)
         ec_max_score: dict[str, float] = defaultdict(float)
+        floor = float(candidate_min_score)
         for gid, ec_map in gene_ec_scores.items():
             for ec, s in ec_map.items():
                 clean_ec = ec.replace("EC:", "").strip()
-                if s > 1e-5:
+                if s > floor:
                     ec_to_candidates[clean_ec].append(gid)
                     if s > ec_max_score[clean_ec]:
                         ec_max_score[clean_ec] = float(s)
+        if candidate_top_k and int(candidate_top_k) > 0:
+            k = int(candidate_top_k)
+            for clean_ec, cands in list(ec_to_candidates.items()):
+                if len(cands) <= k:
+                    continue
+                scored = sorted(
+                    ((float(gene_ec_scores[h].get(clean_ec, gene_ec_scores[h].get(f"EC:{clean_ec}", 0.0))), h) for h in cands),
+                    key=lambda t: (-t[0], t[1]),
+                )
+                kth = scored[k - 1][0]
+                ec_to_candidates[clean_ec] = [h for s, h in scored if s >= kth]
 
         delta_logit: dict[tuple[str, str], float] = defaultdict(float)
         agg_helper = SparseRoleAggregator()
@@ -1139,9 +1158,113 @@ class StoichiometricLocusRefiner:
         }
 
 
+def load_layout_tsv(path: Path) -> dict[str, tuple[str, int, int]]:
+    """Read a genome layout (protein_id, contig, start, end[, strand]) into {protein: (contig, rank, start)}.
+
+    Rank is the 0-based position of the protein among the proteins of its contig ordered by start coordinate, so a
+    window of +/- w loci is a rank difference of at most w.
+    """
+    rows: list[tuple[str, str, int]] = []
+    with open(path, "r", encoding="utf-8") as fh:
+        header = fh.readline().rstrip("\n").split("\t")
+        idx = {name: i for i, name in enumerate(header)}
+        for line in fh:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 4:
+                continue
+            try:
+                start = int(parts[idx.get("start", 2)])
+            except ValueError:
+                continue
+            rows.append((parts[idx.get("protein_id", 0)], parts[idx.get("contig", 1)], start))
+    by_contig: dict[str, list[tuple[int, str]]] = defaultdict(list)
+    for pid, contig, start in rows:
+        by_contig[contig].append((start, pid))
+    layout: dict[str, tuple[str, int, int]] = {}
+    for contig, items in by_contig.items():
+        items.sort()
+        for rank, (start, pid) in enumerate(items):
+            layout[pid] = (contig, rank, start)
+    return layout
+
+
+def load_kegg_modules_tsv(path: Path) -> dict[str, set[str]]:
+    """Read a KEGG module table (columns pathway_id/module_id and ec_number/ec) into {ec: {module ids}}."""
+    ec_modules: dict[str, set[str]] = defaultdict(set)
+    with open(path, "r", encoding="utf-8") as fh:
+        header = fh.readline().rstrip("\n").split("\t")
+        idx = {name: i for i, name in enumerate(header)}
+        mod_col = idx.get("pathway_id", idx.get("module_id"))
+        ec_col = idx.get("ec_number", idx.get("ec"))
+        if mod_col is None or ec_col is None:
+            raise ValueError(f"{path}: expected pathway_id/module_id and ec_number/ec columns")
+        for line in fh:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) <= max(mod_col, ec_col):
+                continue
+            ec = parts[ec_col].replace("EC:", "").strip()
+            mod = parts[mod_col].strip()
+            if mod and ec and "-" not in ec:
+                ec_modules[ec].add(mod)
+    return ec_modules
+
+
+def compute_synteny_covariate(
+    gene_ec_scores: dict[str, dict[str, float]],
+    layout: dict[str, tuple[str, int, int]],
+    ec_modules: dict[str, set[str]],
+    window: int = 10,
+    min_score: float = 0.25,
+) -> dict[str, float]:
+    """Synteny covariate C_syn(h, r) for EC claims (Stage 2B follow-up, design §4).
+
+    C_syn(h, r) = 1.0 when another gene g != h within +/- `window` loci of h on the same contig carries a claim with
+    score >= `min_score` for a different enzyme number that shares a KEGG module with r; otherwise the pair is absent
+    (the sidecar's default of 0.0 applies). Keys are "gene|ec" as the sidecar's covariate lookup expects.
+    """
+    # Candidate claims per contig, ordered by rank: (rank, gene, ec, modules)
+    per_contig: dict[str, list[tuple[int, str, str, set[str]]]] = defaultdict(list)
+    for gid, ec_map in gene_ec_scores.items():
+        pos = layout.get(gid)
+        if pos is None:
+            continue
+        contig, rank, _ = pos
+        for ec, s in ec_map.items():
+            clean_ec = ec.replace("EC:", "").strip()
+            if s >= min_score and clean_ec in ec_modules:
+                per_contig[contig].append((rank, gid, clean_ec, ec_modules[clean_ec]))
+    covariate: dict[str, float] = {}
+    for contig, items in per_contig.items():
+        items.sort(key=lambda t: (t[0], t[1], t[2]))
+        n = len(items)
+        lo = 0
+        for i, (rank, gid, ec, mods) in enumerate(items):
+            while lo < n and items[lo][0] < rank - window:
+                lo += 1
+            j = lo
+            while j < n and items[j][0] <= rank + window:
+                r2, g2, ec2, mods2 = items[j]
+                if g2 != gid and ec2 != ec and (mods & mods2):
+                    covariate[f"{gid}|{ec}"] = 1.0
+                    break
+                j += 1
+    return covariate
+
+
 def main():
     parser = argparse.ArgumentParser(description="StoichiometricLocusRefiner CLI & Sidecar")
     parser.add_argument("--fba-data-dir", type=Path, required=True, help="Path to fba_data directory")
+    parser.add_argument("--repair-json", type=Path, default=None,
+                        help="Follow-up option: reuse the stored repair result (a previous --output-json) instead of solving; only the locus attribution is recomputed")
+    parser.add_argument("--layout-tsv", type=Path, default=None,
+                        help="Follow-up option: genome layout TSV; with --kegg-modules-tsv the sidecar computes the synteny covariate for EC claims when the payload's operon map is empty")
+    parser.add_argument("--kegg-modules-tsv", type=Path, default=None, help="KEGG module table (pathway_id, ec_number)")
+    parser.add_argument("--synteny-window", type=int, default=10, help="Loci on each side counted as neighbours (default 10)")
+    parser.add_argument("--synteny-min-score", type=float, default=0.25, help="Neighbour claim floor for the synteny covariate (default 0.25)")
+    parser.add_argument("--candidate-min-score", type=float, default=None,
+                        help="Follow-up option: responsibility candidates need a score above this (default: the original floor 1e-5)")
+    parser.add_argument("--candidate-top-k", type=int, default=None,
+                        help="Follow-up option: at most k candidates per enzyme number receive responsibility, ties kept (default: unlimited)")
     parser.add_argument("--flux-skeleton", type=Path, default=None, help="Explicit optional precomputed flux scaffold; no benchmark cache is loaded implicitly")
     parser.add_argument("--smoke-test", action="store_true", help="Run smoke test on minimal glucose")
     parser.add_argument("--input-json", type=Path, default=None, help="JSON input with rxn_probs or gene_ec_scores")
@@ -1172,25 +1295,62 @@ def main():
             ec_probs, _ = agg.aggregate_ec_scores(gene_ec_scores)
             rxn_probs = agg.compute_reaction_probabilities(ec_probs, refiner.r2ec, refiner.rxn_meta)
 
-        repair_res = refiner.solve_flux_certified_repair(
-            rxn_probs or {},
-            gram=payload.get("gram", args.gram),
-            medium_name=payload.get("medium", args.medium),
-            extra_uptake_exchanges=payload.get("extra_uptake_exchanges"),
-            removed_uptake_exchanges=set(payload.get("removed_uptake_exchanges", [])),
-            tau_core=float(payload.get("tau_core", args.tau_core)),
-            alpha_bio=float(payload.get("alpha_bio", args.alpha_bio)),
-        )
+        if args.repair_json is not None:
+            repair_res = json.loads(Path(args.repair_json).read_text(encoding="utf-8"))
+            repair_res.pop("updated_gene_ec_scores", None)
+            repair_res["reused_repair_json"] = str(args.repair_json)
+        else:
+            repair_res = refiner.solve_flux_certified_repair(
+                rxn_probs or {},
+                gram=payload.get("gram", args.gram),
+                medium_name=payload.get("medium", args.medium),
+                extra_uptake_exchanges=payload.get("extra_uptake_exchanges"),
+                removed_uptake_exchanges=set(payload.get("removed_uptake_exchanges", [])),
+                tau_core=float(payload.get("tau_core", args.tau_core)),
+                alpha_bio=float(payload.get("alpha_bio", args.alpha_bio)),
+            )
         if gene_ec_scores:
+            operon_map = payload.get("operon_partner_boost_by_gene_ec")
+            layout_tsv = args.layout_tsv or (Path(payload["layout_tsv"]) if payload.get("layout_tsv") else None)
+            kegg_tsv = args.kegg_modules_tsv or (Path(payload["kegg_modules_tsv"]) if payload.get("kegg_modules_tsv") else None)
+            if layout_tsv is not None and kegg_tsv is not None and not operon_map:
+                window = int(payload.get("synteny_window", args.synteny_window))
+                operon_map = compute_synteny_covariate(
+                    gene_ec_scores,
+                    load_layout_tsv(layout_tsv),
+                    load_kegg_modules_tsv(kegg_tsv),
+                    window=window,
+                    min_score=float(args.synteny_min_score),
+                )
+                repair_res["synteny_covariate"] = {
+                    "layout_tsv": str(layout_tsv),
+                    "kegg_modules_tsv": str(kegg_tsv),
+                    "window": window,
+                    "min_score": float(args.synteny_min_score),
+                    "n_pairs": len(operon_map),
+                }
+            cand_min = args.candidate_min_score
+            if cand_min is None:
+                cand_min = float(payload.get("candidate_min_score", 1e-5))
+            cand_top_k = args.candidate_top_k
+            if cand_top_k is None:
+                cand_top_k = int(payload.get("candidate_top_k", 0) or 0)
             updated_gene_ec = refiner.attribute_locus_responsibility(
                 repair_res,
                 gene_ec_scores,
                 rxn_probs or {},
                 rlgc_bf_by_gene_ec=payload.get("rlgc_bf_by_gene_ec"),
                 plm_sim_by_gene_ec=payload.get("plm_sim_by_gene_ec"),
-                operon_partner_boost_by_gene_ec=payload.get("operon_partner_boost_by_gene_ec"),
+                operon_partner_boost_by_gene_ec=operon_map,
+                candidate_min_score=float(cand_min),
+                candidate_top_k=int(cand_top_k),
             )
             repair_res["updated_gene_ec_scores"] = updated_gene_ec
+            repair_res["attribution_options"] = {
+                "candidate_min_score": float(cand_min),
+                "candidate_top_k": int(cand_top_k),
+                "n_operon_covariates": len(operon_map or {}),
+            }
 
         if args.export_model:
             refiner.export_model(repair_res, args.export_model, gene_ec_scores, payload.get("gram", args.gram), payload.get("medium", args.medium), payload.get("extra_uptake_exchanges"), set(payload.get("removed_uptake_exchanges", [])))

@@ -1,0 +1,98 @@
+[
+  {
+    "name": "before",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=3",
+      "-jar",
+      "/home/leechuck/tmp/antismash-cli/before.jar",
+      "annotate",
+      "--genome",
+      "/home/leechuck/tmp/antismash-cli/results/input.fna",
+      "--gff3",
+      "/home/leechuck/tmp/antismash-cli/results/input.gff3",
+      "--proteins",
+      "/home/leechuck/tmp/antismash-cli/results/input.faa",
+      "--config",
+      "/home/leechuck/tmp/antismash-cli/results/config.json",
+      "--output",
+      "/home/leechuck/tmp/antismash-cli/results/before",
+      "--claims-out",
+      "/home/leechuck/tmp/antismash-cli/results/before/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "annotate",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=3",
+      "-jar",
+      "/home/leechuck/tmp/antismash-cli/after.jar",
+      "annotate",
+      "--genome",
+      "/home/leechuck/tmp/antismash-cli/results/input.fna",
+      "--gff3",
+      "/home/leechuck/tmp/antismash-cli/results/input.gff3",
+      "--proteins",
+      "/home/leechuck/tmp/antismash-cli/results/input.faa",
+      "--config",
+      "/home/leechuck/tmp/antismash-cli/results/config.json",
+      "--output",
+      "/home/leechuck/tmp/antismash-cli/results/annotate",
+      "--claims-out",
+      "/home/leechuck/tmp/antismash-cli/results/annotate/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "annotate_integrated",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=3",
+      "-jar",
+      "/home/leechuck/tmp/antismash-cli/after.jar",
+      "annotate",
+      "--genome",
+      "/home/leechuck/tmp/antismash-cli/results/input.fna",
+      "--gff3",
+      "/home/leechuck/tmp/antismash-cli/results/input.gff3",
+      "--proteins",
+      "/home/leechuck/tmp/antismash-cli/results/input.faa",
+      "--config",
+      "/home/leechuck/tmp/antismash-cli/results/config.json",
+      "--output",
+      "/home/leechuck/tmp/antismash-cli/results/annotate_integrated",
+      "--claims-out",
+      "/home/leechuck/tmp/antismash-cli/results/annotate_integrated/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics",
+      "--integration-config",
+      "/home/leechuck/tmp/antismash-cli/results/workflow.json"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "direct",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/home/leechuck/tmp/antismash-cli/after.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/tmp/antismash-cli/results/annotate/raw.jsonl",
+      "--workflow-config",
+      "/home/leechuck/tmp/antismash-cli/results/workflow.json",
+      "--out",
+      "/home/leechuck/tmp/antismash-cli/results/direct.tsv"
+    ],
+    "exit_code": 0
+  }
+]

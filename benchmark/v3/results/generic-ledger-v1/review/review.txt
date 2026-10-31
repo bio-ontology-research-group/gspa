@@ -1,0 +1,44 @@
+I found no blocking defects. The refactor keeps `verified_batch` semantics and artifact hashes, and the parser and verifier changes do invalidate cached results. I did not run any tests. This machine has no `ijson`, so the streaming suite would skip here anyway, and it is only reviewed by reading.
+
+**What I checked and found sound**
+- **`verified_batch` semantics:** Against `price-production-checkpoint-v1/source/code/verified_batch.py`, the only changes are the extraction of the parser code into `stage_ledger.py` and `Path(L.__file__)` added to `describe_run` inputs. `output_hashes` and `reusable` are byte-identical, so artifact hashes are unchanged. The `V.*` re-exports cover every name other scripts use (`LEDGER_MEMORY_LIMIT`, `ledger_metadata`, `parser_identity`, `stream_ledger_metadata`, `streaming_parser_sources`).
+- **`v3_runner`:** Compared with the checkpoint copy, the generic runner's only behavioural change is `json.load` → `L.ledger_metadata(...)`. `ledger_metadata` now does `Path(path)`, so the `str` argument works. A non-dict ledger now raises `ValueError` instead of an uncaught `AttributeError`.
+- **Cache invalidation:** `describe_run` hashes `stage_ledger.py` and the parser sources and records `parser_identity` in the spec. `inference_identity` adds `code_hashes()` (now including `stage_ledger.py`) and the parser version, backend and source hashes. The production driver globs `*.py`, so `stage_ledger.py` is bound there too.
+
+**Issues**
+
+1. **Medium, `verified_batch.py:run_batch` and `v3_runner.py:load_run_record`: old receipts are rejected and `run_batch` would rerun inference.**
+   - The spec now has a new input and a new `verified_batch.py` hash. Every pre-change `verified_run.json` therefore fails `reusable`, and every old `run_record.json` fails the `inference_identity` comparison.
+   - This is the intended invalidation. The consequence is that `run_batch` against an existing out_dir would archive the outputs to `history/` and relaunch the engine.
+   - For the frozen price-production-v1 collection, replay with `output_hashes` or `ledger_metadata` directly. Never route it through `run_batch`.
+   - Add a test that a receipt written without `stage_ledger.py` in its inputs is `reusable == False`.
+
+2. **Medium, `stage_ledger.py:ledger_metadata`: the generic runner now needs `ijson` for ledgers over 8 MiB.**
+   - `requirements-streaming.txt` calls `ijson` optional. Apart from docs and the production driver, nothing in the repo references it, including `docker/Dockerfile`.
+   - Without it, every genome with an over-8 MiB ledger is recorded as `failed: invalid execution evidence: large stage ledger requires …`. Failing closed is correct, but other run environments will start failing.
+   - Install `ijson` in any environment that runs large ledgers, or document that requirement.
+
+3. **Low, `test_streaming_ledger.py:GenericRunnerLedgerTests`: the memory test proves nothing without `ijson`.**
+   - It patches `R.json.load`, but the stdlib fallback uses `json.loads`, and the fixture is tiny. It passes vacuously where `ijson` is absent.
+   - Add `@skipUnless(find_spec('ijson'))`, or add a large-ledger case that checks `R.stage_artifacts` goes through the streaming path.
+   - It also uses `tempfile.TemporaryDirectory()` without `dir=`, unlike the rest of the file. That is fine only if `TMPDIR` is set to `~/tmp`, per your global rule.
+
+4. **Low, missing tests for the "binds code and parser" goal.** Nothing asserts that:
+   - `inference_identity` changes when `stage_ledger.py`, a parser source file or the `ijson` version changes;
+   - `describe_run(...)["inputs"]` contains `stage_ledger.py` and the parser sources;
+   - `load_run_record` rejects a legacy record that lacks `code` and `ledger_parser`;
+   - `run_arm` marks a genome failed for a ledger with NaN or trailing data, with the failure reaching `record["failed"]` rather than crashing. The current corruption test only calls `stage_artifacts` directly.
+
+5. **Low, `stage_ledger.py:streaming_parser_sources`: coverage gaps in the native backend binding.**
+   - It hashes the package files and `ijson.libs`. A distro or conda `ijson` linked against a system `libyajl.so` is not bound.
+   - On the stdlib fallback, `parser_identity` omits the Python version, though acceptance depends on CPython's `json`.
+   - Source paths are absolute, so moving the venv changes the identity. That is safe, because it only invalidates the cache.
+
+6. **Low, parser acceptance parity: add cases to the corpus test.**
+   - Invalid UTF-8 and lone-surrogate escapes (`"\ud800"`) inside skipped payloads: the stdlib path rejects invalid UTF-8 through strict `read_text`, but I could not confirm what `yajl2_c` does.
+   - Also add `1e999`.
+   - The real 2.68 GB replay will exercise the backend. These cases would pin the stream and fallback behaviour together.
+
+7. **Low, parse-then-hash gap (also in the pre-change `output_hashes`).** The ledger is validated in one read, then hashed in a separate read (`hash_record` or `file_hashes`). A change between the two would certify a hash of content that was never validated. Hashing while parsing, or re-checking the size and mtime, would close it. It is negligible for immutable data.
+
+**Behaviour change to expect in the remote replay:** the old generic runner accepted `NaN` and `Infinity` anywhere in a ledger, including inside `changes`. It now rejects them. If the engine ever emits a nonfinite score in a change record, the real ledger will fail loudly. That is the intended tightening, but it is the one place old and new acceptance differ.

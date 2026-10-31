@@ -58,9 +58,12 @@ class IntegrationWorkflowConfig {
     String genomeId = 'genome'
     File claimsFile
     String organismTaxon
+    /** Optional NCBI Taxonomy lineage IDs (comma/semicolon-separated) or TSV file mapping taxid -> lineage IDs. */
+    String taxonLineage
     boolean inferTaxon = false
     File operonsFile
     File gapsFile
+    File pathwayObservationsFile
     File orthogroupsFile
     File clusterConsensusFile
     File genomeLayoutFile
@@ -99,6 +102,11 @@ class IntegrationWorkflowConfig {
     String fbaPythonBin = 'python3'
     String fbaGram = 'neg'
     String fbaMedium = 'minimal'
+    /** Stage 2B follow-up options (2026-10-31); all defaults keep the original Stage 2B behaviour. */
+    boolean fbaSyntenyFromLayout = false
+    File fbaKeggModules
+    Double fbaCandidateMinScore
+    Integer fbaCandidateTopK
     boolean enableAgent = false
     String agentModel = 'qwen3.8-27b'
     String agentPythonBin = 'python3'
@@ -132,6 +140,7 @@ class IntegrationWorkflowConfig {
     File cohortRoleEvidenceFile
     File cohortInteractionEdgesFile
     File cohortReactionDirectionsFile
+    File cohortPathwaysFile
     gspa.integration.cohort.CohortConfig cohortConfig = new gspa.integration.cohort.CohortConfig()
 
     // --- Metabolic experiments and community cross-feeding (conditional model results, never independent proof) ---
@@ -234,12 +243,13 @@ class IntegrationWorkflowConfig {
             taxonomyFile: taxonomyFile, taxonConstraintsFile: taxonConstraintsFile,
             complexTermsFile: complexTermsFile, reactionGraphFile: reactionGraphFile,
             diffusionMetsFile: diffusionMetsFile, reactionEcAliasesFile: reactionEcAliasesFile,
-            operonsFile: operonsFile, gapsFile: gapsFile, orthogroupsFile: orthogroupsFile,
+            operonsFile: operonsFile, gapsFile: gapsFile, pathwayObservationsFile: pathwayObservationsFile, orthogroupsFile: orthogroupsFile,
             clusterConsensusFile: clusterConsensusFile, genomeLayoutFile: genomeLayoutFile,
             thetaFile: thetaFile, learnedModelFile: learnedModelFile, externalContextFile: externalContextFile,
             cohortManifestFile: cohortManifestFile, cohortMetadataFile: cohortMetadataFile,
             cohortOrthogroupsFile: cohortOrthogroupsFile, cohortRoleEvidenceFile: cohortRoleEvidenceFile,
             cohortInteractionEdgesFile: cohortInteractionEdgesFile, cohortReactionDirectionsFile: cohortReactionDirectionsFile,
+            cohortPathwaysFile: cohortPathwaysFile,
             experimentManifestFile: experimentManifestFile, experimentEvidenceFile: experimentEvidenceFile,
             communityManifestFile: communityManifestFile]
         named.each { String name, File f ->
@@ -282,6 +292,12 @@ class IntegrationWorkflowConfig {
             throw new IllegalArgumentException("cohortConfig.holdout NONE would let a genome contribute to its own cohort features; use GENOME, STRAIN_CLUSTER or CLADE")
         }
         if (cohortRequested()) {
+            if (cohortConfig.contextMode == gspa.integration.cohort.ContextMode.PATHWAY && cohortPathwaysFile == null) {
+                throw new IllegalArgumentException('PATHWAY context requires --cohort-pathways')
+            }
+            if (cohortConfig.contextMode == gspa.integration.cohort.ContextMode.ORGANISM && cohortMetadataFile == null) {
+                throw new IllegalArgumentException('ORGANISM context requires --cohort-metadata with plausibleReactions for every genome')
+            }
             if (reactionGraphFile == null || reactionEcAliasesFile == null) {
                 throw new IllegalArgumentException("cohort inference expands EC calls directly to reactions and needs both --reaction-graph " +
                     "and --reaction-ec-aliases (the EC bindings; the graph alone binds no EC to a reaction)")
@@ -295,7 +311,7 @@ class IntegrationWorkflowConfig {
     @JsonIgnore
     boolean cohortRequested() {
         cohortInference || cohortManifestFile != null || cohortMetadataFile != null || cohortOrthogroupsFile != null ||
-            cohortRoleEvidenceFile != null || cohortInteractionEdgesFile != null || cohortReactionDirectionsFile != null
+            cohortRoleEvidenceFile != null || cohortInteractionEdgesFile != null || cohortReactionDirectionsFile != null || cohortPathwaysFile != null
     }
 
     @JsonIgnore

@@ -1,0 +1,527 @@
+--- before/benchmark/v3/check_masked_assignment_cobra.py
++++ after/benchmark/v3/check_masked_assignment_cobra.py
+@@ -84,8 +84,9 @@
+         original_floor = bio.lower_bound
+         growing = growth > cfg['growth_threshold']
+         targets = [] if knockout or not growing else [(rid, False) for rid in sorted(hypothesis['assignments'])]
+-        if condition.get('product_exchange') and (growing or cfg['product_requirement'] == 'maintenance_only'):
+-            targets.append((condition['product_exchange'], True))
++        product = condition.get('product_exchange') or condition.get('product_demand')
++        if product and (growing or cfg['product_requirement'] == 'maintenance_only'):
++            targets.append((product, True))
+         for rid, product in targets:
+             bio.lower_bound = original_floor if product and cfg['product_requirement'] == 'maintenance_only' else max(original_floor, cfg['growth_fraction'] * growth)
+             rxn = model.reactions.get_by_id(rid)
+@@ -99,6 +100,9 @@
+             interval = {'minimum': float(minimum) if statuses[0] == 'optimal' else None,
+                         'maximum': float(maximum) if statuses[1] == 'optimal' else None, 'statuses': statuses}
+             if product:
++                if condition.get('product_demand'):
++                    interval['growth_floor'] = bio.lower_bound
++                    interval['reporter_drain_bounds'] = sorted([sign * rxn.lower_bound, sign * rxn.upper_bound])
+                 result['product_interval'] = interval
+             else:
+                 result['flux_intervals'][rid] = interval
+@@ -111,6 +115,38 @@
+     if isinstance(a, (int, float)):
+         return isinstance(b, (int, float)) and math.isclose(a, b, rel_tol=1e-6, abs_tol=1e-7)
+     return a == b
++
++
++def demand_assessment(phenotypes, cfg):
++    """Classify independently solved endpoints; keep each endpoint's validity."""
++    wt, ko = (phenotypes[k] for k in ('wild_type', 'target_knockout'))
++    if wt['status'] != 'optimal' or wt['growth'] <= cfg['growth_threshold']:
++        growth = 'no_growing_control' if wt['status'] in ('optimal', 'infeasible') else 'inconclusive'
++    elif ko['status'] == 'infeasible':
++        growth = 'knockout_infeasible_with_maintenance'
++    elif ko['status'] != 'optimal':
++        growth = 'inconclusive'
++    else:
++        growth = 'knockout_no_growth' if ko['growth'] < cfg['growth_threshold'] else 'both_grow'
++    growth_status = 'inconclusive' if growth in ('inconclusive', 'no_growing_control') else 'completed'
++    intervals = [p.get('product_interval', {}) for p in (wt, ko)]
++    valid = all(p['status'] == 'optimal' for p in (wt, ko)) and all(i.get('statuses') == ['optimal', 'optimal'] for i in intervals)
++    product = 'inconclusive'
++    if valid:
++        control, deleted = (i['maximum'] for i in intervals)
++        if control <= cfg['flux_tol']:
++            product = 'no_synthesis_capacity_in_control'
++        elif deleted <= cfg['flux_tol']:
++            product = 'synthesis_capacity_lost'
++        elif deleted / control < 1 - cfg['relative_tol']:
++            product = 'synthesis_capacity_reduced'
++        else:
++            product = 'synthesis_capacity_retained'
++    elif cfg['product_requirement'] == 'growth_fraction' and all(p['status'] == 'optimal' for p in (wt, ko)) and any(p['growth'] <= cfg['growth_threshold'] for p in (wt, ko)):
++        product = 'not_assessed_growth_requirement'
++    return {'contrast': growth, 'growth_status': growth_status, 'product_contrast': product,
++            'product_status': 'completed' if valid else 'inconclusive',
++            'status': 'completed' if valid or growth_status == 'completed' else 'inconclusive'}
+ 
+ 
+ def compare(model_path, manifest, result):
+@@ -135,16 +171,29 @@
+     public = result['public_problem']
+     hypotheses = {h['id']: h for h in public['hypotheses']}
+     conditions = {c['id']: c for c in public['conditions']}
+-    rows = []
++    rows, cell_rows = [], []
+     for cell in result['cells']:
+         h, c = hypotheses[cell['hypothesis_id']], conditions[cell['condition_id']]
++        endpoints = {}
+         for kind in ('wild_type', 'target_knockout'):
+             oracle = simulate(model, public, h, c, result['config'], kind == 'target_knockout')
++            if c.get('product_demand'):
++                reaction = model.reactions.get_by_id(c['product_demand'])
++                metabolite = next(iter(reaction.metabolites))
++                oracle['product_target'] = {'reaction': reaction.id, 'kind': 'intracellular_synthesis_capacity',
++                                            'metabolite': metabolite.id, 'compartment': metabolite.compartment}
++            endpoints[kind] = oracle
++            observed = {k: v for k, v in cell['phenotypes'][kind].items() if k != 'knocked_out_reactions'}
+             rows.append({'hypothesis_id': h['id'], 'condition_id': c['id'], 'perturbation': kind,
+-                         'agrees': agrees(cell['phenotypes'][kind], oracle), 'oracle': oracle})
++                         'agrees': set(observed) == set(oracle) and agrees(observed, oracle), 'oracle': oracle})
++        if c.get('product_demand'):
++            expected = demand_assessment(endpoints, result['config'])
++            cell_rows.append({'hypothesis_id': h['id'], 'condition_id': c['id'],
++                              'agrees': all(cell.get(k) == v for k, v in expected.items()), 'oracle': expected})
+     return {'schema': 'gspa.masked_assignment_oracle/1', 'model_sha256': sha,
+             'cobra_version': cobra.__version__, 'solver': 'glpk', 'comparisons': rows,
+             'n_comparisons': len(rows), 'n_agree': sum(r['agrees'] for r in rows),
++            'cell_comparisons': cell_rows, 'n_cell_comparisons': len(cell_rows), 'n_cell_agree': sum(r['agrees'] for r in cell_rows),
+             'interpretation': 'Independent implementation agreement, not function or phenotype accuracy.'}
+ 
+ 
+@@ -155,4 +204,4 @@
+     args = p.parse_args()
+     report = compare(args.model, json.loads(args.manifest.read_text()), json.loads(args.result.read_text()))
+     args.out.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
+-    raise SystemExit(0 if report['n_agree'] == report['n_comparisons'] else 1)
++    raise SystemExit(0 if report['n_agree'] == report['n_comparisons'] and report['n_cell_agree'] == report['n_cell_comparisons'] else 1)
+--- before/gspa-core/src/main/groovy/gspa/integration/contextbridge/ExperimentManifestBuilder.groovy
++++ after/gspa-core/src/main/groovy/gspa/integration/contextbridge/ExperimentManifestBuilder.groovy
+@@ -135,16 +135,24 @@
+             if (w != null && w.fracSupported != null && w.fracSupported > 0d) recs << [type: 'recurrence']
+             (claimsByKey[b.functionKey] ?: []).each { EvidenceClaim c ->
+                 def md = c.metadata ?: [:]
+-                String sub = md.substrate_exchange as String, prod = md.product_exchange as String
++                String sub = md.substrate_exchange as String, prod = md.product_exchange as String, demand = md.product_demand as String
+                 if (sub) {
+                     String role = md.substrate_role as String
+                     if (!(role in ['carbon', 'nitrogen'])) evidenceUnmapped << [function_key: b.functionKey, exchange: sub, reason: 'substrate_role must be carbon or nitrogen']
+                     else if (!model.reactionIds.contains(sub) || !declaredExchanges.contains(sub)) evidenceUnmapped << [function_key: b.functionKey, exchange: sub, reason: 'not a declared exchange of the model']
+                     else if (!recs.any { it.type == 'transport' && it.substrate_exchange == sub }) recs << [type: 'transport', substrate_exchange: sub, role: role]
+                 }
+-                if (prod) {
++                if (prod && demand) {
++                    evidenceUnmapped << [function_key: b.functionKey, reason: 'product_exchange and product_demand are mutually exclusive']
++                } else if (prod) {
+                     if (!model.reactionIds.contains(prod) || !declaredExchanges.contains(prod)) evidenceUnmapped << [function_key: b.functionKey, exchange: prod, reason: 'not a declared exchange of the model']
+                     else if (!recs.any { it.type == 'bgc' && it.product_exchange == prod }) recs << [type: 'bgc', product_exchange: prod]
++                } else if (demand) {
++                    if (!model.reactionIds.contains(demand) || !((template.baseline.product_demands ?: []) as List).contains(demand)) {
++                        evidenceUnmapped << [function_key: b.functionKey, reaction: demand, reason: 'not a declared intracellular product demand']
++                    } else if (!recs.any { it.type == 'bgc' && it.product_demand == demand }) {
++                        recs << [type: 'bgc', product_demand: demand]
++                    }
+                 }
+             }
+             b.evidenceTypes = recs*.type.unique()
+@@ -185,7 +193,7 @@
+             hypotheses << h
+             group.each { Binding b ->
+                 pending[b.functionKey].each { Map r ->
+-                    String exch = (r.substrate_exchange ?: r.product_exchange) as String
++                    String exch = (r.substrate_exchange ?: r.product_exchange ?: r.product_demand) as String
+                     Map rec = [id: uniqueId(r.type + ':' + b.functionKey + (exch ? ':' + exch : ''), usedIds),
+                                hypothesis_id: hid] + r
+                     if (group.size() > 1) rec.function_key_of_record = b.functionKey
+--- before/gspa-core/src/main/groovy/gspa/integration/contextbridge/MaskedAssignmentBuilder.groovy
++++ after/gspa-core/src/main/groovy/gspa/integration/contextbridge/MaskedAssignmentBuilder.groovy
+@@ -99,7 +99,7 @@
+                 throw new IllegalArgumentException('masked experiment evidence needs id, function_key, source, supported type and measured numeric score')
+             }
+             if (!evidenceIds.add(record.id as String)) throw new IllegalArgumentException('duplicate masked experiment evidence id')
+-            if ((record.keySet() - ['id', 'function_key', 'type', 'score', 'source', 'substrate_exchange', 'role', 'product_exchange',
++            if ((record.keySet() - ['id', 'function_key', 'type', 'score', 'source', 'substrate_exchange', 'role', 'product_exchange', 'product_demand',
+                                    'required_genes', 'assignment_group'])) {
+                 throw new IllegalArgumentException('unsupported masked experiment evidence field')
+             }
+@@ -136,6 +136,7 @@
+                     h.conditions << [mods: [mod], evidence_channels: candidate.evidence.keySet().toSorted()]
+                 }
+                 List<Map> hints = candidate.hints + (byKey[key] ?: []).findAll { RAW_CHANNEL.containsKey(it.evidenceType) }.collect { it.metadata ?: [:] }
++                List<String> demands = []
+                 hints.each { Map hint ->
+                     if (hint.substrate_exchange) {
+                         if (hint.role in ['carbon', 'nitrogen'] || hint.substrate_role in ['carbon', 'nitrogen']) {
+@@ -144,9 +145,25 @@
+                             else unmappedEvidence << [function_key: key, exchange: hint.substrate_exchange, reason: 'undeclared exchange']
+                         } else unmappedEvidence << [function_key: key, reason: 'substrate role must be carbon or nitrogen']
+                     }
+-                    if (hint.product_exchange) {
++                    if (hint.product_exchange && hint.product_demand) {
++                        unmappedEvidence << [function_key: key, reason: 'product_exchange and product_demand are mutually exclusive']
++                    } else if (hint.product_exchange) {
+                         if (declared.contains(hint.product_exchange)) h.conditions << [mods: [], product_exchange: hint.product_exchange, evidence_channels: ['bgc']]
+                         else unmappedEvidence << [function_key: key, exchange: hint.product_exchange, reason: 'undeclared product exchange']
++                    } else if (hint.product_demand) {
++                        String demand = hint.product_demand as String
++                        if (model.reactionIds.contains(demand) && ((template.baseline.product_demands ?: []) as List).contains(demand)) demands << demand
++                        else unmappedEvidence << [function_key: key, reaction: demand, reason: 'undeclared intracellular product demand']
++                    }
++                }
++                // Candidate-supported environmental conditions are explicit
++                // alternatives. Combine each with each declared synthesis target;
++                // target deletion is paired automatically by the Python engine.
++                List<Map> environments = [[mods: [], evidence_channels: []]] + h.conditions.findAll { !it.product_exchange && !it.product_demand }
++                demands.unique().sort().each { String demand ->
++                    environments.each { Map environment ->
++                        h.conditions << [mods: environment.mods, product_demand: demand,
++                            evidence_channels: (environment.evidence_channels + ['bgc']).unique().sort()]
+                     }
+                 }
+             }
+@@ -166,13 +183,13 @@
+         List<Map> conditions = [[mods: [], evidence_channels: []]]
+         conditions.addAll(kept.collectMany { it.conditions })
+         (request.conditions ?: []).each { Map condition ->
+-            if (condition.keySet() - ['id', 'mods', 'evidence_channels', 'product_exchange']) throw new IllegalArgumentException('unsupported condition field')
++            if (condition.keySet() - ['id', 'mods', 'evidence_channels', 'product_exchange', 'product_demand']) throw new IllegalArgumentException('unsupported condition field')
+             conditions << condition.findAll { k, v -> k != 'id' }
+         }
+         // Merge equivalent conditions; evidence channels describe the same simulation, not additional calls.
+         Map<List, Map> unique = new LinkedHashMap<>()
+         conditions.each { Map condition ->
+-            List key = [condition.mods, condition.product_exchange]
++            List key = [condition.mods, condition.product_exchange, condition.product_demand]
+             Map dest = unique.computeIfAbsent(key) { new LinkedHashMap(condition) + [evidence_channels: []] }
+             dest.evidence_channels = (dest.evidence_channels + (condition.evidence_channels ?: [])).unique().sort()
+         }
+--- before/scripts/masked_assignment_experiments.py
++++ after/scripts/masked_assignment_experiments.py
+@@ -110,10 +110,9 @@
+         raise ME.ManifestError('exactly one explicit null assignment is required')
+     external = ME.validate_boundary(model, public)
+     for c in conditions:
+-        if set(c) - {'id', 'mods', 'evidence_channels', 'product_exchange'} or not re.fullmatch(r'C[0-9]+', c['id']):
++        if set(c) - {'id', 'mods', 'evidence_channels', 'product_exchange', 'product_demand'} or not re.fullmatch(r'C[0-9]+', c['id']):
+             raise ME.ManifestError('conditions require opaque C<number> IDs and structured modifications')
+-        if c.get('product_exchange') and c['product_exchange'] not in external:
+-            raise ME.ManifestError('product must be a declared extracellular exchange')
++        ME.product_target(model, public, c, external)
+         if any(channel not in {'sequence', 'domain', 'neighborhood', 'recurrence', 'transport', 'bgc'} for channel in c.get('evidence_channels', [])):
+             raise ME.ManifestError('unsupported condition evidence channel')
+         for mod in c['mods']:
+@@ -149,6 +148,7 @@
+     base_lb, base_ub = run.base_lb.copy(), run.base_ub.copy()
+     ME.apply_mods(model, public, cfg, base_lb, base_ub, condition['mods'], run.external)
+     constraints = ME.apply_condition_constraints(model, run.condition_constraints, base_lb, base_ub)
++    product, product_kind = ME.product_target(model, public, condition, run.external)
+     condition_knockouts = {gene for mod in condition['mods'] if mod['op'] == 'knockout'
+                           for gene in mod.get('genes', [])}
+     prefix = condition['id'] + ':' + hypothesis['id']
+@@ -164,6 +164,10 @@
+         result, growth = run._growth(lb, ub, label)
+         record = {'status': result.status, 'growth': growth if result.status == 'optimal' else None,
+                   'knocked_out_reactions': killed, 'flux_intervals': {}}
++        if product_kind == 'intracellular_synthesis_capacity':
++            record['product_target'] = {'reaction': product, 'kind': product_kind,
++                'metabolite': model.exchange_metabolite(product),
++                'compartment': model.met_compartment[model.exchange_metabolite(product)]}
+         # Alternative feasible optima at the stated growth floor. Never infer expression.
+         if result.status == 'optimal':
+             growing = growth > cfg['growth_threshold']
+@@ -172,11 +176,14 @@
+             if growing and perturbation == 'wild_type':
+                 for rid in sorted(hypothesis['assignments']):
+                     record['flux_intervals'][rid] = _interval(solver, model, rid, floor_lb, ub, 1.0, label + ':' + rid)
+-            product = condition.get('product_exchange')
+             if product and (growing or cfg['product_requirement'] == 'maintenance_only'):
+                 product_lb = lb if cfg['product_requirement'] == 'maintenance_only' else floor_lb
+                 record['product_interval'] = _interval(solver, model, product, product_lb, ub,
+                                                        model.secretion_sign(product), label + ':product')
++                if product_kind == 'intracellular_synthesis_capacity':
++                    col, sign = model.rxn_index[product], model.secretion_sign(product)
++                    record['product_interval']['growth_floor'] = float(product_lb[run.bio])
++                    record['product_interval']['reporter_drain_bounds'] = sorted([float(sign * lb[col]), float(sign * ub[col])])
+         output['phenotypes'][perturbation] = record
+     output['solver_calls'] = list(range(first, solver.used))
+     wt, ko = output['phenotypes']['wild_type'], output['phenotypes']['target_knockout']
+@@ -190,13 +197,30 @@
+     else:
+         output['contrast'] = 'no_growing_control' if wt['status'] in ('optimal', 'infeasible') else 'inconclusive'
+     output['status'] = 'inconclusive' if output['contrast'] in ('inconclusive', 'no_growing_control') else 'completed'
++    if product_kind == 'intracellular_synthesis_capacity':
++        output['growth_status'] = output['status']
++        intervals = [p.get('product_interval', {}) for p in (wt, ko)]
++        if all(p['status'] == 'optimal' for p in (wt, ko)) and all(i.get('statuses') == ['optimal', 'optimal'] for i in intervals):
++            wmax, kmax = (i['maximum'] for i in intervals)
++            output['product_contrast'] = ('no_synthesis_capacity_in_control' if wmax <= cfg['flux_tol'] else
++                'synthesis_capacity_lost' if kmax <= cfg['flux_tol'] else
++                'synthesis_capacity_reduced' if kmax < wmax * (1 - cfg['relative_tol']) else
++                'synthesis_capacity_retained')
++            output['product_status'] = 'completed'
++        else:
++            output['product_contrast'] = 'not_assessed_growth_requirement' if (
++                cfg['product_requirement'] == 'growth_fraction' and
++                all(p['status'] == 'optimal' for p in (wt, ko)) and
++                any(p['growth'] <= cfg['growth_threshold'] for p in (wt, ko))) else 'inconclusive'
++            output['product_status'] = 'inconclusive'
++        output['status'] = 'completed' if 'completed' in (output['growth_status'], output['product_status']) else 'inconclusive'
+     return output
+ 
+ 
+ def condition_cost(public, condition):
+     # Reserve the full rectangular comparison; hypothesis ordering cannot decide
+     # which candidates receive simulations when the budget is nearly exhausted.
+-    return sum(2 + 2 * len(h['assignments']) + (4 if condition.get('product_exchange') else 0)
++    return sum(2 + 2 * len(h['assignments']) + (4 if condition.get('product_exchange') or condition.get('product_demand') else 0)
+                for h in public['hypotheses'])
+ 
+ 
+@@ -235,9 +259,10 @@
+             break
+         chosen = affordable[0]
+         if strategy == 'qwen':
+-            prompt = [{'role': 'system', 'content': 'Choose one admissible condition to distinguish candidate assignments. The target identity and original assignments are masked. Simulation is conditional, not independent confirmation. Reply only with JSON {"experiment_id":"C<number>"}.'},
++            prompt = [{'role': 'system', 'content': 'Choose one admissible condition to distinguish candidate assignments. The target identity and original assignments are masked. Simulation is conditional, not independent confirmation. Intracellular demand flux is synthesis capacity, not secretion or expression. Growth dispensability does not refute secondary metabolism. Missing intervals are unknown, not zero. Reply only with JSON {"experiment_id":"C<number>"}.'},
+                       {'role': 'user', 'content': json.dumps({'hypotheses': public['hypotheses'], 'conditions': affordable,
+-                          'previous_results': cells, 'solver_calls_remaining': solver.remaining}, sort_keys=True)}]
++                          'previous_results': cells, 'solver_calls_remaining': solver.remaining,
++                          'product_requirement': cfg['product_requirement'], 'growth_fraction': cfg['growth_fraction']}, sort_keys=True)}]
+             try:
+                 reply = chat(prompt)
+                 parsed = json.loads(reply)
+--- before/scripts/metabolic_experiments.py
++++ after/scripts/metabolic_experiments.py
+@@ -365,6 +365,47 @@
+     return lb, ub
+ 
+ 
++def product_target(model: Model, manifest: dict[str, Any], record: dict[str, Any],
++                   external: set[str]) -> tuple[str | None, str | None]:
++    """Validate an explicit secretion exchange or intracellular synthesis drain.
++
++    Declaring a demand never opens its uptake direction or adds a reaction.
++    """
++    keys = [k for k in ("product_exchange", "product_demand") if record.get(k) is not None]
++    if not keys:
++        return None, None
++    if len(keys) != 1:
++        raise ManifestError("product_exchange and product_demand are mutually exclusive")
++    key, rid = keys[0], record[keys[0]]
++    if not isinstance(rid, str) or not rid:
++        raise ManifestError("product target must be a nonempty reaction identifier")
++    model.exchange(rid)
++    if key == "product_exchange":
++        if rid not in external:
++            raise ManifestError("product must be a declared extracellular exchange")
++        return rid, "extracellular_secretion"
++    base = manifest.get("baseline", {})
++    allowed = base.get("product_demands", [])
++    if not isinstance(allowed, list) or any(not isinstance(x, str) or not x for x in allowed) or len(allowed) != len(set(allowed)):
++        raise ManifestError("baseline.product_demands must contain unique reaction identifiers")
++    if rid not in allowed:
++        raise ManifestError(f"{rid} is not declared in baseline.product_demands")
++    if abs(model.exchange(rid)[1]) != 1.0:
++        raise ManifestError("product_demand must drain one unit of one metabolite")
++    if model.gpr.get(rid):
++        raise ManifestError("product_demand must be an unassigned reporter drain, not a gene-associated reaction")
++    compartment = model.met_compartment[model.exchange_metabolite(rid)]
++    if rid in external or compartment in set(base.get("extracellular_compartments", ["e"])):
++        raise ManifestError("product_demand must act on an intracellular metabolite")
++    biomass, _ = resolve_objective(model, manifest)
++    maintenance = manifest["objectives"]["maintenance"]
++    if rid == biomass or (isinstance(maintenance, dict) and rid == maintenance.get("reaction")):
++        raise ManifestError("biomass and maintenance cannot be intracellular product targets")
++    if any(rid in mod.get("reactions", []) for mod in record.get("mods", []) if mod.get("op") == "knockout"):
++        raise ManifestError("the product reporter demand cannot itself be knocked out")
++    return rid, "intracellular_synthesis_capacity"
++
++
+ def resolve_knockouts(model: Model, records: list[dict[str, Any]]) -> set[str]:
+     """Resolve explicit genes/reactions and evaluate all deletions jointly."""
+     killed: set[str] = set()
+@@ -476,7 +517,8 @@
+         return sorted(o for o, h in hyps.items() if o != hid and grp is not None and h.get("group") == grp)
+ 
+     def add(eid: str, kind: str, mods: list[dict[str, Any]], desc: str, ev_ids: list[str],
+-            hyp_ids: list[str], focus: list[str], product: str | None = None) -> None:
++            hyp_ids: list[str], focus: list[str], product: str | None = None,
++            demand: str | None = None) -> None:
+         if eid in menu:
+             item = menu[eid]
+             item["evidence_ids"] = sorted(set(item["evidence_ids"]) | set(ev_ids))
+@@ -487,6 +529,8 @@
+                      "evidence_ids": sorted(set(ev_ids)), "hypothesis_ids": sorted(set(hyp_ids)),
+                      "focus_reactions": sorted(set(focus)), "product_exchange": product,
+                      "competing_hypotheses": sorted({p for h in hyp_ids for p in peers(h)})}
++        if demand is not None:
++            menu[eid]["product_demand"] = demand
+ 
+     def exch_ok(rid: str, why: str) -> bool:
+         try:
+@@ -517,11 +561,18 @@
+                 op = f"{role}_swap"
+                 add(f"{role}_source:{ex}", f"{role}_source", [{"op": op, "exchange": ex}],
+                     f"replace baseline {role} sources by {ex}", [eid], hids, focus)
+-        elif etype == "bgc" and ev.get("product_exchange"):
+-            ex = ev["product_exchange"]
+-            if exch_ok(ex, eid):
+-                add(f"product:{ex}", "product", [], f"conditional feasibility vs. forced production of {ex}",
+-                    [eid], hids, focus, product=ex)
++        elif etype == "bgc" and (ev.get("product_exchange") is not None or ev.get("product_demand") is not None):
++            try:
++                target, kind = product_target(model, manifest, ev, external)
++            except ManifestError as exc:
++                rejected.append({"item": eid, "reason": str(exc)})
++            else:
++                if kind == "intracellular_synthesis_capacity":
++                    add(f"synthesis:{target}", "product", [], f"intracellular synthesis capacity through {target}; no secretion inference",
++                        [eid], hids, focus, demand=target)
++                else:
++                    add(f"product:{target}", "product", [], f"conditional feasibility vs. forced production of {target}",
++                        [eid], hids, focus, product=target)
+         hint = ev.get("condition_hint")
+         if hint in ("carbon_swap", "nitrogen_swap") and ev.get("exchange"):
+             role, ex = hint.split("_")[0], ev["exchange"]
+@@ -558,6 +609,25 @@
+             add(f"ko_rescue:{hid}:rescued", "ko_rescue", cond + [ko, {"op": "open", "exchange": resc}],
+                 f"knock out {','.join(rxns)} with {resc} supplied", ev_ids, [hid], rxns)
+ 
++    # Reuse only interventions linked to this product's evidence/hypotheses.
++    # Each item starts from the baseline; these explicit combined items are how
++    # a planner can ask about synthesis under another condition or a knockout.
++    original_items = list(menu.values())
++    for product in original_items:
++        if not product.get("product_demand"):
++            continue
++        for condition in original_items:
++            if condition["kind"] == "product" or not condition["mods"]:
++                continue
++            if not (set(product["hypothesis_ids"]) & set(condition["hypothesis_ids"]) or
++                    set(product["evidence_ids"]) & set(condition["evidence_ids"])):
++                continue
++            add(product["id"] + "@" + condition["id"], "product", condition["mods"],
++                product["description"] + "; " + condition["description"],
++                product["evidence_ids"] + condition["evidence_ids"],
++                product["hypothesis_ids"] + condition["hypothesis_ids"],
++                product["focus_reactions"], demand=product["product_demand"])
++
+     for item in menu.values():
+         hs = [hyps[h] for h in item["hypothesis_ids"]]
+         item["candidate_genes"] = sorted({g for h in hs for g in _as_list(h.get("gene")) + _as_list(h.get("genes"))})
+@@ -575,7 +645,7 @@
+     optional focus checks = 3 LPs (FVA min, FVA max, knockout growth) per focus reaction not
+     knocked out by the item itself, at most ``max_focus`` reactions.
+     """
+-    mandatory = 1 + (2 if item.get("product_exchange") else 0)
++    mandatory = 1 + (2 if item.get("product_exchange") or item.get("product_demand") else 0)
+     killed = {r for m in item["mods"] if m["op"] == "knockout" for r in m["reactions"]}
+     n_focus = min(len([r for r in item["focus_reactions"] if r not in killed]), max_focus)
+     return mandatory, mandatory + 3 * n_focus
+@@ -697,7 +767,7 @@
+             "perturbation": item.get("perturbation", {}),
+             "status": "completed", "outcome": None, "measurements": {}, "solver_calls": [],
+         }
+-        product = item.get("product_exchange")
++        product, product_kind = product_target(model, self.manifest, item, self.external)
+         needed = item["min_calls"] if "min_calls" in item else call_bounds(item, cfg["max_focus_reactions"])[0]
+         reserve = needed - 1 + reserve_for_menu  # product LPs (and, for the baseline, the planned experiments) are held back
+         if self.solver.remaining < needed:
+@@ -748,9 +818,12 @@
+                 self._focus_checks(rec, item, lb, ub, growth, reserve)
+             if product:
+                 if growth >= cfg["growth_threshold"] or cfg.get("product_requirement") == "maintenance_only":
+-                    self._product_checks(rec, product, lb, ub, growth)
++                    self._product_checks(rec, product, lb, ub, growth,
++                                         intracellular=product_kind == "intracellular_synthesis_capacity")
+                 else:
+                     rec["measurements"]["product"] = {"status": "not_assessed_no_growth"}
++                    if product_kind == "intracellular_synthesis_capacity":
++                        rec["measurements"]["product"].update(demand=product, target_kind=product_kind)
+         except BudgetExhausted as exc:
+             rec.update(status="inconclusive", outcome="budget_exhausted_mid_experiment", note=str(exc))
+         return self._finish(rec, first)
+@@ -825,7 +898,7 @@
+             out |= set(hypothesis_targets(self.model, hyps[pid])[0])
+         return sorted(out)
+ 
+-    def _product_checks(self, rec, ex: str, lb, ub, growth) -> None:
++    def _product_checks(self, rec, ex: str, lb, ub, growth, intracellular: bool = False) -> None:
+         cfg, model = self.cfg, self.model
+         col, sec = model.exchange(ex)[0], model.secretion_sign(ex)
+         requirement = cfg.get("product_requirement", "growth_fraction")
+@@ -851,6 +924,20 @@
+             # solver failure / infeasibility is not a statement about the product
+             info["class"] = "inconclusive"
+             info["lp_status"] = {"max": hi.status, "min": lo.status}
++        if intracellular:
++            # The same signed drain optimization has a different biological
++            # interpretation. Do not export intracellular flux as secretion.
++            info = {k.replace("secretion", "synthesis"): v for k, v in info.items()}
++            info["demand"] = info.pop("exchange")
++            info["target_kind"] = "intracellular_synthesis_capacity"
++            info["metabolite"] = model.exchange_metabolite(ex)
++            info["compartment"] = model.met_compartment[info["metabolite"]]
++            if "class" in info:
++                info["class"] = info["class"].replace("secretion", "synthesis")
++            info["lp_status"] = {"max": hi.status, "min": lo.status}
++            info["reporter_drain_bounds"] = sorted([float(sec * lb[col]), float(sec * ub[col])])
++            if "max_synthesis" in info:
++                info["capacity_at_reporter_bound"] = info["max_synthesis"] >= info["reporter_drain_bounds"][1] - cfg["flux_tol"]
+         rec["measurements"]["product"] = info
+ 
+ 
+@@ -1003,7 +1090,7 @@
+     return eid, why, ""
+ 
+ 
+-QWEN_PROMPT_SCHEMA = "gspa.metabolic_planner_observation/2"
++QWEN_PROMPT_SCHEMA = "gspa.metabolic_planner_observation/3"
+ 
+ 
+ def _fields(record: dict[str, Any], names: str) -> dict[str, Any]:
+@@ -1018,7 +1105,7 @@
+              "evidence_ids": m["evidence_ids"], "competing_hypotheses": m["competing_hypotheses"],
+              "min_calls": m["min_calls"], "max_calls": m["max_calls"],
+              **_fields(m, "hypothesis_ids candidate_genes unmapped_candidate_genes candidate_reactions "
+-                          "focus_reactions product_exchange"),
++                          "focus_reactions product_exchange product_demand"),
+              "mods": [_fields(mod, "op exchange rate reactions genes") for mod in m.get("mods", [])]}
+             for m in remaining]
+     prior = []
+@@ -1034,7 +1121,9 @@
+             product = measurements["product"]
+             public["product"] = _fields(product, "exchange growth_floor requirement max_secretion "
+                 "min_secretion_at_required_state min_secretion_at_growth_floor conditional_feasibility "
+-                "secretion_unavoidable_in_model class status")
++                "secretion_unavoidable_in_model class status demand target_kind metabolite compartment "
++                "max_synthesis min_synthesis_at_required_state min_synthesis_at_growth_floor synthesis_unavoidable_in_model "
++                "reporter_drain_bounds capacity_at_reporter_bound")
+             if "lp_status" in product:
+                 public["product"]["lp_status"] = _fields(product["lp_status"], "min max")
+         prior.append({**_fields(r, "experiment_id kind status outcome hypothesis_ids evidence_ids "
+@@ -1049,9 +1138,9 @@
+             public["condition"] = _fields(h["condition"], "carbon_exchange nitrogen_exchange")
+         hypotheses.append(public)
+     evidence = [_fields(e, "id type hypothesis_id function_key_of_record substrate_exchange role "
+-                        "product_exchange condition_hint exchange") for e in context.get("evidence", [])]
++                        "product_exchange product_demand condition_hint exchange") for e in context.get("evidence", [])]
+     base, objectives = manifest.get("baseline", {}), manifest.get("objectives", {})
+-    conditions = {**_fields(base, "medium carbon_exchanges nitrogen_exchanges oxygen_exchange"),
++    conditions = {**_fields(base, "medium carbon_exchanges nitrogen_exchanges oxygen_exchange product_demands"),
+                   **_fields(objectives, "biomass"),
+                   **_fields(cfg, "product_requirement growth_fraction growth_threshold flux_tol "
+                                  "relative_tol uptake_rate")}
+@@ -1065,6 +1154,8 @@
+               "probabilities; model_condition records only explain condition selection. Results are model-conditional, "
+               "not observed phenotypes or proof of function. Positive maximum secretion means feasibility only; "
+               "a positive minimum means unavoidable secretion under the stated constraints, not measured expression. "
++              "Intracellular demand targets measure synthesis capacity only, never secretion. Growth dispensability "
++              "does not refute a secondary-metabolism function. A growth-only knockout does not measure product loss. "
+               "Missing, failed, unassessed and budget-truncated checks are unknown, never zero or negative evidence. "
+               "Use the prior evidence and completed product, flux and growth results to choose an informative next "
+               "experiment within the remaining solver budget, or stop when the menu cannot distinguish hypotheses. "

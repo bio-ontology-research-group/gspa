@@ -77,7 +77,7 @@ that motivated it).
 | `modules/domains.nf` | `HMMSEARCH`, `INTERPROSCAN`, `EGGNOG_MAPPER`, `DBCAN` | `--run_hmmer` (default), `--run_interproscan`, `--run_eggnog`, `--run_dbcan`. |
 | `modules/specialized.nf` | `BARRNAP`, `MINCED`, `AMRFINDER`, `ANTISMASH`, `SIGNALP`, `CHECKM2`, `GTDBTK` | Flags and DB paths per tool. |
 | `modules/quality.nf` | `MERGE_ANNOTATIONS` | Always — emits the merged per-sample TSV. |
-| `modules/integrate.nf` | `BUILD_CLAIMS`, `SIDECAR_CLAIMS`, `MERGE_CLAIMS`, `OPERONS`, `INTEGRATE`, `VISUALIZE` | `--run_integrate` — Phase 7 evidence integrator end-to-end (claims.jsonl + integrated posteriors with priors + operon ensemble + HTML browser). |
+| `modules/integrate.nf` | `BUILD_CLAIMS`, `SIDECAR_CLAIMS`, `MERGE_CLAIMS`, `OPERONS`, `INTEGRATE`, `VISUALIZE` | `--run_integrate` — Phase 7 evidence integrator end-to-end (claims.jsonl + integrated posteriors with priors + distance-based operon groups + HTML browser). |
 | `modules/neural.nf` | `ESM2_DEEPGOPLUS`, `ESM2_CENTROID`, `CLEAN`, `PROTEINFER` | `--run_esm2_deepgoplus`, `--run_esm2_centroid`, `--run_clean`, `--run_proteinfer`. |
 | `modules/ensemble.nf` | `ENSEMBLE_PREDS` | `--run_ensemble` — fuses all enabled neural outputs (`max\|mean\|rank`). |
 | `modules/eval.nf` | `EVAL_PGAP` | `--run_eval` + `--truth_dir` — F-max, Smin, EC F-max per predictor. |
@@ -119,7 +119,7 @@ runs by default.
 |---|---|---|---|---|---|
 | ESM2-DeepGOPlus | GO | frozen ESM2-t33 + FC | `gspa-esm2-stack` | Yes | 0.39 |
 | ESM2-centroid | GO + EC | NPZ centroids over SwissProt | `gspa-esm2-stack` | CPU OK | 0.04 |
-| CLEAN | EC | ESM2 + contrastive head | `gspa-esm2-stack` | Yes | (EC: 0.85) |
+| CLEAN | EC | ESM-1b + contrastive head | `gspa-esm2-stack` | Yes | Not revalidated |
 | ProteInfer | GO + EC | shallow CNN over sequence | `gspa-proteinfer-stack` | CPU OK | 0.52 |
 | **ensemble-mean** | GO + EC | per-(protein,term) mean over enabled | `gspa-eval-stack` | – | **0.55 / EC 0.88** |
 
@@ -319,13 +319,18 @@ This adds six processes after `MERGE_ANNOTATIONS`:
 
 - `BUILD_CLAIMS` — wraps `benchmark/02b_parse_predictors_to_claims.py`,
   emits `${sample_id}_claims.jsonl` from the per-tool TSVs.
-- `SIDECAR_CLAIMS` — parses mDeepFRI / ProteInfer / CLEAN sidecar TSVs
+- `SIDECAR_CLAIMS` — parses mDeepFRI / ProteInfer sidecar TSVs
+- `CLEAN_CLAIMS` — validates typed CLEAN TSV + receipt against the input FASTA; requires `--clean_score_kind gmm_confidence|distance`. Native distances remain unscored and are excluded from confidence ensembles/evaluation.
   into a parallel claims.jsonl. With the `ClaimExtractor` source-map
   fix (v1.5.1), this lifts the Nextflow path to the same 8-source claim
   coverage as the JVM CLI.
-- `MERGE_CLAIMS` — concatenates builtin + sidecar claims.
-- `OPERONS` — runs the bundled 3-predictor operon ensemble (distance +
-  strict + functional, Noisy-OR per pair) and emits
+- `ANTISMASH_CLAIMS` — uses the JVM native schema-4 parser to project biosynthetic regions
+  onto the workflow's protein coordinates. Imports unscored memberships and publishes a
+  receipt with sequence hashes, detection coverage, and all regions (including intergenic
+  regions). These observations cannot create enzyme confidence on their own.
+- `MERGE_CLAIMS` — concatenates builtin, sidecar, typed CLEAN, dbCAN and antiSMASH claims.
+- `OPERONS` — groups adjacent CDS on the same strand within 300 bp, keeping
+  groups of at least two; no operon probability is estimated. It emits
   `operons_for_integrate.tsv` so `GenomicContextPrior` fires.
 - `INTEGRATE` — invokes `gspa-cli integrate` on the merged claims +
   operons with the full prior stack, emits `${sample_id}_integrated.tsv`
@@ -354,8 +359,8 @@ claims come from the Python parsers of the tool TSVs (`BUILD_CLAIMS`, `SIDECAR_C
 scores only, so the JVM calibrates them with the same table as every other route; they are not the JVM
 predictor adapters' claims. The JVM writes `<sample>_integrated.tsv.stages.json`, the stage ledger.
 Stage order, priors and scoring live in the JVM workflow only. `service/test_integration_options.py`
-checks the schema and these bindings by text; the pipeline has not been parsed or run by Nextflow in
-this environment.
+checks the schema and these bindings by text. The joint cohort route additionally has real Nextflow
+execution tests against the batch CLI; see [cohort execution](../docs/benchmarks/v3-nextflow-cohort.md).
 
 Learned stage and feature export in `INTEGRATE` (typed keys of the same workflow config, staged like
 `--theta_file`):
@@ -367,11 +372,32 @@ Learned stage and feature export in `INTEGRATE` (typed keys of the same workflow
 | `--feature_export` | Write production feature rows (`candidate_features.jsonl`, `feature_contract.json`, `export_manifest.json`) to `<outdir>/<sample>/<sample>_features/`. Needs no model; writes no labels, splits or groups. |
 
 Behavior-only learned settings (`learnedStage`, `learnedRetractBelow`, `learnedAddUnretainedClaims`) go in
-the `--integration_config` overlay. **Cohort inference is not run by this pipeline**: it is one joint
-inference over all genomes (stage-0 baseline of every genome, genome layouts, orthogroups, clade and
-assembly metadata) and has no per-sample Nextflow process yet. Run `gspa integrate --batch-manifest ...
---cohort ...` outside Nextflow, or extend the pipeline with a batch process; requesting `cohortInference`
-in the overlay without the staged reaction graph fails the task rather than being ignored.
+the `--integration_config` overlay. **Joint cohort inference runs with `--run_integrate --cohort`.**
+Supply `--cohort_layouts` (directory of `<sample_id>.layout.tsv`), `--cohort_metadata`,
+`--cohort_orthogroups`, `--reaction_graph`, and `--reaction_ec_aliases`. Layout and family identifiers
+must match the predicted protein IDs. The pipeline collects all merged claims and operon files into
+one `INTEGRATE_COHORT` task, invoking the production two-pass batch workflow. Outputs are published
+under `<outdir>/cohort/<sample_id>/`; feature exports are under `<outdir>/cohort/features/<sample_id>/`.
+
+Optional cohort inputs are `--cohort_gaps` (directory of `<sample_id>.gaps.jsonl`), `--cohort_roles`,
+`--cohort_interactions`, `--cohort_directions`, `--cohort_pathways`, `--diffusion_mets`, `--integration_modules` (list of
+module TSVs), and `--reasoner_cache`. The holdout defaults to `CLADE`; change it with
+`--cohort_holdout`, subject to the production validator. Existing learned-model, explicit-context,
+theta and behavior-overlay options are staged into this batch too. Missing inputs and core stage
+failures fail the workflow; failed per-genome stage ledgers remain in the task's work directory.
+
+`--cohort_context_mode` selects `UNIVERSAL` (default), `PATHWAY`, or `ORGANISM`.
+Pathway mode requires the named-group TSV; organism mode requires a known
+`plausibleReactions` set in metadata for every genome. In `cohort_resources` JSON,
+the pathway file key is `cohortPathwaysFile`. It is staged and hashed for cache
+invalidation like other reference files. See [context semantics](../docs/concepts/cohort-context.md).
+
+For existing claims, use `cohort.nf --cohort_manifest batch.tsv --cohort_resources resources.json
+--gspa_jar ...`. It uses exactly the same process, accepts the CLI's batch columns, and resolves input
+paths relative to the manifest. The resources JSON maps typed configuration names to staged paths;
+see the [protocol and runnable examples](../docs/benchmarks/v3-nextflow-cohort.md).
+Use the official Nextflow launcher. With Nextflow 26, the existing full annotation pipeline/config
+requires `NXF_SYNTAX_PARSER=v1`; the new cohort module is also exercised with the newer parser.
 
 `--run_integrate` is opt-in. Without it, the pipeline behaves exactly
 as before — produces raw per-tool outputs + the merged TSV, leaving

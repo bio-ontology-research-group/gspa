@@ -19,7 +19,7 @@
 
 set -euo pipefail
 REPO=${REPO:-$PWD}
-DATA=${DATA:-/tmp/gspa-v3-metabolic-data}                       # prepare_metabolic_benchmarks.py output (see docs)
+DATA=${DATA:-${TMPDIR:-$HOME/tmp}/gspa-v3-metabolic-data}                       # prepare_metabolic_benchmarks.py output (see docs)
 OUT=${OUT:-$REPO/benchmark/v3/results/planner-evaluation-cluster}
 PY=${PY:-python3}                                               # needs numpy, scipy, python-libsbml, cobra not required
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 GSPA_LLM_URL=${GSPA_LLM_URL:-http://unimatrix01.kaust.edu.sa:8000/v1}

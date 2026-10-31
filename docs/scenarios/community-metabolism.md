@@ -94,6 +94,13 @@ as declared and recorded as unverified); `flux_units` must be `mmol/gDW/h` and
 finite; `open_uptake`, when present, finite and > 0; supply, removal and ratios finite; model `sha256` must match if given;
 organism ids unique.
 
+Experiment knockouts require known gene-product IDs or declared gene labels and
+known reaction IDs. They are validated before baseline solves. All records for
+the same organism are combined before evaluating AND/OR gene rules; later
+records never replace earlier deletions. A knockout targeting an organism
+excluded from the experiment is rejected. Ambiguous SBML labels are rejected at
+model loading. See the [deletion identity checks](../benchmarks/v3-knockout-identity.md).
+
 **Transport support.** Each port has `support` in `curated | predicted | unknown`
 and optional `evidence`. Ports whose support is not in
 `config.open_ports_with_support` (default `curated`, `predicted`) are closed and

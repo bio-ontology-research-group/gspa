@@ -8,6 +8,8 @@ import groovy.transform.CompileStatic
  */
 @CompileStatic
 class CohortConfig {
+    /** Network, named-pathway groups, or each genome's supplied plausible network. */
+    ContextMode contextMode = ContextMode.UNIVERSAL
     /** Half-width (bp) of the neighbourhood window around a gene midpoint. */
     int halfWidthBp = 5000
     /** Minimum baseline confidence for a neighbouring gene's claim to act as an anchor. */
@@ -40,6 +42,7 @@ class CohortConfig {
     int maxEcCallsPerProtein = 128
 
     void validate() {
+        if (contextMode == null) throw new IllegalArgumentException('contextMode is required')
         if (halfWidthBp <= 0) throw new IllegalArgumentException('halfWidthBp must be positive')
         if (!(anchorMinConfidence >= 0d && anchorMinConfidence <= 1d)) throw new IllegalArgumentException('anchorMinConfidence must be in [0,1]')
         if (minAnchors < 1) throw new IllegalArgumentException('minAnchors must be >= 1')
@@ -55,6 +58,7 @@ class CohortConfig {
 
     Map<String, Object> toMap() {
         Map<String, Object> m = new LinkedHashMap<>()
+        m.put('contextMode', contextMode.name())
         m.put('halfWidthBp', halfWidthBp)
         m.put('anchorMinConfidence', anchorMinConfidence)
         m.put('minAnchors', minAnchors)

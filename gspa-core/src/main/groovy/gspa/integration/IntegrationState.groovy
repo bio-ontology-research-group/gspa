@@ -73,6 +73,11 @@ class IntegrationState {
 
     /** Metabolic gaps (from gapseq). */
     List<MetabolicGap> metabolicGaps = []
+    /** A supplied/observed gap set may be empty; that differs from unavailable input. */
+    boolean metabolicGapsAvailable = false
+    Map<String, Object> metabolicGapReport
+    /** All EC-to-GO associations, independent of pathway definitions. Null means not supplied. */
+    Map<String, List<String>> ecToGoAlternatives
 
     // --- Taxonomy (for ConsistencyPrior) ---
 
@@ -207,11 +212,11 @@ class IntegrationState {
         if (lastPipe <= 0) return null
         int prevPipe = key.lastIndexOf('|', lastPipe - 1)
         if (prevPipe <= 0) return null
-        return [
+        return new String[] {
             key.substring(0, prevPipe),
             key.substring(prevPipe + 1, lastPipe),
             key.substring(lastPipe + 1)
-        ] as String[]
+        }
     }
 
     /**

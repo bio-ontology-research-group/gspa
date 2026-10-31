@@ -218,12 +218,32 @@ class PipelineDispatchSpec extends Specification {
         thrown(UnsupportedOperationException)
     }
 
+    def "InterProScan honors the domain thread budget"() {
+        given:
+        def cfg = baseConfig(gff())
+        cfg.predictors.domains.enabled = true
+        cfg.predictors.domains.tool = 'interproscan'
+        cfg.predictors.domains.threads = 2
+        cfg.predictors.domains.disablePrecalc = true
+        def pipeline = new AnnotationPipeline(cfg)
+        when:
+        pipeline.configure()
+        then:
+        pipeline.registry.get('interproscan').threads == 2
+        pipeline.registry.get('interproscan').disablePrecalc
+        pipeline.registry.get('interproscan').buildCommand(write('in.faa', '>p\nMKV\n'), tmp.toFile()).contains('-dp')
+    }
+
     def "HMMER database is wired from the pipeline into the registered predictor"() {
         given:
         def hmm = write('Pfam-A.hmm', 'HMMER3/f\n')
         def cfg = baseConfig(gff())
         cfg.predictors.domains.enabled = true
         cfg.predictors.domains.tool = 'hmmer'
+        cfg.predictors.domains.threads = 2
+        cfg.predictors.antifam.enabled = true
+        cfg.predictors.antifam.database = hmm.absolutePath
+        cfg.predictors.antifam.threads = 3
         def pipeline = new AnnotationPipeline(cfg)
         pipeline.hmmerDatabase = hmm.absolutePath
 
@@ -233,6 +253,10 @@ class PipelineDispatchSpec extends Specification {
 
         then:
         hmmer.hmmDatabase == hmm.absolutePath
+        hmmer.threads == 2
+        pipeline.registry.get('antifam').threads == 3
+        pipeline.registry.get('antifam').hmmDatabase == hmm.absolutePath
+        hmmer.buildCommand(write('in.faa', '>p\nMKV\n'), tmp.toFile()).collate(2, 1, false).contains(['--cpu', '2'])
         hmmer.buildCommand(write('in.faa', '>p\nMKV\n'), tmp.toFile()).contains(hmm.absolutePath)
     }
 }

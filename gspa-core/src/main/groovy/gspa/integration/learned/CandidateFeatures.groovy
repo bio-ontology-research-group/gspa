@@ -16,9 +16,20 @@ class CandidateFeatures {
     final double[] values
     /** Human-readable notes on what was counted / ignored (audit trail, not a model input). */
     final List<String> provenance
+    /** Exact normalized names of usable baseline sources, before pooling into feature columns. */
+    final List<String> sequenceSources
+    final List<Map> sequenceContracts
+    /** Preserved observations; outside the numeric contract and unsupported by current models. */
+    final List<Map> qualityEvidence
+    final gspa.integration.cohort.ContextMode cohortContextMode
 
     CandidateFeatures(String proteinId, AnnotationType functionType, String functionId, CandidateRole role,
-                      FeatureContract contract, double[] values, List<String> provenance = []) {
+                      FeatureContract contract, double[] values, List<String> provenance = [], List<String> sequenceSources = null,
+                      List<Map> qualityEvidence = [],
+                      gspa.integration.cohort.ContextMode cohortContextMode = gspa.integration.cohort.ContextMode.UNIVERSAL,
+                      List<Map> sequenceContracts = null) {
+        if (cohortContextMode == null) throw new IllegalArgumentException('cohort context mode is required')
+        this.cohortContextMode = cohortContextMode
         if (values.length != contract.size()) {
             throw new IllegalArgumentException("feature vector has ${values.length} values, contract ${contract.id} has ${contract.size()}")
         }
@@ -29,6 +40,9 @@ class CandidateFeatures {
         this.contract = contract
         this.values = values
         this.provenance = provenance
+        this.sequenceSources = sequenceSources == null ? null : Collections.unmodifiableList(new ArrayList<>(sequenceSources))
+        this.sequenceContracts = sequenceContracts == null ? null : PredictorContract.identities(sequenceContracts)
+        this.qualityEvidence = Collections.unmodifiableList(new ArrayList<>(qualityEvidence))
     }
 
     /** Legacy 3-part key, role-agnostic. */

@@ -110,17 +110,20 @@ class LearnedIntegrationStage {
         boolean locusOn = settings.computeLocusAssignments && model.hasLocusLayer()
         Map<String, List<LearnedStageReport.CandidateRecord>> byKey = new LinkedHashMap<>()
         Map<String, List<Tuple2<LearnedStageReport.CandidateRecord, LearnedContextModel.LocusMember>>> locusGroups = new LinkedHashMap<>()
+        Set<String> unsupportedLocusGroups = new HashSet<>()
         for (String key : prepared.functionKeys()) {
             String[] parts = IntegrationState.splitFunctionKey(key)
             AnnotationType type = AnnotationType.valueOf(parts[1])
             if (!settings.inScope(type)) continue
             List<EvidenceClaim> raw = prepared.claimsOf(key)
             for (CandidateFeatures f : prepared.candidatesOf(key)) {
-                CandidateScore s
+                CandidateScore s = null
+                String unsupported
                 try {
                     f.requireFinite()
-                    s = model.score(f)
-                    if (!Double.isFinite(s.probability) || s.probability < 0d || s.probability > 1d) {
+                    unsupported = model.unsupportedReason(f)
+                    if (!unsupported) s = model.score(f)
+                    if (s != null && (!Double.isFinite(s.probability) || s.probability < 0d || s.probability > 1d)) {
                         throw new IllegalArgumentException("probability ${s.probability} is not in [0,1]")
                     }
                 } catch (IllegalArgumentException e) {
@@ -128,20 +131,27 @@ class LearnedIntegrationStage {
                 }
                 def rec = new LearnedStageReport.CandidateRecord(
                     candidateKey: f.candidateKey(), functionKey: key, proteinId: f.proteinId, functionType: f.functionType,
-                    functionId: f.functionId, role: f.role, margin: s.margin, probability: s.probability,
-                    displayThreshold: s.displayThreshold, aboveDisplayThreshold: s.aboveDisplayThreshold,
+                    functionId: f.functionId, role: f.role, margin: s?.margin, probability: s?.probability,
+                    scoreStatus: unsupported ? 'unsupported' : 'scored', unsupportedReason: unsupported,
+                    sequenceSources: f.sequenceSources,
+                    sequenceContracts: f.sequenceContracts,
+                    cohortContextMode: f.cohortContextMode.name(),
+                    qualityEvidence: f.qualityEvidence,
+                    displayThreshold: model.displayThreshold, aboveDisplayThreshold: s?.aboveDisplayThreshold,
                     featureDigest: f.digest(), features: settings.retainFeatureVectors ? f.values.clone() : null,
                     featureNotes: new ArrayList<String>(f.provenance), supportingClaims: new ArrayList<EvidenceClaim>(raw))
                 byKey.computeIfAbsent(key) { new ArrayList<LearnedStageReport.CandidateRecord>() } << rec
                 report.candidates << rec
                 if (locusOn) {
                     String gk = "${f.functionType}|${f.functionId}|${f.role.name()}".toString()
-                    locusGroups.computeIfAbsent(gk) { new ArrayList() } << new Tuple2(rec, LearnedContextModel.LocusMember.of(s))
+                    if (unsupported) unsupportedLocusGroups.add(gk)
+                    else locusGroups.computeIfAbsent(gk) { new ArrayList() } << new Tuple2(rec, LearnedContextModel.LocusMember.of(s))
                 }
             }
         }
         if (locusOn) {
             locusGroups.each { String gk, List<Tuple2<LearnedStageReport.CandidateRecord, LearnedContextModel.LocusMember>> grp ->
+                if (unsupportedLocusGroups.contains(gk)) return // Never rank a filtered competition.
                 LocusAssignment a
                 try {
                     a = model.assignLocusMembers(grp.collect { it.v2 })
@@ -165,7 +175,7 @@ class LearnedIntegrationStage {
             AnnotationType type = AnnotationType.valueOf(parts[1])
             ClaimProvenance prior = result.provenance[key]
             Map<String, Double> roleProbs = new LinkedHashMap<>()
-            recs.each { roleProbs[it.role.name()] = it.probability }
+            recs.findAll { it.scoreStatus == 'scored' }.each { roleProbs[it.role.name()] = it.probability }
             def out = new LearnedStageReport.KeyOutcome(functionKey: key, roleProbabilities: roleProbs)
             if (prior != null) {
                 out.priorProbability = prior.finalProbability
@@ -174,7 +184,10 @@ class LearnedIntegrationStage {
             }
             LearnedStageReport.CandidateRecord proj = projected(type, parts[2], state, recs)
             boolean claimed = !prepared.claimsOf(key).isEmpty()
-            if (type == AnnotationType.GO && settings.forbiddenGoTerms?.contains(parts[2])) {
+            if (proj?.scoreStatus == 'unsupported' || (proj == null && recs.any { it.scoreStatus == 'unsupported' })) {
+                out.action = 'unchanged_unsupported'
+                out.reason = proj?.unsupportedReason ?: 'no supported role projection'
+            } else if (type == AnnotationType.GO && settings.forbiddenGoTerms?.contains(parts[2])) {
                 if (proj != null) {
                     proj.projected = true
                     out.projectedRole = proj.role
@@ -269,7 +282,7 @@ class LearnedIntegrationStage {
                                               LearnedStageReport.CandidateRecord proj,
                                               List<LearnedStageReport.CandidateRecord> recs) {
         Map<String, Double> contrib = new LinkedHashMap<>()
-        recs.each {
+        recs.findAll { it.scoreStatus == 'scored' }.each {
             contrib["learned.probability.${it.role.name()}".toString()] = it.probability
             contrib["learned.margin.${it.role.name()}".toString()] = it.margin
         }
@@ -298,7 +311,7 @@ class LearnedIntegrationStage {
         md.learned_role = proj.role.name()
         md.learned_margin = proj.margin
         md.learned_feature_digest = proj.featureDigest
-        md.learned_role_scores = recs.collect { "${it.role.name()}=${it.probability}".toString() }.join(';')
+        md.learned_role_scores = recs.findAll { it.scoreStatus == 'scored' }.collect { "${it.role.name()}=${it.probability}".toString() }.join(';')
         if (prior != null) md.learned_replaced_posterior = prior.finalProbability
         ann.metadata = md
         ann

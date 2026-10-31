@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.workflow.PathwayGapWorkflowSpec" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-10-26T23:42:34" hostname="lc-dell" time="1.427">
+  <properties/>
+  <testcase name="in-memory and file observations produce the same gaps, features and replayable artifacts" classname="gspa.integration.workflow.PathwayGapWorkflowSpec" time="1.096">
+    <failure message="Condition failed with Exception:&#10;&#10;new JsonSlurper().parse(new File(cfg.outFile.path+'.gap-context.json')).available&#10;|                 |     |        |   |       |   |&#10;|                 |     |        |   |       |   /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json&#10;|                 |     |        |   |       /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv&#10;|                 |     |        |   /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv&#10;|                 |     |        &lt;gspa.integration.workflow.IntegrationWorkflowConfig@160e99e0 thetaFile=null theta=[:] maxIter=null epsilon=null damping=null goOwlFile=null essentialFunctionsFile=null essentialProfile=null ec2goFile=null pathwaysFile=null moduleDefsFile=null moduleExcludeOrganisms=[] moduleFiles=[] taxonomyFile=null taxonConstraintsFile=null complexTermsFile=null lite=true reasonerCacheDir=null reactionGraphFile=null diffusionMetsFile=null reactionEcAliasesFile=null rlcCurrencyPercentile=99.0 genomeId=g claimsFile=null organismTaxon=null inferTaxon=false operonsFile=null gapsFile=null pathwayObservationsFile=/home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/observations.json orthogroupsFile=null clusterConsensusFile=null genomeLayoutFile=null rxnLocusCatalogFile=null enabledPriors=none enforceStage2=false enforceConsistencyMode=relax darkMatter=false darkMatterMode=separate iterateGapseq=false maxGapseqIter=5 gapseqTauCover=0.5 gapseqQBase=0.5 gapseqQStep=0.05 gapseqQCap=0.75 gapseqPinPromotions=true promotionStrategy=default beamWidth=5 beamCandidatesPerGap=3 maxsatCoherenceBonus=0.0 refinedBf=true rlcSuggester=false rlcKernelBandwidth=5000.0 rlcRadiusK=2 rlcAlpha=0.5 rlcAnchorThreshold=0.3 cgLambda=1.0 cgMinSupport=3 cgRequireCredible=true enableFbaRefiner=false fbaDataDir=null fbaSidecar=scripts/stoichiometric_locus_refiner.py fbaPythonBin=python3 fbaGram=neg fbaMedium=minimal enableAgent=false agentModel=qwen3.8-27b agentPythonBin=python3 agentSidecar=benchmark/agent/run_gspa_agent.py agentApiBase=null agentNoGuardrail=false learnedModelFile=null learnedStage=false learnedRetractBelow=null learnedAddUnretainedClaims=false featureExportDir=null externalContextFile=null cohortInference=false cohortManifestFile=null cohortMetadataFile=null cohortOrthogroupsFile=null cohortRoleEvidenceFile=null cohortInteractionEdgesFile=null cohortReactionDirectionsFile=null cohortConfig=gspa.integration.cohort.CohortConfig@365afe87 experimentManifestFile=null experimentMode=manifest experimentEvidenceFile=null experimentStrategy=evidence experimentSeed=0 experimentMaxExperiments=8 experimentMaxSolverCalls=60 experimentMaxHypotheses=20 experimentTimeoutSeconds=600 experimentPythonBin=python3 experimentSidecar=scripts/metabolic_experiments.py communityManifestFile=null communityMaxSolverCalls=40 communityTimeoutSeconds=600 communityPythonBin=python3 communitySidecar=scripts/community_metabolism.py outFile=/home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv provenanceFile=null suggestionsOut=null featuresOut=null enforcementActionsOut=null anomaliesOut=null agentResolutionsOut=null&gt;&#10;|                 |     /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json&#10;|                 groovy.json.JsonException: Unable to process file: /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json&#10;|                 &#9;at org.apache.groovy.json.internal.BaseJsonParser.parse(BaseJsonParser.java:167)&#10;|                 &#9;at groovy.json.JsonSlurper.parseFile(JsonSlurper.java:386)&#10;|                 &#9;at groovy.json.JsonSlurper.parse(JsonSlurper.java:369)&#10;|                 &#9;at gspa.integration.workflow.PathwayGapWorkflowSpec.in-memory and file observations produce the same gaps, features and replayable artifacts(PathwayGapWorkflowSpec.groovy:47)&#10;|                 Caused by: java.io.FileNotFoundException: /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json (No such file or directory)&#10;|                 &#9;at java.base/java.io.FileInputStream.open(FileInputStream.java:213)&#10;|                 &#9;at java.base/java.io.FileInputStream.&lt;init&gt;(FileInputStream.java:152)&#10;|                 &#9;at groovy.util.CharsetToolkit.&lt;init&gt;(CharsetToolkit.java:78)&#10;|                 &#9;at org.apache.groovy.json.internal.BaseJsonParser.parse(BaseJsonParser.java:161)&#10;|                 &#9;... 3 more&#10;&lt;groovy.json.JsonSlurper@5df7e31b maxSizeForInMemory=2000000 chop=false lazyChop=true checkDates=true type=CHAR_BUFFER&gt;&#10;" type="org.spockframework.runtime.ConditionFailedWithExceptionError">Condition failed with Exception:
+
+new JsonSlurper().parse(new File(cfg.outFile.path+'.gap-context.json')).available
+|                 |     |        |   |       |   |
+|                 |     |        |   |       |   /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json
+|                 |     |        |   |       /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv
+|                 |     |        |   /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv
+|                 |     |        &lt;gspa.integration.workflow.IntegrationWorkflowConfig@160e99e0 thetaFile=null theta=[:] maxIter=null epsilon=null damping=null goOwlFile=null essentialFunctionsFile=null essentialProfile=null ec2goFile=null pathwaysFile=null moduleDefsFile=null moduleExcludeOrganisms=[] moduleFiles=[] taxonomyFile=null taxonConstraintsFile=null complexTermsFile=null lite=true reasonerCacheDir=null reactionGraphFile=null diffusionMetsFile=null reactionEcAliasesFile=null rlcCurrencyPercentile=99.0 genomeId=g claimsFile=null organismTaxon=null inferTaxon=false operonsFile=null gapsFile=null pathwayObservationsFile=/home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/observations.json orthogroupsFile=null clusterConsensusFile=null genomeLayoutFile=null rxnLocusCatalogFile=null enabledPriors=none enforceStage2=false enforceConsistencyMode=relax darkMatter=false darkMatterMode=separate iterateGapseq=false maxGapseqIter=5 gapseqTauCover=0.5 gapseqQBase=0.5 gapseqQStep=0.05 gapseqQCap=0.75 gapseqPinPromotions=true promotionStrategy=default beamWidth=5 beamCandidatesPerGap=3 maxsatCoherenceBonus=0.0 refinedBf=true rlcSuggester=false rlcKernelBandwidth=5000.0 rlcRadiusK=2 rlcAlpha=0.5 rlcAnchorThreshold=0.3 cgLambda=1.0 cgMinSupport=3 cgRequireCredible=true enableFbaRefiner=false fbaDataDir=null fbaSidecar=scripts/stoichiometric_locus_refiner.py fbaPythonBin=python3 fbaGram=neg fbaMedium=minimal enableAgent=false agentModel=qwen3.8-27b agentPythonBin=python3 agentSidecar=benchmark/agent/run_gspa_agent.py agentApiBase=null agentNoGuardrail=false learnedModelFile=null learnedStage=false learnedRetractBelow=null learnedAddUnretainedClaims=false featureExportDir=null externalContextFile=null cohortInference=false cohortManifestFile=null cohortMetadataFile=null cohortOrthogroupsFile=null cohortRoleEvidenceFile=null cohortInteractionEdgesFile=null cohortReactionDirectionsFile=null cohortConfig=gspa.integration.cohort.CohortConfig@365afe87 experimentManifestFile=null experimentMode=manifest experimentEvidenceFile=null experimentStrategy=evidence experimentSeed=0 experimentMaxExperiments=8 experimentMaxSolverCalls=60 experimentMaxHypotheses=20 experimentTimeoutSeconds=600 experimentPythonBin=python3 experimentSidecar=scripts/metabolic_experiments.py communityManifestFile=null communityMaxSolverCalls=40 communityTimeoutSeconds=600 communityPythonBin=python3 communitySidecar=scripts/community_metabolism.py outFile=/home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv provenanceFile=null suggestionsOut=null featuresOut=null enforcementActionsOut=null anomaliesOut=null agentResolutionsOut=null&gt;
+|                 |     /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json
+|                 groovy.json.JsonException: Unable to process file: /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json
+|                 	at org.apache.groovy.json.internal.BaseJsonParser.parse(BaseJsonParser.java:167)
+|                 	at groovy.json.JsonSlurper.parseFile(JsonSlurper.java:386)
+|                 	at groovy.json.JsonSlurper.parse(JsonSlurper.java:369)
+|                 	at gspa.integration.workflow.PathwayGapWorkflowSpec.in-memory and file observations produce the same gaps, features and replayable artifacts(PathwayGapWorkflowSpec.groovy:47)
+|                 Caused by: java.io.FileNotFoundException: /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json (No such file or directory)
+|                 	at java.base/java.io.FileInputStream.open(FileInputStream.java:213)
+|                 	at java.base/java.io.FileInputStream.&lt;init&gt;(FileInputStream.java:152)
+|                 	at groovy.util.CharsetToolkit.&lt;init&gt;(CharsetToolkit.java:78)
+|                 	at org.apache.groovy.json.internal.BaseJsonParser.parse(BaseJsonParser.java:161)
+|                 	... 3 more
+&lt;groovy.json.JsonSlurper@5df7e31b maxSizeForInMemory=2000000 chop=false lazyChop=true checkDates=true type=CHAR_BUFFER&gt;
+
+	at gspa.integration.workflow.PathwayGapWorkflowSpec.in-memory and file observations produce the same gaps, features and replayable artifacts(PathwayGapWorkflowSpec.groovy:47)
+Caused by: groovy.json.JsonException: Unable to process file: /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json
+	at org.apache.groovy.json.internal.BaseJsonParser.parse(BaseJsonParser.java:167)
+	at groovy.json.JsonSlurper.parseFile(JsonSlurper.java:386)
+	at groovy.json.JsonSlurper.parse(JsonSlurper.java:369)
+	... 1 more
+Caused by: java.io.FileNotFoundException: /home/leechuck/tmp/spock_in-memory_and_file__0_dir3908712490095882898/out.tsv.gap-context.json (No such file or directory)
+	at java.base/java.io.FileInputStream.open(FileInputStream.java:213)
+	at java.base/java.io.FileInputStream.&lt;init&gt;(FileInputStream.java:152)
+	at groovy.util.CharsetToolkit.&lt;init&gt;(CharsetToolkit.java:78)
+	at org.apache.groovy.json.internal.BaseJsonParser.parse(BaseJsonParser.java:161)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="observed zero and absent gap inputs have distinct feature availability" classname="gspa.integration.workflow.PathwayGapWorkflowSpec" time="0.142"/>
+  <testcase name="explicit gap set takes precedence over automatic gaps including explicit empty set" classname="gspa.integration.workflow.PathwayGapWorkflowSpec" time="0.052"/>
+  <testcase name="partial observations remain unavailable and obsolete gap artifacts are removed" classname="gspa.integration.workflow.PathwayGapWorkflowSpec" time="0.092"/>
+  <testcase name="cross-genome observations fail preparation and leave a failed ledger" classname="gspa.integration.workflow.PathwayGapWorkflowSpec" time="0.045"/>
+  <system-out><![CDATA[02:42:34.504 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:42:34.647 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:42:34.729 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+02:42:34.747 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:42:34.748 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:42:34.837 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:42:34.887 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:42:34.918 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+02:42:34.919 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:42:34.919 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:42:34.975 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:42:35.013 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:42:35.027 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+02:42:35.028 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:42:35.028 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:42:35.241 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:42:35.281 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:42:35.291 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+02:42:35.291 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:42:35.291 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:42:35.307 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:42:35.339 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:42:35.343 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+02:42:35.344 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:42:35.344 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:42:35.367 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:42:35.393 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:42:35.397 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+02:42:35.398 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:42:35.398 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:42:35.412 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:42:35.438 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:42:35.442 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+02:42:35.442 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:42:35.442 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:42:35.455 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:42:35.482 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:42:35.486 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+02:42:35.487 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:42:35.487 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:42:35.503 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:42:35.529 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@971e903]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@35636217]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@971e903]
+]]></system-err>
+</testsuite>

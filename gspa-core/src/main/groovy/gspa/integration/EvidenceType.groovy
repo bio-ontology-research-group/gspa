@@ -32,7 +32,8 @@ enum EvidenceType {
     CROSS_GENOME_TRANSFER,      // conditional-LR-based cross-genome transfer (Phase 12)
     ML_RANKER,                  // learned ranker output (Phase 12 M3+)
     SEQUENCE_REGION_ML,         // region-level ML predictors (Metapredict, SignalP region, TMHMM helix)
-    GENOMIC_REGION_ML           // genome-level ML predictors (geNomad, CheckV, PhiSpy)
+    GENOMIC_REGION_ML,          // genome-level ML predictors (geNomad, CheckV, PhiSpy)
+    GENE_MODEL_QUALITY         // AntiFam / gene-model observations, never positive function evidence
 
     /**
      * Correlation group. Claims in the same group are collapsed to the single

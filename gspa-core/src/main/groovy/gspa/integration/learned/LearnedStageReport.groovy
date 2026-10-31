@@ -19,17 +19,23 @@ class LearnedStageReport {
         String functionId
         CandidateRole role
         /** Pre-calibration logit of the frozen model. */
-        double margin
+        Double margin
         /** Calibrated marginal probability that this candidate is correct (independent of all others). */
-        double probability
+        Double probability
+        String scoreStatus = 'scored'
+        String unsupportedReason
         double displayThreshold
-        boolean aboveDisplayThreshold
+        Boolean aboveDisplayThreshold
         /** Exact-bits SHA-256 of the feature vector that was scored. */
         String featureDigest
         /** The full vector in contract order; null unless {@code retainFeatureVectors}. */
         double[] features
         /** Extractor notes (what was counted / ignored). */
         List<String> featureNotes
+        List<String> sequenceSources
+        List<Map> sequenceContracts
+        String cohortContextMode = 'UNIVERSAL'
+        List<Map> qualityEvidence = []
         /** The original raw claims behind the sequence features (empty for context-only candidates). */
         List<EvidenceClaim> supportingClaims
         /** True if this role's probability is the one written to the legacy role-free annotation. */
@@ -74,6 +80,7 @@ class LearnedStageReport {
     List<String> pinnedFloorsCleared = []
 
     int count(String action) { outcomes.count { it.action == action } as int }
+    int unsupportedCount() { candidates.count { it.scoreStatus == 'unsupported' } as int }
 
     @Override
     String toString() {

@@ -1,0 +1,90 @@
+# Audit: observed-gap context-mode benchmark (read-only)
+
+I made no edits and ran no models or LPs. The only computation was in-memory re-aggregation of the saved `scored-supervision.jsonl` using the frozen `thresholds.json`.
+
+## Bottom line
+
+The run is complete and internally consistent, but it supports only a descriptive claim. There are 18 genomes in total and 4 test genomes (34 test positives in the family-excluded regime, 75 in the homology regime). Labels are reference support, and unconfirmed rows are not proven negatives.
+
+- **The learned gain depends on the regime.**
+  - Family-excluded: the learned arms beat rules. Max-F1 at the calibration threshold is 0.289 for UNIVERSAL/gbdt versus 0.090 for UNIVERSAL/rule.
+  - Homology: no learned arm beats rules. UNIVERSAL/rule is 0.289, and PATHWAY/rule and ORGANISM/rule are also 0.289. UNIVERSAL/logistic is 0.237 and UNIVERSAL/gbdt is 0.275.
+- **Context effect:** Rule arms are identical across contexts (0 changed calls, `results.json`). Context therefore acts only through learned features.
+  - UNIVERSAL is mostly at or above PATHWAY and ORGANISM.
+  - Paired Brier deltas against UNIVERSAL are about ±0.001, with CIs spanning 0 in every case but one.
+  - The one exception is family-excluded ORGANISM/gbdt versus UNIVERSAL/gbdt, at −0.0017 [−0.0036, −0.0003]. See finding 4 on why that interval is unreliable.
+- **"Context improves things" is not supported.**
+
+## EC gains
+
+I split the test rows by function type from `example_id`, using the unchanged frozen global thresholds. This is post-hoc and descriptive.
+
+| Regime | Type | Test rows (positives) | Rule F1 | Learned F1 |
+|---|---|---|---|---|
+| homology | EC | 52 (15) | 0.452 | UNIVERSAL/logistic 0.647, ORGANISM/gbdt 0.629 |
+| homology | GO | 556 (60) | 0.250 | every learned arm lower, 0.05–0.19 |
+| family_excluded | EC | 22 (5) | 0.167 | UNIVERSAL/gbdt 0.667 (TP 5 vs 1), ORGANISM/gbdt 0.667 |
+| family_excluded | GO | 394 (29) | 0.082 | 0.00–0.21; the gain is fewer FP (88 → 32), not more TP (5 → 7) |
+
+- **Where the gain sits:** Learned gains are concentrated in EC, where positives are few: 15 in homology, 5 in family-excluded. In homology, learned models are worse than rules on GO, the dominant row type.
+- **Do not state EC gains as an EC-specific accuracy result.** Family-excluded EC is one or two TPs on 5 positives and spans 4 genomes.
+- **The overall family-excluded gain is a threshold effect.** The rule arm has a calibration-selected threshold of 0.178 and 94 FP. Learned arms get higher F1 mainly by cutting FP, and the saved results do not show higher recall.
+- **GO and EC share one threshold.** `select_thresholds` is global per arm (`analyze_observed_gap_context_models.py:50`), so the per-type numbers depend on a threshold tuned for the mixture.
+
+## Findings
+
+1. **Registry binding: the prior report is wrong, with one caveat.**
+   - The parent `~/.cache/gspa-v3-data/observed-gap-models-v1/registration.json` binds `benchmark/v3/registry/training_cohort_registry.json` at `ba86d3c4…b00e38`.
+   - That hash matches the file on disk and `git status` shows it unmodified. The last commit touching the file is `498560f`.
+   - The doc statement at `docs/benchmarks/v3-observed-gap-context-modes.md:57-62` ("registry lacked a prior manifest hash") is inaccurate or outdated and should be corrected.
+   - The 6,969-input analysis registration does not hash the seven supervision files directly: labels, splits, registry, label_policy, locus_groups, example_clusters and go_obo. None of their hashes appear in it.
+   - It binds only the parent `registration.json` file, which lists them. That is transitive and not re-verified at analysis time.
+   - `register()` (`analyze_observed_gap_context_models.py:76-113`) never calls `supervision_inputs`; only `R.verify` does, and only against the training registration.
+   - The local `observed-gap-context-modes-v1/registration.json` has 2,037 inputs and none of the seven. The supplement from job 10176 (`/data/hohndor/gspa-v3/context-resume-v1`) is not available locally, so I could not verify it.
+   - **Action:** the Slurm audit should hash the seven files against the parent `registration.json` inputs.
+
+2. **Stale doc.** `v3-observed-gap-context-modes.md:3-9, 84, 100` still say fitting, replay and analysis are pending, but the run is complete. Per `logs/workflow.json`, job 10176 finished on node002 and the final analysis ended 2026-10-27T17:56Z. The doc also says "twelve" models, which matches 3 contexts × 2 learned kinds × 2 regimes. It should record the results, the limits below and the post-hoc status of any EC/GO split.
+
+3. **Sources are untracked.** All five scripts and the doc are `??` in git, so they are bound by file hash only. Commit them, or record their SHA-256 values in the report.
+
+4. **Inference and averaging.**
+   - **Few genomes:** There are 4 test genomes, so the bootstrap has at most C(7,4) = 35 distinct resamples. Percentile CIs are very coarse.
+   - **Treat as descriptive:** The "excludes 0" intervals should not be read as significance.
+   - **Brier scale:** The paired Brier delta weights genomes equally (`vectors[...]=[n,delta,1,…]` in `analyze_observed_gap_models.py:103`).
+   - **F1 scale:** F1 and the TP/FP counts are pooled micro-counts over all rows. The two scales differ, so do not mix them.
+   - **Family-excluded is a subset of homology.** All 416 family-excluded test `example_id`s are among the 608 homology test rows, so the regimes are not independent replicates. Do not pool them or count them as two confirmations.
+
+5. **Thresholds.**
+   - Selection is calibration-only, and the saved `thresholds.json` precedes the test metrics. I found no test leakage into thresholds.
+   - The calibration split is also the fitting calibration set (`F.T.train(splits['train'], splits['calibration'], …)` in `run_observed_gap_context_modes.py:209`). Learned-arm calibration F1 is therefore possibly optimistic. This does not affect test.
+   - The 3 calibration genomes are small. The learned probabilities are low-scale, with thresholds around 0.2.
+   - The fixed-0.5 policy is near-degenerate. UNIVERSAL/gbdt makes zero positive calls in homology, which is why its precision is None. Report max-F1 as primary and treat 0.5 as a sanity check.
+   - All thresholds are tagged `advisory_only`. Do not describe the F1 values as tuned optima for deployment.
+
+6. **Split and leakage.**
+   - Genomes are disjoint across train, calibration and test: 11 / 3 / 4, zero overlap in both regimes.
+   - The same (type, function) pair appears in train for 298 of the 608 homology test rows, 36 of 75 positives, and 197 of 416 family-excluded rows (20 of 34 positives).
+   - The family exclusion therefore does not remove function-level overlap. The doc already says no unseen-family claim, which is correct; keep that.
+   - I did not verify `F.T.choose_threshold` (it is not defined in `benchmark/v3`). Tie handling and the "higher threshold on ties" rule are unchecked.
+
+7. **Inclusion.**
+   - Every frozen test row is kept, including unsupported learned candidates that fall back to rule scores. `attach_scores` hard-fails on missing or duplicate identities.
+   - Learned and rule arms therefore share fallback rows. This understates learned-versus-rule differences but is honest, and the report should say so.
+   - I did not quantify how many test rows are fallback. That count is in each `audit.json` and `verification.json` (`reasons`), if the audit wants it.
+
+8. **Comparators.**
+   - Learned arms are compared against rules in their own context and against UNIVERSAL with the same scorer.
+   - The rule arm is the observed-gap context-independent baseline, so there is no matched "no-gap" control in this analysis.
+   - Gap-linked supervision is negligible: two rows per regime in training, both unconfirmed, and none in the family-excluded test (`v3-observed-gap-context-modes.md:119-121`). Observed-gap benefit cannot be inferred from these tables.
+
+## Defensible conclusions
+
+- Context modes (PATHWAY/ORGANISM) show no reliable improvement over UNIVERSAL in this cohort. Differences are one to a few net row calls on 4 test genomes.
+- Learned scoring improves reference-support F1 over rules in the family-excluded regime and not in the homology regime. The family-excluded gain mainly reflects fewer false positives at calibrated thresholds.
+- EC rows show larger relative learned gains, but on 15 and 5 positives. State them as an exploratory pattern only.
+- Do not claim missing-enzyme recovery, biological accuracy, unseen-family generalization or model promotion.
+
+## Pointers
+
+- Outputs: `~/tmp/gspa-context-comparison-audit-v1/analysis/{results,thresholds,registration,verification}.json` and `scored-supervision.jsonl`, plus `logs/workflow.json`.
+- Code: `benchmark/v3/analyze_observed_gap_context_models.py:50-73, 76-113`, `analyze_observed_gap_models.py:94-111`, `run_observed_gap_context_modes.py:102-116, 209`.

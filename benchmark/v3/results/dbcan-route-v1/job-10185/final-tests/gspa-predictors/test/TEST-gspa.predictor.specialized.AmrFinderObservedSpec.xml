@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.specialized.AmrFinderObservedSpec" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-10-27T16:59:44" hostname="node002" time="0.234">
+  <properties/>
+  <testcase name="real protein-only output preserves classification, identity, coverage and HMM evidence" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.017"/>
+  <testcase name="official coordinate-bearing release fixture uses the same named columns" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.014"/>
+  <testcase name="a complete header alone means zero hits" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.002"/>
+  <testcase name="official v3 release output retains the older header names" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.01"/>
+  <testcase name="long process banners cannot displace the failure diagnostic from the status manifest" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.005"/>
+  <testcase name="malformed output after clean process exit records FAILED through the adapter" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.005"/>
+  <testcase name="successful execution retains the tool version" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.008"/>
+  <testcase name="reordered columns and an added optional column cannot change annotations" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.009"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: missing header" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.003"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: missing required column" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.002"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: duplicate header" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.002"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: short row" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.002"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: oops" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.003"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: NaN" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.002"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: Infinity" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.002"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: 101" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.002"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: -1" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.002"/>
+  <testcase name="malformed output fails instead of silently producing zero scores or hits: NA" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.002"/>
+  <testcase name="an HMM hit without alignment statistics stays an unscored observation through claims and integration" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.088"/>
+  <testcase name="missing score metadata also prevents EC placeholders from becoming cohort anchors" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.014"/>
+  <testcase name="requested adapter is configured with explicit database executable organism and thread budget" classname="gspa.predictor.specialized.AmrFinderObservedSpec" time="0.034"/>
+  <system-out><![CDATA[19:59:44.641 [Test worker] INFO gspa.predictor.specialized.AmrFinderObservedSpec$ProcessStub -- Running amrfinder: amrfinder -p /home/leechuck/tmp/gspa_amrfinder_14087345052385654043/input.faa -o /home/leechuck/tmp/gspa_amrfinder_14087345052385654043/amrfinder_results.tsv --threads 4 --plus
+19:59:44.642 [Test worker] ERROR gspa.predictor.specialized.AmrFinderObservedSpec$ProcessStub -- amrfinder failed with exit code 1: banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner banner 
+invalid protein input
+19:59:44.645 [Test worker] INFO gspa.predictor.specialized.AmrFinderObservedSpec$ProcessStub -- Running amrfinder: amrfinder -p /home/leechuck/tmp/gspa_amrfinder_3862438120823483412/input.faa -o /home/leechuck/tmp/gspa_amrfinder_3862438120823483412/amrfinder_results.tsv --threads 4 --plus
+19:59:44.647 [Test worker] ERROR gspa.predictor.specialized.AmrFinderObservedSpec$ProcessStub -- amrfinder output rejected: amrfinder row 2: expected 18 fields, found 2
+19:59:44.649 [Test worker] INFO gspa.predictor.specialized.AmrFinderObservedSpec$ProcessStub -- Running amrfinder: amrfinder -p /home/leechuck/tmp/gspa_amrfinder_13948387866331289038/input.faa -o /home/leechuck/tmp/gspa_amrfinder_13948387866331289038/amrfinder_results.tsv --threads 4 --plus
+19:59:44.779 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 0 (protein, function) groups (maxIter=6, damping=0.5)
+19:59:44.779 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+19:59:44.779 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+19:59:44.796 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+19:59:44.797 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: diamond
+19:59:44.797 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+19:59:44.798 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: operon
+19:59:44.798 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: gapsmith
+19:59:44.798 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: amrfinder
+19:59:44.798 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 5 predictors registered
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

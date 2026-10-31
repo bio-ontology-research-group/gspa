@@ -22,6 +22,7 @@ import gspa.model.Protein
 class SymbolicEnforcementStage {
     final IntegrationWorkflowConfig c
     Closure<Void> info = { String m -> }
+    ConsistencyEnforcer.Result lastResult
 
     SymbolicEnforcementStage(IntegrationWorkflowConfig config) {
         this.c = config
@@ -55,12 +56,13 @@ class SymbolicEnforcementStage {
         genome.contigs << contig
         Map<String, Protein> byProtein = new LinkedHashMap<>()
 
-        // Populate genome with all GO claims in integrated.provenance
+        // Populate genome with all GO and EC claims in integrated.provenance
         integrated.provenance.values().each { prov ->
             String[] fkey = IntegrationState.splitFunctionKey(prov.functionKey)
-            if (fkey == null || fkey[1] != 'GO') return
+            if (fkey == null || !(fkey[1] in ['GO', 'EC'])) return
             String pid = fkey[0]
-            String goId = fkey[2]
+            String termId = fkey[2]
+            AnnotationType annType = fkey[1] == 'EC' ? AnnotationType.EC : AnnotationType.GO
             Protein p = byProtein.computeIfAbsent(pid) {
                 def np = new Protein(id: pid, contig: contig)
                 contig.proteins << np
@@ -68,8 +70,8 @@ class SymbolicEnforcementStage {
             }
             def firstClaim = prov.supportingClaims ? prov.supportingClaims.first() : null
             p.annotations.add(new Annotation(
-                type: AnnotationType.GO,
-                value: goId,
+                type: annType,
+                value: termId,
                 score: prov.finalProbability,
                 source: firstClaim?.source ?: 'integrator',
                 evidence: 'IEA',
@@ -84,11 +86,16 @@ class SymbolicEnforcementStage {
             goOntology: state.goOntology,
             satChecker: state.satConsistencyChecker,
             anatomicalConstraints: useAnatomicalInStage2 ? state.anatomicalConstraints : null,
+            ecToGoAlternatives: state.ecToGoAlternatives ?: state.satConsistencyChecker?.ecToGoAlternatives ?: [:],
             mode: effMode,
             report: report
         )
         def consRes = consEnf.enforce(genome)
+        lastResult = consRes
         if (verbose) println "  Stage 2 Consistency (${effMode}): ${consRes}"
+        if (!consRes.constraintsApplied) {
+            return
+        }
 
         // Rebuild GO entries in integrated.provenance directly from the enforced genome proteins
         // so removals, downranks, and ancestor relaxations are 100% reflected.
@@ -204,6 +211,35 @@ class SymbolicEnforcementStage {
                         convergenceIter: origProv ? origProv.convergenceIter : 1
                     )
                     relaxedAdded++
+                }
+                if (a.score >= 0.5d) {
+                    integrated.annotations.add(a)
+                }
+            }
+        }
+        // Rebuild EC entries in integrated.provenance directly from the enforced genome proteins
+        // so EC removals, downranks, and flags are 100% reflected.
+        Set<String> ecKeysToRemove = integrated.provenance.keySet().findAll { k ->
+            String[] fkey = IntegrationState.splitFunctionKey(k)
+            fkey != null && fkey[1] == 'EC'
+        } as Set
+        Map<String, gspa.integration.ClaimProvenance> oldEcProv = [:]
+        for (String k : ecKeysToRemove) {
+            oldEcProv[k] = integrated.provenance.remove(k)
+        }
+        integrated.annotations.annotations.removeAll { it.type == AnnotationType.EC }
+
+        for (Protein p : contig.proteins) {
+            for (Annotation a : p.annotations.ecAnnotations()) {
+                String fkey = IntegrationState.functionKey(p.id, 'EC', a.value)
+                def existing = oldEcProv[fkey]
+                if (existing != null) {
+                    existing.finalProbability = a.score
+                    existing.finalLogOdds = CalibrationTable.probToLogOdds(existing.finalProbability)
+                    if (a.metadata?.get('violating_go_terms')) {
+                        existing.priorContributions['stage2_ec_taxon'] = -1.0d
+                    }
+                    integrated.provenance[fkey] = existing
                 }
                 if (a.score >= 0.5d) {
                     integrated.annotations.add(a)

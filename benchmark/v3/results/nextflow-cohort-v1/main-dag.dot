@@ -1,0 +1,291 @@
+digraph "maindag" {
+rankdir=TB;
+v0 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.of"];
+v1 [label="PYRODIGAL"];
+v0 -> v1 [label="ch_input"];
+
+v1 [label="PYRODIGAL"];
+v33 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v1 -> v33;
+
+v1 [label="PYRODIGAL"];
+v30 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v1 -> v30;
+
+v1 [label="PYRODIGAL"];
+v14 [label="BARRNAP"];
+v1 -> v14;
+
+v2 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v3 [shape=point];
+v2 -> v3 [label="ch_diamond"];
+
+v4 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v5 [shape=point];
+v4 -> v5 [label="ch_pfam"];
+
+v6 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v7 [shape=point];
+v6 -> v7 [label="ch_interproscan"];
+
+v8 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v9 [shape=point];
+v8 -> v9 [label="ch_eggnog"];
+
+v10 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v11 [shape=point];
+v10 -> v11 [label="ch_rrna"];
+
+v12 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v13 [shape=point];
+v12 -> v13 [label="ch_crispr"];
+
+v14 [label="BARRNAP"];
+v37 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v14 -> v37 [label="ch_rrna_or_empty"];
+
+v1 [label="PYRODIGAL"];
+v15 [label="MINCED"];
+v1 -> v15;
+
+v15 [label="MINCED"];
+v38 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v15 -> v38 [label="ch_crispr_or_empty"];
+
+v16 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v17 [shape=point];
+v16 -> v17 [label="ch_neural"];
+
+v18 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v19 [shape=point];
+v18 -> v19 [label="ch_regions"];
+
+v20 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v21 [shape=point];
+v20 -> v21 [label="ch_sites"];
+
+v22 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v23 [shape=point];
+v22 -> v23 [label="ch_structures"];
+
+v24 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v25 [shape=point];
+v24 -> v25 [label="ch_genomic"];
+
+v26 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v27 [shape=point];
+v26 -> v27 [label="ch_ensemble"];
+
+v28 [shape=point,label="",fixedsize=true,width=0.1,xlabel="channel.empty"];
+v29 [shape=point];
+v28 -> v29 [label="ch_eval_results"];
+
+v30 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v34 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v30 -> v34 [label="ch_diamond_or_empty"];
+
+v1 [label="PYRODIGAL"];
+v31 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v1 -> v31;
+
+v31 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v35 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v31 -> v35 [label="ch_pfam_or_empty"];
+
+v1 [label="PYRODIGAL"];
+v32 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v1 -> v32;
+
+v32 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v36 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v32 -> v36 [label="ch_interproscan_or_empty"];
+
+v1 [label="PYRODIGAL"];
+v33 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v1 -> v33;
+
+v33 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v34 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v33 -> v34;
+
+v34 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v35 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v34 -> v35;
+
+v35 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v36 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v35 -> v36;
+
+v36 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v37 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v36 -> v37;
+
+v37 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v38 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v37 -> v38;
+
+v38 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v39 [label="MERGE_ANNOTATIONS"];
+v38 -> v39 [label="ch_merge"];
+
+v39 [label="MERGE_ANNOTATIONS"];
+v42 [shape=point];
+v39 -> v42;
+
+v39 [label="MERGE_ANNOTATIONS"];
+v41 [shape=point];
+v39 -> v41;
+
+v39 [label="MERGE_ANNOTATIONS"];
+v40 [shape=point];
+v39 -> v40;
+
+v1 [label="PYRODIGAL"];
+v43 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v1 -> v43;
+
+v43 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v46 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v43 -> v46 [label="ch_eggnog_or_empty"];
+
+v31 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v44 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v31 -> v44 [label="ch_pfam_or_empty"];
+
+v30 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v44 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v30 -> v44 [label="ch_diamond_or_empty"];
+
+v44 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v45 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v44 -> v45;
+
+v32 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v45 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v32 -> v45 [label="ch_interproscan_or_empty"];
+
+v45 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v46 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v45 -> v46;
+
+v46 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v50 [label="BUILD_CLAIMS"];
+v46 -> v50 [label="ch_claims_in"];
+
+v47 [shape=point,label="",fixedsize=true,width=0.1];
+v50 [label="BUILD_CLAIMS"];
+v47 -> v50 [label="claims_parser"];
+
+v48 [shape=point,label="",fixedsize=true,width=0.1];
+v50 [label="BUILD_CLAIMS"];
+v48 -> v50 [label="goa_file"];
+
+v49 [shape=point,label="",fixedsize=true,width=0.1];
+v50 [label="BUILD_CLAIMS"];
+v49 -> v50 [label="pfam2go_file"];
+
+v50 [label="BUILD_CLAIMS"];
+v59 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v50 -> v59;
+
+v1 [label="PYRODIGAL"];
+v51 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v1 -> v51;
+
+v51 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v54 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v51 -> v54 [label="ch_mdf_or_empty"];
+
+v1 [label="PYRODIGAL"];
+v52 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v1 -> v52;
+
+v52 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v54 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v52 -> v54 [label="ch_proteinfer_or_empty"];
+
+v1 [label="PYRODIGAL"];
+v53 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v1 -> v53;
+
+v53 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v55 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v53 -> v55 [label="ch_clean_or_empty"];
+
+v54 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v55 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v54 -> v55;
+
+v55 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v58 [label="SIDECAR_CLAIMS"];
+v55 -> v58 [label="ch_sidecar_in"];
+
+v56 [shape=point,label="",fixedsize=true,width=0.1];
+v58 [label="SIDECAR_CLAIMS"];
+v56 -> v58 [label="sidecar_parser"];
+
+v57 [shape=point,label="",fixedsize=true,width=0.1];
+v58 [label="SIDECAR_CLAIMS"];
+v57 -> v58 [label="go_obo"];
+
+v58 [label="SIDECAR_CLAIMS"];
+v59 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v58 -> v59;
+
+v59 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v60 [label="MERGE_CLAIMS"];
+v59 -> v60 [label="ch_merged_claims"];
+
+v60 [label="MERGE_CLAIMS"];
+v64 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v60 -> v64;
+
+v1 [label="PYRODIGAL"];
+v62 [label="OPERONS"];
+v1 -> v62;
+
+v61 [shape=point,label="",fixedsize=true,width=0.1];
+v62 [label="OPERONS"];
+v61 -> v62 [label="operon_script"];
+
+v62 [label="OPERONS"];
+v63 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v62 -> v63;
+
+v63 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v64 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v63 -> v64;
+
+v64 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="join"];
+v65 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v64 -> v65 [label="ch_integrate_in"];
+
+v65 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v66 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="toList"];
+v65 -> v66;
+
+v66 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="toList"];
+v67 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v66 -> v67;
+
+v67 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="map"];
+v71 [label="INTEGRATE_COHORT"];
+v67 -> v71;
+
+v68 [shape=point,label="",fixedsize=true,width=0.1];
+v71 [label="INTEGRATE_COHORT"];
+v68 -> v71;
+
+v69 [shape=point,label="",fixedsize=true,width=0.1];
+v71 [label="INTEGRATE_COHORT"];
+v69 -> v71 [label="gspa_jar"];
+
+v70 [shape=point,label="",fixedsize=true,width=0.1];
+v71 [label="INTEGRATE_COHORT"];
+v70 -> v71 [label="settings"];
+
+v71 [label="INTEGRATE_COHORT"];
+v72 [shape=point];
+v71 -> v72;
+
+}

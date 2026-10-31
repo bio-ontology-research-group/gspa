@@ -143,6 +143,13 @@ class InformationParity(PlannerBase):
         for word in ("no_growth", "partial", "label", "observed", "auxotroph", "OD600"):
             self.assertNotIn(word, text.replace("no_growth_feasible", ""))
         self.assertTrue(rec["qwen"]["prompt_parity"]["evidence_content_identical"])
+        self.assertEqual(len(chat.prompts), 1)
+        self.assertEqual(len(rec["selection_log"]), 1)
+        self.assertTrue(rec["selection_log"][0]["valid"])
+        self.assertTrue(rec["selection_log"][0]["stop"])
+        self.assertEqual(rec["selection_log"][0]["source"], "qwen")
+        self.assertEqual(rec["selection_log"][0]["prompt_schema"], "custom_unversioned")
+        self.assertEqual(rec["selection_log"][0]["prompt_sha256"], ME.canonical_hash(chat.prompts[0]))
 
     def test_engine_prompt_function_is_restored_after_a_qwen_run(self):
         original = ME.qwen_prompt
@@ -248,6 +255,10 @@ class CircularObjectives(PlannerBase):
         m = P.gene_manifest(self.view, "locus_g3", self.network, self.model, 4)
         bad = copy.deepcopy(m)
         bad["context"]["evidence"].append(ev("EB", "bgc", None, product_exchange="EX_sec_e"))
+        with self.assertRaises(ValueError):
+            P.assert_no_forced_objective(bad)
+        bad = copy.deepcopy(m)
+        bad['context']['evidence'].append(ev('ED', 'sequence', None, product_demand='DM_product'))
         with self.assertRaises(ValueError):
             P.assert_no_forced_objective(bad)
         bad = copy.deepcopy(m)

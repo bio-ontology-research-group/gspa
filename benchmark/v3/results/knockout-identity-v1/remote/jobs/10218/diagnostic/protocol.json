@@ -1,0 +1,49 @@
+{
+  "schema": "gspa.germicidin_capacity_diagnostic/1",
+  "conditions": [
+    "published_model_minimal",
+    "phosphate_closed",
+    "carbon_closed"
+  ],
+  "genotypes": [
+    "native",
+    "gcs_deleted",
+    "native_repeat"
+  ],
+  "requirements": [
+    "growth_fraction",
+    "maintenance_only"
+  ],
+  "growth_fraction": 0.95,
+  "growth_threshold": 1e-06,
+  "flux_tolerance": 1e-07,
+  "max_solver_calls": 500,
+  "product_targets": [
+    "R_DM_germicidinA_c",
+    "R_DM_germicidinB_c",
+    "R_DM_germicidinC_c",
+    "R_DM_germicidinD_c"
+  ],
+  "biomass": "R_BIOMASS_SCO_tRNA",
+  "maintenance": {
+    "reaction": "R_ATPM",
+    "lower_bound": 2.64
+  },
+  "native_gene": "G_SCO7221",
+  "limitations": [
+    "Known source GPRs; no masked discovery or gene assignment accuracy.",
+    "The bundled model minimal medium is not the experimental complex GYM medium.",
+    "Phosphate/carbon closure are declared model interventions, not the published batch time course.",
+    "Intracellular demand flux is synthesis capacity, not extracellular secretion or expression.",
+    "Source-model A/B/C/D congeners are not assumed to match the publication A/B7 labels.",
+    "native_repeat is a state-leakage/determinism control after deletion, not complementation or plasmid expression.",
+    "Growth-floor capacities use 95% of each genotype-specific optimum, not one shared absolute growth rate.",
+    "Flaviolin and the publication total-production quantity have no matched diagnostic endpoint.",
+    "The source model is M145, not a complete reconstruction of M1152 or M1317."
+  ],
+  "model_sha256": "2d2798faf43bebba0f9b4fffe147d68c9050276eaaf28bc483f90d99c5b107b6",
+  "medium_sha256": "c415d4fea993e56aafd7e046a91a3fbd5052e5094934713e5ea02bd90b8fb83d",
+  "before_source_sha256": "8e661dec13e27b8e0cbd2d437ffc03f9d69e2123cb3954bb4cd60985220612c6",
+  "after_source_sha256": "50647e4848bc4451c7bc3a46864bbed153676ea50dddd95ec8d8de477bc6bf95",
+  "diagnostic_source_sha256": "d5cf6b7b8b9dc678c3f2b7d76ddcea5db7a7e732e0406c1396b3e01fab91f722"
+}

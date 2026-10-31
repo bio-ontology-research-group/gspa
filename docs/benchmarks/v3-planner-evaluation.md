@@ -1,5 +1,18 @@
 # v3 condition-planner evaluation (equal budget, measured cases, actual Qwen)
 
+Audit scope (2026-10-26): this is condition selection for known gene assignments.
+`gene_manifest` obtains reaction targets from the existing gene–reaction mapping
+and uses them in the planner's evidence. It does not test recovery of masked
+functions, and cannot complete recommendation 12. The requested experiment must
+remove target assignments from all model/evidence inputs and score competing
+functional assignments separately from condition discovery. See the
+[acceptance record](../../tasks/v3-acceptance.md).
+
+The new [masked-assignment experiment mechanism](v3-masked-assignment-experiments.md)
+now evaluates alternative GPR assignments on a masked model. Its execution and
+independent solver checks are separate from this historical benchmark; held-out
+biological function-recovery validation is still pending.
+
 Implementation: `benchmark/v3/run_planner_benchmark.py` (runner, scoring, statistics), `benchmark/v3/make_planner_report.py`
 (renders `REPORT.md`), `benchmark/v3/tests/test_planner_benchmark.py` (26 tests), `benchmark/v3/planner_evaluation.sbatch`
 (prepared for the root, not submitted). Results: `benchmark/v3/results/planner-evaluation/` (`protocol.json`, `sweep.json`,

@@ -49,7 +49,7 @@ class EvidenceClaim {
      * {@link CalibrationTable} from the raw score + source combination.
      * This is what enters the combiner as p = P(F | this evidence).
      */
-    double calibratedProb
+    Double calibratedProb = 0d
 
     /** Free-form metadata: target accession, e-value, database, etc. */
     Map<String, Object> metadata = [:]
@@ -62,6 +62,17 @@ class EvidenceClaim {
      * engine can use to group claims.
      */
     String contextKey
+
+    /** Quality observations have no calibrated functional probability, including legacy records. */
+    boolean isQualityObservation() {
+        evidenceType == EvidenceType.GENE_MODEL_QUALITY || functionType == AnnotationType.PSEUDOGENE ||
+            source?.trim()?.equalsIgnoreCase('antifam')
+    }
+
+    /** A primitive raw score may be a storage placeholder for a reported but unscored hit. */
+    boolean hasFunctionalScore() {
+        !isQualityObservation() && metadata?.score_available != false
+    }
 
     /** Key used to group claims referring to the same (protein, function). */
     String functionKey() {

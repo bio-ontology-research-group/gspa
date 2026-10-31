@@ -15,6 +15,15 @@ selected with `--preset`, the YAML file given
 with `-c`, and finally the command-line options on this page. See
 [Configuration files](configuration.md).
 
+Supplied native Prodigal/Pyrodigal protein headers retain their coordinate and
+identity information when joining to GFF3, including compressed protein FASTA.
+Original protein IDs and sequences are preserved. Unmatched or ambiguous proteins
+remain available for sequence annotation but receive no genomic position. Duplicate
+protein IDs and sequence data before the first FASTA header are rejected rather
+than silently losing records. For ordinary multi-row CDS with a shared protein
+identity on one contig and strand, the representative is the leftmost segment
+(shorter end breaks a tie); this does not reconstruct a transcript or its full span.
+
 ## Workflow defaults
 
 Use `--preset prokaryote|bacteria|archaea|eukaryote|mag|metagenome`.
@@ -65,8 +74,8 @@ gspa annotate --proteins proteome.faa -k eukaryote -o out/
 |---|---|---|---|
 | `-i`, `--input` | file | none | Primary input: a nucleotide FASTA (genes are called), or a GFF3 file (`.gff`, `.gff3`, optionally gzipped) whose CDS are translated; the GFF3 may carry sequences in an embedded `##FASTA` block. For FASTA input it is equivalent to `--genome`. Takes precedence over `--genome`. |
 | `--genome` | file | none | Genome or metagenome nucleotide FASTA, one contig per record. With `--gff3`, the GFF3 CDS are translated against these sequences instead of calling genes. |
-| `--gff3`, `--gff` | file | none | GFF3 annotation. With `--genome`, CDS coordinates are reused and translated; with `--proteins`, supplied proteins are joined to contigs through the CDS attributes `protein_id`, `ID` or `locus_tag`; alone, it is the primary input. |
-| `--proteins` | file | none | Pre-called protein FASTA. Alone, proteins are annotated on one synthetic contig named `proteins`; operons and per-contig metrics are then not meaningful. With `--gff3`, proteins without a matching CDS are placed on a contig named `unplaced`. |
+| `--gff3`, `--gff` | file | none | GFF3 annotation. With `--genome`, CDS coordinates are reused and translated; with `--proteins`, supplied proteins are joined to contigs through the CDS attributes `protein_id`, `ID` or `locus_tag`, with native Prodigal/Pyrodigal header coordinates used to disambiguate; alone, it is the primary input. |
+| `--proteins` | file | none | Pre-called protein FASTA. Alone, proteins are annotated on one synthetic contig named `proteins`; operons and per-contig metrics are then not meaningful. With `--gff3`, proteins without a unique, non-conflicting CDS match are retained on a synthetic `unplaced` contig (or `unplaced_N` if that name already exists). |
 | `--mag` | flag | off | Treat the input as a MAG: gene calling runs in metagenomic mode and completeness is evaluated with MAG adjustments. Sets `input.type` to `mag`. Does not load the `mag.yaml` preset; pass `-c` for that. |
 | `-k`, `--kingdom` | string | none (equivalent to `auto`) | Organism kingdom: `bacteria`, `archaea`, `eukaryote`, `virus` or `auto`. For `bacteria`, `archaea` and `eukaryote` the matching bundled preset is loaded. `virus` and `auto` have no legacy preset (built-in defaults are used). Without `--preset`, the kingdom also selects the essential-function profile for completeness (`auto` uses the bacterial profile) and the SignalP organism group. There is no automatic kingdom detection in this release. |
 
@@ -110,6 +119,12 @@ All neural predictors run through one Python sidecar,
 | `--proteinfer-model-dir` | path | none | ProteInfer model directory. |
 | `--clean` | flag | off | Enable the CLEAN EC-number predictor. |
 | `--clean-model-dir` | path | none | CLEAN checkpoint directory (contains `CLEAN_infer_fasta.py`). |
+| `--clean-score-kind` | string | none | Required via CLI or config: `gmm_confidence` or `distance`, matching the native driver. |
+
+CLEAN requires `--clean-score-kind` or `predictors.neural.clean.scoreKind` in YAML:
+`gmm_confidence` or `distance`, matching the native driver's GMM argument.
+Distances are retained as unscored observations, with their original values and direction.
+The default CLEAN confidence cutoff is zero. See [configuration](configuration.md).
 
 ### DeepGO-PlusPlus base predictor
 

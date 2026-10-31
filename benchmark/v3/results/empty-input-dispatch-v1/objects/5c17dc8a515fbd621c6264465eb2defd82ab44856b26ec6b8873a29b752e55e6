@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.PipelineEmptyInputSpec" tests="6" skipped="0" failures="6" errors="0" timestamp="2026-10-27T12:16:37" hostname="node005" time="1.377">
+  <properties/>
+  <testcase name="nucleotide tools still scan a genome without proteins while protein tools explicitly skip" classname="gspa.predictor.PipelineEmptyInputSpec" time="1.09">
+    <failure message="Condition not satisfied:&#10;&#10;genomic.calls == 1&#10;|       |     |&#10;|       0     false&#10;&lt;gspa.predictor.PipelineEmptyInputSpec$GenomeTool@17f3eefb observedSequence=null calls=0 available=true&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+genomic.calls == 1
+|       |     |
+|       0     false
+&lt;gspa.predictor.PipelineEmptyInputSpec$GenomeTool@17f3eefb observedSequence=null calls=0 available=true&gt;
+
+	at gspa.predictor.PipelineEmptyInputSpec.nucleotide tools still scan a genome without proteins while protein tools explicitly skip(PipelineEmptyInputSpec.groovy:77)
+</failure>
+  </testcase>
+  <testcase name="missing protein executable remains unavailable rather than being called on empty input" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.054">
+    <failure message="Condition not satisfied:&#10;&#10;p.runStatuses*.outcome == [PredictorOutcome.UNAVAILABLE]&#10;| |            |       |   |&#10;| []           []      |   class gspa.predictor.PredictorOutcome&#10;|                      false&#10;&lt;gspa.predictor.AnnotationPipeline@3743539f config=gspa.config.GspaConfig@d277579 registry=gspa.predictor.PredictorRegistry@5db6b845 geneCaller=null genomePredictors=[] parallel=false runStatuses=[] integrationOutputDir=null pathwaySearchReports=[:] rawClaims=null lastIntegration=null lastIntegrationAudit=null sharedIntegrationReferences=null hmmerDatabase=null&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+p.runStatuses*.outcome == [PredictorOutcome.UNAVAILABLE]
+| |            |       |   |
+| []           []      |   class gspa.predictor.PredictorOutcome
+|                      false
+&lt;gspa.predictor.AnnotationPipeline@3743539f config=gspa.config.GspaConfig@d277579 registry=gspa.predictor.PredictorRegistry@5db6b845 geneCaller=null genomePredictors=[] parallel=false runStatuses=[] integrationOutputDir=null pathwaySearchReports=[:] rawClaims=null lastIntegration=null lastIntegrationAudit=null sharedIntegrationReferences=null hmmerDatabase=null&gt;
+
+	at gspa.predictor.PipelineEmptyInputSpec.missing protein executable remains unavailable rather than being called on empty input(PipelineEmptyInputSpec.groovy:107)
+</failure>
+  </testcase>
+  <testcase name="zero gene-caller output does not suppress independent nucleotide tools" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.109">
+    <failure message="Condition not satisfied:&#10;&#10;genomic.calls == 1&#10;|       |     |&#10;|       0     false&#10;&lt;gspa.predictor.PipelineEmptyInputSpec$GenomeTool@5ceecfee observedSequence=null calls=0 available=true&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+genomic.calls == 1
+|       |     |
+|       0     false
+&lt;gspa.predictor.PipelineEmptyInputSpec$GenomeTool@5ceecfee observedSequence=null calls=0 available=true&gt;
+
+	at gspa.predictor.PipelineEmptyInputSpec.zero gene-caller output does not suppress independent nucleotide tools(PipelineEmptyInputSpec.groovy:124)
+</failure>
+  </testcase>
+  <testcase name="a new empty input cannot retain old claims or integration results" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.076">
+    <failure message="Condition not satisfied:&#10;&#10;p.rawClaims == []&#10;| |         |&#10;| |         false&#10;| [gspa.integration.EvidenceClaim(previous-protein, null, null, null, null, null, 0.0, 0.0, [:], null, null, false)]&#10;&lt;gspa.predictor.AnnotationPipeline@3e7b65d7 config=gspa.config.GspaConfig@3c854752 registry=gspa.predictor.PredictorRegistry@3ddeaa5f geneCaller=null genomePredictors=[] parallel=false runStatuses=[] integrationOutputDir=null pathwaySearchReports=[:] rawClaims=[gspa.integration.EvidenceClaim(previous-protein, null, null, null, null, null, 0.0, 0.0, [:], null, null, false)] lastIntegration=gspa.integration.workflow.IntegrationWorkflow$Result@1a500561 lastIntegrationAudit=gspa.integration.IntegrationRunAudit@7f608e21 sharedIntegrationReferences=null hmmerDatabase=null&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+p.rawClaims == []
+| |         |
+| |         false
+| [gspa.integration.EvidenceClaim(previous-protein, null, null, null, null, null, 0.0, 0.0, [:], null, null, false)]
+&lt;gspa.predictor.AnnotationPipeline@3e7b65d7 config=gspa.config.GspaConfig@3c854752 registry=gspa.predictor.PredictorRegistry@3ddeaa5f geneCaller=null genomePredictors=[] parallel=false runStatuses=[] integrationOutputDir=null pathwaySearchReports=[:] rawClaims=[gspa.integration.EvidenceClaim(previous-protein, null, null, null, null, null, 0.0, 0.0, [:], null, null, false)] lastIntegration=gspa.integration.workflow.IntegrationWorkflow$Result@1a500561 lastIntegrationAudit=gspa.integration.IntegrationRunAudit@7f608e21 sharedIntegrationReferences=null hmmerDatabase=null&gt;
+
+	at gspa.predictor.PipelineEmptyInputSpec.a new empty input cannot retain old claims or integration results(PipelineEmptyInputSpec.groovy:138)
+</failure>
+  </testcase>
+  <testcase name="a rejected input also clears state from the previous genome" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.032">
+    <failure message="Condition not satisfied:&#10;&#10;p.rawClaims == null&#10;| |         |&#10;| |         false&#10;| [gspa.integration.EvidenceClaim(previous-protein, null, null, null, null, null, 0.0, 0.0, [:], null, null, false)]&#10;&lt;gspa.predictor.AnnotationPipeline@727320fa config=gspa.config.GspaConfig@2935fd2c registry=gspa.predictor.PredictorRegistry@3f018494 geneCaller=null genomePredictors=[] parallel=false runStatuses=[] integrationOutputDir=null pathwaySearchReports=[:] rawClaims=[gspa.integration.EvidenceClaim(previous-protein, null, null, null, null, null, 0.0, 0.0, [:], null, null, false)] lastIntegration=gspa.integration.workflow.IntegrationWorkflow$Result@3ce443f9 lastIntegrationAudit=gspa.integration.IntegrationRunAudit@57fbc06f sharedIntegrationReferences=null hmmerDatabase=null&gt;&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+p.rawClaims == null
+| |         |
+| |         false
+| [gspa.integration.EvidenceClaim(previous-protein, null, null, null, null, null, 0.0, 0.0, [:], null, null, false)]
+&lt;gspa.predictor.AnnotationPipeline@727320fa config=gspa.config.GspaConfig@2935fd2c registry=gspa.predictor.PredictorRegistry@3f018494 geneCaller=null genomePredictors=[] parallel=false runStatuses=[] integrationOutputDir=null pathwaySearchReports=[:] rawClaims=[gspa.integration.EvidenceClaim(previous-protein, null, null, null, null, null, 0.0, 0.0, [:], null, null, false)] lastIntegration=gspa.integration.workflow.IntegrationWorkflow$Result@3ce443f9 lastIntegrationAudit=gspa.integration.IntegrationRunAudit@57fbc06f sharedIntegrationReferences=null hmmerDatabase=null&gt;
+
+	at gspa.predictor.PipelineEmptyInputSpec.a rejected input also clears state from the previous genome(PipelineEmptyInputSpec.groovy:154)
+</failure>
+  </testcase>
+  <testcase name="protein input still executes protein predictors and resets disabled integration state" classname="gspa.predictor.PipelineEmptyInputSpec" time="0.007">
+    <failure message="Condition not satisfied:&#10;&#10;genome.proteinCount == 1&#10;|      |            |&#10;|      0            false&#10;Genome(input.faa, 1 contigs, 0 proteins, 4bp)&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+genome.proteinCount == 1
+|      |            |
+|      0            false
+Genome(input.faa, 1 contigs, 0 proteins, 4bp)
+
+	at gspa.predictor.PipelineEmptyInputSpec.protein input still executes protein predictors and resets disabled integration state(PipelineEmptyInputSpec.groovy:171)
+</failure>
+  </testcase>
+  <system-out><![CDATA[15:16:38.731 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: protein-tool
+15:16:38.734 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: genome-tool
+15:16:38.743 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+15:16:38.743 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_nucleotide_tools_st_0_tmp15509915402778678264/input.fna
+15:16:38.826 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 8bp)
+15:16:38.829 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Check input format or install a gene caller.
+15:16:39.055 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: protein-tool
+15:16:39.056 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+15:16:39.056 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_missing_protein_exe_0_tmp7511891664817607996/input.fna
+15:16:39.057 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 4bp)
+15:16:39.062 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Check input format or install a gene caller.
+15:16:39.103 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: genome-tool
+15:16:39.183 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+15:16:39.183 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_zero_gene-caller_ou_0_tmp564820088922074154/input.fna
+15:16:39.188 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 4bp)
+15:16:39.195 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Calling genes with zero-caller...
+15:16:39.197 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Called 0 genes
+15:16:39.206 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Check input format or install a gene caller.
+15:16:39.243 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+15:16:39.244 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_a_new_empty_input_c_0_tmp4420621739453555784/input.fna
+15:16:39.245 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 4bp)
+15:16:39.246 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Check input format or install a gene caller.
+15:16:39.291 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+15:16:39.298 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_a_rejected_input_al_0_tmp9262490872632508446/input.fna
+15:16:39.300 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input, 1 contigs, 0 proteins, 4bp)
+15:16:39.321 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: protein-tool
+15:16:39.321 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+15:16:39.322 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_protein_input_still_0_tmp16926489174220488973/input.faa
+15:16:39.323 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(input.faa, 1 contigs, 0 proteins, 4bp)
+15:16:39.323 [Test worker] WARN gspa.predictor.AnnotationPipeline -- No proteins found. Check input format or install a gene caller.
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@2bfbffb2]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@765df79d]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@2bfbffb2]
+]]></system-err>
+</testsuite>

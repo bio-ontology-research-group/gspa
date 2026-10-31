@@ -10,6 +10,26 @@ import spock.lang.TempDir
 class PresetsSpec extends Specification {
     @TempDir File tempDir
 
+    def 'annotation thread override reaches HMMER while YAML remains the default'() {
+        given:
+        File config = new File(tempDir, 'hmmer.yaml')
+        config.text = 'predictors: {domains: {tool: hmmer, threads: 3}, antifam: {threads: 3}, pathway: {threads: 3}, eggnog: {threads: 3}, amrfinder: {threads: 3}}'
+        def command = new AnnotateCommand()
+        new CommandLine(command).parseArgs((['-c', config.path] + extra) as String[])
+
+        expect:
+        command.resolveConfiguration().predictors.domains.threads == expected
+        command.resolveConfiguration().predictors.antifam.threads == expected
+        command.resolveConfiguration().predictors.pathway.threads == expected
+        command.resolveConfiguration().predictors.eggnog.threads == expected
+        command.resolveConfiguration().predictors.amrfinder.threads == expected
+
+        where:
+        extra              | expected
+        []                 | 3
+        ['--threads', '1'] | 1
+    }
+
     private Map invoke(Object command, List<String> args) {
         def output = new StringWriter()
         def errors = new StringWriter()
@@ -172,7 +192,7 @@ class PresetsSpec extends Specification {
     def 'annotation runs with a controlled sidecar and respects YAML output and disabled operons'() {
         given:
         // A tiny deterministic executable exercises the real sidecar protocol without
-        // model downloads or external bioinformatics tools. It emits one EC claim.
+        // model downloads or external bioinformatics tools. It emits one GO claim.
         File runner = new File(tempDir, 'fake-python')
         runner.text = '''#!/bin/sh
 if [ "$1" = "--version" ]; then echo fixture; exit 0; fi
@@ -181,7 +201,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 outdir=$(awk -F '\\t' 'NR == 2 {print $3}' "$manifest")
-printf 'protein_id\\tterm\\tscore\\tannotation_type\\np1\\t1.1.1.1\\t0.9\\tEC\\n' > "$outdir/query.clean.tsv"
+printf 'protein_id\\tterm\\tscore\\tannotation_type\\np1\\tGO:0003824\\t0.9\\tGO\\n' > "$outdir/query.esm2-deepgoplus.tsv"
 '''
         runner.setExecutable(true)
         File sidecar = new File(tempDir, 'sidecar.py')
@@ -197,9 +217,10 @@ predictors:
   neural:
     pythonExecutable: '${runner.path}'
     sidecarScript: '${sidecar.path}'
-    clean:
+    esm2DeepGoPlus:
       enabled: true
-      modelDir: '${tempDir.path}'
+      checkpoint: '${tempDir.path}/fixture.pt'
+      terms: '${tempDir.path}/terms.txt'
 output:
   outputDir: '${out.path}'
 """
@@ -209,7 +230,7 @@ output:
 
         then:
         result.code == 0
-        out.listFiles().find { it.name.endsWith('_annotations.tsv') }.text.contains('1.1.1.1')
+        out.listFiles().find { it.name.endsWith('_annotations.tsv') }.text.contains('GO:0003824')
         !new File(out, 'operons.tsv').exists()
     }
 

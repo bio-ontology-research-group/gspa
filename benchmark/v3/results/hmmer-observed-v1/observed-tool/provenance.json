@@ -1,0 +1,61 @@
+{
+  "artifacts": {
+    "alignment.sto": "29361732507a5084edc7a78d0ec4a64478d7a371b8379fed12d699e949989bc0",
+    "hmmbuild-help.txt": "6f417dfcac2e5f19f42c49dbd765411544a6cf3ce55f12a4a94380d12ac49584",
+    "hmmbuild.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "hmmbuild.stdout.txt": "018cdc1e2b3641c692be4d12e38be44b669f640e7ee6d8c0e7bf84e095176e18",
+    "hmmer_domtbl.tsv": "3b101753a8e6651cbe3ebf92e65b7dab03be8f1126093a20eb7e6da78833f562",
+    "hmmsearch-help.txt": "c078696ca5bfdd30738dd8a033d9ea9e589de79939f18438a81747ddd6eac5b9",
+    "hmmsearch.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "hmmsearch.stdout.txt": "e31c340ff35e4b0804338f401c6476e3feb81ae39624efb2584729b4a72195b2",
+    "input.faa": "50d4026f961667305e3cebdccd68dd9bc1fe148d2cbc36ff0cdfda874df59d4b",
+    "profile.hmm": "716d014cf945b5fcdc262f9ae31e450c3926f22235cb107573792477834b9b07"
+  },
+  "commands": [
+    {
+      "argv": [
+        "/usr/bin/hmmbuild",
+        "--amino",
+        "profile.hmm",
+        "alignment.sto"
+      ],
+      "cwd": "/home/leechuck/.cache/gspa-v3-data/hmmer-observed-v1",
+      "returncode": 0
+    },
+    {
+      "argv": [
+        "/usr/bin/hmmsearch",
+        "--domtblout",
+        "hmmer_domtbl.tsv",
+        "--noali",
+        "-E",
+        "1",
+        "--domE",
+        "1e-5",
+        "--cpu",
+        "1",
+        "profile.hmm",
+        "input.faa"
+      ],
+      "cwd": "/home/leechuck/.cache/gspa-v3-data/hmmer-observed-v1",
+      "returncode": 0
+    }
+  ],
+  "generator_sha256": "2e5c37f96d2c98d742972b2cd6b1e86d3be24b957dde895382d67b09484236a9",
+  "python": "3.10.19",
+  "schema": "gspa.observed-tool-fixture/1",
+  "scope": "Real HMMER execution on synthetic sequences/profile; no biological accuracy or genuine Pfam model claim.",
+  "tool": "HMMER",
+  "tools": {
+    "hmmbuild": {
+      "path": "/usr/bin/hmmbuild",
+      "sha256": "f55f22466ba9d9bc4711cfc93da3e417c5aac235f5c0fd20f272fb7448d3f816",
+      "version": "HMMER 3.4 (Aug 2023); http://hmmer.org/"
+    },
+    "hmmsearch": {
+      "path": "/usr/bin/hmmsearch",
+      "sha256": "b1a3890bb93bc1d41683aa4958f3f597ee0ddd8f0fd6549d40bb10261534b4d8",
+      "version": "HMMER 3.4 (Aug 2023); http://hmmer.org/"
+    }
+  }
+}

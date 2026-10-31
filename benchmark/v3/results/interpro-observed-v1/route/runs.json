@@ -1,0 +1,64 @@
+[
+  {
+    "name": "annotate",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=2",
+      "-jar",
+      "/data/hohndor/gspa-v3/interpro-route-v1/gspa.jar",
+      "annotate",
+      "--proteins",
+      "/data/hohndor/gspa-v3/interpro-observed-v1/observed/input.faa",
+      "--config",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/config.json",
+      "--output",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/annotate",
+      "--claims-out",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/annotate/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "annotate_integrated",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=2",
+      "-jar",
+      "/data/hohndor/gspa-v3/interpro-route-v1/gspa.jar",
+      "annotate",
+      "--proteins",
+      "/data/hohndor/gspa-v3/interpro-observed-v1/observed/input.faa",
+      "--config",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/config.json",
+      "--output",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/annotate_integrated",
+      "--claims-out",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/annotate_integrated/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics",
+      "--integration-config",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/workflow.json"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "direct_integrate",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-jar",
+      "/data/hohndor/gspa-v3/interpro-route-v1/gspa.jar",
+      "integrate",
+      "--claims",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/annotate/raw.jsonl",
+      "--workflow-config",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/workflow.json",
+      "--out",
+      "/data/hohndor/gspa-v3/interpro-route-v1/replay/direct.tsv"
+    ],
+    "exit_code": 0
+  }
+]

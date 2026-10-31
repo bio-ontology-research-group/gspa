@@ -187,7 +187,7 @@ def build_join_map(matrix_ids: Sequence[str], fasta_ids: Set[str]) -> Dict[str, 
 
 # ------------------------------------------------------------------ columns and rows
 
-def column_plan(columns: Sequence[str], vocab: Optional[Sequence[str]] = None) -> dict:
+def column_plan(columns: Sequence[str], vocab: Optional[Sequence[str]] = None, projection=None) -> dict:
     """Sorted, validated EC columns. Returns permutation, normalised ECs, usable mask, vocab mask, kinds."""
     import numpy as np
     ecs = [P.norm_ec(c) for c in columns]
@@ -199,13 +199,47 @@ def column_plan(columns: Sequence[str], vocab: Optional[Sequence[str]] = None) -
         raise ExportError(f"invalid EC identifiers: {bad[:5]}")
     perm = np.array(sorted(range(len(ecs)), key=lambda j: ecs[j]), dtype=int)
     sorted_ecs = [ecs[j] for j in perm]
-    usable = np.array([not P.is_hierarchical_partial(e) for e in sorted_ecs])
+    usable = np.array([not P.is_hierarchical_partial(e) for e in sorted_ecs], dtype=bool)
     vset = {P.norm_ec(v) for v in vocab} if vocab is not None else None
-    in_vocab = np.array([vset is None or e in vset for e in sorted_ecs])
-    return {"perm": perm, "ecs": sorted_ecs, "usable": usable, "in_vocab": in_vocab,
+    in_vocab = np.array([vset is None or e in vset for e in sorted_ecs], dtype=bool)
+    result = {"perm": perm, "ecs": sorted_ecs, "usable": usable, "in_vocab": in_vocab,
             "complete": int(sum(P.is_complete_ec(e) for e in sorted_ecs)),
             "preliminary": int(sum(P.is_preliminary_ec(e) for e in sorted_ecs)),
             "partial": int((~usable).sum())}
+    if projection is not None:
+        if (projection.get('schema') != 'gspa.compact-ec-projection/1' or
+                projection.get('kind') != 'float32_max_obsolete' or not vocab or
+                not isinstance(projection.get('aliases'), dict) or
+                any(not isinstance(k, str) or not isinstance(v, str) for k,v in projection['aliases'].items())):
+            raise ExportError('invalid compact statistics projection')
+        positions = {P.norm_ec(ec): i for i,ec in enumerate(vocab)}
+        if len(positions) != len(vocab): raise ExportError('duplicate compact vocabulary entries')
+        aliases = projection['aliases']; destination = []
+        for ec in sorted_ecs:
+            resolved, seen = ec, set()
+            if ec not in positions:
+                for _ in range(5):  # Exact historical P08 Vocab.resolve protocol.
+                    if resolved not in aliases or resolved in seen: break
+                    seen.add(resolved); resolved = aliases[resolved]
+            destination.append(positions.get(resolved, -1))
+        result['compact_positions'] = np.array(destination, dtype=int)
+        result['compact_size'] = len(vocab)
+        result['statistics_projection'] = projection['kind']
+    return result
+
+
+def target_statistics(row, plan):
+    """Compare like with like; this projection never modifies emitted raw claims."""
+    import numpy as np
+    if 'compact_positions' in plan:
+        positions = plan['compact_positions']; present = positions >= 0
+        projected = np.zeros(plan['compact_size'], dtype=np.float32)
+        np.maximum.at(projected, positions[present], row[present].astype(np.float32))
+        return {'n_nonzero_vocab': int((projected > 0).sum()), 'max': float(projected.max()),
+                'projected_float32_sha256': hashlib.sha256(projected.astype('<f4').tobytes()).hexdigest()}
+    mask = plan['in_vocab']
+    return {'n_nonzero_vocab': int(((row != 0) & mask).sum()),
+            'max': float(row[mask].max()) if mask.any() else 0.0}
 
 
 def claim_templates(predictor: str, ecs: Sequence[str], evidence_type: str) -> List[str]:
@@ -256,7 +290,7 @@ def export_part_from_source(source, predictor: str, asm: str, layout_dir: str, t
     lay = read_layout_assembly(layout_dir, asm)
     if tspec.get("layout_report_sha256") != lay["report_sha256"]:
         raise ExportError("targets.json was built from a different layout report")
-    plan = column_plan(source.columns, tspec.get("ec_vocab"))
+    plan = column_plan(source.columns, tspec.get("ec_vocab"), tspec.get('statistics_projection'))
     join = build_join_map(source.index, lay["fasta_ids"])
     entries = (tspec["targets"].get(predictor) or {}).get(asm) or {}
     row_of = {m: i for i, m in enumerate(source.index)}
@@ -334,8 +368,7 @@ def _stream_rows(source, predictor, asm, tmp, plan, join, target_rows, entries, 
         is_target = i in target_rows
         if is_target:
             e = target_rows[i]
-            vmask = nz_all & in_vocab
-            tstat[e] = {"n_nonzero_vocab": int(vmask.sum()), "max": float(row[in_vocab].max()) if in_vocab.any() else 0.0,
+            tstat[e] = {**target_statistics(row, plan),
                         "nonzero_candidates": int(len(nz)), "dropped_partial": partial}
         c["rows"] += 1
         c["rows_all_zero"] += not len(nz_all.nonzero()[0])
@@ -388,10 +421,14 @@ def _stream_rows(source, predictor, asm, tmp, plan, join, target_rows, entries, 
     mismatches = []
     for i, e in target_rows.items():
         want, got = entries[e], tstat[e]
-        if want["n_nonzero_vocab"] != got["n_nonzero_vocab"] or not math.isclose(
-                want["max"], got["max"], rel_tol=P.FLOAT_RTOL, abs_tol=P.FLOAT_ATOL):
+        if (want["n_nonzero_vocab"] != got["n_nonzero_vocab"] or not math.isclose(
+                want["max"], got["max"], rel_tol=P.FLOAT_RTOL, abs_tol=P.FLOAT_ATOL) or
+                (want.get('projected_float32_sha256') is not None and
+                 want['projected_float32_sha256'] != got.get('projected_float32_sha256'))):
             mismatches.append({"entry": e, "compact": {k: want[k] for k in ("n_nonzero_vocab", "max")},
-                               "streamed": {k: got[k] for k in ("n_nonzero_vocab", "max")}})
+                               "streamed": {k: got[k] for k in ("n_nonzero_vocab", "max")},
+                               "expected_projected_sha256": want.get('projected_float32_sha256'),
+                               "actual_projected_sha256": got.get('projected_float32_sha256')})
     tn = c["target_nonzero"]
     return {
         "claims": {"path": "claims.jsonl", **claims},
@@ -408,7 +445,8 @@ def _stream_rows(source, predictor, asm, tmp, plan, join, target_rows, entries, 
                               "full_candidate_coverage": c["target_retained"] == tn},
         "context": {"retention": retention.as_dict(), "pruned": c["context_retained"] < c["context_nonzero"],
                     "full_candidate_coverage": c["context_retained"] == c["context_nonzero"] and not pruned_mode},
-        "target_coverage": {"compact_nonzero_vocab_total": expected,
+        "target_coverage": {"comparison_basis": plan.get('statistics_projection', 'raw_values_in_vocabulary'),
+                            "compact_nonzero_vocab_total": expected,
                             "streamed_nonzero_vocab_total": sum(s["n_nonzero_vocab"] for s in tstat.values()),
                             "dropped_partial_in_targets": sum(s["dropped_partial"] for s in tstat.values()),
                             "mismatches": mismatches[:20], "n_mismatches": len(mismatches),
@@ -429,12 +467,18 @@ def export_part(predictor: str, asm: str, matrix_path: str, matrix_sha256: str, 
 
 # ------------------------------------------------------------------ targets (label-free)
 
-def build_targets(artifact_path: str, artifact_sha256: str, layout_dir: str) -> dict:
+def build_targets(artifact_path: str, artifact_sha256: str, layout_dir: str, statistics_projection_path=None) -> dict:
     """Target proteins, alias map and compact raw stats from the compact artifact. Reads NO manifest or truth."""
     got = digest(artifact_path)
     if got != artifact_sha256:
         raise ExportError(f"{artifact_path}: sha256 {got} != expected {artifact_sha256}; refusing to unpickle")
     art = P.load_artifact(artifact_path)
+    projection = json.loads(Path(statistics_projection_path).read_text()) if statistics_projection_path else None
+    if art['_meta'].get('extraction_version') == 'v2-2026-10-19' and projection is None:
+        raise ExportError('v2 compact statistics use float32/max/obsolete EC projection; provide --statistics-projection from the frozen extraction reference')
+    if projection is not None:
+        column_plan([], art['_meta'].get('ec_vocab'), projection)  # Validate before publishing target metadata.
+        projection = dict(projection, specification_sha256=digest(statistics_projection_path))
     aliases, conflicts, _ = P.alias_map(art)
     out_aliases, resolution, layouts = {}, {}, {}
     for asm, m in aliases.items():
@@ -448,16 +492,23 @@ def build_targets(artifact_path: str, artifact_sha256: str, layout_dir: str) -> 
     targets: Dict[str, Dict[str, dict]] = defaultdict(lambda: defaultdict(dict))
     for p in P.predictors_in(art):
         for asm, rec in art[p].items():
-            for entry in rec["target_ids"]:
+            for target_index, entry in enumerate(rec["target_ids"]):
                 st = (rec.get("raw_target_stats") or {}).get(entry) or {}
                 if st.get("matched_id") and entry in aliases.get(asm, {}):
                     targets[p][asm][entry] = {"matched_id": st["matched_id"], "n_nonzero_vocab": int(st["n_nonzero_vocab"]),
                                               "max": float(st["max"])}
+                    if projection is not None:
+                        import numpy as np
+                        vector = np.asarray(rec['target_full'][target_index], dtype='<f4')
+                        if vector.shape != (len(art['_meta']['ec_vocab']),):
+                            raise ExportError('compact target vector differs from its declared vocabulary')
+                        targets[p][asm][entry]['projected_float32_sha256'] = hashlib.sha256(vector.tobytes()).hexdigest()
     sha = {a: l["report_sha256"] for a, l in layouts.items()}
     if len(set(sha.values())) > 1:
         raise ExportError("layout report digest differs between assemblies")
     return {"schema": SCHEMA_TARGETS, "artifact": {"path": artifact_path, "sha256": artifact_sha256},
             "layout_report_sha256": next(iter(sha.values()), None), "ec_vocab": list(art["_meta"].get("ec_vocab") or []) or None,
+            "statistics_projection": projection,
             "aliases": out_aliases, "conflicts": {a: sorted(v) for a, v in conflicts.items()}, "alias_resolution": resolution,
             "targets": {p: dict(v) for p, v in targets.items()},
             "note": "label-free: derived from the compact artifact and the layout only"}
@@ -645,6 +696,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     t.add_argument("--artifact", required=True)
     t.add_argument("--artifact-sha256", required=True)
     t.add_argument("--layout", required=True)
+    t.add_argument("--statistics-projection", help="frozen JSON reference reproducing compact float32/max/obsolete-EC statistics; never changes raw exports")
     t.add_argument("--out", required=True, help="new targets.json")
     pl = sub.add_parser("plan", help="print one JSON job per (predictor, assembly) from the source verification")
     pl.add_argument("--verification", required=True)
@@ -676,7 +728,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if a.cmd == "targets":
             if os.path.exists(a.out):
                 raise ExportError(f"{a.out} exists")
-            spec = build_targets(a.artifact, a.artifact_sha256, a.layout)
+            spec = build_targets(a.artifact, a.artifact_sha256, a.layout, a.statistics_projection)
             Path(a.out).write_text(json.dumps(spec, indent=2, sort_keys=True) + "\n")
             print(json.dumps({"assemblies": len(spec["aliases"]), "conflicts": sum(map(len, spec["conflicts"].values()))}))
         elif a.cmd == "plan":

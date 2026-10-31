@@ -44,8 +44,8 @@ class GenomadPredictor extends AbstractGenomicRegionSidecarPredictor {
 
     @Override
     protected String successNote() {
-        'UNVERIFIED: the sidecar writes a header-only TSV even when neither geNomad summary file exists, ' +
-            'so zero regions cannot be distinguished from a silent geNomad failure'
+        'geNomad classifications after native filters and minScore; zero reported regions ' +
+            'is not proof that no mobile genetic element is present'
     }
 
     @Override

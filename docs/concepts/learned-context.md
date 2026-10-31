@@ -1,18 +1,37 @@
 # Learned context integration (foundations)
 
-Status: **mechanism and training/inference code only. There is no trained production
-model in the repository, and nothing here is evidence of improved annotation accuracy.**
+Status: **development models have been fitted and replayed through production
+inference; independent biological acceptance remains incomplete.** The
+[training cohort](../benchmarks/v3-training-cohort.md) contains reference-support
+labels, and the [input-coverage guard](../benchmarks/v3-model-input-support.md)
+limits scoring to represented source/function/role profiles. Both fitted models
+still have an untrained null-outcome layer. These development results do not
+establish calibration on new predictors or taxa.
+Production scoring also requires exact declared predictor identities and observed
+sequence-feature ranges in `gspa.model-input-support/3`. Older support manifests
+remain readable but cannot certify these inputs and therefore abstain. See the
+[predictor-support migration](../benchmarks/v3-predictor-support.md).
+The [AntiFam quality guard](../benchmarks/v3-antifam-quality.md) also excludes
+flagged proteins from current learned scoring while retaining their functional
+evidence and regional quality observations. It does not impose a calibrated penalty.
 The shared workflow (`IntegrationWorkflow`) now calls these classes: the `learned_integration` stage runs
-last over the original raw claims, the `cohort_context`, `metabolic_experiments` and `community_metabolism`
-stages fill `ExternalContext`, and `--feature-export-dir` writes production rows from the same extractor. What is
-still missing is the real training run (see [What real training needs](#what-real-training-needs)); until a
-trained artifact exists `scoring_mode` stays `legacy_heuristic`. The stage and the training-row export are
+last over the original raw claims. The `cohort_context` and eligible
+`metabolic_experiments` outputs fill `ExternalContext`; community metabolism
+exports organism-specific conditional reports without candidate features.
+`--feature-export-dir` writes production rows from the same extractor. What is
+still missing includes complete experimental locus/role truth, all-negative groups
+and independent held-out validation (see [What real training needs](#what-real-training-needs)).
+Without a supported model, `scoring_mode` stays `legacy_heuristic`; partial coverage
+is reported as mixed. The stage and the training-row export are
 described in [learned-stage.md](learned-stage.md); stage order, ledger and open gaps in
 [context-workflow.md](context-workflow.md).
 
-This replaces hand-set boosts, floors and count-dependent caps with a model whose weights
-are learned from labelled candidates, calibrated on a separate split, and able to move a
-candidate's probability **down as well as up**.
+For supported candidates, the learned stage replaces hand-set boosts and floors
+with fitted weights, separate-split calibration, and scores that can move
+**down as well as up**. Unsupported candidates retain the preceding scores.
+The legacy refiner's weak-evidence context ceiling now applies consistently at
+every candidate count: adding unrelated candidates cannot switch it on at 100.
+That ceiling remains a heuristic, not a learned calibration guarantee.
 
 | Piece | Location |
 | --- | --- |
@@ -24,10 +43,23 @@ candidate's probability **down as well as up**.
 
 ## 1. Feature contract
 
-`FeatureContract.CURRENT` (`gspa.context-features/1`) lists every column with its group and
+`FeatureContract.CURRENT` (`gspa.context-features/3`) lists every column with its group and
 description; `toJson()` writes the file the trainer reads. An artifact is bound to the contract
 by id, fingerprint (over ordered names + groups) and the name list, so extractor, trainer and
 inference cannot silently drift.
+
+Version 3 removes six legacy unweighted cohort columns and the raw peer-genome
+and background-window counts from model inputs. Those counts remain descriptive
+provenance. Metadata-coverage fractions now use clade/strain weights. Version-2
+models are rejected; re-export features and refit under the recorded splits rather
+than changing an artifact's contract identifier. See the
+[migration protocol](../benchmarks/v3-cohort-contract.md) for validation and rollback.
+
+The subsequent [observed-input identity repair](../benchmarks/v3-cohort-evidence-identity.md)
+removes duplicate reweighting inside heterogeneous strain clusters. Refitted
+models and all 118 production control outputs are archived; both models preserve
+every supported probability exactly under the real exact-copy intervention.
+This correctness result does not establish independent biological accuracy.
 
 Groups: `FUNCTION_IDENTITY`, `ROLE`, `BASELINE_SEQUENCE`, `RUN_COVERAGE`,
 `CONTEXT_NEIGHBORHOOD`, `CONTEXT_COHORT`, `ASSEMBLY`, `FBA_CONDITIONAL`. **Baseline sequence
@@ -42,8 +74,10 @@ Rules that apply to every feature:
   not as evidence against a function.
 * **No double counting.** Predictor evidence enters as the strongest raw score per source and
   per correlation group (`homology`, `ml_protein_seq`, `structure`, `motif`, `domain_specific`);
-  repeating the same hit, or adding weaker hits from one tool, changes nothing. Counts are of
+  repeating the same hit, or adding weaker hits from one tool, leaves numerical features unchanged. Counts are of
   distinct sources/groups, never of hits.
+  Eligibility separately retains every contributing predictor identity: adding a
+  weaker claim with missing or different provenance can make scoring unsupported.
 * **No posteriors as evidence.** Nothing is read from posterior log-odds, likelihoods, pinned
   floors, orthogroup consensus posteriors, or the table-calibrated probabilities. Claims whose
   evidence type is context-derived (operon, metabolic, dark-matter, reaction-local, cross-genome,
@@ -69,6 +103,17 @@ separately. Roles are derived conservatively (EC claim → catalytic; GO complex
 complex subunit) unless structured evidence supplies them. **Complex membership is never
 equated with catalytic function.** Every claimed function yields a candidate; no score
 threshold removes candidates.
+
+Adapters can preserve a proposed role in raw-claim metadata `candidate_role`.
+The extractor validates this optional enum string and retains every distinct
+supplied role, in enum order, independent of hit score and claim order. Missing
+roles use the defaults above; unknown or malformed values fail explicitly.
+Explicit `ExternalContext.roles` takes precedence, with the original adapter
+role and source retained in candidate notes. The role is a candidate hypothesis,
+not experimental truth or a second independent sequence score. Raw JSONL
+round-tripping preserves this behavior. The observed gapsmith replay verifies
+829 complex-subunit candidates through both learned models; those models still
+abstain on the unsupported source. See [the role handoff check](../benchmarks/v3-claim-role-bridge.md).
 
 ## 2. Two different probabilities
 
@@ -131,6 +176,23 @@ a group or genome appearing in two splits (default keys `group,genome_id`; `--di
 relaxes only the genome check, and the choice is recorded), a missing split, a single-class
 calibration split. Nothing is ever called out-of-fold on trust.
 
+Production locus supervision additionally needs `locus_members` (the complete list
+of example IDs in that genome/function/role competition), `locus_truth_source`,
+`function_type`, `function_id`, and `label_basis`. Negative members require
+`label_basis=explicit_negative_truth` and nonempty `label_references`; unconfirmed
+closed-world labels cannot teach null. The builder verifies membership against
+the full production export after label/family filtering, and the trainer checks
+the certificate again after table loading, before fitting, and at frozen-model
+evaluation. A repeated local group name in another genome remains independent.
+Synthetic mechanism fixtures retain their explicit test-only path. Details and
+the real-data replay are in [the locus truth protocol](../benchmarks/v3-locus-truth.md).
+
+Trainer version 2 includes truth source/membership metadata in the training-data
+digest and reports label-basis counts for train and calibration. Artifacts fitted
+with closed-world unconfirmed labels identify their probability target as
+reference-annotation support under that policy. This metadata does not turn
+unconfirmed labels into experimentally verified negatives.
+
 * `train()` receives train and calibration rows only. Normalisation, weights, hyper-parameters
   (grouped k-fold CV **inside train**), Platt calibration and the display threshold cannot see
   test rows; test rows are read by `evaluate_frozen()` after the artifact is serialised and hashed.
@@ -183,3 +245,14 @@ parallel formula, with the feature columns above plus provenance:
    assembly completeness, and explicit roles where structured evidence exists.
 5. **Matched baselines** on the same rows (sequence-only vector, per-stage context) so gains are
    attributable, with genome-level uncertainty, correction/harm counts and calibration plots.
+
+## Input coverage and unsupported candidates
+
+Trainer version 3 preserves exact `sequence_sources` and fits a frozen
+`input_support` manifest using training/calibration rows only. Source identity,
+function/role and context-availability profiles must have both binary classes
+in both splits. Unsupported candidates retain preceding scores and carry no
+learned probability; incomplete supported competitions receive no null result.
+Mixed scoring and entirely skipped learned stages are reported explicitly.
+Historical artifacts without coverage metadata require a feature re-export and
+refit before production rescoring. See [the protocol and limitations](../benchmarks/v3-model-input-support.md).

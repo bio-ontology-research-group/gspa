@@ -1,0 +1,77 @@
+Review of the dbCAN route. I only read files and ran nothing, so the findings come from reading the code and fixtures.
+
+## Actionable findings
+
+**1. List and map metadata is flattened to unparseable strings in the claims JSONL (provenance and lost detail).**
+- `ClaimExtractor.groovy:151-153` runs `v.toString()` on any value that isn't a Number, String or Boolean.
+- `DbCanPredictor.groovy:146-148` stores `supportingMethods` (a List) and `rawFields` (a Map).
+- Both reach disk as `"[HMMER, DIAMOND]"` and `"{Gene ID=p, EC#=…}"`.
+- This loses the `_eN` subfamily calls (line 132 strips them from `value`) and the domain intervals. These are the only copy of that information.
+- `DbCanClaimsSpec.groovy:30` compares against the same writer, so it can't catch this.
+- Minimal repair: either write nested JSON in `writeClaimsJsonl`, or emit `supportingMethods` as a comma-joined string and `rawFields` as a JSON string. Then add a test that reads the JSONL and checks that the `GH5_e1` token is recoverable.
+
+**2. `toolsWithHits` is protein-level but sits on every per-family claim, so it misleads.**
+- `DbCanPredictor.groovy:146` attaches the row's `#ofTools` to each family annotation.
+- In the `DbCanClaimsSpec` fixture, `CBM48` is supported only by DIAMOND but carries `toolsWithHits: 3`.
+- The `successNote` disclaims family agreement, but the per-claim field says otherwise.
+- Minimal repair: rename it to `proteinToolCount`, or drop it and use `supportingMethods.size()` per family.
+
+**3. Tool version and interface are not recorded anywhere (provenance).**
+- `DbCanPredictor` doesn't override `getVersion()`. The inherited version runs `[exec,'--version']` (`AbstractToolPredictor.groovy:71`). Per the comment at `DbCanPredictor.groovy:33`, 4.x exits non-zero on bare `--version`, and the `.first()` on empty text throws, so the version comes back as `'unknown'`.
+- The claim metadata has no `interfaceVersion`, tool version or database identifier.
+- `interfaceVersion='5'` only selects the subcommand syntax. Nothing checks that 5.2.8 is installed. The pin lives only in `gspa-nf/nextflow.config:221`.
+- The import receipt (`DbCanClaimsCommand.groovy:51-56`) records hashes but not the interface or version.
+- Minimal repair:
+  - Override `getVersion()` to run `run_dbcan version` for 5 and a pip/`--help` probe for 4.
+  - Add `interfaceVersion` and `dbDir` to the annotation metadata.
+  - Add an optional `--interface-version` argument to the import receipt.
+
+**4. The class Javadoc contradicts the code.**
+- `DbCanPredictor.groovy:11` says "The command contract is the legacy run_dbcan CLI, not the dbcan v5 subcommands." The class now supports both.
+- Minimal repair: delete the sentence, or replace it with the line 17 wording.
+
+**5. The route check can't distinguish "integration dropped the observations" from "integration retained them as unscored".**
+- `check_dbcan_route.py:93` and `:125` only assert that the integrated TSV has one line (the header).
+- The same result occurs if every claim is silently discarded.
+- Row counts are checked only on the claims file, at line 89.
+- This matches your intent, since unscored claims are excluded from posterior inference. But there is no assertion that the unscored observations are surfaced anywhere, such as a count in the integrate log or a sidecar file.
+- Minimal repair: either assert that integrate reports the number of unscored claims skipped, or state this limitation in the report scope. Check whether `integrate` already emits such a count; I didn't verify that.
+
+**6. The v4 thread flags probably oversubscribe the CPU.**
+- `DbCanPredictor.groovy:73-74` passes the full `threads` to `--hmm_cpu`, `--dia_cpu` and `--dbcan_thread` at once.
+- Under `annotate -t 8` that is probably up to 24 workers.
+- Minimal repair: divide the budget between the three flags, or document it. How v4 actually combines these flags is unproven.
+
+**7. The v4 database is optional, and the working directory is a temp dir.**
+- `DbCanPredictor.groovy:76` makes `--db_dir` conditional for v4, and the tool runs with the temp dir as its working directory.
+- A missing `database` config then resolves a relative default DB path inside the temp dir. The run would fail or look for or download a database there.
+- Minimal repair: require `dbDir` for both interfaces, as the v5 branch already does at line 62.
+- Related: `AnnotateCommand.groovy:720` wires only `threads`. Enabling dbcan therefore needs a config file, and the spec at `DbCanRouteSpec.groovy:87-94` covers only the v5 missing-DB case.
+
+## Smaller issues
+
+- **Import and annotate validate protein IDs differently.**
+  - `DbCanClaimsCommand.groovy:39-42` rejects IDs that aren't in the FASTA. The annotate path (`AbstractToolPredictor.predictBatch`, lines 85-105) returns `parsed` unchecked.
+  - A phantom ID from the tool is then handled by whatever the pipeline does with it. I didn't verify that.
+  - Cheap repair: check `parsed.keySet()` against the input IDs in `DbCanPredictor.parseOutput`.
+- **The import command uses two FASTA readers.**
+  - `declared` is built by a hand-rolled reader at lines 30-38, but `ids` and `protein_count` (line 54) come from `FastaReader`. The two aren't compared.
+  - Use `declared` for both, or assert `declared == ids`.
+- **A failed receipt write leaves a half-complete import.**
+  - The claims file is written at line 50, then the receipt at line 51. If the receipt write fails, the next attempt is blocked by the claims file (line 25) with no cleanup.
+  - Write both to temp names and rename them.
+
+## Unproven concerns (not demonstrated)
+
+- **Token grammar versus real dbCAN output.** The regex at `DbCanPredictor.groovy:132` accepts only `(GH|GT|PL|CE|AA|CBM)\d+(_\d+)?(_e\d+)?(a-b)?`. From memory, real dbCAN HMM names can carry suffixes such as `GT2_Glycos_transf_2(…)` in the HMMER column. If so, the first real genome would hit `invalid HMMER family token` and fail the whole run. It fails loudly, so there is no silent loss, but the route is only validated on the single `overview-standard.txt` fixture. Capture one genuine v4 and one v5.2.8 overview before claiming the route handles real output.
+- **Header aliases.** Lines 107-111 require exactly one of `dbCAN_sub`, `eCAMI` or `Hotpep`. An older v4 overview carrying both `eCAMI` and `Hotpep` would be rejected as "ambiguous". Again this is loud, not silent.
+- **Gene ID shape.** Pyrodigal FASTA headers carry `# start # end …` descriptors. Whether dbCAN's `Gene ID` truncates at whitespace on both interfaces is unchecked. A mismatch would make the import fail with "unknown proteins" (loud).
+- **`MERGE_CLAIMS` concatenation** (`integrate.nf:150`) assumes every input ends in a newline. `writeClaimsJsonl` uses `writeLine`, so this holds for the builtin and dbCAN files. I didn't check the sidecar claims script.
+
+## Checked and fine
+
+- **No EC invention.** `EC#` is only kept in `rawFields`.
+- **Unscored exclusion.** `ClaimExtractor.groovy:101` nulls `calibratedProb` for unscored claims, and `EvidenceClaim.groovy:74` gives them no functional score.
+- **Missing overview after a clean exit.** It is fatal through `requireOutput`, and the Nextflow fault case covers it.
+- **Cross-checks in the parser.** It enforces the tool-count check, the header and row-width checks, and duplicate-ID rejection.
+- **Nextflow container pin.** `DBCAN` is pinned to the 5.2.8 biocontainer.

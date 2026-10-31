@@ -1,0 +1,2438 @@
+{
+  "schema": "gspa.metabolic_experiments/1",
+  "disclaimer": "Conditional model predictions under the stated medium, bounds and maintenance constraint. Not observed phenotypes, not independent proof of gene function, no calibrated probabilities, no automatic gap-fill promotion.",
+  "strategy": "random",
+  "seed": 7,
+  "model": {
+    "path": "/home/leechuck/tmp/product-parity/toy.xml",
+    "sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+    "n_metabolites": 17,
+    "n_reactions": 24,
+    "biomass_reaction": "BIOMASS",
+    "maintenance": {
+      "reaction": "ATPM",
+      "lower_bound": 1.0
+    },
+    "objective_source": "manifest",
+    "n_infinite_bounds_replaced": 0
+  },
+  "budget_policy": {
+    "applies_to": "all strategies (fixed, random, evidence, qwen) identically",
+    "baseline": "1 LP (maximise biomass); always run first when the menu is non-empty",
+    "per_experiment_mandatory": "1 growth LP, plus 2 LPs (max and min secretion) for product experiments",
+    "per_focus_reaction": "3 LPs (FVA min, FVA max, knockout growth) for up to config.max_focus_reactions reactions of the linked hypotheses that the experiment does not itself knock out",
+    "skip_rule": "an experiment is skipped (skipped_budget) if remaining calls < its mandatory calls",
+    "focus_truncation": "focus checks run for floor((remaining - product_LPs) / 3) reactions after the growth LP; any shortfall is recorded as focus_checks_truncated_by_budget",
+    "no_planner_reserve": "no calls are held back for any planner; qwen requests do not consume solver calls",
+    "experiment_limit": "config.max_experiments counts every attempted menu item, skipped_budget included"
+  },
+  "assumptions": [
+    "external exchanges (trusted, declared): ['EX_ac_e', 'EX_coup_e', 'EX_glc_e', 'EX_lac_e', 'EX_nh4_e', 'EX_o2_e', 'EX_sec_e', 'EX_vit_e']",
+    "medium uptake limits: {'EX_glc_e': 10, 'EX_nh4_e': 10, 'EX_o2_e': 10, 'EX_vit_e': 10}; all other declared exchanges closed to uptake",
+    "undeclared single-metabolite reactions with uptake closed: ['ATPM']",
+    "opened exchanges use uptake_rate=10.0",
+    "maintenance constraint: {'reaction': 'ATPM', 'lower_bound': 1.0}",
+    "biomass objective BIOMASS (source: manifest); maximised, growth counted above growth_threshold",
+    "product checks require growth_fraction; maintenance-only checks retain all original model bounds but impose no additional biomass floor",
+    "0 infinite SBML bounds replaced by +-1000.0; finite bounds unchanged",
+    "all outcomes are model-conditional and not observations of growth, expression or production"
+  ],
+  "config": {
+    "strategy": "random",
+    "seed": 7,
+    "max_experiments": 20,
+    "max_solver_calls": 100,
+    "uptake_rate": 10.0,
+    "default_bound": 1000.0,
+    "growth_threshold": 1e-06,
+    "flux_tol": 1e-07,
+    "residual_tol": 1e-06,
+    "relative_tol": 0.05,
+    "growth_fraction": 0.95,
+    "product_requirement": "growth_fraction",
+    "max_focus_reactions": 2,
+    "max_baseline_focus_reactions": 6,
+    "panel": null,
+    "qwen": {
+      "model": "qwen3.8-27b",
+      "api_base": null,
+      "max_invalid": 2,
+      "max_tokens": 300
+    }
+  },
+  "hashes": {
+    "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+    "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+    "context_sha256": "e67a56a5d1adc713aff69c20dea43eb42d05c37edbc4f69f06bcfb8e748e042c",
+    "manifest_sha256": "d1ede60821ff32e9f9d71a339931b5607d8505ad559b66b357cb9df1dcffd397"
+  },
+  "menu": [
+    {
+      "id": "carbon_source:EX_ac_e",
+      "kind": "carbon_source",
+      "description": "replace baseline carbon sources by EX_ac_e",
+      "evidence_ids": [
+        "E1"
+      ],
+      "hypothesis_ids": [
+        "H_acs"
+      ],
+      "focus_reactions": [
+        "ACS"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g3"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "perturbation": {
+        "H_acs": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 4,
+      "mods": [
+        {
+          "op": "carbon_swap",
+          "exchange": "EX_ac_e"
+        }
+      ]
+    },
+    {
+      "id": "oxygen_removal",
+      "kind": "oxygen_removal",
+      "description": "remove oxygen uptake",
+      "evidence_ids": [
+        "E4"
+      ],
+      "hypothesis_ids": [
+        "H_acs"
+      ],
+      "focus_reactions": [
+        "ACS"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g3"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "perturbation": {
+        "H_acs": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 4,
+      "mods": [
+        {
+          "op": "oxygen_removal"
+        }
+      ]
+    },
+    {
+      "id": "supplement_removal:EX_vit_e",
+      "kind": "supplement_removal",
+      "description": "remove supplement uptake EX_vit_e",
+      "evidence_ids": [
+        "E9"
+      ],
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "focus_reactions": [
+        "VITS"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "perturbation": {
+        "H_vit": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 4,
+      "mods": [
+        {
+          "op": "close",
+          "exchange": "EX_vit_e"
+        }
+      ]
+    },
+    {
+      "id": "knockout:H_a",
+      "kind": "knockout",
+      "description": "knock out g1",
+      "evidence_ids": [
+        "E7"
+      ],
+      "hypothesis_ids": [
+        "H_a"
+      ],
+      "focus_reactions": [
+        "GLYC1"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [
+        "H_b"
+      ],
+      "candidate_genes": [
+        "locus_g1"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "GLYC1"
+      ],
+      "perturbation": {
+        "H_a": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "GLYC1"
+          ],
+          "genes": [
+            "g1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "knockout:H_acs",
+      "kind": "knockout",
+      "description": "knock out g3",
+      "evidence_ids": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "hypothesis_ids": [
+        "H_acs"
+      ],
+      "focus_reactions": [
+        "ACS"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g3"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "perturbation": {
+        "H_acs": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "ACS"
+          ],
+          "genes": [
+            "g3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "knockout:H_b",
+      "kind": "knockout",
+      "description": "knock out GLYC2",
+      "evidence_ids": [
+        "E8"
+      ],
+      "hypothesis_ids": [
+        "H_b"
+      ],
+      "focus_reactions": [
+        "GLYC2"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [
+        "H_a"
+      ],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "GLYC2"
+      ],
+      "perturbation": {
+        "H_b": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "GLYC2"
+          ],
+          "genes": []
+        }
+      ]
+    },
+    {
+      "id": "knockout:H_both",
+      "kind": "knockout",
+      "description": "knock out GLYC1,GLYC2",
+      "evidence_ids": [],
+      "hypothesis_ids": [
+        "H_both"
+      ],
+      "focus_reactions": [
+        "GLYC1",
+        "GLYC2"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "GLYC1",
+        "GLYC2"
+      ],
+      "perturbation": {
+        "H_both": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "GLYC1",
+            "GLYC2"
+          ],
+          "genes": []
+        }
+      ]
+    },
+    {
+      "id": "knockout:H_sec",
+      "kind": "knockout",
+      "description": "knock out g6",
+      "evidence_ids": [
+        "E5"
+      ],
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "focus_reactions": [
+        "SEC"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "H_sec": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "SEC"
+          ],
+          "genes": [
+            "g6"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "knockout:H_vit",
+      "kind": "knockout",
+      "description": "knock out g5",
+      "evidence_ids": [
+        "E9"
+      ],
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "focus_reactions": [
+        "VITS"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "perturbation": {
+        "H_vit": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "VITS"
+          ],
+          "genes": [
+            "g5"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ko_rescue:H_vit:rescued",
+      "kind": "ko_rescue",
+      "description": "knock out VITS with EX_vit_e supplied",
+      "evidence_ids": [
+        "E9"
+      ],
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "focus_reactions": [
+        "VITS"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "perturbation": {
+        "H_vit": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "VITS"
+          ],
+          "genes": [
+            "g5"
+          ]
+        },
+        {
+          "op": "open",
+          "exchange": "EX_vit_e"
+        }
+      ]
+    },
+    {
+      "id": "ko_rescue:H_vit:unrescued",
+      "kind": "ko_rescue",
+      "description": "knock out VITS with EX_vit_e closed",
+      "evidence_ids": [
+        "E9"
+      ],
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "focus_reactions": [
+        "VITS"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "perturbation": {
+        "H_vit": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "VITS"
+          ],
+          "genes": [
+            "g5"
+          ]
+        },
+        {
+          "op": "close",
+          "exchange": "EX_vit_e"
+        }
+      ]
+    },
+    {
+      "id": "product:EX_coup_e",
+      "kind": "product",
+      "description": "conditional feasibility vs. forced production of EX_coup_e",
+      "evidence_ids": [
+        "E6"
+      ],
+      "hypothesis_ids": [],
+      "focus_reactions": [],
+      "product_exchange": "EX_coup_e",
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [],
+      "perturbation": {},
+      "min_calls": 3,
+      "max_calls": 3,
+      "mods": []
+    },
+    {
+      "id": "product:EX_sec_e",
+      "kind": "product",
+      "description": "conditional feasibility vs. forced production of EX_sec_e",
+      "evidence_ids": [
+        "E5"
+      ],
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "focus_reactions": [
+        "SEC"
+      ],
+      "product_exchange": "EX_sec_e",
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "H_sec": "gene_or_reaction"
+      },
+      "min_calls": 3,
+      "max_calls": 6,
+      "mods": []
+    }
+  ],
+  "menu_rejections": [
+    {
+      "item": "E10",
+      "reason": "unknown reaction/exchange: EX_missing_e"
+    },
+    {
+      "item": "H_ghost",
+      "reason": "hypothesis resolves to no model reaction"
+    }
+  ],
+  "selection_log": [
+    {
+      "source": "random",
+      "experiment_id": "knockout:H_a"
+    },
+    {
+      "source": "random",
+      "experiment_id": "ko_rescue:H_vit:unrescued"
+    },
+    {
+      "source": "random",
+      "experiment_id": "product:EX_sec_e"
+    },
+    {
+      "source": "random",
+      "experiment_id": "knockout:H_sec"
+    },
+    {
+      "source": "random",
+      "experiment_id": "ko_rescue:H_vit:rescued"
+    },
+    {
+      "source": "random",
+      "experiment_id": "knockout:H_acs"
+    },
+    {
+      "source": "random",
+      "experiment_id": "product:EX_coup_e"
+    },
+    {
+      "source": "random",
+      "experiment_id": "knockout:H_vit"
+    },
+    {
+      "source": "random",
+      "experiment_id": "oxygen_removal"
+    },
+    {
+      "source": "random",
+      "experiment_id": "carbon_source:EX_ac_e"
+    },
+    {
+      "source": "random",
+      "experiment_id": "knockout:H_both"
+    },
+    {
+      "source": "random",
+      "experiment_id": "supplement_removal:EX_vit_e"
+    },
+    {
+      "source": "random",
+      "experiment_id": "knockout:H_b"
+    }
+  ],
+  "experiments": [
+    {
+      "experiment_id": "baseline",
+      "kind": "baseline",
+      "description": "baseline medium with maintenance",
+      "mods": [],
+      "evidence_ids": [],
+      "hypothesis_ids": [],
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [],
+      "perturbation": {},
+      "status": "completed",
+      "outcome": "growth",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 10.0,
+        "focus_reactions_not_checked": [],
+        "focus_checks": [
+          {
+            "reaction": "ACS",
+            "fva_min": 0.0,
+            "fva_max": -0.0,
+            "flux_class": "carries_no_flux_at_growth_floor",
+            "knockout_growth": 10.0,
+            "knockout_growth_ratio": 1.0,
+            "knockout_class": "knockout_dispensable"
+          },
+          {
+            "reaction": "GLYC1",
+            "fva_min": 0.0,
+            "fva_max": 10.0,
+            "flux_class": "optional_flux",
+            "knockout_growth": 10.0,
+            "knockout_growth_ratio": 1.0,
+            "knockout_class": "knockout_dispensable"
+          },
+          {
+            "reaction": "GLYC2",
+            "fva_min": 0.0,
+            "fva_max": 10.0,
+            "flux_class": "optional_flux",
+            "knockout_growth": 10.0,
+            "knockout_growth_ratio": 1.0,
+            "knockout_class": "knockout_dispensable"
+          },
+          {
+            "reaction": "SEC",
+            "fva_min": 0.0,
+            "fva_max": 7.222222222222222,
+            "flux_class": "optional_flux",
+            "knockout_growth": 10.0,
+            "knockout_growth_ratio": 1.0,
+            "knockout_class": "knockout_dispensable"
+          },
+          {
+            "reaction": "VITS",
+            "fva_min": 0.0,
+            "fva_max": 7.222222222222222,
+            "flux_class": "optional_flux",
+            "knockout_growth": 10.0,
+            "knockout_growth_ratio": 1.0,
+            "knockout_class": "knockout_dispensable"
+          }
+        ]
+      },
+      "solver_calls": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth",
+        "hypothesis_ids": [],
+        "evidence_ids": [],
+        "candidate_genes": [],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:H_a",
+      "kind": "knockout",
+      "description": "knock out g1",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "GLYC1"
+          ],
+          "genes": [
+            "g1"
+          ]
+        }
+      ],
+      "evidence_ids": [
+        "E7"
+      ],
+      "hypothesis_ids": [
+        "H_a"
+      ],
+      "competing_hypotheses": [
+        "H_b"
+      ],
+      "candidate_genes": [
+        "locus_g1"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "GLYC1"
+      ],
+      "perturbation": {
+        "H_a": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "GLYC1"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0,
+        "alternative_route_via": [
+          "GLYC2"
+        ]
+      },
+      "solver_calls": [
+        16
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_a"
+        ],
+        "evidence_ids": [
+          "E7"
+        ],
+        "candidate_genes": [
+          "locus_g1"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "GLYC1"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "ko_rescue:H_vit:unrescued",
+      "kind": "ko_rescue",
+      "description": "knock out VITS with EX_vit_e closed",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "VITS"
+          ],
+          "genes": [
+            "g5"
+          ]
+        },
+        {
+          "op": "close",
+          "exchange": "EX_vit_e"
+        }
+      ],
+      "evidence_ids": [
+        "E9"
+      ],
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "perturbation": {
+        "H_vit": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_lost",
+      "measurements": {
+        "knocked_out_reactions": [
+          "VITS"
+        ],
+        "max_growth": 0.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 0.0
+      },
+      "solver_calls": [
+        17
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "uninformative",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_lost",
+        "hypothesis_ids": [
+          "H_vit"
+        ],
+        "evidence_ids": [
+          "E9"
+        ],
+        "candidate_genes": [
+          "g5"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "VITS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "product:EX_sec_e",
+      "kind": "product",
+      "description": "conditional feasibility vs. forced production of EX_sec_e",
+      "mods": [],
+      "evidence_ids": [
+        "E5"
+      ],
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "H_sec": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0,
+        "focus_reactions_not_checked": [],
+        "focus_checks": [
+          {
+            "reaction": "SEC",
+            "fva_min": 0.0,
+            "fva_max": 7.222222222222222,
+            "flux_class": "optional_flux",
+            "knockout_growth": 10.0,
+            "knockout_growth_ratio": 1.0,
+            "knockout_class": "knockout_dispensable"
+          }
+        ],
+        "product": {
+          "exchange": "EX_sec_e",
+          "growth_floor": 9.5,
+          "requirement": "growth_fraction",
+          "maintenance": {
+            "reaction": "ATPM",
+            "lower_bound": 1.0
+          },
+          "max_secretion": 7.222222222222222,
+          "min_secretion_at_required_state": 0.0,
+          "min_secretion_at_growth_floor": 0.0,
+          "conditional_feasibility": true,
+          "secretion_unavoidable_in_model": false,
+          "class": "secretion_feasible_not_unavoidable"
+        }
+      },
+      "solver_calls": [
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_sec"
+        ],
+        "evidence_ids": [
+          "E5"
+        ],
+        "candidate_genes": [
+          "g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:H_sec",
+      "kind": "knockout",
+      "description": "knock out g6",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "SEC"
+          ],
+          "genes": [
+            "g6"
+          ]
+        }
+      ],
+      "evidence_ids": [
+        "E5"
+      ],
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "H_sec": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "SEC"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0
+      },
+      "solver_calls": [
+        24
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_sec"
+        ],
+        "evidence_ids": [
+          "E5"
+        ],
+        "candidate_genes": [
+          "g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "ko_rescue:H_vit:rescued",
+      "kind": "ko_rescue",
+      "description": "knock out VITS with EX_vit_e supplied",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "VITS"
+          ],
+          "genes": [
+            "g5"
+          ]
+        },
+        {
+          "op": "open",
+          "exchange": "EX_vit_e"
+        }
+      ],
+      "evidence_ids": [
+        "E9"
+      ],
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "perturbation": {
+        "H_vit": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "VITS"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0
+      },
+      "solver_calls": [
+        25
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "uninformative",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_vit"
+        ],
+        "evidence_ids": [
+          "E9"
+        ],
+        "candidate_genes": [
+          "g5"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "VITS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:H_acs",
+      "kind": "knockout",
+      "description": "knock out g3",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "ACS"
+          ],
+          "genes": [
+            "g3"
+          ]
+        }
+      ],
+      "evidence_ids": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "hypothesis_ids": [
+        "H_acs"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g3"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "perturbation": {
+        "H_acs": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "ACS"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0
+      },
+      "solver_calls": [
+        26
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_acs"
+        ],
+        "evidence_ids": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "candidate_genes": [
+          "locus_g3"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "ACS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "product:EX_coup_e",
+      "kind": "product",
+      "description": "conditional feasibility vs. forced production of EX_coup_e",
+      "mods": [],
+      "evidence_ids": [
+        "E6"
+      ],
+      "hypothesis_ids": [],
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [],
+      "perturbation": {},
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0,
+        "product": {
+          "exchange": "EX_coup_e",
+          "growth_floor": 9.5,
+          "requirement": "growth_fraction",
+          "maintenance": {
+            "reaction": "ATPM",
+            "lower_bound": 1.0
+          },
+          "max_secretion": 1.0,
+          "min_secretion_at_required_state": 0.9500000000000001,
+          "min_secretion_at_growth_floor": 0.9500000000000001,
+          "conditional_feasibility": true,
+          "secretion_unavoidable_in_model": true,
+          "class": "secretion_unavoidable_in_model"
+        }
+      },
+      "solver_calls": [
+        27,
+        28,
+        29
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "uninformative",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [],
+        "evidence_ids": [
+          "E6"
+        ],
+        "candidate_genes": [],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:H_vit",
+      "kind": "knockout",
+      "description": "knock out g5",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "VITS"
+          ],
+          "genes": [
+            "g5"
+          ]
+        }
+      ],
+      "evidence_ids": [
+        "E9"
+      ],
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "perturbation": {
+        "H_vit": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "VITS"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0
+      },
+      "solver_calls": [
+        30
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_vit"
+        ],
+        "evidence_ids": [
+          "E9"
+        ],
+        "candidate_genes": [
+          "g5"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "VITS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "oxygen_removal",
+      "kind": "oxygen_removal",
+      "description": "remove oxygen uptake",
+      "mods": [
+        {
+          "op": "oxygen_removal"
+        }
+      ],
+      "evidence_ids": [
+        "E4"
+      ],
+      "hypothesis_ids": [
+        "H_acs"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g3"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "perturbation": {
+        "H_acs": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 4.75,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 0.475,
+        "focus_reactions_not_checked": [],
+        "focus_checks": [
+          {
+            "reaction": "ACS",
+            "fva_min": 0.0,
+            "fva_max": -0.0,
+            "flux_class": "carries_no_flux_at_growth_floor",
+            "knockout_growth": 4.75,
+            "knockout_growth_ratio": 1.0,
+            "knockout_class": "knockout_dispensable"
+          }
+        ]
+      },
+      "solver_calls": [
+        31,
+        32,
+        33,
+        34
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_reduced",
+        "hypothesis_ids": [
+          "H_acs"
+        ],
+        "evidence_ids": [
+          "E4"
+        ],
+        "candidate_genes": [
+          "locus_g3"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "ACS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "carbon_source:EX_ac_e",
+      "kind": "carbon_source",
+      "description": "replace baseline carbon sources by EX_ac_e",
+      "mods": [
+        {
+          "op": "carbon_swap",
+          "exchange": "EX_ac_e"
+        }
+      ],
+      "evidence_ids": [
+        "E1"
+      ],
+      "hypothesis_ids": [
+        "H_acs"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "locus_g3"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "perturbation": {
+        "H_acs": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 5.75,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 0.575,
+        "focus_reactions_not_checked": [],
+        "focus_checks": [
+          {
+            "reaction": "ACS",
+            "fva_min": 9.507142857142856,
+            "fva_max": 10.0,
+            "flux_class": "required_flux",
+            "knockout_class": "knockout_infeasible_with_maintenance"
+          }
+        ]
+      },
+      "solver_calls": [
+        35,
+        36,
+        37,
+        38
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_requires_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_reduced",
+        "hypothesis_ids": [
+          "H_acs"
+        ],
+        "evidence_ids": [
+          "E1"
+        ],
+        "candidate_genes": [
+          "locus_g3"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "ACS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:H_both",
+      "kind": "knockout",
+      "description": "knock out GLYC1,GLYC2",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "GLYC1",
+            "GLYC2"
+          ],
+          "genes": []
+        }
+      ],
+      "evidence_ids": [],
+      "hypothesis_ids": [
+        "H_both"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "GLYC1",
+        "GLYC2"
+      ],
+      "perturbation": {
+        "H_both": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "infeasible_with_maintenance",
+      "measurements": {
+        "knocked_out_reactions": [
+          "GLYC1",
+          "GLYC2"
+        ],
+        "max_growth": null
+      },
+      "solver_calls": [
+        39
+      ],
+      "condition_constraints": [],
+      "note": "no steady state satisfies the maintenance constraint under this condition",
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "no_result",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "infeasible_with_maintenance",
+        "hypothesis_ids": [
+          "H_both"
+        ],
+        "evidence_ids": [],
+        "candidate_genes": [],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "GLYC1",
+          "GLYC2"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "supplement_removal:EX_vit_e",
+      "kind": "supplement_removal",
+      "description": "remove supplement uptake EX_vit_e",
+      "mods": [
+        {
+          "op": "close",
+          "exchange": "EX_vit_e"
+        }
+      ],
+      "evidence_ids": [
+        "E9"
+      ],
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "perturbation": {
+        "H_vit": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 8.523809523809524,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 0.8523809523809524,
+        "focus_reactions_not_checked": [],
+        "focus_checks": [
+          {
+            "reaction": "VITS",
+            "fva_min": 8.097619047619046,
+            "fva_max": 8.523809523809524,
+            "flux_class": "required_flux",
+            "knockout_growth": 0.0,
+            "knockout_growth_ratio": 0.0,
+            "knockout_class": "knockout_abolishes_growth"
+          }
+        ]
+      },
+      "solver_calls": [
+        40,
+        41,
+        42,
+        43
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_requires_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_reduced",
+        "hypothesis_ids": [
+          "H_vit"
+        ],
+        "evidence_ids": [
+          "E9"
+        ],
+        "candidate_genes": [
+          "g5"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "VITS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:H_b",
+      "kind": "knockout",
+      "description": "knock out GLYC2",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "GLYC2"
+          ],
+          "genes": []
+        }
+      ],
+      "evidence_ids": [
+        "E8"
+      ],
+      "hypothesis_ids": [
+        "H_b"
+      ],
+      "competing_hypotheses": [
+        "H_a"
+      ],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "GLYC2"
+      ],
+      "perturbation": {
+        "H_b": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "GLYC2"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0,
+        "alternative_route_via": [
+          "GLYC1"
+        ]
+      },
+      "solver_calls": [
+        44
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_b"
+        ],
+        "evidence_ids": [
+          "E8"
+        ],
+        "candidate_genes": [],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "GLYC2"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    }
+  ],
+  "outcome": "completed",
+  "solver": {
+    "max_calls": 100,
+    "used": 45,
+    "calls": [
+      {
+        "call": 0,
+        "label": "baseline:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 1,
+        "label": "baseline:fva_min:ACS",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 2,
+        "label": "baseline:fva_max:ACS",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 3,
+        "label": "baseline:ko:ACS",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 4,
+        "label": "baseline:fva_min:GLYC1",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 5,
+        "label": "baseline:fva_max:GLYC1",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 6,
+        "label": "baseline:ko:GLYC1",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 7,
+        "label": "baseline:fva_min:GLYC2",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 8,
+        "label": "baseline:fva_max:GLYC2",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 9,
+        "label": "baseline:ko:GLYC2",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 10,
+        "label": "baseline:fva_min:SEC",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 11,
+        "label": "baseline:fva_max:SEC",
+        "status": "optimal",
+        "objective": -7.222222222222222,
+        "note": ""
+      },
+      {
+        "call": 12,
+        "label": "baseline:ko:SEC",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 13,
+        "label": "baseline:fva_min:VITS",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 14,
+        "label": "baseline:fva_max:VITS",
+        "status": "optimal",
+        "objective": -7.222222222222222,
+        "note": ""
+      },
+      {
+        "call": 15,
+        "label": "baseline:ko:VITS",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 16,
+        "label": "knockout:H_a:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 17,
+        "label": "ko_rescue:H_vit:unrescued:max_growth",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 18,
+        "label": "product:EX_sec_e:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 19,
+        "label": "product:EX_sec_e:fva_min:SEC",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 20,
+        "label": "product:EX_sec_e:fva_max:SEC",
+        "status": "optimal",
+        "objective": -7.222222222222222,
+        "note": ""
+      },
+      {
+        "call": 21,
+        "label": "product:EX_sec_e:ko:SEC",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 22,
+        "label": "product:EX_sec_e:product_max",
+        "status": "optimal",
+        "objective": -7.222222222222222,
+        "note": ""
+      },
+      {
+        "call": 23,
+        "label": "product:EX_sec_e:product_min",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 24,
+        "label": "knockout:H_sec:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 25,
+        "label": "ko_rescue:H_vit:rescued:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 26,
+        "label": "knockout:H_acs:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 27,
+        "label": "product:EX_coup_e:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 28,
+        "label": "product:EX_coup_e:product_max",
+        "status": "optimal",
+        "objective": -1.0,
+        "note": ""
+      },
+      {
+        "call": 29,
+        "label": "product:EX_coup_e:product_min",
+        "status": "optimal",
+        "objective": 0.9500000000000001,
+        "note": ""
+      },
+      {
+        "call": 30,
+        "label": "knockout:H_vit:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 31,
+        "label": "oxygen_removal:max_growth",
+        "status": "optimal",
+        "objective": -4.75,
+        "note": ""
+      },
+      {
+        "call": 32,
+        "label": "oxygen_removal:fva_min:ACS",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 33,
+        "label": "oxygen_removal:fva_max:ACS",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 34,
+        "label": "oxygen_removal:ko:ACS",
+        "status": "optimal",
+        "objective": -4.75,
+        "note": ""
+      },
+      {
+        "call": 35,
+        "label": "carbon_source:EX_ac_e:max_growth",
+        "status": "optimal",
+        "objective": -5.75,
+        "note": ""
+      },
+      {
+        "call": 36,
+        "label": "carbon_source:EX_ac_e:fva_min:ACS",
+        "status": "optimal",
+        "objective": 9.507142857142856,
+        "note": ""
+      },
+      {
+        "call": 37,
+        "label": "carbon_source:EX_ac_e:fva_max:ACS",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 38,
+        "label": "carbon_source:EX_ac_e:ko:ACS",
+        "status": "infeasible",
+        "objective": null,
+        "note": ""
+      },
+      {
+        "call": 39,
+        "label": "knockout:H_both:max_growth",
+        "status": "infeasible",
+        "objective": null,
+        "note": ""
+      },
+      {
+        "call": 40,
+        "label": "supplement_removal:EX_vit_e:max_growth",
+        "status": "optimal",
+        "objective": -8.523809523809524,
+        "note": ""
+      },
+      {
+        "call": 41,
+        "label": "supplement_removal:EX_vit_e:fva_min:VITS",
+        "status": "optimal",
+        "objective": 8.097619047619046,
+        "note": ""
+      },
+      {
+        "call": 42,
+        "label": "supplement_removal:EX_vit_e:fva_max:VITS",
+        "status": "optimal",
+        "objective": -8.523809523809524,
+        "note": ""
+      },
+      {
+        "call": 43,
+        "label": "supplement_removal:EX_vit_e:ko:VITS",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 44,
+        "label": "knockout:H_b:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      }
+    ]
+  },
+  "evidence": {
+    "used": [
+      "E1",
+      "E2",
+      "E3",
+      "E4",
+      "E5",
+      "E6",
+      "E7",
+      "E8",
+      "E9"
+    ],
+    "not_used": [
+      "E10"
+    ]
+  },
+  "conditional_evidence": [
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_a"
+      ],
+      "evidence_ids": [
+        "E7"
+      ],
+      "candidate_genes": [
+        "locus_g1"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "GLYC1"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:H_a",
+      "kind": "knockout",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        16
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "uninformative",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_lost",
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "evidence_ids": [
+        "E9"
+      ],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "ko_rescue:H_vit:unrescued",
+      "kind": "ko_rescue",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        17
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "evidence_ids": [
+        "E5"
+      ],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "product:EX_sec_e",
+      "kind": "product",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "evidence_ids": [
+        "E5"
+      ],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:H_sec",
+      "kind": "knockout",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        24
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "uninformative",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "evidence_ids": [
+        "E9"
+      ],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "ko_rescue:H_vit:rescued",
+      "kind": "ko_rescue",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        25
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_acs"
+      ],
+      "evidence_ids": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "candidate_genes": [
+        "locus_g3"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:H_acs",
+      "kind": "knockout",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        26
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "uninformative",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [],
+      "evidence_ids": [
+        "E6"
+      ],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "product:EX_coup_e",
+      "kind": "product",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        27,
+        28,
+        29
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "evidence_ids": [
+        "E9"
+      ],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:H_vit",
+      "kind": "knockout",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        30
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "hypothesis_ids": [
+        "H_acs"
+      ],
+      "evidence_ids": [
+        "E4"
+      ],
+      "candidate_genes": [
+        "locus_g3"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "oxygen_removal",
+      "kind": "oxygen_removal",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        31,
+        32,
+        33,
+        34
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_requires_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "hypothesis_ids": [
+        "H_acs"
+      ],
+      "evidence_ids": [
+        "E1"
+      ],
+      "candidate_genes": [
+        "locus_g3"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "ACS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "carbon_source:EX_ac_e",
+      "kind": "carbon_source",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        35,
+        36,
+        37,
+        38
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "no_result",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "infeasible_with_maintenance",
+      "hypothesis_ids": [
+        "H_both"
+      ],
+      "evidence_ids": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "GLYC1",
+        "GLYC2"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:H_both",
+      "kind": "knockout",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        39
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_requires_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_reduced",
+      "hypothesis_ids": [
+        "H_vit"
+      ],
+      "evidence_ids": [
+        "E9"
+      ],
+      "candidate_genes": [
+        "g5"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "VITS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "supplement_removal:EX_vit_e",
+      "kind": "supplement_removal",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        40,
+        41,
+        42,
+        43
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_b"
+      ],
+      "evidence_ids": [
+        "E8"
+      ],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "GLYC2"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:H_b",
+      "kind": "knockout",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "12c6e46dd3250a6f7c1c296a994e3ada7676711e99b4e3ad38bce31b39f6bd41",
+      "solver_calls": [
+        44
+      ]
+    }
+  ],
+  "promotion": "none"
+}

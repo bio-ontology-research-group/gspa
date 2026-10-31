@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.specialized.DbCanRouteSpec" tests="5" skipped="0" failures="4" errors="0" timestamp="2026-10-27T16:49:08" hostname="node002" time="1.383">
+  <properties/>
+  <testcase name="requested dbCAN is registered with explicit database interface and thread settings" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.997">
+    <failure message="groovy.lang.MissingPropertyException: No such property: dbcan for class: gspa.config.GspaConfig$PredictorConfig" type="groovy.lang.MissingPropertyException">groovy.lang.MissingPropertyException: No such property: dbcan for class: gspa.config.GspaConfig$PredictorConfig
+	at gspa.predictor.specialized.DbCanRouteSpec.requested dbCAN is registered with explicit database interface and thread settings(DbCanRouteSpec.groovy:16)
+</failure>
+  </testcase>
+  <testcase name="explicit disable wins over dbCAN enable" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.31"/>
+  <testcase name="modern execution preserves unscored families through pipeline raw claims" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.029">
+    <failure message="groovy.lang.MissingPropertyException: No such property: dbcan for class: gspa.config.GspaConfig$PredictorConfig" type="groovy.lang.MissingPropertyException">groovy.lang.MissingPropertyException: No such property: dbcan for class: gspa.config.GspaConfig$PredictorConfig
+	at gspa.predictor.specialized.DbCanRouteSpec.modern execution preserves unscored families through pipeline raw claims(DbCanRouteSpec.groovy:73)
+</failure>
+  </testcase>
+  <testcase name="unsupported interfaces and missing v5 databases fail before tool execution [version: unknown, #0]" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.027">
+    <failure message="Expected exception of type 'java.lang.IllegalArgumentException', but got 'groovy.lang.MissingPropertyException'" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'java.lang.IllegalArgumentException', but got 'groovy.lang.MissingPropertyException'
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.specialized.DbCanRouteSpec.unsupported interfaces and missing v5 databases fail before tool execution(DbCanRouteSpec.groovy:91)
+Caused by: groovy.lang.MissingPropertyException: No such property: interfaceVersion for class: gspa.predictor.specialized.DbCanPredictor
+	at gspa.predictor.specialized.DbCanRouteSpec.unsupported interfaces and missing v5 databases fail before tool execution(DbCanRouteSpec.groovy:89)
+</failure>
+  </testcase>
+  <testcase name="unsupported interfaces and missing v5 databases fail before tool execution [version: 5, #1]" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.005">
+    <failure message="Expected exception of type 'java.lang.IllegalArgumentException', but got 'groovy.lang.MissingPropertyException'" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'java.lang.IllegalArgumentException', but got 'groovy.lang.MissingPropertyException'
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.specialized.DbCanRouteSpec.unsupported interfaces and missing v5 databases fail before tool execution(DbCanRouteSpec.groovy:91)
+Caused by: groovy.lang.MissingPropertyException: No such property: interfaceVersion for class: gspa.predictor.specialized.DbCanPredictor
+	at gspa.predictor.specialized.DbCanRouteSpec.unsupported interfaces and missing v5 databases fail before tool execution(DbCanRouteSpec.groovy:89)
+</failure>
+  </testcase>
+  <system-out><![CDATA[19:49:10.096 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+19:49:10.256 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: diamond
+19:49:10.257 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+19:49:10.258 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: operon
+19:49:10.260 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: gapsmith
+19:49:10.268 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 4 predictors registered
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@2a1debfa]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@44de94c3]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@2a1debfa]
+]]></system-err>
+</testsuite>

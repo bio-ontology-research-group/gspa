@@ -1,0 +1,5372 @@
+{
+  "bootstrap": {
+    "n": 10000,
+    "seed": 20261029
+  },
+  "calibration_policy": {
+    "evidence:k3": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "evidence:k6": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "exhaustive": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "fixed_panel:k3": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "fixed_panel:k6": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "minimal_medium:k3": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "minimal_medium:k6": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "qwen:k3": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "qwen:k6": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "random:k3": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "random:k6": {
+      "calibration_counts": {},
+      "status": "no_supported_threshold_abstain",
+      "threshold": null
+    },
+    "sequence_only": {
+      "calibration_counts": {
+        "abstain_policy": 6.0,
+        "abstain_tied": 2.0,
+        "correct_call": 9.0,
+        "no_admissible_experiment": 23.0,
+        "wrong_call": 1.0
+      },
+      "status": "selected_on_calibration",
+      "threshold": 0.864
+    }
+  },
+  "notes": [
+    "Keio (calibration) measured pairs were chosen by an iML1515 design that used the target GPR; the menu offered the full substrate grid plus glucose.",
+    "Nutrient assays use oxygen uptake 20 mmol gDW^-1 h^-1; printed is primary and additional_inorganic is sensitivity.",
+    "For supplemented nutrient conditions, the wild type is the corresponding unsupplemented wild type.",
+    "Sulfonate sulfur uptake ceiling is 1.0; tauA and ssuA share a target-free background menu.",
+    "No oxygen sweep, product objective, reaction-level condition knockout, learned predictor or Tier B case is admitted.",
+    "Small denominators: every proportion carries its Wilson interval and denominator.",
+    "Random arm: per-case mean over seeds; it enters bootstrap differences, not exact McNemar.",
+    "Candidate-generation failures and transport controls remain in the all-eligible denominator.",
+    "The unmasked-original phenotype comparator has no \u00a78 runner stage and is marked unavailable, never invented."
+  ],
+  "policy_sha256": "e683670a709e6c38cb60cb3a5398974cadb04b25490a9979eee9d94d478e3371",
+  "schema": "gspa.wp5.evaluation/1",
+  "tables": {
+    "evidence:k3|primary": {
+      "abstention": 0.7692307692307693,
+      "arm": "evidence:k3",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 4.0,
+        "c1_fraction": 0.4,
+        "c2_fva_classes": {
+          "called": {
+            "required": 3
+          },
+          "truth": {
+            "optional": 1,
+            "required": 4
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 270,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 14,
+        "solver_calls_unused": 88,
+        "solver_calls_used": 182,
+        "wall_seconds": 10.665880806001951
+      },
+      "counts": {
+        "abstain_policy": 3.0,
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 3.0,
+        "no_admissible_experiment": 3.0,
+        "no_consistent_hypothesis": 1.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 22,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 4,
+        "constant_growth_agreement": 0.18181818181818182,
+        "constant_no_growth_agree": 18,
+        "constant_no_growth_agreement": 0.8181818181818182,
+        "not_evaluable_pairs": 8,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.23076923076923078,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.15384615384615385,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.07692307692307693,
+          "threshold": 0.76153
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.7142857142857143,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "evidence:k3|sensitivity": {
+      "abstention": 0.9090909090909091,
+      "arm": "evidence:k3",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 8.0,
+        "c1_fraction": 0.8,
+        "c2_fva_classes": {
+          "called": {
+            "optional": 1,
+            "required": 20
+          },
+          "truth": {
+            "optional": 4,
+            "required": 23
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 270,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 12,
+        "solver_calls_unused": 0,
+        "solver_calls_used": 270,
+        "wall_seconds": 13.599889671997516
+      },
+      "counts": {
+        "abstain_policy": 7.0,
+        "abstain_tied": 1.0,
+        "no_admissible_experiment": 1.0,
+        "no_consistent_hypothesis": 2.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 22,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 4,
+        "constant_growth_agreement": 0.18181818181818182,
+        "constant_no_growth_agree": 18,
+        "constant_no_growth_agreement": 0.8181818181818182,
+        "not_evaluable_pairs": 8,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 7.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8571428571428571,
+          "recovery": 0.5454545454545454,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 6.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8333333333333334,
+          "recovery": 0.45454545454545453,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 5.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8,
+          "recovery": 0.36363636363636365,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 4.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.75,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.771678
+        },
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.18181818181818182,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.09090909090909091,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 1.0,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 7.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 2.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "evidence:k6|primary": {
+      "abstention": 0.7692307692307693,
+      "arm": "evidence:k6",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 4.0,
+        "c1_fraction": 0.4,
+        "c2_fva_classes": {
+          "called": {
+            "required": 6
+          },
+          "truth": {
+            "optional": 2,
+            "required": 8
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 540,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 14,
+        "solver_calls_unused": 176,
+        "solver_calls_used": 364,
+        "wall_seconds": 19.918701752001652
+      },
+      "counts": {
+        "abstain_policy": 3.0,
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 3.0,
+        "no_admissible_experiment": 3.0,
+        "no_consistent_hypothesis": 1.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 28,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 10,
+        "constant_growth_agreement": 0.35714285714285715,
+        "constant_no_growth_agree": 18,
+        "constant_no_growth_agreement": 0.6428571428571429,
+        "not_evaluable_pairs": 32,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.23076923076923078,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.15384615384615385,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.07692307692307693,
+          "threshold": 0.76153
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.7142857142857143,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "evidence:k6|sensitivity": {
+      "abstention": 0.9090909090909091,
+      "arm": "evidence:k6",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 8.0,
+        "c1_fraction": 0.8,
+        "c2_fva_classes": {
+          "called": {
+            "optional": 5,
+            "required": 37
+          },
+          "truth": {
+            "optional": 11,
+            "required": 43
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 540,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 12,
+        "solver_calls_unused": 0,
+        "solver_calls_used": 540,
+        "wall_seconds": 26.07766360101232
+      },
+      "counts": {
+        "abstain_policy": 7.0,
+        "abstain_tied": 1.0,
+        "no_admissible_experiment": 1.0,
+        "no_consistent_hypothesis": 2.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 28,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 10,
+        "constant_growth_agreement": 0.35714285714285715,
+        "constant_no_growth_agree": 18,
+        "constant_no_growth_agreement": 0.6428571428571429,
+        "not_evaluable_pairs": 32,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 7.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8571428571428571,
+          "recovery": 0.5454545454545454,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 6.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8333333333333334,
+          "recovery": 0.45454545454545453,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 5.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8,
+          "recovery": 0.36363636363636365,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 4.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.75,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.771678
+        },
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.18181818181818182,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.09090909090909091,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 1.0,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 7.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 2.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "exhaustive|primary": {
+      "abstention": 0.7692307692307693,
+      "arm": "exhaustive",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 4.0,
+        "c1_fraction": 0.4,
+        "c2_fva_classes": {
+          "called": {
+            "optional": 4,
+            "required": 81
+          },
+          "truth": {
+            "optional": 99,
+            "required": 326
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 26656,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 14,
+        "solver_calls_unused": 8890,
+        "solver_calls_used": 17766,
+        "wall_seconds": 911.1323450920172
+      },
+      "counts": {
+        "abstain_policy": 1.0,
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 3.0,
+        "no_admissible_experiment": 3.0,
+        "no_consistent_hypothesis": 3.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 760,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 405,
+        "constant_growth_agreement": 0.5328947368421053,
+        "constant_no_growth_agree": 355,
+        "constant_no_growth_agreement": 0.46710526315789475,
+        "not_evaluable_pairs": 2180,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.07692307692307693,
+          "threshold": 0.76153
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 3.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.7142857142857143,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.0,
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 3.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "exhaustive|sensitivity": {
+      "abstention": 0.9090909090909091,
+      "arm": "exhaustive",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 8.0,
+        "c1_fraction": 0.8,
+        "c2_fva_classes": {
+          "called": {
+            "optional": 84,
+            "required": 462
+          },
+          "truth": {
+            "optional": 568,
+            "required": 1866
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 26656,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 12,
+        "solver_calls_unused": 660,
+        "solver_calls_used": 25996,
+        "wall_seconds": 1199.8612663029926
+      },
+      "counts": {
+        "abstain_policy": 2.0,
+        "abstain_tied": 1.0,
+        "no_admissible_experiment": 1.0,
+        "no_consistent_hypothesis": 7.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 760,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 405,
+        "constant_growth_agreement": 0.5328947368421053,
+        "constant_no_growth_agree": 355,
+        "constant_no_growth_agreement": 0.46710526315789475,
+        "not_evaluable_pairs": 2180,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.18181818181818182,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.09090909090909091,
+          "threshold": 0.937
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 3.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 1.0,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.0,
+            "no_consistent_hypothesis": 4.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 2.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 7.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "fixed_panel:k3|primary": {
+      "abstention": 0.7692307692307693,
+      "arm": "fixed_panel:k3",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 4.0,
+        "c1_fraction": 0.4,
+        "c2_fva_classes": {
+          "called": {
+            "required": 6
+          },
+          "truth": {
+            "optional": 2,
+            "required": 8
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 270,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 14,
+        "solver_calls_unused": 74,
+        "solver_calls_used": 196,
+        "wall_seconds": 10.713262963996385
+      },
+      "counts": {
+        "abstain_policy": 3.0,
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 3.0,
+        "no_admissible_experiment": 3.0,
+        "no_consistent_hypothesis": 1.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 21,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 3,
+        "constant_growth_agreement": 0.14285714285714285,
+        "constant_no_growth_agree": 18,
+        "constant_no_growth_agreement": 0.8571428571428571,
+        "not_evaluable_pairs": 9,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.23076923076923078,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.15384615384615385,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.07692307692307693,
+          "threshold": 0.76153
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.7142857142857143,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "fixed_panel:k3|sensitivity": {
+      "abstention": 0.9090909090909091,
+      "arm": "fixed_panel:k3",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 8.0,
+        "c1_fraction": 0.8,
+        "c2_fva_classes": {
+          "called": {
+            "optional": 1,
+            "required": 20
+          },
+          "truth": {
+            "optional": 4,
+            "required": 23
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 270,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 12,
+        "solver_calls_unused": 0,
+        "solver_calls_used": 270,
+        "wall_seconds": 13.511157603017637
+      },
+      "counts": {
+        "abstain_policy": 7.0,
+        "abstain_tied": 1.0,
+        "no_admissible_experiment": 1.0,
+        "no_consistent_hypothesis": 2.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 21,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 3,
+        "constant_growth_agreement": 0.14285714285714285,
+        "constant_no_growth_agree": 18,
+        "constant_no_growth_agreement": 0.8571428571428571,
+        "not_evaluable_pairs": 9,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 7.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8571428571428571,
+          "recovery": 0.5454545454545454,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 6.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8333333333333334,
+          "recovery": 0.45454545454545453,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 5.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8,
+          "recovery": 0.36363636363636365,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 4.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.75,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.771678
+        },
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.18181818181818182,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.09090909090909091,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 1.0,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 7.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 2.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "fixed_panel:k6|primary": {
+      "abstention": 0.7692307692307693,
+      "arm": "fixed_panel:k6",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 4.0,
+        "c1_fraction": 0.4,
+        "c2_fva_classes": {
+          "called": {
+            "required": 9
+          },
+          "truth": {
+            "optional": 3,
+            "required": 12
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 540,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 14,
+        "solver_calls_unused": 162,
+        "solver_calls_used": 378,
+        "wall_seconds": 20.348487209994346
+      },
+      "counts": {
+        "abstain_policy": 3.0,
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 3.0,
+        "no_admissible_experiment": 3.0,
+        "no_consistent_hypothesis": 1.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 27,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 9,
+        "constant_growth_agreement": 0.3333333333333333,
+        "constant_no_growth_agree": 18,
+        "constant_no_growth_agreement": 0.6666666666666666,
+        "not_evaluable_pairs": 33,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.23076923076923078,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.15384615384615385,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.07692307692307693,
+          "threshold": 0.76153
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.7142857142857143,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "fixed_panel:k6|sensitivity": {
+      "abstention": 0.9090909090909091,
+      "arm": "fixed_panel:k6",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 8.0,
+        "c1_fraction": 0.8,
+        "c2_fva_classes": {
+          "called": {
+            "optional": 5,
+            "required": 37
+          },
+          "truth": {
+            "optional": 11,
+            "required": 43
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 540,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 12,
+        "solver_calls_unused": 0,
+        "solver_calls_used": 540,
+        "wall_seconds": 25.861046584992437
+      },
+      "counts": {
+        "abstain_policy": 7.0,
+        "abstain_tied": 1.0,
+        "no_admissible_experiment": 1.0,
+        "no_consistent_hypothesis": 2.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 27,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 9,
+        "constant_growth_agreement": 0.3333333333333333,
+        "constant_no_growth_agree": 18,
+        "constant_no_growth_agreement": 0.6666666666666666,
+        "not_evaluable_pairs": 33,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 7.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8571428571428571,
+          "recovery": 0.5454545454545454,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 6.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8333333333333334,
+          "recovery": 0.45454545454545453,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 5.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8,
+          "recovery": 0.36363636363636365,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 4.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.75,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.771678
+        },
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.18181818181818182,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.09090909090909091,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 1.0,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 7.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 2.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "minimal_medium:k3|primary": {
+      "abstention": 0.7692307692307693,
+      "arm": "minimal_medium:k3",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 4.0,
+        "c1_fraction": 0.4,
+        "c2_fva_classes": {
+          "called": {
+            "required": 3
+          },
+          "truth": {
+            "optional": 1,
+            "required": 4
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 270,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 14,
+        "solver_calls_unused": 200,
+        "solver_calls_used": 70,
+        "wall_seconds": 4.608479213013197
+      },
+      "counts": {
+        "abstain_policy": 3.0,
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 3.0,
+        "no_admissible_experiment": 3.0,
+        "no_consistent_hypothesis": 1.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 10,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 1,
+        "constant_growth_agreement": 0.1,
+        "constant_no_growth_agree": 9,
+        "constant_no_growth_agreement": 0.9,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.23076923076923078,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.15384615384615385,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.07692307692307693,
+          "threshold": 0.76153
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.7142857142857143,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "minimal_medium:k3|sensitivity": {
+      "abstention": 0.9090909090909091,
+      "arm": "minimal_medium:k3",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 8.0,
+        "c1_fraction": 0.8,
+        "c2_fva_classes": {
+          "called": {
+            "required": 7
+          },
+          "truth": {
+            "optional": 1,
+            "required": 8
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 270,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 12,
+        "solver_calls_unused": 180,
+        "solver_calls_used": 90,
+        "wall_seconds": 5.454138461995171
+      },
+      "counts": {
+        "abstain_policy": 7.0,
+        "abstain_tied": 1.0,
+        "no_admissible_experiment": 1.0,
+        "no_consistent_hypothesis": 2.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 10,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 1,
+        "constant_growth_agreement": 0.1,
+        "constant_no_growth_agree": 9,
+        "constant_no_growth_agreement": 0.9,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 7.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8571428571428571,
+          "recovery": 0.5454545454545454,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 6.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8333333333333334,
+          "recovery": 0.45454545454545453,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 5.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8,
+          "recovery": 0.36363636363636365,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 4.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.75,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.771678
+        },
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.18181818181818182,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.09090909090909091,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 1.0,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 7.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 2.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "minimal_medium:k6|primary": {
+      "abstention": 0.7692307692307693,
+      "arm": "minimal_medium:k6",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 4.0,
+        "c1_fraction": 0.4,
+        "c2_fva_classes": {
+          "called": {
+            "required": 3
+          },
+          "truth": {
+            "optional": 1,
+            "required": 4
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 540,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 14,
+        "solver_calls_unused": 470,
+        "solver_calls_used": 70,
+        "wall_seconds": 4.592289821986924
+      },
+      "counts": {
+        "abstain_policy": 3.0,
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 3.0,
+        "no_admissible_experiment": 3.0,
+        "no_consistent_hypothesis": 1.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 10,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 1,
+        "constant_growth_agreement": 0.1,
+        "constant_no_growth_agree": 9,
+        "constant_no_growth_agreement": 0.9,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.23076923076923078,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.15384615384615385,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.07692307692307693,
+          "threshold": 0.76153
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.7142857142857143,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "minimal_medium:k6|sensitivity": {
+      "abstention": 0.9090909090909091,
+      "arm": "minimal_medium:k6",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 8.0,
+        "c1_fraction": 0.8,
+        "c2_fva_classes": {
+          "called": {
+            "required": 7
+          },
+          "truth": {
+            "optional": 1,
+            "required": 8
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 540,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 12,
+        "solver_calls_unused": 450,
+        "solver_calls_used": 90,
+        "wall_seconds": 5.466749590006657
+      },
+      "counts": {
+        "abstain_policy": 7.0,
+        "abstain_tied": 1.0,
+        "no_admissible_experiment": 1.0,
+        "no_consistent_hypothesis": 2.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 10,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 1,
+        "constant_growth_agreement": 0.1,
+        "constant_no_growth_agree": 9,
+        "constant_no_growth_agreement": 0.9,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 7.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8571428571428571,
+          "recovery": 0.5454545454545454,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 6.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8333333333333334,
+          "recovery": 0.45454545454545453,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 5.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.8,
+          "recovery": 0.36363636363636365,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 4.0,
+          "harm": 0.09090909090909091,
+          "precision": 0.75,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.771678
+        },
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.18181818181818182,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.09090909090909091,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 3.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 1.0,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "no_consistent_hypothesis": 1.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909091,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 7.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 2.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "qwen:k3|primary": {
+      "abstention": 0.6153846153846154,
+      "arm": "qwen:k3",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 0.0,
+        "c1_fraction": 0.0,
+        "c2_fva_classes": {
+          "called": {},
+          "truth": {}
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 2,
+        "max_solver_calls": 270,
+        "qwen_calls_without_token_usage": 0,
+        "qwen_completed_calls": 33,
+        "qwen_completion_tokens": 324,
+        "qwen_failed_calls": 0,
+        "qwen_failures": 0,
+        "qwen_http_attempts": 33,
+        "qwen_prompt_tokens": 1216287,
+        "qwen_requests": 33,
+        "qwen_seconds": 2276.4972398129757,
+        "runs": 14,
+        "solver_calls_unused": 110,
+        "solver_calls_used": 160,
+        "wall_seconds": 2309.607034149987
+      },
+      "counts": {
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 5.0,
+        "inconclusive": 2.0,
+        "no_admissible_experiment": 3.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 15,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 1,
+        "constant_growth_agreement": 0.06666666666666667,
+        "constant_no_growth_agree": 14,
+        "constant_no_growth_agreement": 0.9333333333333333,
+        "not_evaluable_pairs": 9,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.6666666666666666,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 1.0,
+            "abstain_unsupported": 3.0,
+            "inconclusive": 1.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.5714285714285714,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 2.0,
+            "inconclusive": 1.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.7272727272727273,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 5.0,
+            "inconclusive": 2.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "qwen:k3|sensitivity": {
+      "abstention": 0.5454545454545454,
+      "arm": "qwen:k3",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 1.0,
+        "c1_fraction": 0.1,
+        "c2_fva_classes": {
+          "called": {
+            "required": 2
+          },
+          "truth": {
+            "optional": 2,
+            "required": 2
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 5,
+        "max_solver_calls": 270,
+        "qwen_calls_without_token_usage": 0,
+        "qwen_completed_calls": 33,
+        "qwen_completion_tokens": 335,
+        "qwen_failed_calls": 0,
+        "qwen_failures": 0,
+        "qwen_http_attempts": 33,
+        "qwen_prompt_tokens": 1077374,
+        "qwen_requests": 33,
+        "qwen_seconds": 2143.0407474747044,
+        "runs": 12,
+        "solver_calls_unused": 104,
+        "solver_calls_used": 166,
+        "wall_seconds": 2173.06464369304
+      },
+      "counts": {
+        "abstain_policy": 1.0,
+        "abstain_tied": 1.0,
+        "abstain_unsupported": 4.0,
+        "inconclusive": 4.0,
+        "no_admissible_experiment": 1.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 10,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 1,
+        "constant_growth_agreement": 0.1,
+        "constant_no_growth_agree": 9,
+        "constant_no_growth_agreement": 0.9,
+        "not_evaluable_pairs": 8,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.09090909090909091,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 1.0,
+            "abstain_unsupported": 4.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.2,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.0,
+            "inconclusive": 4.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.5454545454545454,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.0,
+            "abstain_tied": 1.0,
+            "abstain_unsupported": 4.0,
+            "inconclusive": 4.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "qwen:k6|primary": {
+      "abstention": 0.6153846153846154,
+      "arm": "qwen:k6",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 2.0,
+        "c1_fraction": 0.2,
+        "c2_fva_classes": {
+          "called": {
+            "required": 1
+          },
+          "truth": {
+            "required": 2
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 2,
+        "max_solver_calls": 540,
+        "qwen_calls_without_token_usage": 0,
+        "qwen_completed_calls": 60,
+        "qwen_completion_tokens": 584,
+        "qwen_failed_calls": 0,
+        "qwen_failures": 0,
+        "qwen_http_attempts": 60,
+        "qwen_prompt_tokens": 2231861,
+        "qwen_requests": 60,
+        "qwen_seconds": 3056.92997013923,
+        "runs": 14,
+        "solver_calls_unused": 230,
+        "solver_calls_used": 310,
+        "wall_seconds": 3116.6208679600386
+      },
+      "counts": {
+        "abstain_policy": 1.0,
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 4.0,
+        "inconclusive": 2.0,
+        "no_admissible_experiment": 3.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 31,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agree": 5,
+        "constant_growth_agreement": 0.16129032258064516,
+        "constant_no_growth_agree": 26,
+        "constant_no_growth_agreement": 0.8387096774193549,
+        "not_evaluable_pairs": 17,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.07692307692307693,
+          "threshold": 0.43
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.6666666666666666,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.0,
+            "abstain_tied": 1.0,
+            "abstain_unsupported": 2.0,
+            "inconclusive": 1.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.5714285714285714,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 2.0,
+            "inconclusive": 1.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.7272727272727273,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.0,
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 4.0,
+            "inconclusive": 2.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "qwen:k6|sensitivity": {
+      "abstention": 0.0,
+      "arm": "qwen:k6",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 0.0,
+        "c1_fraction": 0.0,
+        "c2_fva_classes": {
+          "called": {},
+          "truth": {}
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 11,
+        "max_solver_calls": 540,
+        "qwen_calls_without_token_usage": 0,
+        "qwen_completed_calls": 41,
+        "qwen_completion_tokens": 410,
+        "qwen_failed_calls": 0,
+        "qwen_failures": 0,
+        "qwen_http_attempts": 41,
+        "qwen_prompt_tokens": 1332694,
+        "qwen_requests": 41,
+        "qwen_seconds": 1630.958960136748,
+        "runs": 12,
+        "solver_calls_unused": 354,
+        "solver_calls_used": 186,
+        "wall_seconds": 1663.3918719509384
+      },
+      "counts": {
+        "inconclusive": 10.0,
+        "no_admissible_experiment": 1.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "called_agreement": null,
+        "called_coverage": null,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agreement": null,
+        "constant_no_growth_agreement": null,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.0,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "inconclusive": 5.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.0,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "inconclusive": 5.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.0,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "inconclusive": 10.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "random:k3|primary": {
+      "abstention": 0.7692307692307687,
+      "arm": "random:k3",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 1.9,
+        "c1_fraction": 0.19000000000000006,
+        "c2_fva_classes": {
+          "called": {},
+          "truth": {
+            "optional": 12,
+            "required": 33
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 2700,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 140,
+        "solver_calls_unused": 894,
+        "solver_calls_used": 1806,
+        "wall_seconds": 107.46582443003717
+      },
+      "counts": {
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 6.9,
+        "no_admissible_experiment": 3.0,
+        "no_consistent_hypothesis": 0.1
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 79,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 7600,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 4050,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 3550,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 21800
+        },
+        "constant_growth_agree": 46,
+        "constant_growth_agreement": 0.5822784810126582,
+        "constant_no_growth_agree": 33,
+        "constant_no_growth_agreement": 0.4177215189873418,
+        "not_evaluable_pairs": 221,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 10
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333336,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 1.0,
+            "abstain_unsupported": 3.9,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 0.1
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.7142857142857145,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909084,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 6.9,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 0.1
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "random:k3|sensitivity": {
+      "abstention": 0.909090909090909,
+      "arm": "random:k3",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 8.0,
+        "c1_fraction": 0.7999999999999987,
+        "c2_fva_classes": {
+          "called": {
+            "optional": 5,
+            "required": 46
+          },
+          "truth": {
+            "optional": 63,
+            "required": 198
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 2700,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 120,
+        "solver_calls_unused": 34,
+        "solver_calls_used": 2666,
+        "wall_seconds": 134.42839429511514
+      },
+      "counts": {
+        "abstain_policy": 1.7,
+        "abstain_tied": 2.4,
+        "abstain_unsupported": 5.2,
+        "no_admissible_experiment": 1.0,
+        "no_consistent_hypothesis": 0.7
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 79,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 7600,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 4050,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 3550,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 21800
+        },
+        "constant_growth_agree": 46,
+        "constant_growth_agreement": 0.5822784810126582,
+        "constant_no_growth_agree": 33,
+        "constant_no_growth_agreement": 0.4177215189873418,
+        "not_evaluable_pairs": 221,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 1.7,
+          "harm": 0.02727272727272728,
+          "precision": 0.8235294117647058,
+          "recovery": 0.1272727272727273,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 1.5,
+          "harm": 0.02727272727272728,
+          "precision": 0.7999999999999999,
+          "recovery": 0.10909090909090909,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 1.4,
+          "harm": 0.02727272727272728,
+          "precision": 0.7857142857142857,
+          "recovery": 0.09999999999999999,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 1.2,
+          "harm": 0.02727272727272728,
+          "precision": 0.75,
+          "recovery": 0.0818181818181818,
+          "threshold": 0.771678
+        },
+        {
+          "decisions": 0.9,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.0818181818181818,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 0.6,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.05454545454545454,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 0.3,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.02727272727272728,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 10
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333336,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 0.5,
+            "abstain_tied": 1.0,
+            "abstain_unsupported": 3.1,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 0.4
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 1.0000000000000002,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.2,
+            "abstain_tied": 1.4,
+            "abstain_unsupported": 2.1,
+            "no_consistent_hypothesis": 0.3
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.909090909090909,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.7,
+            "abstain_tied": 2.4,
+            "abstain_unsupported": 5.2,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 0.7
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "random:k6|primary": {
+      "abstention": 0.7692307692307687,
+      "arm": "random:k6",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 2.3,
+        "c1_fraction": 0.23000000000000007,
+        "c2_fva_classes": {
+          "called": {},
+          "truth": {
+            "optional": 21,
+            "required": 59
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 5400,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 140,
+        "solver_calls_unused": 1816,
+        "solver_calls_used": 3584,
+        "wall_seconds": 198.48919124901295
+      },
+      "counts": {
+        "abstain_tied": 3.0,
+        "abstain_unsupported": 6.8,
+        "no_admissible_experiment": 3.0,
+        "no_consistent_hypothesis": 0.2
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "binary_pairs": 150,
+        "called_agreement": null,
+        "called_coverage": 0.0,
+        "common_exhaustive": {
+          "binary_pairs": 7600,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 4050,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 3550,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_pairs": 21800
+        },
+        "constant_growth_agree": 90,
+        "constant_growth_agreement": 0.6,
+        "constant_no_growth_agree": 60,
+        "constant_no_growth_agreement": 0.4,
+        "not_evaluable_pairs": 450,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.22809537235419838
+      ],
+      "reported_only": {
+        "ambiguous_truth": 10
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333336,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 1.0,
+            "abstain_unsupported": 3.8,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 0.2
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.7142857142857145,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9090909090909084,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 3.0,
+            "abstain_unsupported": 6.8,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 0.2
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "random:k6|sensitivity": {
+      "abstention": 0.9000000000000004,
+      "arm": "random:k6",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 8.0,
+        "c1_fraction": 0.7999999999999987,
+        "c2_fva_classes": {
+          "called": {
+            "optional": 20,
+            "required": 142
+          },
+          "truth": {
+            "optional": 129,
+            "required": 385
+          }
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.0,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 5400,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 120,
+        "solver_calls_unused": 108,
+        "solver_calls_used": 5292,
+        "wall_seconds": 253.49917553906562
+      },
+      "counts": {
+        "abstain_policy": 2.8,
+        "abstain_tied": 2.0,
+        "abstain_unsupported": 3.8,
+        "false_null": 0.1,
+        "no_admissible_experiment": 1.0,
+        "no_consistent_hypothesis": 1.3
+      },
+      "denominator": 11,
+      "false_null": 0.009090909090909092,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "agree": 2,
+        "binary_pairs": 150,
+        "called_agree": 2,
+        "called_agreement": 1.0,
+        "called_coverage": 0.013333333333333334,
+        "called_pairs": 2,
+        "common_exhaustive": {
+          "agree": 44,
+          "binary_pairs": 7600,
+          "called_agree": 44,
+          "called_agreement": 0.55,
+          "called_coverage": 0.010526315789473684,
+          "called_pairs": 80,
+          "constant_growth_agree": 4050,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 3550,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "contradict": 36,
+          "not_evaluable_pairs": 21800
+        },
+        "constant_growth_agree": 90,
+        "constant_growth_agreement": 0.6,
+        "constant_no_growth_agree": 60,
+        "constant_no_growth_agreement": 0.4,
+        "not_evaluable_pairs": 450,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "no_supported_threshold_abstain",
+      "precision_recovery_curve": [
+        {
+          "decisions": 2.8,
+          "harm": 0.05454545454545454,
+          "precision": 0.7857142857142857,
+          "recovery": 0.20000000000000007,
+          "threshold": 0.354502
+        },
+        {
+          "decisions": 2.6,
+          "harm": 0.03636363636363637,
+          "precision": 0.8461538461538461,
+          "recovery": 0.20000000000000007,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 2.3,
+          "harm": 0.03636363636363637,
+          "precision": 0.8260869565217391,
+          "recovery": 0.17272727272727278,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 2.2,
+          "harm": 0.03636363636363637,
+          "precision": 0.8181818181818181,
+          "recovery": 0.1636363636363637,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 1.8,
+          "harm": 0.03636363636363637,
+          "precision": 0.7777777777777778,
+          "recovery": 0.1272727272727273,
+          "threshold": 0.771678
+        },
+        {
+          "decisions": 1.4,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.1272727272727273,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 0.9,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.0818181818181818,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 0.5,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.045454545454545456,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.0,
+      "recovery_wilson95": [
+        0.0,
+        0.2588329669680317
+      ],
+      "reported_only": {
+        "ambiguous_truth": 10
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333335,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.0,
+            "abstain_tied": 1.0,
+            "abstain_unsupported": 2.3,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 0.7
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.9800000000000001,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 1.8,
+            "abstain_tied": 1.0,
+            "abstain_unsupported": 1.5,
+            "false_null": 0.1,
+            "no_consistent_hypothesis": 0.6
+          },
+          "denominator": 5,
+          "false_null": 0.02,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.43448246478317476
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.9000000000000004,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 2.8,
+            "abstain_tied": 2.0,
+            "abstain_unsupported": 3.8,
+            "false_null": 0.1,
+            "no_admissible_experiment": 1.0,
+            "no_consistent_hypothesis": 1.3
+          },
+          "denominator": 11,
+          "false_null": 0.009090909090909092,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.2588329669680317
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": null,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    },
+    "sequence_only|primary": {
+      "abstention": 0.5384615384615384,
+      "arm": "sequence_only",
+      "candidate_recall": 0.6923076923076923,
+      "candidate_recall_wilson95": [
+        0.42369343180549035,
+        0.8731929634428948
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 0.0,
+        "c1_fraction": 0.0,
+        "c2_fva_classes": {
+          "called": {},
+          "truth": {}
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.3333333333333333,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 0,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 14,
+        "solver_calls_unused": 0,
+        "solver_calls_used": 0,
+        "wall_seconds": 0
+      },
+      "counts": {
+        "abstain_policy": 4.0,
+        "abstain_tied": 3.0,
+        "correct_call": 3.0,
+        "no_admissible_experiment": 3.0
+      },
+      "denominator": 13,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "called_agreement": null,
+        "called_coverage": null,
+        "common_exhaustive": {
+          "binary_pairs": 760,
+          "called_agreement": null,
+          "called_coverage": 0.0,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "not_evaluable_called_pairs": 240,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agreement": null,
+        "constant_no_growth_agreement": null,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "selected_on_calibration",
+      "precision_recovery_curve": [
+        {
+          "decisions": 7.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.5384615384615384,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 6.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.46153846153846156,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 5.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.38461538461538464,
+          "threshold": 0.594216
+        },
+        {
+          "decisions": 4.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.3076923076923077,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.23076923076923078,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.15384615384615385,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.07692307692307693,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.23076923076923078,
+      "recovery_wilson95": [
+        0.08179528718498569,
+        0.5025637594672749
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.2857142857142857,
+          "candidate_recall": 0.5714285714285714,
+          "candidate_recall_wilson95": [
+            0.2504583645276572,
+            0.8417801447485302
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.75,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "correct_call": 3.0,
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 7,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.42857142857142855,
+          "recovery_wilson95": [
+            0.15821985525146975,
+            0.7495416354723428
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.6363636363636364,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.3333333333333333,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "abstain_tied": 3.0,
+            "correct_call": 3.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.2727272727272727,
+          "recovery_wilson95": [
+            0.09746059290024889,
+            0.5656453011761291
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:transport_only": {
+          "abstention": 0.0,
+          "candidate_recall": 0.0,
+          "candidate_recall_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "conditional_denominator": 0,
+          "conditional_recovery": null,
+          "correct_negative": 0.0,
+          "counts": {
+            "no_admissible_experiment": 2.0
+          },
+          "denominator": 2,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": 0.864,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "primary"
+    },
+    "sequence_only|sensitivity": {
+      "abstention": 0.6363636363636364,
+      "arm": "sequence_only",
+      "candidate_recall": 0.8181818181818182,
+      "candidate_recall_wilson95": [
+        0.523019438039156,
+        0.9486323102539149
+      ],
+      "capacity": {
+        "c1_cases": 10,
+        "c1_discriminating": 0.0,
+        "c1_fraction": 0.0,
+        "c2_fva_classes": {
+          "called": {},
+          "truth": {}
+        }
+      },
+      "conditional_denominator": 9,
+      "conditional_recovery": 0.3333333333333333,
+      "correct_negative": 0.0,
+      "cost": {
+        "failed_runs": 0,
+        "max_solver_calls": 0,
+        "qwen_failures": 0,
+        "qwen_requests": 0,
+        "qwen_seconds": 0,
+        "runs": 12,
+        "solver_calls_unused": 0,
+        "solver_calls_used": 0,
+        "wall_seconds": 0
+      },
+      "counts": {
+        "abstain_policy": 4.0,
+        "abstain_tied": 3.0,
+        "correct_call": 3.0,
+        "no_admissible_experiment": 1.0
+      },
+      "denominator": 11,
+      "false_null": 0.0,
+      "harm": 0.0,
+      "partial_overlap_calls": 0.0,
+      "phenotype_agreement": {
+        "called_agreement": null,
+        "called_coverage": null,
+        "common_exhaustive": {
+          "agree": 235,
+          "binary_pairs": 760,
+          "called_agree": 235,
+          "called_agreement": 0.9791666666666666,
+          "called_coverage": 0.3157894736842105,
+          "called_pairs": 240,
+          "constant_growth_agree": 405,
+          "constant_growth_agreement": 0.5328947368421053,
+          "constant_no_growth_agree": 355,
+          "constant_no_growth_agreement": 0.46710526315789475,
+          "contradict": 5,
+          "not_evaluable_pairs": 2180
+        },
+        "constant_growth_agreement": null,
+        "constant_no_growth_agreement": null,
+        "unmasked_original": {
+          "reason": "The \u00a78 public-only runner has no unmasked-original reference stage; no private model is introduced here.",
+          "status": "not_available"
+        }
+      },
+      "policy_status": "selected_on_calibration",
+      "precision_recovery_curve": [
+        {
+          "decisions": 7.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.6363636363636364,
+          "threshold": 0.429536
+        },
+        {
+          "decisions": 6.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.5454545454545454,
+          "threshold": 0.43
+        },
+        {
+          "decisions": 5.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.45454545454545453,
+          "threshold": 0.594216
+        },
+        {
+          "decisions": 4.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.36363636363636365,
+          "threshold": 0.76153
+        },
+        {
+          "decisions": 3.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.2727272727272727,
+          "threshold": 0.937
+        },
+        {
+          "decisions": 2.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.18181818181818182,
+          "threshold": 0.951
+        },
+        {
+          "decisions": 1.0,
+          "harm": 0.0,
+          "precision": 1.0,
+          "recovery": 0.09090909090909091,
+          "threshold": 0.96
+        }
+      ],
+      "recovery": 0.2727272727272727,
+      "recovery_wilson95": [
+        0.09746059290024889,
+        0.5656453011761291
+      ],
+      "reported_only": {
+        "ambiguous_truth": 1
+      },
+      "strata": {
+        "species:Bs": {
+          "abstention": 0.8333333333333334,
+          "candidate_recall": 0.8333333333333334,
+          "candidate_recall_wilson95": [
+            0.43649717781352987,
+            0.9699466302516935
+          ],
+          "conditional_denominator": 5,
+          "conditional_recovery": 0.0,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "abstain_tied": 1.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 6,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.0,
+          "recovery_wilson95": [
+            2.7755575615628914e-17,
+            0.3903342879021653
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "species:Ec": {
+          "abstention": 0.4,
+          "candidate_recall": 0.8,
+          "candidate_recall_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "conditional_denominator": 4,
+          "conditional_recovery": 0.75,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_tied": 2.0,
+            "correct_call": 3.0
+          },
+          "denominator": 5,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.6,
+          "recovery_wilson95": [
+            0.2307242812760128,
+            0.882379225767352
+          ],
+          "transport_catalytic_calls": 0.0
+        },
+        "stratum:catalytic": {
+          "abstention": 0.6363636363636364,
+          "candidate_recall": 0.8181818181818182,
+          "candidate_recall_wilson95": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "conditional_denominator": 9,
+          "conditional_recovery": 0.3333333333333333,
+          "correct_negative": 0.0,
+          "counts": {
+            "abstain_policy": 4.0,
+            "abstain_tied": 3.0,
+            "correct_call": 3.0,
+            "no_admissible_experiment": 1.0
+          },
+          "denominator": 11,
+          "false_null": 0.0,
+          "harm": 0.0,
+          "partial_overlap_calls": 0.0,
+          "recovery": 0.2727272727272727,
+          "recovery_wilson95": [
+            0.09746059290024889,
+            0.5656453011761291
+          ],
+          "transport_catalytic_calls": 0.0
+        }
+      },
+      "threshold": 0.864,
+      "transport_catalytic_calls": 0.0,
+      "variant_scope": "sensitivity"
+    }
+  },
+  "test_labels_sha256": "e92dc7fa3a538781d1d33a9761af86cae73edf91c55a1dd27e75c2fc93f0b5c7",
+  "test_truth_sha256": "b15b8119af51cc76a61a42b639048de381c568ad698cc5ab2d6b7ce118fcfeaa",
+  "tests": [
+    {
+      "arm": "evidence:k3",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 3,
+        "p": 0.25
+      }
+    },
+    {
+      "arm": "evidence:k3",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "minimal_medium:k3",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "evidence:k6",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 3,
+        "p": 0.25
+      }
+    },
+    {
+      "arm": "evidence:k6",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "minimal_medium:k6",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "exhaustive",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 3,
+        "p": 0.25
+      }
+    },
+    {
+      "arm": "fixed_panel:k3",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 3,
+        "p": 0.25
+      }
+    },
+    {
+      "arm": "fixed_panel:k3",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "minimal_medium:k3",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "fixed_panel:k6",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 3,
+        "p": 0.25
+      }
+    },
+    {
+      "arm": "fixed_panel:k6",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "minimal_medium:k6",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "minimal_medium:k3",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 3,
+        "p": 0.25
+      }
+    },
+    {
+      "arm": "minimal_medium:k6",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 3,
+        "p": 0.25
+      }
+    },
+    {
+      "arm": "qwen:k3",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 3,
+        "p": 0.25
+      }
+    },
+    {
+      "arm": "qwen:k3",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "minimal_medium:k3",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "qwen:k3",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "fixed_panel:k3",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "qwen:k3",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "random:k3"
+    },
+    {
+      "arm": "qwen:k3",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "evidence:k3",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "qwen:k6",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 3,
+        "p": 0.25
+      }
+    },
+    {
+      "arm": "qwen:k6",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "minimal_medium:k6",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "qwen:k6",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "fixed_panel:k6",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "qwen:k6",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "random:k6"
+    },
+    {
+      "arm": "qwen:k6",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "evidence:k6",
+      "mcnemar_exact": {
+        "n_pairs": 13,
+        "only_a": 0,
+        "only_b": 0,
+        "p": 1.0
+      }
+    },
+    {
+      "arm": "random:k3",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only"
+    },
+    {
+      "arm": "random:k3",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "minimal_medium:k3"
+    },
+    {
+      "arm": "random:k6",
+      "bootstrap95_recovery_difference": [
+        -0.46153846153846156,
+        0.0
+      ],
+      "comparator": "sequence_only"
+    },
+    {
+      "arm": "random:k6",
+      "bootstrap95_recovery_difference": [
+        0.0,
+        0.0
+      ],
+      "comparator": "minimal_medium:k6"
+    }
+  ]
+}

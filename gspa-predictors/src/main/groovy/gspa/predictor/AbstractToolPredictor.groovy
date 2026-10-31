@@ -136,7 +136,7 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
         if (result.exitCode != 0) {
             log.error("${name} failed with exit code ${result.exitCode}: ${result.stderr}")
             recordStatus(PredictorRunStatus.failed(name,
-                "exit code ${result.exitCode}: ${result.stderr?.trim()?.take(500)}", result.exitCode), startMillis)
+                "exit code ${result.exitCode}: ${result.stderr?.trim()?.takeRight(500)}", result.exitCode), startMillis)
             return null
         }
         result

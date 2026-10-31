@@ -1,0 +1,916 @@
+{
+  "schema": "gspa.metabolic_experiments/1",
+  "disclaimer": "Conditional model predictions under the stated medium, bounds and maintenance constraint. Not observed phenotypes, not independent proof of gene function, no calibrated probabilities, no automatic gap-fill promotion.",
+  "strategy": "qwen",
+  "seed": 0,
+  "model": {
+    "path": "/home/leechuck/tmp/planner-diagnostic/toy.xml",
+    "sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+    "n_metabolites": 17,
+    "n_reactions": 24,
+    "biomass_reaction": "BIOMASS",
+    "maintenance": {
+      "reaction": "ATPM",
+      "lower_bound": 1.0
+    },
+    "objective_source": "manifest",
+    "n_infinite_bounds_replaced": 0
+  },
+  "budget_policy": {
+    "applies_to": "all strategies (fixed, random, evidence, qwen) identically",
+    "baseline": "1 LP (maximise biomass); always run first when the menu is non-empty",
+    "per_experiment_mandatory": "1 growth LP, plus 2 LPs (max and min secretion) for product experiments",
+    "per_focus_reaction": "3 LPs (FVA min, FVA max, knockout growth) for up to config.max_focus_reactions reactions of the linked hypotheses that the experiment does not itself knock out",
+    "skip_rule": "an experiment is skipped (skipped_budget) if remaining calls < its mandatory calls",
+    "focus_truncation": "focus checks run for floor((remaining - product_LPs) / 3) reactions after the growth LP; any shortfall is recorded as focus_checks_truncated_by_budget",
+    "no_planner_reserve": "no calls are held back for any planner; qwen requests do not consume solver calls",
+    "experiment_limit": "config.max_experiments counts every attempted menu item, skipped_budget included"
+  },
+  "assumptions": [
+    "external exchanges (trusted, declared): ['EX_ac_e', 'EX_coup_e', 'EX_glc_e', 'EX_lac_e', 'EX_nh4_e', 'EX_o2_e', 'EX_sec_e', 'EX_vit_e']",
+    "medium uptake limits: {'EX_glc_e': 10, 'EX_nh4_e': 10, 'EX_o2_e': 10, 'EX_vit_e': 10}; all other declared exchanges closed to uptake",
+    "undeclared single-metabolite reactions with uptake closed: ['ATPM']",
+    "opened exchanges use uptake_rate=10.0",
+    "maintenance constraint: {'reaction': 'ATPM', 'lower_bound': 1.0}",
+    "biomass objective BIOMASS (source: manifest); maximised, growth counted above growth_threshold",
+    "product checks require growth_fraction; maintenance-only checks retain all original model bounds but impose no additional biomass floor",
+    "0 infinite SBML bounds replaced by +-1000.0; finite bounds unchanged",
+    "all outcomes are model-conditional and not observations of growth, expression or production"
+  ],
+  "config": {
+    "strategy": "qwen",
+    "seed": 0,
+    "max_experiments": 4,
+    "max_solver_calls": 60,
+    "uptake_rate": 10.0,
+    "default_bound": 1000.0,
+    "growth_threshold": 1e-06,
+    "flux_tol": 1e-07,
+    "residual_tol": 1e-06,
+    "relative_tol": 0.05,
+    "growth_fraction": 0.95,
+    "product_requirement": "growth_fraction",
+    "max_focus_reactions": 2,
+    "max_baseline_focus_reactions": 6,
+    "panel": null,
+    "qwen": {
+      "model": "qwen3.8-27b",
+      "api_base": null,
+      "max_invalid": 2,
+      "max_tokens": 300
+    }
+  },
+  "hashes": {
+    "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+    "config_sha256": "8621f5e7a41396a3ab0546b0af485c7b0d73ccc806605f5640909fc723f35de2",
+    "context_sha256": "a95fd1d87de74e260b245fbc467439583cafca682b692d2ace3d8b2d7f96e536",
+    "manifest_sha256": "4aa8795b97baf9b6c9bd8e5a9b15c6b1093dda9a02694e89a26863adda60fcd3"
+  },
+  "menu": [
+    {
+      "id": "knockout:H_coup",
+      "kind": "knockout",
+      "description": "knock out BIOMASS",
+      "evidence_ids": [
+        "E_coup"
+      ],
+      "hypothesis_ids": [
+        "H_coup"
+      ],
+      "focus_reactions": [
+        "BIOMASS"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "BIOMASS"
+      ],
+      "perturbation": {
+        "H_coup": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "BIOMASS"
+          ],
+          "genes": []
+        }
+      ]
+    },
+    {
+      "id": "knockout:H_sec",
+      "kind": "knockout",
+      "description": "knock out g6",
+      "evidence_ids": [
+        "E_sec"
+      ],
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "focus_reactions": [
+        "SEC"
+      ],
+      "product_exchange": null,
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "H_sec": "gene_or_reaction"
+      },
+      "min_calls": 1,
+      "max_calls": 1,
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "SEC"
+          ],
+          "genes": [
+            "g6"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "product:EX_coup_e",
+      "kind": "product",
+      "description": "conditional feasibility vs. forced production of EX_coup_e",
+      "evidence_ids": [
+        "E_coup"
+      ],
+      "hypothesis_ids": [
+        "H_coup"
+      ],
+      "focus_reactions": [
+        "BIOMASS"
+      ],
+      "product_exchange": "EX_coup_e",
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "BIOMASS"
+      ],
+      "perturbation": {
+        "H_coup": "gene_or_reaction"
+      },
+      "min_calls": 3,
+      "max_calls": 6,
+      "mods": []
+    },
+    {
+      "id": "product:EX_sec_e",
+      "kind": "product",
+      "description": "conditional feasibility vs. forced production of EX_sec_e",
+      "evidence_ids": [
+        "E_sec"
+      ],
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "focus_reactions": [
+        "SEC"
+      ],
+      "product_exchange": "EX_sec_e",
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "H_sec": "gene_or_reaction"
+      },
+      "min_calls": 3,
+      "max_calls": 6,
+      "mods": []
+    }
+  ],
+  "menu_rejections": [],
+  "selection_log": [
+    {
+      "source": "qwen",
+      "rationale": "Baseline shows SEC is optional (min flux 0). Testing forced production of EX_sec_e will determine if the pathway can be upregulated to produce the product, which is a key discriminator for the H_sec hypothesis compared to the essential BIOMASS reaction in H_coup.",
+      "prompt_schema": "gspa.metabolic_planner_observation/2",
+      "prompt_sha256": "d177e8d7b510a25417a7560fad8345f34d5d5e7168dbfa4db2c581e32b65d279",
+      "valid": true,
+      "experiment_id": "product:EX_sec_e"
+    },
+    {
+      "source": "qwen",
+      "rationale": "H_sec is supported by feasible secretion of EX_sec_e. H_coup requires testing if EX_coup_e secretion is feasible or unavoidable under the same constraints to discriminate between the two hypotheses.",
+      "prompt_schema": "gspa.metabolic_planner_observation/2",
+      "prompt_sha256": "cd66eae34067288eafefb790782c9f06cf26f8901238267a34be4520a7b98fbf",
+      "valid": true,
+      "experiment_id": "product:EX_coup_e"
+    },
+    {
+      "source": "qwen",
+      "rationale": "Knocking out g6/SEC tests if the optional flux is essential for the specific secretion phenotype, distinguishing H_sec from H_coup where secretion is unavoidable.",
+      "prompt_schema": "gspa.metabolic_planner_observation/2",
+      "prompt_sha256": "5778c203af86b50ba3450d5c9c837b7a172a81a8e2d32c7c51e6c6e162531f65",
+      "valid": true,
+      "experiment_id": "knockout:H_sec"
+    },
+    {
+      "source": "qwen",
+      "rationale": "H_coup is supported by unavoidable secretion (min_secretion > 0) and required flux, while H_sec is refuted by dispensable flux and knockout tolerance. Knocking out BIOMASS (H_coup) will abolish growth, confirming the essentiality predicted by the model and distinguishing it from the non-essential H_",
+      "prompt_schema": "gspa.metabolic_planner_observation/2",
+      "prompt_sha256": "742b7e4b036446bc0f86a6ed0c9a0b42c597494dcc09d304804ff19d43b90616",
+      "valid": true,
+      "experiment_id": "knockout:H_coup"
+    }
+  ],
+  "experiments": [
+    {
+      "experiment_id": "baseline",
+      "kind": "baseline",
+      "description": "baseline medium with maintenance",
+      "mods": [],
+      "evidence_ids": [],
+      "hypothesis_ids": [],
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [],
+      "perturbation": {},
+      "status": "completed",
+      "outcome": "growth",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 10.0,
+        "focus_reactions_not_checked": [],
+        "focus_checks": [
+          {
+            "reaction": "SEC",
+            "fva_min": 0.0,
+            "fva_max": 7.222222222222222,
+            "flux_class": "optional_flux",
+            "knockout_growth": 10.0,
+            "knockout_growth_ratio": 1.0,
+            "knockout_class": "knockout_dispensable"
+          },
+          {
+            "reaction": "BIOMASS",
+            "fva_min": 9.5,
+            "fva_max": 10.0,
+            "flux_class": "required_flux",
+            "knockout_growth": 0.0,
+            "knockout_growth_ratio": 0.0,
+            "knockout_class": "knockout_abolishes_growth"
+          }
+        ]
+      },
+      "solver_calls": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_requires_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth",
+        "hypothesis_ids": [],
+        "evidence_ids": [],
+        "candidate_genes": [],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "product:EX_sec_e",
+      "kind": "product",
+      "description": "conditional feasibility vs. forced production of EX_sec_e",
+      "mods": [],
+      "evidence_ids": [
+        "E_sec"
+      ],
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "H_sec": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0,
+        "focus_reactions_not_checked": [],
+        "focus_checks": [
+          {
+            "reaction": "SEC",
+            "fva_min": 0.0,
+            "fva_max": 7.222222222222222,
+            "flux_class": "optional_flux",
+            "knockout_growth": 10.0,
+            "knockout_growth_ratio": 1.0,
+            "knockout_class": "knockout_dispensable"
+          }
+        ],
+        "product": {
+          "exchange": "EX_sec_e",
+          "growth_floor": 9.5,
+          "requirement": "growth_fraction",
+          "maintenance": {
+            "reaction": "ATPM",
+            "lower_bound": 1.0
+          },
+          "max_secretion": 7.222222222222222,
+          "min_secretion_at_required_state": 0.0,
+          "min_secretion_at_growth_floor": 0.0,
+          "conditional_feasibility": true,
+          "secretion_unavoidable_in_model": false,
+          "class": "secretion_feasible_not_unavoidable"
+        }
+      },
+      "solver_calls": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_sec"
+        ],
+        "evidence_ids": [
+          "E_sec"
+        ],
+        "candidate_genes": [
+          "g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "product:EX_coup_e",
+      "kind": "product",
+      "description": "conditional feasibility vs. forced production of EX_coup_e",
+      "mods": [],
+      "evidence_ids": [
+        "E_coup"
+      ],
+      "hypothesis_ids": [
+        "H_coup"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "BIOMASS"
+      ],
+      "perturbation": {
+        "H_coup": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0,
+        "focus_reactions_not_checked": [],
+        "focus_checks": [
+          {
+            "reaction": "BIOMASS",
+            "fva_min": 9.5,
+            "fva_max": 10.0,
+            "flux_class": "required_flux",
+            "knockout_growth": 0.0,
+            "knockout_growth_ratio": 0.0,
+            "knockout_class": "knockout_abolishes_growth"
+          }
+        ],
+        "product": {
+          "exchange": "EX_coup_e",
+          "growth_floor": 9.5,
+          "requirement": "growth_fraction",
+          "maintenance": {
+            "reaction": "ATPM",
+            "lower_bound": 1.0
+          },
+          "max_secretion": 1.0,
+          "min_secretion_at_required_state": 0.9500000000000001,
+          "min_secretion_at_growth_floor": 0.9500000000000001,
+          "conditional_feasibility": true,
+          "secretion_unavoidable_in_model": true,
+          "class": "secretion_unavoidable_in_model"
+        }
+      },
+      "solver_calls": [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_requires_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_coup"
+        ],
+        "evidence_ids": [
+          "E_coup"
+        ],
+        "candidate_genes": [],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "BIOMASS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:H_sec",
+      "kind": "knockout",
+      "description": "knock out g6",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "SEC"
+          ],
+          "genes": [
+            "g6"
+          ]
+        }
+      ],
+      "evidence_ids": [
+        "E_sec"
+      ],
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "perturbation": {
+        "H_sec": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "measurements": {
+        "knocked_out_reactions": [
+          "SEC"
+        ],
+        "max_growth": 10.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 1.0
+      },
+      "solver_calls": [
+        19
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_does_not_require_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_unchanged",
+        "hypothesis_ids": [
+          "H_sec"
+        ],
+        "evidence_ids": [
+          "E_sec"
+        ],
+        "candidate_genes": [
+          "g6"
+        ],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "SEC"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    },
+    {
+      "experiment_id": "knockout:H_coup",
+      "kind": "knockout",
+      "description": "knock out BIOMASS",
+      "mods": [
+        {
+          "op": "knockout",
+          "reactions": [
+            "BIOMASS"
+          ],
+          "genes": []
+        }
+      ],
+      "evidence_ids": [
+        "E_coup"
+      ],
+      "hypothesis_ids": [
+        "H_coup"
+      ],
+      "competing_hypotheses": [],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "BIOMASS"
+      ],
+      "perturbation": {
+        "H_coup": "gene_or_reaction"
+      },
+      "status": "completed",
+      "outcome": "growth_lost",
+      "measurements": {
+        "knocked_out_reactions": [
+          "BIOMASS"
+        ],
+        "max_growth": 0.0,
+        "baseline_growth": 10.0,
+        "baseline_outcome": "growth",
+        "growth_ratio": 0.0
+      },
+      "solver_calls": [
+        20
+      ],
+      "condition_constraints": [],
+      "conditional_evidence": {
+        "evidence_type": "metabolic_experiment_conditional",
+        "bearing": "model_requires_reaction_in_condition",
+        "model_conditional": true,
+        "independent_proof_of_function": false,
+        "calibrated_probability": null,
+        "promotion": "none",
+        "status": "completed",
+        "outcome": "growth_lost",
+        "hypothesis_ids": [
+          "H_coup"
+        ],
+        "evidence_ids": [
+          "E_coup"
+        ],
+        "candidate_genes": [],
+        "unmapped_candidate_genes": [],
+        "candidate_reactions": [
+          "BIOMASS"
+        ],
+        "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives."
+      }
+    }
+  ],
+  "outcome": "completed",
+  "solver": {
+    "max_calls": 60,
+    "used": 21,
+    "calls": [
+      {
+        "call": 0,
+        "label": "baseline:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 1,
+        "label": "baseline:fva_min:SEC",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 2,
+        "label": "baseline:fva_max:SEC",
+        "status": "optimal",
+        "objective": -7.222222222222222,
+        "note": ""
+      },
+      {
+        "call": 3,
+        "label": "baseline:ko:SEC",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 4,
+        "label": "baseline:fva_min:BIOMASS",
+        "status": "optimal",
+        "objective": 9.5,
+        "note": ""
+      },
+      {
+        "call": 5,
+        "label": "baseline:fva_max:BIOMASS",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 6,
+        "label": "baseline:ko:BIOMASS",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 7,
+        "label": "product:EX_sec_e:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 8,
+        "label": "product:EX_sec_e:fva_min:SEC",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 9,
+        "label": "product:EX_sec_e:fva_max:SEC",
+        "status": "optimal",
+        "objective": -7.222222222222222,
+        "note": ""
+      },
+      {
+        "call": 10,
+        "label": "product:EX_sec_e:ko:SEC",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 11,
+        "label": "product:EX_sec_e:product_max",
+        "status": "optimal",
+        "objective": -7.222222222222222,
+        "note": ""
+      },
+      {
+        "call": 12,
+        "label": "product:EX_sec_e:product_min",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 13,
+        "label": "product:EX_coup_e:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 14,
+        "label": "product:EX_coup_e:fva_min:BIOMASS",
+        "status": "optimal",
+        "objective": 9.5,
+        "note": ""
+      },
+      {
+        "call": 15,
+        "label": "product:EX_coup_e:fva_max:BIOMASS",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 16,
+        "label": "product:EX_coup_e:ko:BIOMASS",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      },
+      {
+        "call": 17,
+        "label": "product:EX_coup_e:product_max",
+        "status": "optimal",
+        "objective": -1.0,
+        "note": ""
+      },
+      {
+        "call": 18,
+        "label": "product:EX_coup_e:product_min",
+        "status": "optimal",
+        "objective": 0.9500000000000001,
+        "note": ""
+      },
+      {
+        "call": 19,
+        "label": "knockout:H_sec:max_growth",
+        "status": "optimal",
+        "objective": -10.0,
+        "note": ""
+      },
+      {
+        "call": 20,
+        "label": "knockout:H_coup:max_growth",
+        "status": "optimal",
+        "objective": 0.0,
+        "note": ""
+      }
+    ]
+  },
+  "evidence": {
+    "used": [
+      "E_coup",
+      "E_sec"
+    ],
+    "not_used": []
+  },
+  "conditional_evidence": [
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "evidence_ids": [
+        "E_sec"
+      ],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "product:EX_sec_e",
+      "kind": "product",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "8621f5e7a41396a3ab0546b0af485c7b0d73ccc806605f5640909fc723f35de2",
+      "solver_calls": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_requires_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_coup"
+      ],
+      "evidence_ids": [
+        "E_coup"
+      ],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "BIOMASS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "product:EX_coup_e",
+      "kind": "product",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "8621f5e7a41396a3ab0546b0af485c7b0d73ccc806605f5640909fc723f35de2",
+      "solver_calls": [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_does_not_require_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_unchanged",
+      "hypothesis_ids": [
+        "H_sec"
+      ],
+      "evidence_ids": [
+        "E_sec"
+      ],
+      "candidate_genes": [
+        "g6"
+      ],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "SEC"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:H_sec",
+      "kind": "knockout",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "8621f5e7a41396a3ab0546b0af485c7b0d73ccc806605f5640909fc723f35de2",
+      "solver_calls": [
+        19
+      ]
+    },
+    {
+      "evidence_type": "metabolic_experiment_conditional",
+      "bearing": "model_requires_reaction_in_condition",
+      "model_conditional": true,
+      "independent_proof_of_function": false,
+      "calibrated_probability": null,
+      "promotion": "none",
+      "status": "completed",
+      "outcome": "growth_lost",
+      "hypothesis_ids": [
+        "H_coup"
+      ],
+      "evidence_ids": [
+        "E_coup"
+      ],
+      "candidate_genes": [],
+      "unmapped_candidate_genes": [],
+      "candidate_reactions": [
+        "BIOMASS"
+      ],
+      "note": "Model-conditional; not observed phenotype, expression or production. A required/dispensable call reflects this model's network, which may omit alternatives.",
+      "experiment_id": "knockout:H_coup",
+      "kind": "knockout",
+      "model_sha256": "08026a34d77d0cdf3fbaf439a6fe6bf23010f250076537b1bb324abccc9bd7c9",
+      "config_sha256": "8621f5e7a41396a3ab0546b0af485c7b0d73ccc806605f5640909fc723f35de2",
+      "solver_calls": [
+        20
+      ]
+    }
+  ],
+  "promotion": "none"
+}

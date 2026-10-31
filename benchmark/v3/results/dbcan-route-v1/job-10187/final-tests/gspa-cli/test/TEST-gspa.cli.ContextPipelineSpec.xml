@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.cli.ContextPipelineSpec" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-27T17:06:24" hostname="node002" time="0.518">
+  <properties/>
+  <testcase name="the pipeline route runs the cohort stage and exports the same feature rows as gspa integrate" classname="gspa.cli.ContextPipelineSpec" time="0.504"/>
+  <testcase name="a learned stage requested through the pipeline config without a model fails the call and is recorded" classname="gspa.cli.ContextPipelineSpec" time="0.014"/>
+  <system-out><![CDATA[20:06:24.559 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+20:06:24.561 [Test worker] INFO gspa.predictor.AnnotationPipeline --   4 claims from 8 proteins
+20:06:24.580 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+20:06:24.598 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+20:06:24.606 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+20:06:24.609 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Complex classification: 158 GO complex terms
+20:06:24.619 [Test worker] INFO gspa.config.EssentialFunctions -- Loaded 32 essential functions from /home/leechuck/tmp/ef_bacteria_1364721574464402771.tsv (profile: bacteria)
+20:06:24.620 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Essential functions (preset=bacteria): 32 GO terms
+20:06:24.620 [Test worker] INFO gspa.predictor.AnnotationPipeline --   SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+20:06:24.621 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Orthogroups: 3 protein assignments
+20:06:24.622 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+20:06:24.638 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Cohort: 3 genomes (1 targets, 2 reference); baseline = stage-0 raw scores
+20:06:24.670 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Cohort baseline snapshot stage0_raw_max_score:12a43e9f21cbfd6171d73c11; contexts for 1 of 1 target genomes
+20:06:24.671 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+20:06:24.672 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+20:06:24.672 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+20:06:24.674 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Produced 4 integrated annotations
+20:06:24.727 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_the_pipeline_route__0_dir3022861441460598291/export-pipeline
+20:06:24.737 [Test worker] INFO gspa.integration.IntegrationWriter -- Integration writer: updated 4 proteins with 4 integrated annotations
+20:06:24.738 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Wrote: /home/leechuck/tmp/spock_the_pipeline_route__0_dir3022861441460598291/pipeline.tsv
+20:06:24.740 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Cohort context report: /home/leechuck/tmp/spock_the_pipeline_route__0_dir3022861441460598291/pipeline.tsv.cohort.json
+20:06:24.741 [Test worker] INFO gspa.predictor.AnnotationPipeline --   IntegratedAnnotationSet(4 annotations, 4 provenance entries, 0 suggestions)
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_the_pipeline_route__0_dir3022861441460598291/g1.claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_the_pipeline_route__0_dir3022861441460598291/cli.tsv
+  Loaded 4 claims
+20:06:24.784 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+20:06:24.804 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Orthogroups: 3 protein assignments
+  Reaction graph: 5 reactions, 0 currency metabolites, 4 ECs
+  Genome layout: 8 loci across 1 contig(s)
+  Cohort: 3 genomes (1 targets, 2 reference); baseline = stage-0 raw scores
+  Cohort baseline snapshot stage0_raw_max_score:12a43e9f21cbfd6171d73c11; contexts for 1 of 1 target genomes
+20:06:24.866 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+20:06:24.868 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+20:06:24.868 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Feature export: 4 rows over 4 functions -> /home/leechuck/tmp/spock_the_pipeline_route__0_dir3022861441460598291/export-cli
+  Wrote: /home/leechuck/tmp/spock_the_pipeline_route__0_dir3022861441460598291/cli.tsv
+  Cohort context report: /home/leechuck/tmp/spock_the_pipeline_route__0_dir3022861441460598291/cli.tsv.cohort.json
+20:06:24.949 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === Evidence integration (shared workflow) ===
+20:06:24.949 [Test worker] INFO gspa.predictor.AnnotationPipeline --   4 claims from 8 proteins
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

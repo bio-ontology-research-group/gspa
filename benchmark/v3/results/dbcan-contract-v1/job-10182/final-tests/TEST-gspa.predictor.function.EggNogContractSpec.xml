@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.function.EggNogContractSpec" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-27T16:33:53" hostname="node002" time="0.245">
+  <properties/>
+  <testcase name="version-specific commands preserve v2 donor filtering and allow v3 curated donors [version: emapper-2.1.13, filter: true, #0]" classname="gspa.predictor.function.EggNogContractSpec" time="0.006"/>
+  <testcase name="version-specific commands preserve v2 donor filtering and allow v3 curated donors [version: emapper-3.0.0-beta6, filter: false, #1]" classname="gspa.predictor.function.EggNogContractSpec" time="0.001"/>
+  <testcase name="unknown versions and unsupported v3 modes fail before execution [version: unknown, mode: diamond, #0]" classname="gspa.predictor.function.EggNogContractSpec" time="0.002"/>
+  <testcase name="unknown versions and unsupported v3 modes fail before execution [version: emapper-4.0.0, mode: diamond, #1]" classname="gspa.predictor.function.EggNogContractSpec" time="0.0"/>
+  <testcase name="unknown versions and unsupported v3 modes fail before execution [version: emapper-3.0.0, mode: hmmer, #2]" classname="gspa.predictor.function.EggNogContractSpec" time="0.001"/>
+  <testcase name="version probe reads beyond database warnings and does not guess on failed execution [exit: 0, expected: emapper-3.0.0-beta6, #0]" classname="gspa.predictor.function.EggNogContractSpec" time="0.015"/>
+  <testcase name="version probe reads beyond database warnings and does not guess on failed execution [exit: 1, expected: unknown, #1]" classname="gspa.predictor.function.EggNogContractSpec" time="0.008"/>
+  <testcase name="typed configuration reaches eggNOG registration" classname="gspa.predictor.function.EggNogContractSpec" time="0.131"/>
+  <testcase name="observed v2 and v3 tables preserve identities and uncalibrated score provenance [major: 2, proteins: 2, #0]" classname="gspa.predictor.function.EggNogContractSpec" time="0.016"/>
+  <testcase name="observed v2 and v3 tables preserve identities and uncalibrated score provenance [major: 3, proteins: 6, #1]" classname="gspa.predictor.function.EggNogContractSpec" time="0.009"/>
+  <testcase name="v3 cannot silently fall back to the v2 headerless column positions [keepVersion: true, #0]" classname="gspa.predictor.function.EggNogContractSpec" time="0.005"/>
+  <testcase name="v3 cannot silently fall back to the v2 headerless column positions [keepVersion: false, #1]" classname="gspa.predictor.function.EggNogContractSpec" time="0.001"/>
+  <testcase name="optional provenance follows named columns and never treats E-value as seed identity [extraHeader: , extraRow: , seed: , confidence: null, #0]" classname="gspa.predictor.function.EggNogContractSpec" time="0.004"/>
+  <testcase name="optional provenance follows named columns and never treats E-value as seed identity [extraHeader: &#9;seed_ortholog&#9;annotation_confidence, extraRow: &#9;12345&#9;1,2,0, seed: 12345, confidence: 1,2,0, #1]" classname="gspa.predictor.function.EggNogContractSpec" time="0.002"/>
+  <testcase name="duplicate score column names fail instead of choosing an arbitrary score" classname="gspa.predictor.function.EggNogContractSpec" time="0.002"/>
+  <system-out><![CDATA[19:33:54.005 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+19:33:54.025 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Gene caller: prodigal
+19:33:54.027 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: eggnog-mapper
+19:33:54.027 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=prodigal, 1 predictors registered
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

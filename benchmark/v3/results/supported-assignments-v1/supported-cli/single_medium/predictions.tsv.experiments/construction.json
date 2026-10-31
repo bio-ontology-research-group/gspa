@@ -1,0 +1,115 @@
+{
+  "context_source" : "evidence_guided_masked_assignments",
+  "candidate_protein" : "query",
+  "mask_gene" : "pD",
+  "candidates_rejected" : [ ],
+  "excluded_claims" : [ ],
+  "measured_evidence" : [ {
+    "function_key" : "query|EC|EC:1.9.3.1",
+    "channel" : "sequence",
+    "source" : "fixture_predictor",
+    "evidence_type" : "SEQUENCE_SIMILARITY",
+    "raw_score" : 0.1
+  }, {
+    "function_key" : "query|EC|EC:6.2.1.1",
+    "channel" : "sequence",
+    "source" : "fixture_predictor",
+    "evidence_type" : "SEQUENCE_SIMILARITY",
+    "raw_score" : 0.1
+  }, {
+    "function_key" : "query|EC|EC:6.2.1.1",
+    "channel" : "domain",
+    "source" : "synthetic independent complex support",
+    "id" : "complex",
+    "raw_score" : 0.6
+  }, {
+    "function_key" : "query|EC|EC:1.9.3.1",
+    "channel" : "domain",
+    "source" : "synthetic independent multifunction support",
+    "id" : "second_activity",
+    "raw_score" : 0.6
+  } ],
+  "evidence_unmapped" : [ ],
+  "assignment_support" : [ {
+    "id" : "complex",
+    "function_key" : "query|EC|EC:6.2.1.1",
+    "source" : "synthetic independent complex support",
+    "partners" : [ "gPartner" ],
+    "group" : "synthetic_architecture"
+  }, {
+    "id" : "second_activity",
+    "function_key" : "query|EC|EC:1.9.3.1",
+    "source" : "synthetic independent multifunction support",
+    "partners" : [ ],
+    "group" : "synthetic_architecture"
+  } ],
+  "assignment_groups_rejected" : [ ],
+  "joint_mapping_truncated" : [ ],
+  "hypotheses" : [ {
+    "id" : "H1",
+    "reaction" : null,
+    "reactions" : [ "ACS", "RESP" ],
+    "assignments" : {
+      "ACS" : [ [ "MASKED_TARGET", "gPartner" ] ],
+      "RESP" : [ [ "MASKED_TARGET" ] ]
+    },
+    "candidates" : [ {
+      "function_key" : "query|EC|EC:1.9.3.1",
+      "mapping_sources" : [ "sbml_annotation" ],
+      "roles" : [ ]
+    }, {
+      "function_key" : "query|EC|EC:6.2.1.1",
+      "mapping_sources" : [ "sbml_annotation" ],
+      "roles" : [ ]
+    } ],
+    "evidence" : {
+      "domain" : 0.6,
+      "sequence" : 0.1
+    },
+    "supporting_records" : [ "complex", "second_activity" ],
+    "assignment_groups" : [ "synthetic_architecture" ]
+  }, {
+    "id" : "H2",
+    "reaction" : "ACS",
+    "reactions" : [ "ACS" ],
+    "assignments" : {
+      "ACS" : [ [ "MASKED_TARGET", "gPartner" ] ]
+    },
+    "candidates" : [ {
+      "function_key" : "query|EC|EC:6.2.1.1",
+      "mapping_sources" : [ "sbml_annotation" ],
+      "roles" : [ ]
+    } ],
+    "evidence" : {
+      "domain" : 0.6,
+      "sequence" : 0.1
+    },
+    "supporting_records" : [ "complex" ],
+    "assignment_groups" : [ ]
+  }, {
+    "id" : "H3",
+    "reaction" : "RESP",
+    "reactions" : [ "RESP" ],
+    "assignments" : {
+      "RESP" : [ [ "MASKED_TARGET" ] ]
+    },
+    "candidates" : [ {
+      "function_key" : "query|EC|EC:1.9.3.1",
+      "mapping_sources" : [ "sbml_annotation" ],
+      "roles" : [ ]
+    } ],
+    "evidence" : {
+      "domain" : 0.6,
+      "sequence" : 0.1
+    },
+    "supporting_records" : [ "second_activity" ],
+    "assignment_groups" : [ ]
+  } ],
+  "hypotheses_truncated" : [ ],
+  "max_non_null_hypotheses" : 20,
+  "conditions" : 6,
+  "ranking_rule" : "strongest measured channel, then canonical assignment; repeated channels take max; not calibrated probabilities",
+  "assignment_assumption" : "target-alone only without structural support; required partners form AND clauses; named evidence groups support joint activities; alternative mappings remain distinct and bounded; no hidden GPR used",
+  "excluded_sources" : "target GPR, model gene annotations, reactions.tsv, final integration probabilities, FBA and learned/inferred claims; no function is inferred from a gene identifier",
+  "interpretation" : "conditional comparisons; no function recovery, calibrated probability or promotion"
+}

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.workflow.MaskedAssignmentBuilderSpec" tests="24" skipped="0" failures="5" errors="0" timestamp="2026-10-26T19:20:35" hostname="lc-dell" time="0.422">
+  <properties/>
+  <testcase name="hidden GPR and refiner gene assignments cannot affect candidate hypotheses or conditions" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.264"/>
+  <testcase name="alternative reactions stay separate and equivalent reaction hypotheses do not duplicate solver work" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.008"/>
+  <testcase name="raw channels are maxima with stable ordering and truncation always retains null" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.011"/>
+  <testcase name="context-only candidates retain measured zero and noncatalytic roles are not enzyme assignments" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.014"/>
+  <testcase name="inferred and metabolic claims or another proteins calls cannot create candidates" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.004"/>
+  <testcase name="explicit measured transport and product hints create conditions without exposing free text or function keys" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.007"/>
+  <testcase name="private or fabricated evidence fields fail rather than becoming a score [score: NaN, extra: [:], #0]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.003"/>
+  <testcase name="private or fabricated evidence fields fail rather than becoming a score [score: 1.1, extra: [:], #1]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.001"/>
+  <testcase name="private or fabricated evidence fields fail rather than becoming a score [score: -0.1, extra: [:], #2]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.001"/>
+  <testcase name="private or fabricated evidence fields fail rather than becoming a score [score: 0.5, extra: [truth:true], #3]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.001"/>
+  <testcase name="invalid evidence identity and prewritten answers are refused in guided mode" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.002"/>
+  <testcase name="graph mapping is validated against internal model reactions and refiner table alone is insufficient" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.006"/>
+  <testcase name="supported complex subunit produces an AND clause and partner knockout, never a target-alone clause" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.003">
+    <failure message="java.lang.IllegalArgumentException: unsupported masked experiment evidence field" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: unsupported masked experiment evidence field
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build_closure5(MaskedAssignmentBuilder.groovy:93)
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build(MaskedAssignmentBuilder.groovy:87)
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.build(MaskedAssignmentBuilderSpec.groovy:39)
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.supported complex subunit produces an AND clause and partner knockout, never a target-alone clause(MaskedAssignmentBuilderSpec.groovy:192)
+</failure>
+  </testcase>
+  <testcase name="named independent support constructs joint multifunction hypotheses while preserving alternatives" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.002">
+    <failure message="java.lang.IllegalArgumentException: unsupported masked experiment evidence field" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: unsupported masked experiment evidence field
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build_closure5(MaskedAssignmentBuilder.groovy:93)
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build(MaskedAssignmentBuilder.groovy:87)
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.build(MaskedAssignmentBuilderSpec.groovy:39)
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.named independent support constructs joint multifunction hypotheses while preserving alternatives(MaskedAssignmentBuilderSpec.groovy:204)
+</failure>
+  </testcase>
+  <testcase name="alternative EC mappings remain distinct within a supported multifunction group" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.001">
+    <failure message="java.lang.IllegalArgumentException: unsupported masked experiment evidence field" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: unsupported masked experiment evidence field
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build_closure5(MaskedAssignmentBuilder.groovy:93)
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build(MaskedAssignmentBuilder.groovy:87)
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.build(MaskedAssignmentBuilderSpec.groovy:39)
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.alternative EC mappings remain distinct within a supported multifunction group(MaskedAssignmentBuilderSpec.groovy:226)
+</failure>
+  </testcase>
+  <testcase name="joint support never drops a missing member to pretend the group is complete" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.001">
+    <failure message="java.lang.IllegalArgumentException: unsupported masked experiment evidence field" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: unsupported masked experiment evidence field
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build_closure5(MaskedAssignmentBuilder.groovy:93)
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build(MaskedAssignmentBuilder.groovy:87)
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.build(MaskedAssignmentBuilderSpec.groovy:39)
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.joint support never drops a missing member to pretend the group is complete(MaskedAssignmentBuilderSpec.groovy:237)
+</failure>
+  </testcase>
+  <testcase name="complex support cannot turn an accessory-only role into a catalytic assignment" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.08">
+    <failure message="Condition failed with Exception:&#10;&#10;!build([claim()], context, [supported('complex', '1.1.1.1', ['partner'])]).admissible()&#10; |      |         |         |&#10; |      |         |         [id:complex, function_key:query|EC|EC:1.1.1.1, type:domain, source:independent synthetic architecture evidence, score:0.6, required_genes:[partner]]&#10; |      |         &lt;gspa.integration.learned.ExternalContext@34819867 predictorStatus=null neighborhood=[:] cohort=[:] fba=[:] roles=[query|EC|EC:1.1.1.1:[ACCESSORY]] candidates=[] assemblyCompleteness=null&gt;&#10; |      gspa.integration.EvidenceClaim(query, EC, EC:1.1.1.1, null, SEQUENCE_SIMILARITY, real_predictor, 0.001, 0.99, [:], null, null)&#10; java.lang.IllegalArgumentException: unsupported masked experiment evidence field&#10; &#9;at gspa.integration.contextbridge.MaskedAssignmentBuilder.build_closure5(MaskedAssignmentBuilder.groovy:93)&#10; &#9;at gspa.integration.contextbridge.MaskedAssignmentBuilder.build(MaskedAssignmentBuilder.groovy:87)&#10; &#9;at gspa.integration.workflow.MaskedAssignmentBuilderSpec.build(MaskedAssignmentBuilderSpec.groovy:39)&#10; &#9;at gspa.integration.workflow.MaskedAssignmentBuilderSpec.complex support cannot turn an accessory-only role into a catalytic assignment(MaskedAssignmentBuilderSpec.groovy:247)&#10;" type="org.spockframework.runtime.ConditionFailedWithExceptionError">Condition failed with Exception:
+
+!build([claim()], context, [supported('complex', '1.1.1.1', ['partner'])]).admissible()
+ |      |         |         |
+ |      |         |         [id:complex, function_key:query|EC|EC:1.1.1.1, type:domain, source:independent synthetic architecture evidence, score:0.6, required_genes:[partner]]
+ |      |         &lt;gspa.integration.learned.ExternalContext@34819867 predictorStatus=null neighborhood=[:] cohort=[:] fba=[:] roles=[query|EC|EC:1.1.1.1:[ACCESSORY]] candidates=[] assemblyCompleteness=null&gt;
+ |      gspa.integration.EvidenceClaim(query, EC, EC:1.1.1.1, null, SEQUENCE_SIMILARITY, real_predictor, 0.001, 0.99, [:], null, null)
+ java.lang.IllegalArgumentException: unsupported masked experiment evidence field
+ 	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build_closure5(MaskedAssignmentBuilder.groovy:93)
+ 	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build(MaskedAssignmentBuilder.groovy:87)
+ 	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.build(MaskedAssignmentBuilderSpec.groovy:39)
+ 	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.complex support cannot turn an accessory-only role into a catalytic assignment(MaskedAssignmentBuilderSpec.groovy:247)
+
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.complex support cannot turn an accessory-only role into a catalytic assignment(MaskedAssignmentBuilderSpec.groovy:247)
+Caused by: java.lang.IllegalArgumentException: unsupported masked experiment evidence field
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build_closure5(MaskedAssignmentBuilder.groovy:93)
+	at gspa.integration.contextbridge.MaskedAssignmentBuilder.build(MaskedAssignmentBuilder.groovy:87)
+	at gspa.integration.workflow.MaskedAssignmentBuilderSpec.build(MaskedAssignmentBuilderSpec.groovy:39)
+	... 1 more
+</failure>
+  </testcase>
+  <testcase name="invalid partner bindings and group identifiers are rejected [extra: [required_genes:[unknown]], #0]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.002"/>
+  <testcase name="invalid partner bindings and group identifiers are rejected [extra: [required_genes:[target]], #1]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.0"/>
+  <testcase name="invalid partner bindings and group identifiers are rejected [extra: [required_genes:[gT]], #2]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.0"/>
+  <testcase name="invalid partner bindings and group identifiers are rejected [extra: [required_genes:[partner, gP]], #3]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.002"/>
+  <testcase name="invalid partner bindings and group identifiers are rejected [extra: [required_genes:partner], #4]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.001"/>
+  <testcase name="invalid partner bindings and group identifiers are rejected [extra: [assignment_group:], #5]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.001"/>
+  <testcase name="invalid partner bindings and group identifiers are rejected [extra: [assignment_group:3], #6]" classname="gspa.integration.workflow.MaskedAssignmentBuilderSpec" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

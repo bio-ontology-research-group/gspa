@@ -3,6 +3,7 @@ package gspa.integration.contextbridge
 import com.fasterxml.jackson.databind.ObjectMapper
 import gspa.integration.EvidenceClaim
 import gspa.integration.IntegratedAnnotationSet
+import gspa.integration.MetabolicGap
 import gspa.integration.learned.ExternalContext
 import gspa.integration.workflow.IntegrationWorkflowConfig
 
@@ -27,6 +28,7 @@ import gspa.integration.workflow.IntegrationWorkflowConfig
 class ExperimentStage {
 
     static final String SCHEMA = 'gspa.metabolic_experiments/1'
+    static final String MASKED_SCHEMA = 'gspa.masked_assignment_experiments/1'
     private static final Set<String> KNOWN_OUTCOMES = ['completed', 'completed_with_skips_or_inconclusive', 'no_candidate_experiments'] as Set
 
     static class Outcome {
@@ -44,7 +46,8 @@ class ExperimentStage {
      * @param refinerModel the model exported by the metabolic_refinement stage of this run, or null
      */
     Outcome run(IntegrationWorkflowConfig c, File workDir, File refinerModel, IntegratedAnnotationSet integrated,
-                Collection<EvidenceClaim> claims, ExternalContext context, Closure<Collection<String>> graphEcToReactions = null) {
+                Collection<EvidenceClaim> claims, ExternalContext context, Closure<Collection<String>> graphEcToReactions = null,
+                Collection<MetabolicGap> gaps = [], boolean gapsAvailable = false) {
         File templateFile = c.experimentManifestFile
         Map template
         try {
@@ -53,17 +56,53 @@ class ExperimentStage {
             throw new IllegalArgumentException("experiment manifest ${templateFile} is not valid JSON: ${e.message}", e)
         }
         boolean guided = c.experimentMode == 'evidence_guided'
-
-        File model = resolveModel(template, templateFile, refinerModel, guided)
+        boolean maskedAssignments = template.containsKey('assignment_recovery')
+        boolean absenceComparison = template.containsKey('absence_comparison')
+        if (absenceComparison && (maskedAssignments || c.experimentStrategy != 'fixed')) {
+            throw new IllegalArgumentException('absence_comparison uses fixed strategy, separately from assignment_recovery')
+        }
+        File model = resolveModel(template, templateFile, refinerModel, guided && !absenceComparison)
+        boolean fromCurrentRefiner = refinerModel != null && model.canonicalFile == refinerModel.canonicalFile
+        if (absenceComparison && fromCurrentRefiner) {
+            throw new IllegalArgumentException('absence comparison needs a supplied model, not topology selected from this run\'s annotations')
+        }
+        if (maskedAssignments && guided && model == refinerModel) {
+            throw new IllegalArgumentException('guided masked assignments require a supplied model whose topology was not selected from the target annotations; a same-run refiner export is not independent')
+        }
         File refinerTable = (refinerModel != null && model == refinerModel) ? new File(refinerModel.absoluteFile.parentFile, 'reactions.tsv') : null
         SbmlModelInfo modelInfo = SbmlModelInfo.read(model, refinerTable?.isFile() ? refinerTable : null)
+        modelInfo.fromCurrentRefiner = fromCurrentRefiner
+        if (absenceComparison && guided) {
+            return GuidedAbsenceStage.run(c, workDir, template, modelInfo, integrated, claims, context,
+                gaps, gapsAvailable, graphEcToReactions, info)
+        }
 
         workDir.mkdirs()
         Outcome out = new Outcome()
         Map<String, Object> report
         List<ExperimentManifestBuilder.Binding> bindings
         Map manifest
-        if (guided) {
+        if (absenceComparison) {
+            manifest = new LinkedHashMap(template)
+            manifest.model = model.absolutePath
+            report = AbsenceComparisonBridge.bind(manifest, modelInfo, claims, context, graphEcToReactions)
+            bindings = []
+            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new File(workDir, 'construction.json'), report)
+        } else if (guided && maskedAssignments) {
+            List<Map> evidence = c.experimentEvidenceFile != null ? ExperimentManifestBuilder.readEvidenceFile(c.experimentEvidenceFile) : []
+            def built = new MaskedAssignmentBuilder().build(template, modelInfo, claims, context, evidence,
+                c.experimentMaxHypotheses, graphEcToReactions)
+            manifest = built.manifest
+            report = built.report
+            bindings = []
+            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new File(workDir, 'construction.json'), report)
+            if (!built.admissible()) {
+                out.facts = baseFacts(c, modelInfo, report, c.experimentMode) + [
+                    outcome: 'no_admissible_experiment', solver_calls_used: 0, analysis_type: 'masked_assignment',
+                    promotion: 'none', reason: 'no measured candidate maps to an admissible assignment; null alone is not a comparison']
+                return out
+            }
+        } else if (guided) {
             List<Map> evidence = c.experimentEvidenceFile != null ? ExperimentManifestBuilder.readEvidenceFile(c.experimentEvidenceFile) : []
             def built = new ExperimentManifestBuilder().build(template, modelInfo, integrated, claims, context, evidence, c.experimentMaxHypotheses, graphEcToReactions)
             manifest = built.manifest
@@ -98,10 +137,51 @@ class ExperimentStage {
         }
         if (!c.experimentSidecar.isFile()) throw new IllegalArgumentException("experiment sidecar does not exist: ${c.experimentSidecar}")
         info.call("  Metabolic experiments (${c.experimentMode}, strategy ${c.experimentStrategy}, <= ${c.experimentMaxSolverCalls} solver calls)".toString())
-        SidecarRun.Result run = SidecarRun.run(cmd, result, new File(workDir, 'sidecar.log'), c.experimentTimeoutSeconds, SCHEMA,
-            { Map parsed -> verify(parsed, modelInfo, c) })
+        SidecarRun.Result run = SidecarRun.run(cmd, result, new File(workDir, 'sidecar.log'), c.experimentTimeoutSeconds,
+            absenceComparison ? AbsenceComparisonBridge.SCHEMA : maskedAssignments ? MASKED_SCHEMA : SCHEMA,
+            { Map parsed ->
+                if (absenceComparison) AbsenceComparisonBridge.verify(parsed, modelInfo, c, manifest)
+                else if (maskedAssignments) verifyMasked(parsed, modelInfo, c, manifest)
+                else verify(parsed, modelInfo, c)
+            })
         out.solverRun = true
         out.resultFile = result
+
+        if (absenceComparison) {
+            out.solverRun = !(run.parsed.solver_calls as List).isEmpty()
+            out.facts = baseFacts(c, modelInfo, report, c.experimentMode) + [
+                analysis_type: 'absence_comparison', problem_sha256: run.parsed.problem_sha256,
+                solver_calls_used: run.parsed.solver_calls.size(), solver_calls_max: run.parsed.max_solver_calls,
+                outcome: run.parsed.cells && run.parsed.cells.every { it.status == 'completed' } && !run.parsed.unvisited_conditions ?
+                    'completed' : 'completed_with_skips_or_inconclusive',
+                conditions_visited: run.parsed.visited_conditions, conditions_unvisited: run.parsed.unvisited_conditions,
+                comparisons: run.parsed.comparisons, assembly: manifest.absence_comparison.assembly,
+                function_search: manifest.absence_comparison.function_search,
+                gene_attribution: 'unverified', selected_explanation: null,
+                candidates_with_conditional_features: 0, promotion: 'none', seconds: run.seconds,
+                result_file: result.path, result_sha256: run.outputSha256,
+                interpretation: 'Four explicit reaction-level scenarios with separate candidate-assignment interventions. Growth is conditional on model and environmental assumptions; no explanation or gene assignment is verified.']
+            return out
+        }
+
+        if (maskedAssignments) {
+            List<Map> cells = run.parsed.cells as List<Map>
+            out.solverRun = !(run.parsed.solver_calls as List).isEmpty()
+            out.facts = baseFacts(c, modelInfo, guided ? report : [context_source: 'explicit_masked_assignments'], c.experimentMode) + [
+                analysis_type: 'masked_assignment', masked_model_sha256: run.parsed.model.sha256,
+                public_problem_sha256: run.parsed.public_problem_sha256,
+                solver_calls_used: (run.parsed.solver_calls as List).size(), solver_calls_max: run.parsed.max_solver_calls,
+                outcome: cells && cells.every { it.status == 'completed' } && !run.parsed.unvisited_conditions ?
+                    'completed' : 'completed_with_skips_or_inconclusive',
+                hypotheses: run.parsed.public_problem.hypotheses.size(),
+                conditions_visited: run.parsed.visited_conditions, conditions_unvisited: run.parsed.unvisited_conditions,
+                comparisons_completed: cells.count { it.status == 'completed' },
+                comparisons_inconclusive: cells.count { it.status != 'completed' },
+                candidates_with_conditional_features: 0, promotion: 'none', seconds: run.seconds,
+                result_file: result.path, result_sha256: run.outputSha256,
+                interpretation: 'Target gene assignments were masked before scenario construction. These are conditional phenotype signatures, not verified function recovery or learned evidence features.']
+            return out
+        }
 
         Map<String, String> basis = modelInfo.table.collectEntries { rid, row -> [rid, row.basis] }
         ExperimentContextMapper.Mapped mapped = ExperimentContextMapper.map(run.parsed, bindings, basis)
@@ -139,7 +219,8 @@ class ExperimentStage {
         [mode: mode, strategy: c.experimentStrategy, seed: c.experimentSeed, model_file: model.model.path, model_sha256: model.sha256,
          max_experiments: c.experimentMaxExperiments, max_solver_calls: c.experimentMaxSolverCalls,
          context_source: report.context_source, context: report,
-         model_origin: model.hasTable() ? 'refiner export with reactions.tsv (gene rules inferred from this run\'s EC evidence)' : 'supplied model without a refiner table'] as Map<String, Object>
+         reaction_mapping_table_present: model.hasTable(),
+         model_origin: model.fromCurrentRefiner ? 'refiner export with reactions.tsv (gene rules inferred from this run\'s EC evidence)' : 'supplied model; independence is not established by file format or presence of a reaction mapping table'] as Map<String, Object>
     }
 
     private static File resolveModel(Map template, File templateFile, File refinerModel, boolean guided) {
@@ -172,6 +253,40 @@ class ExperimentStage {
     }
 
     /** Content checks: the result belongs to this model and budget and carries no confidence or promotion. */
+    static void verifyMasked(Map parsed, SbmlModelInfo model, IntegrationWorkflowConfig c, Map requested) {
+        if (parsed.input_model_sha256 != model.sha256 || !(parsed.model?.sha256 ==~ /[0-9a-f]{64}/) ||
+            parsed.public_problem?.model != "masked:${parsed.model.sha256}".toString()) {
+            throw new SidecarRun.SidecarFailure('masked result has missing or mismatched model provenance')
+        }
+        if (parsed.public_problem.hypotheses != requested.assignment_recovery.hypotheses ||
+            parsed.public_problem.conditions != requested.assignment_recovery.conditions ||
+            parsed.public_problem.baseline != requested.baseline || parsed.public_problem.objectives != requested.objectives ||
+            (parsed.public_problem.condition_constraints ?: []) != (requested.condition_constraints ?: [])) {
+            throw new SidecarRun.SidecarFailure('masked result changed the candidate assignments, conditions or model constraints')
+        }
+        if (parsed.strategy != c.experimentStrategy || parsed.max_solver_calls != c.experimentMaxSolverCalls ||
+            !(parsed.solver_calls instanceof List) || parsed.solver_calls.size() > c.experimentMaxSolverCalls ||
+            !(parsed.visited_conditions instanceof List) || parsed.visited_conditions.size() > c.experimentMaxExperiments ||
+            parsed.promotion != 'none' || parsed.calibrated_probability != null) {
+            throw new SidecarRun.SidecarFailure('masked result violates the requested budget, strategy or interpretation')
+        }
+        List<Map> hypotheses = parsed.public_problem.hypotheses as List<Map>
+        List<Map> cells = parsed.cells as List<Map>
+        Set pairs = cells.collect { [it.condition_id, it.hypothesis_id] } as Set
+        Set expected = [] as Set
+        parsed.visited_conditions.each { condition -> hypotheses.each { h -> expected.add([condition, h.id]) } }
+        if (hypotheses.count { !it.assignments } != 1 || cells.size() != pairs.size() || pairs != expected) {
+            throw new SidecarRun.SidecarFailure('masked result lacks a complete comparison including the null assignment')
+        }
+        cells.each { cell ->
+            if (!(cell.status in ['completed', 'inconclusive']) ||
+                cell.phenotypes?.keySet() != ['wild_type', 'target_knockout'] as Set ||
+                !((cell.solver_calls ?: []) as List).every { it instanceof Number && it.intValue() >= 0 && it.intValue() < parsed.solver_calls.size() }) {
+                throw new SidecarRun.SidecarFailure('invalid masked comparison or solver-call references')
+            }
+        }
+    }
+
     static void verify(Map parsed, SbmlModelInfo model, IntegrationWorkflowConfig c) {
         String sha = (parsed.hashes as Map)?.model_sha256
         if (sha != model.sha256) {

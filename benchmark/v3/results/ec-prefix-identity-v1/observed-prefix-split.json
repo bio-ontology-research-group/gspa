@@ -1,0 +1,144 @@
+{
+  "status": "confirmed_identity_split",
+  "genome_id": "GCA_000007005.1",
+  "job_id": 10389,
+  "source_counts": {
+    "diamond_homology": {
+      "claims": 26328,
+      "proteins": 1244,
+      "functions": {
+        "GO": 24407,
+        "EC": 1921
+      }
+    },
+    "clean": {
+      "claims": 3695,
+      "proteins": 2994,
+      "functions": {
+        "EC": 3695
+      }
+    }
+  },
+  "shared_proteins": 1244,
+  "normalized_ec_overlap": 511,
+  "duplicated_ec_candidates": 511,
+  "observed_candidates": 30023,
+  "expected_candidates": 29512,
+  "example_claims": [
+    {
+      "evidence_type": "SEQUENCE_SIMILARITY",
+      "function_id": "2.5.1.78",
+      "function_type": "EC",
+      "metadata": {
+        "origin": "swissprot_reference_hit",
+        "predictor_contract": {
+          "adapter_sha256": "f84f94131189a4e882e0fdd4d01d449566d636c4d6dc6e7a2ecc3fc692d92578",
+          "parameters_sha256": "f8a5d09a88399a06347c18d2055f7fe16119e080bcc53ab4995ea5283305eac4",
+          "reference_sha256": "2ef431fee402504bf3b67ef890c2f5653b19cd83ae2bd664cf06e5de729b9307",
+          "schema": "gspa.predictor-contract/1",
+          "score_model": "best_reference_label_identity_times_capped_query_coverage_round6/v1",
+          "tool": "diamond",
+          "tool_sha256": "d6bea1f36f6bcd22b5662e5abcf85be924b149f900d91e2581a63200ca4b2120",
+          "tool_version": "diamond version 2.1.11"
+        }
+      },
+      "protein_id": "AAK40729.1",
+      "raw_score": 0.20352,
+      "source": "swissprot_diamond_baseline"
+    },
+    {
+      "evidence_type": "SEQUENCE_DEEPLEARNING",
+      "function_id": "EC:2.5.1.78",
+      "function_type": "EC",
+      "metadata": {
+        "candidate_coverage": "native_maxsep_selected_only; not the complete EC distance matrix",
+        "driver_score_kind": "gmm_confidence",
+        "driver_sha256": "92fce5e68b8032b58f8f7d384c513be5b630c2ec298d585ee058d41786ed9c49",
+        "genome_id": "GCA_000007005.1",
+        "gmm_path": "./data/pretrained/gmm_ensumble.pkl",
+        "input_fasta_sha256": "a63e34c369cedd34634c8029ffd0ae1770d5f1a06c91ef5ddd906ba11de51164",
+        "input_state": "nonempty",
+        "native_adapter_contract": "clean:maxsep/1:gmm_confidence:92fce5e68b8032b58f8f7d384c513be5b630c2ec298d585ee058d41786ed9c49",
+        "native_output_sha256": "877bdc083db81e30a19f0f00d24ba118da1caff1841e3f57b8e0f16ff8c8f4f3",
+        "native_protein_id": "gspa_83f19c2f27ee4eff9a684e0ba4e6825f_p00000360",
+        "native_score": 0.1755,
+        "native_score_direction": "higher",
+        "native_score_text": "0.1755",
+        "predictor_contract": {
+          "adapter_sha256": "028560e74c622105694642e9e1be4445a22d6c59a81dcb8f3ede1ab53353dbfc",
+          "parameters_sha256": "8eb31b43ccd37f37c8cdf0b2887dfa77a2fedea79e178769aae78b168ce44e85",
+          "reference_sha256": "d6895e5b158c52d1d279f7d202919c63129b2fa30997fa11dc04d737229bbbe5",
+          "schema": "gspa.predictor-contract/1",
+          "score_model": "native_maxsep_gmm_confidence_unfiltered_round4/v1",
+          "tool": "CLEAN",
+          "tool_sha256": "5dbfafcc5e694cd272615c986fb38ad06a450123151576aad6688639aeb039e7",
+          "tool_version": "installed-source-5dbfafcc5e694cd2"
+        },
+        "score_available": true,
+        "score_calibrated": false,
+        "score_kind": "gmm_confidence"
+      },
+      "protein_id": "AAK40729.1",
+      "raw_score": 0.1755,
+      "source": "clean"
+    }
+  ],
+  "example_features": [
+    {
+      "candidate_key": "AAK40729.1|EC|2.5.1.78|CATALYTIC",
+      "protein_id": "AAK40729.1",
+      "function_type": "EC",
+      "function_id": "2.5.1.78",
+      "role": "CATALYTIC",
+      "sequence_sources": [
+        "swissprot_diamond_baseline"
+      ],
+      "sequence_contracts": [
+        {
+          "contract": {
+            "adapter_sha256": "f84f94131189a4e882e0fdd4d01d449566d636c4d6dc6e7a2ecc3fc692d92578",
+            "parameters_sha256": "f8a5d09a88399a06347c18d2055f7fe16119e080bcc53ab4995ea5283305eac4",
+            "reference_sha256": "2ef431fee402504bf3b67ef890c2f5653b19cd83ae2bd664cf06e5de729b9307",
+            "schema": "gspa.predictor-contract/1",
+            "score_model": "best_reference_label_identity_times_capped_query_coverage_round6/v1",
+            "tool": "diamond",
+            "tool_sha256": "d6bea1f36f6bcd22b5662e5abcf85be924b149f900d91e2581a63200ca4b2120",
+            "tool_version": "diamond version 2.1.11"
+          },
+          "source": "swissprot_diamond_baseline"
+        }
+      ]
+    },
+    {
+      "candidate_key": "AAK40729.1|EC|EC:2.5.1.78|CATALYTIC",
+      "protein_id": "AAK40729.1",
+      "function_type": "EC",
+      "function_id": "EC:2.5.1.78",
+      "role": "CATALYTIC",
+      "sequence_sources": [
+        "clean"
+      ],
+      "sequence_contracts": [
+        {
+          "contract": {
+            "adapter_sha256": "028560e74c622105694642e9e1be4445a22d6c59a81dcb8f3ede1ab53353dbfc",
+            "parameters_sha256": "8eb31b43ccd37f37c8cdf0b2887dfa77a2fedea79e178769aae78b168ce44e85",
+            "reference_sha256": "d6895e5b158c52d1d279f7d202919c63129b2fa30997fa11dc04d737229bbbe5",
+            "schema": "gspa.predictor-contract/1",
+            "score_model": "native_maxsep_gmm_confidence_unfiltered_round4/v1",
+            "tool": "CLEAN",
+            "tool_sha256": "5dbfafcc5e694cd272615c986fb38ad06a450123151576aad6688639aeb039e7",
+            "tool_version": "installed-source-5dbfafcc5e694cd2"
+          },
+          "source": "clean"
+        }
+      ]
+    }
+  ],
+  "inputs": {
+    "/scratch/10389/source-probe/results/claims/diamond_homology/GCA_000007005.1.claims.jsonl": "189ff08e888dd0a9a158af000b899a93e014272bda718d2ced259666326865de",
+    "/scratch/10389/source-probe/results/claims/clean/GCA_000007005.1.claims.jsonl": "e035c3122ab5ec927685e3d99d9575a1fa4f5f00a1e660f3304fd3f559fa2b0e",
+    "/scratch/10389/source-probe/results/runs/clean_diamond_homology/SEQONLY/features/GCA_000007005.1/candidate_features.jsonl": "4b81b1b67e990a0be37008cc8359ce242a91368dd667426a161b0599e78b3525"
+  },
+  "scope": "Identifier equivalence only. Predictor agreement is not experimental function truth. The old literal-string export audit did not detect these duplicates."
+}

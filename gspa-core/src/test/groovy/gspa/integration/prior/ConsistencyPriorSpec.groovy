@@ -101,4 +101,29 @@ class ConsistencyPriorSpec extends Specification {
         then:
         prior.logOddsBoost('p1', 'p1|EC|EC:1.1.1.1', state) == 0.0d
     }
+
+    def "EC claims mapped via ec2go to a forbidden GO term are penalized while unmapped ECs are untouched"() {
+        given:
+        def checker = Mock(SatConsistencyChecker)
+        checker.check(_) >> new ConsistencyResult(
+            consistent: false,
+            violations: [new ConsistencyViolation(involvedGoTerms: ['GO:0004164'])],
+        )
+        def state = new IntegrationState(new Genome(id: 'g'))
+        state.satConsistencyChecker = checker
+        state.ecToGoAlternatives = [
+            'EC:2.1.1.98': ['GO:0004164'],
+            'EC:2.7.1.1' : ['GO:0004396'],
+        ]
+        state.set('p1|GO|GO:0004164', 5.0d)
+        def prior = new ConsistencyPrior(alphaCons: 2.5d)
+
+        when:
+        prior.beginIteration(state)
+
+        then:
+        prior.logOddsBoost('p1', 'p1|EC|EC:2.1.1.98', state) == -2.5d
+        prior.logOddsBoost('p1', 'p1|EC|EC:2.7.1.1', state) == 0.0d
+        prior.logOddsBoost('p1', 'p1|EC|EC:1.97.1.12', state) == 0.0d
+    }
 }

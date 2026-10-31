@@ -8,7 +8,26 @@ Per-version benchmark numbers, ablation tables, and the F-max protocol
 notes live in `benchmark/RESULTS.md`. This file summarises the
 user-visible deltas; for measured impact, follow the cross-references.
 
+## Unreleased audit repairs
+
+- Supplied Prodigal/Pyrodigal GFF3 and protein FASTA now use native header identity
+  and coordinates to preserve genomic placement and neighborhood membership.
+  Ambiguous or conflicting placements retain the sequence without genomic context;
+  duplicate protein IDs are rejected. This repairs lost evidence, not a demonstrated
+  increase in enzyme-prediction accuracy. See the
+  [supplied gene-model audit](docs/benchmarks/v3-supplied-gene-models.md).
+
 ## [3.0.0] - 2026-10-26
+
+**Follow-up audit (2026-10-27): acceptance reopened.** The entry below preserves
+historical release claims; it is not current validation evidence. The initial
+Stage 3 comparison leaked answers, historical reaction-context ablations supplied
+no gaps, the claimed null layer was not trained, and the README's claimed Price
+EC gains contradicted the linked results. Current predictor eligibility checks,
+refitted models and benchmark repairs are tracked in
+[the acceptance record](tasks/v3-acceptance.md). All twelve requirements remain
+open, including independent biological validation. Historical gains below must
+not be used as evidence that those requirements are complete.
 
 ### Added
 - **Production context workflow and learned integration (`gspa.context-features/2`):**

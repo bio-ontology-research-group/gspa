@@ -53,13 +53,41 @@ class CohortInferenceSpec extends Specification {
 
         then:
         b.cohort_n_peer_genomes == a.cohort_n_peer_genomes + 3
-        // raw counts and the seeded permutation draw legitimately change; every weighted quantity must not
+        // Raw descriptive counts can change; the randomization must respect strain dependence.
         def weighted = { Map<String, Double> m ->
-            m.findAll { !it.key.startsWith('cohort_perm') && !it.key.contains('peer_genomes') &&
+            m.findAll { !it.key.contains('peer_genomes') &&
                         !it.key.contains('informative_genomes') && !it.key.startsWith('cohort_raw_genomes') &&
                         it.key != 'cohort_bg_windows' }
         }
         weighted(a) == weighted(b)
+    }
+
+    def "exact copies in a strain cluster preserve permutation evidence"() {
+        given:
+        def base = cohort([['N1', 'N2'], []])
+        def duplicate = cohort([['N1', 'N2'], []])
+        copies.times { int k ->
+            addGenome(duplicate, [id: "D${k}", clade: 'c0', cluster: 's0', status: 'COMPLETE', closed: true,
+                                  family: 'OG1', anchors: ['N1', 'N2']])
+        }
+
+        when:
+        def a = features(base) { it.permutations = 200; it.seed = seed }
+        def b = features(duplicate) { it.permutations = 200; it.seed = seed }
+
+        then:
+        a.cohort_perm_available == 1d
+        a.cohort_perm_n == b.cohort_perm_n
+        a.cohort_perm_p == b.cohort_perm_p
+        Math.abs(a.cohort_perm_observed - b.cohort_perm_observed) < 1e-12d
+        Math.abs(a.cohort_perm_null_mean - b.cohort_perm_null_mean) < 1e-12d
+
+        where:
+        copies | seed
+        1      | 20261026
+        3      | 20261026
+        5      | 20261026
+        5      | 17
     }
 
     def "unrelated duplicates in a different cluster of the same clade stay capped by the clade weight"() {
@@ -74,6 +102,136 @@ class CohortInferenceSpec extends Specification {
         expect:
         features(one).cohort_effective_n == 1.0d
         features(many).cohort_effective_n == 1.0d
+    }
+
+    def "copies preserve every weighted feature in a heterogeneous strain cluster"() {
+        given:
+        def make = { int n ->
+            def input = cohort([['N1', 'N2'], []])
+            input.genomes.P1.cladeId = 'c0'
+            input.genomes.P1.strainClusterId = 's0'
+            n.times { int k ->
+                addGenome(input, [id: "D${k}", clade: 'c0', cluster: 's0', status: 'COMPLETE', closed: true,
+                                  family: 'OG1', anchors: ['N1', 'N2']])
+            }
+            input
+        }
+        def weighted = { Map m -> m.findAll {
+            !it.key.contains('peer_genomes') && !it.key.contains('informative_genomes') &&
+            !it.key.startsWith('cohort_raw_genomes') && it.key != 'cohort_bg_windows'
+        } }
+
+        when:
+        def a = features(make(0)) { it.permutations = 200; it.seed = seed }
+        def b = features(make(copies)) { it.permutations = 200; it.seed = seed }
+
+        then: 'both distinct members still contribute, while identical copies do not reweight them'
+        a.cohort_support_fraction == 0.5d
+        b.cohort_n_peer_genomes == a.cohort_n_peer_genomes + copies
+        b.cohort_informative_genomes == a.cohort_informative_genomes + copies
+        weighted(a) == weighted(b)
+
+        where:
+        copies | seed
+        1      | 20261026
+        3      | 20261026
+        5      | 20261026
+        5      | 17
+    }
+
+    def "duplicate evidence preserves unknown metadata and all original output records"() {
+        given:
+        def make = { int copies ->
+            def input = target()
+            ['P0', 'P1'].each { String g ->
+                addGenome(input, [id: g, cluster: 's', family: 'OG1', candidate: 'T'])
+            }
+            input.setOrganismReactions('P0', ['T'])
+            copies.times { int k ->
+                String g = "D${k}"
+                addGenome(input, [id: g, cluster: 's', family: 'OG1', candidate: 'T'])
+                input.setOrganismReactions(g, ['T'])
+            }
+            input
+        }
+        def a = make(0)
+        def b = make(5)
+
+        when:
+        def before = new CohortInference(a, graph(), new CohortConfig()).run()
+        def after = new CohortInference(b, graph(), new CohortConfig()).run()
+        def x = before.record('G0', 'G0_20', 'T').features
+        def y = after.record('G0', 'G0_20', 'T').features
+
+        then:
+        before.records.size() == a.claims.size()
+        after.records.size() == b.claims.size()
+        x.cohort_peer_organism_set_known_fraction == 0.5d
+        y.cohort_peer_organism_set_known_fraction == 0.5d
+        x.cohort_phylogeny_known_fraction == y.cohort_phylogeny_known_fraction
+        x.cohort_unknown_eff == y.cohort_unknown_eff
+        !y.containsKey('cohort_perm_p')
+    }
+
+    def "renamed reordered multi-contig copies with paralogs preserve permutation and model inputs"() {
+        given:
+        def make = { boolean duplicate ->
+            def input = target()
+            addGenome(input, [id: 'P1', clade: 'c', cluster: 's', status: 'COMPLETE', closed: true,
+                              family: 'OG1', anchors: []])
+            (duplicate ? ['P0', 'D0'] : ['P0']).each { String g ->
+                addGenome(input, [id: g, clade: 'c', cluster: 's', status: 'COMPLETE', closed: true,
+                    family: 'OG1', anchors: ['N1', 'N2'], paralogs: g == 'P0' ? [10, 25] : [25, 10]])
+                def genome = input.genomes[g]
+                def loci = genome.layout.byProtein.values().toList()
+                genome.layout.byContig.clear()
+                genome.assembly.contigs.clear()
+                if (g == 'D0') Collections.reverse(loci)
+                loci.each { l ->
+                    l.contig = (g == 'D0' ? 'renamed-' : '') + (l.start < 30000 ? 'first' : 'second')
+                    genome.layout.byContig.computeIfAbsent(l.contig, { [] }).add(l)
+                    genome.assembly.contigs[l.contig] = new CohortInput.ContigInfo(length: 40000, closed: true)
+                }
+                genome.layout.finishLoading()
+            }
+            input
+        }
+        def columns = { Map f ->
+            def record = new CohortResult.FeatureRecord(features: f)
+            Map out = [:]
+            gspa.integration.learned.CohortFeatureColumns.extract(
+                gspa.integration.contextbridge.CohortContextBuilder.weighted(record), { k, v -> out[k] = v })
+            out
+        }
+
+        expect:
+        columns(features(make(false))) == columns(features(make(true)))
+    }
+
+    def "metadata and organism-set coverage use strain weights rather than raw genome counts"() {
+        given:
+        def build = { int copies ->
+            def input = target()
+            addGenome(input, [id: 'P0', clade: 'c0', cluster: 's0', status: 'COMPLETE', closed: true,
+                              family: 'OG1', anchors: ['N1', 'N2']])
+            addGenome(input, [id: 'P1', status: 'COMPLETE', closed: true, family: 'OG1', anchors: []])
+            input.setOrganismReactions('P0', ['T'] as Set)
+            copies.times { int k ->
+                addGenome(input, [id: "D${k}", clade: 'c0', cluster: 's0', status: 'COMPLETE', closed: true,
+                                  family: 'OG1', anchors: ['N1', 'N2']])
+                input.setOrganismReactions("D${k}".toString(), ['T'] as Set)
+            }
+            input
+        }
+
+        when:
+        def a = features(build(0))
+        def b = features(build(5))
+
+        then:
+        a.cohort_phylogeny_known_fraction == 0.5d
+        Math.abs(a.cohort_phylogeny_known_fraction - b.cohort_phylogeny_known_fraction) < 1e-12d
+        Math.abs(a.cohort_peer_organism_set_known_fraction - b.cohort_peer_organism_set_known_fraction) < 1e-12d
     }
 
     def "holding out the target strain cluster or clade removes self support"() {

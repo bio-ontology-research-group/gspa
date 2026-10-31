@@ -1,0 +1,39 @@
+{
+  "context_source" : "evidence_guided_masked_assignments",
+  "candidate_protein" : "query",
+  "mask_gene" : "pD",
+  "candidates_rejected" : [ {
+    "function_key" : "query|EC|EC:6.2.1.1",
+    "reason" : "non-catalytic role is not an enzyme assignment",
+    "roles" : [ "REGULATOR" ],
+    "role_source" : "raw_claims",
+    "raw_role_observations" : [ {
+      "source" : "synthetic_predictor",
+      "evidence_type" : "SEQUENCE_SIMILARITY",
+      "candidate_role" : "REGULATOR"
+    } ]
+  } ],
+  "excluded_claims" : [ ],
+  "measured_evidence" : [ ],
+  "evidence_unmapped" : [ {
+    "id" : "complex",
+    "reason" : "not an eligible candidate of the requested protein"
+  } ],
+  "assignment_support" : [ {
+    "id" : "complex",
+    "function_key" : "query|EC|EC:6.2.1.1",
+    "source" : "synthetic independent partner evidence",
+    "partners" : [ "gB" ],
+    "group" : null
+  } ],
+  "assignment_groups_rejected" : [ ],
+  "joint_mapping_truncated" : [ ],
+  "hypotheses" : [ ],
+  "hypotheses_truncated" : [ ],
+  "max_non_null_hypotheses" : 20,
+  "conditions" : 1,
+  "ranking_rule" : "strongest measured channel, then canonical assignment; repeated channels take max; not calibrated probabilities",
+  "assignment_assumption" : "target-alone only without structural support; required partners form AND clauses; named evidence groups support joint activities; alternative mappings remain distinct and bounded; no hidden GPR used",
+  "excluded_sources" : "target GPR, model gene annotations, reactions.tsv, final integration probabilities, FBA and learned/inferred claims; no function is inferred from a gene identifier",
+  "interpretation" : "conditional comparisons; no function recovery, calibrated probability or promotion"
+}

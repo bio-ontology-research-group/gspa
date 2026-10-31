@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.cli.IntegrationParitySpec" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-27T05:50:28" hostname="lc-dell" time="0.22">
+  <properties/>
+  <testcase name="batch runs reaction context and dark matter with the same evidence and outputs as a single genome" classname="gspa.cli.IntegrationParitySpec" time="0.154"/>
+  <testcase name="batch rejects duplicate output paths before workers can overwrite results" classname="gspa.cli.IntegrationParitySpec" time="0.006"/>
+  <testcase name="explicit FBA request with missing model data fails and writes a stage failure" classname="gspa.cli.IntegrationParitySpec" time="0.034"/>
+  <testcase name="export preserves the ordering of small enzyme model scores" classname="gspa.cli.IntegrationParitySpec" time="0.026"/>
+  <system-out><![CDATA[GSPA integrate
+  Claims: /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/single.tsv
+  Loaded 4 claims
+  EC-to-GO associations: 3 ECs (all alternatives retained)
+08:50:28.223 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+08:50:28.233 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+08:50:28.241 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+08:50:28.253 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+  Pathways: 1 loaded from pathways.tsv
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Operons: 1
+  Metabolic gaps: 1
+  Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+  Genome layout: 4 loci across 1 contig(s)
+08:50:28.257 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+08:50:28.257 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+08:50:28.257 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+08:50:28.276 [Test worker] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+  Dark-matter suggester emitted 1 suggestions
+08:50:28.296 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+  RLGC suggester emitted 2 suggestions
+  Wrote: /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/single.tsv
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/manifest.tsv (threads=2)
+  Loaded 2 batch tasks from /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/manifest.tsv
+  EC-to-GO associations: 3 ECs (all alternatives retained)
+08:50:28.316 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+08:50:28.330 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+08:50:28.337 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 3 EC-to-GO mappings
+08:50:28.338 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 1 pathway(s) from pathways.tsv; total now 1
+  Pathways: 1 loaded from pathways.tsv
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Reaction graph: 3 reactions, 0 currency metabolites, 0 ECs
+GSPA integrate
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/claims.jsonl
+  Claims: /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/claims.jsonl
+  Theta:  (defaults)
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/batch2.tsv
+  Out:    /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/batch.tsv
+  Loaded 4 claims
+  Loaded 4 claims
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+  Operons: 1
+  Operons: 1
+  Metabolic gaps: 1
+  Metabolic gaps: 1
+  Genome layout: 4 loci across 1 contig(s)
+  Genome layout: 4 loci across 1 contig(s)
+08:50:28.344 [pool-7-thread-2] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+08:50:28.344 [pool-7-thread-1] INFO gspa.integration.IterativeRefiner -- Refining 4 claims across 4 (protein, function) groups (maxIter=6, damping=0.5)
+08:50:28.345 [pool-7-thread-2] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+08:50:28.345 [pool-7-thread-1] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+08:50:28.345 [pool-7-thread-1] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+08:50:28.345 [pool-7-thread-2] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 4 integrated annotations
+  Produced 4 integrated annotations
+08:50:28.348 [pool-7-thread-2] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+08:50:28.348 [pool-7-thread-1] INFO gspa.integration.suggester.DarkMatterSuggester -- DarkMatterSuggester: emitted 1 suggestions over 1 gaps (0 skipped as already-closed), 1 operons
+  Dark-matter suggester emitted 1 suggestions
+  Dark-matter suggester emitted 1 suggestions
+08:50:28.352 [pool-7-thread-1] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+  RLGC suggester emitted 2 suggestions
+08:50:28.352 [pool-7-thread-2] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+  RLGC suggester emitted 2 suggestions
+  Wrote: /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/batch.tsv
+  Wrote: /home/leechuck/tmp/spock_batch_runs_reaction_0_dir17383931533190818416/batch2.tsv
+GSPA integrate --batch-manifest /home/leechuck/tmp/spock_batch_rejects_dupli_0_dir11544556738823234916/duplicates.tsv (threads=8)
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_explicit_FBA_reques_0_dir2712078353061838573/claims.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_explicit_FBA_reques_0_dir2712078353061838573/failed.tsv
+  Loaded 1 claims
+08:50:28.377 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+08:50:28.388 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+08:50:28.395 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 1 claims across 1 (protein, function) groups (maxIter=6, damping=0.5)
+08:50:28.396 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+08:50:28.396 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 1 integrated annotations
+GSPA integrate
+  Claims: /home/leechuck/tmp/spock_export_preserves_th_0_dir3954214948915208899/weak.jsonl
+  Theta:  (defaults)
+  Out:    /home/leechuck/tmp/spock_export_preserves_th_0_dir3954214948915208899/weak.tsv
+  Loaded 2 claims
+08:50:28.410 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+08:50:28.417 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+  Anatomical constraints: 2674 GO terms, 1247 anatomical structures
+  Complex classification: 158 GO complex terms
+  SAT checker: disabled (pass --taxon, --infer-taxon, or --taxonomy to enable)
+08:50:28.422 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+08:50:28.422 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+08:50:28.422 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+  Produced 2 integrated annotations
+  Wrote: /home/leechuck/tmp/spock_export_preserves_th_0_dir3954214948915208899/weak.tsv
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

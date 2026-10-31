@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.OuterIterativeRefinerSpec" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-27T05:58:45" hostname="lc-dell" time="0.045">
+  <properties/>
+  <testcase name="reaches fixed point immediately when suggester emits nothing" classname="gspa.integration.OuterIterativeRefinerSpec" time="0.027"/>
+  <testcase name="promotes strong singleton, pins its floor, marks gap closed, terminates" classname="gspa.integration.OuterIterativeRefinerSpec" time="0.01"/>
+  <testcase name="respects rising q threshold — weak singleton not promoted at late iter" classname="gspa.integration.OuterIterativeRefinerSpec" time="0.003"/>
+  <testcase name="rolls back on cascade (two consecutive rising iterations)" classname="gspa.integration.OuterIterativeRefinerSpec" time="0.003"/>
+  <testcase name="pinPromotions=false leaves pinnedFloors empty even when gaps are closed" classname="gspa.integration.OuterIterativeRefinerSpec" time="0.002"/>
+  <system-out><![CDATA[08:58:45.750 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 1: qThreshold=0.550, suggestions=0, new promotions=0, open gaps=0
+08:58:45.757 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 1: qThreshold=0.550, suggestions=1, new promotions=1, open gaps=0
+08:58:45.760 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 2: qThreshold=0.600, suggestions=0, new promotions=0, open gaps=0
+08:58:45.763 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 1: qThreshold=0.550, suggestions=1, new promotions=1, open gaps=0
+08:58:45.763 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 2: qThreshold=0.600, suggestions=1, new promotions=0, open gaps=0
+08:58:45.766 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 1: qThreshold=0.550, suggestions=1, new promotions=1, open gaps=0
+08:58:45.766 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 2: qThreshold=0.600, suggestions=2, new promotions=2, open gaps=0
+08:58:45.767 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 3: qThreshold=0.650, suggestions=3, new promotions=3, open gaps=0
+08:58:45.767 [Test worker] WARN gspa.integration.OuterIterativeRefiner -- Cascade detected at outer iter 3 (promoted 2 → 3); rolling back to last safe state
+08:58:45.769 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 1: qThreshold=0.550, suggestions=1, new promotions=1, open gaps=0
+08:58:45.769 [Test worker] INFO gspa.integration.OuterIterativeRefiner -- Outer iter 2: qThreshold=0.600, suggestions=0, new promotions=0, open gaps=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

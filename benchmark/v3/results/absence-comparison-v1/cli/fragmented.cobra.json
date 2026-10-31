@@ -1,0 +1,174 @@
+{
+  "schema": "gspa.absence_cobra_check/1",
+  "interpretation": "Independent implementation agreement, not biological accuracy.",
+  "cobra_version": "0.32.1",
+  "solver": "glpk",
+  "hashes": {
+    "manifest": "965747c86d064b3a251ecf771d0c7cd0d8542b2fd9ad1c314670005bcbeba571",
+    "result": "40f0226c59c2fd1517961b857b728c6739caacc448e6a165fb583b96d55a403e",
+    "model": "f839af7351751ade13066199f997a7f42561541740c6031c7d695f82b06629f7"
+  },
+  "comparisons": [
+    {
+      "condition_id": "control",
+      "hypothesis": "missing_sequence",
+      "perturbation": "wild_type",
+      "oracle": {
+        "status": "optimal",
+        "growth": 8.523809523809524
+      },
+      "production": {
+        "status": "optimal",
+        "growth": 8.523809523809524,
+        "class": "growth",
+        "disabled_reactions": []
+      },
+      "agrees": true
+    },
+    {
+      "condition_id": "control",
+      "hypothesis": "pathway_loss",
+      "perturbation": "wild_type",
+      "oracle": {
+        "status": "optimal",
+        "growth": 0
+      },
+      "production": {
+        "status": "optimal",
+        "growth": 0.0,
+        "class": "no_growth",
+        "disabled_reactions": [
+          "VITS"
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "condition_id": "control",
+      "hypothesis": "external_supply",
+      "perturbation": "wild_type",
+      "oracle": {
+        "status": "optimal",
+        "growth": 2.0
+      },
+      "production": {
+        "status": "optimal",
+        "growth": 2.0,
+        "class": "growth",
+        "disabled_reactions": [
+          "VITS"
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "condition_id": "withdrawal",
+      "hypothesis": "missing_sequence",
+      "perturbation": "wild_type",
+      "oracle": {
+        "status": "optimal",
+        "growth": 8.523809523809524
+      },
+      "production": {
+        "status": "optimal",
+        "growth": 8.523809523809524,
+        "class": "growth",
+        "disabled_reactions": []
+      },
+      "agrees": true
+    },
+    {
+      "condition_id": "withdrawal",
+      "hypothesis": "pathway_loss",
+      "perturbation": "wild_type",
+      "oracle": {
+        "status": "optimal",
+        "growth": 0
+      },
+      "production": {
+        "status": "optimal",
+        "growth": 0.0,
+        "class": "no_growth",
+        "disabled_reactions": [
+          "VITS"
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "condition_id": "withdrawal",
+      "hypothesis": "external_supply",
+      "perturbation": "wild_type",
+      "oracle": {
+        "status": "optimal",
+        "growth": 0
+      },
+      "production": {
+        "status": "optimal",
+        "growth": 0.0,
+        "class": "no_growth",
+        "disabled_reactions": [
+          "VITS"
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "condition_id": "transport_ko",
+      "hypothesis": "missing_sequence",
+      "perturbation": "wild_type",
+      "oracle": {
+        "status": "optimal",
+        "growth": 8.523809523809524
+      },
+      "production": {
+        "status": "optimal",
+        "growth": 8.523809523809524,
+        "class": "growth",
+        "disabled_reactions": [
+          "T_vit"
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "condition_id": "transport_ko",
+      "hypothesis": "pathway_loss",
+      "perturbation": "wild_type",
+      "oracle": {
+        "status": "optimal",
+        "growth": 0
+      },
+      "production": {
+        "status": "optimal",
+        "growth": 0.0,
+        "class": "no_growth",
+        "disabled_reactions": [
+          "T_vit",
+          "VITS"
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "condition_id": "transport_ko",
+      "hypothesis": "external_supply",
+      "perturbation": "wild_type",
+      "oracle": {
+        "status": "optimal",
+        "growth": 0
+      },
+      "production": {
+        "status": "optimal",
+        "growth": 0.0,
+        "class": "no_growth",
+        "disabled_reactions": [
+          "T_vit",
+          "VITS"
+        ]
+      },
+      "agrees": true
+    }
+  ],
+  "agrees": true
+}

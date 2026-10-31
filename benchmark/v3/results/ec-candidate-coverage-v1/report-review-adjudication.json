@@ -1,0 +1,13 @@
+{
+  "source": "report-review.txt",
+  "reviewer": "Claude Code Sonnet5.5,read-only",
+  "dispositions": {
+    "blocking_defects": "None reported; real10224 replay confirms all18genomes/splitsets valid,36primarymetrics+48pairedcomparisons+18cutoffs unchanged,36ECpanels match independentaudit.",
+    "test_cutoffs": "Accepted: strengthened test to give selected cutoff0.9 vs fixed0.5 and testscore0.6. Bothpolicyoutputs asserted;9focusedtests pass after strengthening. Productioncode unchanged after10224.",
+    "identity_guard": "Do not require referenceproteins to have scores: genuinely unannotated proteins must remain in denominator. Complete335reference audit joins everyprotein through pinned proteins.tsv and comparesrawclaims. The genericreport assumes labels/protein namespace alreadyvalidated upstream; records exposezero candidates.",
+    "ties": "Lexical ranking is fixed and explicit; it is not an upperbound as reviewer suggests. Exactties may helporhurt. Top-scoreties retained; no rerankingbasedontruth.",
+    "partial_output": "Refusing overwrite protects evidence; preservefailed directory and usefreshoutput, neverdeletehistoricalfailuresto rerun.",
+    "missing_recipe_keys": "Missing requiredlabels/splits fail closed duringregister; clearererrormessage couldimproveusability but isnotcorrectnessblocker.",
+    "genome_scope": "Exactsplit/protocol equality intentionallyprevents silent referencepopulation intersection; complete18genome realreplaypasses."
+  }
+}

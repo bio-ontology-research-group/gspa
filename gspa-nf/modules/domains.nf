@@ -90,7 +90,9 @@ process DBCAN {
         --input_raw_data ${proteins} \\
         --mode protein \\
         --output_dir dbcan_out \\
-        --db_dir ${dbcan_db}
-    cp dbcan_out/overview.tsv ${sample_id}_dbcan_overview.tsv || touch ${sample_id}_dbcan_overview.tsv
+        --db_dir ${dbcan_db} \\
+        --threads ${task.cpus}
+    test -s dbcan_out/overview.tsv
+    cp dbcan_out/overview.tsv ${sample_id}_dbcan_overview.tsv
     """
 }

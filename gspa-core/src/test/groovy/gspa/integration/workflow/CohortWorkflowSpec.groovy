@@ -207,8 +207,8 @@ class CohortWorkflowSpec extends Specification {
         when: 'no metadata at all: every genome shares the unresolved block, so nobody has an independent peer'
         def none = cohortOf(ids, files, fx.config(cohortInference: true))
 
-        then: 'no context is invented; the genomes are routed to the cohort-free feature set'
-        none.contexts.isEmpty()
+        then: 'local context survives; no independent recurrence is invented'
+        ids.every { none.contexts[it].cohort.values().every { it.localOnly && it.weighted.effectiveN == null } }
         ids.every { none.reports[it].no_peers }
     }
 
@@ -236,8 +236,8 @@ class CohortWorkflowSpec extends Specification {
             new File(dir, 'single2.tsv'))).run(new ClaimExtractor(new CalibrationTable()).readClaimsJsonl(files.g1.claims))
 
         then:
-        batchNone.contexts.g1 == null
-        singleNone.context == null
+        batchNone.contexts.g1.cohort.values().every { it.localOnly }
+        mapper.writeValueAsString(singleNone.context.cohort) == mapper.writeValueAsString(batchNone.contexts.g1.cohort)
         singleNone.cohortReport.no_peers
     }
 
@@ -261,15 +261,16 @@ class CohortWorkflowSpec extends Specification {
         unsure.fracUnobservedAbsent > 0d
     }
 
-    def 'a genome without peers gets no cohort features at all (unavailable, not negative)'() {
+    def 'a genome without peers retains local features while recurrence remains unavailable'() {
         given:
         def r = cohortOf(['g1'], genomes(['g1']), fx.config(cohortInference: true))
 
         expect:
-        r.contexts.isEmpty()
+        r.contexts.g1.cohort.values().every { it.localOnly && it.weighted.effectiveN == null }
         r.reports.g1.no_peers
         r.reports.g1.candidates.keys_without_peers == 4
         r.reports.g1.candidates.keys_with_cohort_features == 0
+        r.reports.g1.candidates.keys_with_local_features == 3 // isolated r4 has no testable signature
     }
 
     def 'metadata is validated strictly'() {

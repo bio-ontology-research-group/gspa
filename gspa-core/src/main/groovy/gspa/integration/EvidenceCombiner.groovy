@@ -86,9 +86,12 @@ class EvidenceCombiner {
         // Step 1 + 2: group by correlation group, pick the strongest in each group.
         Map<String, List<EvidenceClaim>> byGroup = [:]
         for (EvidenceClaim c : claimsForSameFunction) {
+            if (!c.hasFunctionalScore()) continue
             String g = c.evidenceType.correlationGroup()
             byGroup.computeIfAbsent(g, { k -> new ArrayList<EvidenceClaim>() }) << c
         }
+
+        if (byGroup.isEmpty()) return lMin
 
         double oneMinusProd = 1.0d
         for (Map.Entry<String, List<EvidenceClaim>> entry : byGroup.entrySet()) {

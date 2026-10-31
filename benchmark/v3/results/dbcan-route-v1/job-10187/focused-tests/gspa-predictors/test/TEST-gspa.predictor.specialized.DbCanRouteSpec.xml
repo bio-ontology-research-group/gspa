@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.specialized.DbCanRouteSpec" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-27T17:05:33" hostname="node002" time="1.866">
+  <properties/>
+  <testcase name="requested dbCAN is registered with explicit database interface and thread settings" classname="gspa.predictor.specialized.DbCanRouteSpec" time="1.23"/>
+  <testcase name="explicit disable wins over dbCAN enable" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.024"/>
+  <testcase name="modern execution preserves unscored families through pipeline raw claims" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.564"/>
+  <testcase name="unsupported interfaces and missing databases fail before tool execution [version: unknown, #0]" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.007"/>
+  <testcase name="unsupported interfaces and missing databases fail before tool execution [version: 4, #1]" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.001"/>
+  <testcase name="unsupported interfaces and missing databases fail before tool execution [version: 5, #2]" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.001"/>
+  <testcase name="modern version uses the upstream version subcommand" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.008"/>
+  <testcase name="native parsing rejects unknown proteins including rows without hits" classname="gspa.predictor.specialized.DbCanRouteSpec" time="0.011"/>
+  <system-out><![CDATA[20:05:34.411 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+20:05:34.792 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: diamond
+20:05:34.793 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+20:05:34.795 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: operon
+20:05:34.796 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: gapsmith
+20:05:34.798 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: dbcan
+20:05:34.806 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 5 predictors registered
+20:05:34.860 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+20:05:34.864 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: diamond
+20:05:34.865 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: interproscan
+20:05:34.866 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: operon
+20:05:34.867 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: gapsmith
+20:05:34.869 [Test worker] DEBUG gspa.predictor.AnnotationPipeline -- Predictor dbcan explicitly disabled
+20:05:34.876 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 4 predictors registered
+20:05:34.941 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Configuring annotation pipeline...
+20:05:34.943 [Test worker] INFO gspa.predictor.PredictorRegistry -- Registered predictor: dbcan
+20:05:34.943 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Pipeline configured: geneCaller=none, 1 predictors registered
+20:05:34.947 [Test worker] INFO gspa.predictor.AnnotationPipeline -- === GSPA Annotation Pipeline ===
+20:05:34.947 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Input: /home/leechuck/tmp/spock_modern_execution_pr_0_directory8881913316574399028/q.faa
+20:05:35.048 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded 3 proteins (protein-only input)
+20:05:35.059 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Loaded: Genome(q, 1 contigs, 3 proteins, 0bp)
+20:05:35.096 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Running 1 protein-level predictors...
+20:05:35.101 [Test worker] INFO gspa.predictor.AnnotationPipeline --   Running dbcan...
+20:05:35.132 [Test worker] INFO gspa.predictor.specialized.DbCanPredictor -- Running dbcan: /home/leechuck/tmp/spock_modern_execution_pr_0_directory8881913316574399028/run_dbcan CAZyme_annotation --input_raw_data /home/leechuck/tmp/gspa_dbcan_10775242031684098498/input.faa --mode protein --output_dir /home/leechuck/tmp/gspa_dbcan_10775242031684098498 --db_dir /home/leechuck/tmp/spock_modern_execution_pr_0_directory8881913316574399028 --threads 4
+20:05:35.334 [Test worker] INFO gspa.predictor.AnnotationPipeline --   dbcan: 4 annotations assigned
+20:05:35.435 [Test worker] INFO gspa.predictor.AnnotationPipeline -- Annotation complete: 3/3 proteins annotated, 4 total annotations
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@782168b7]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@29f0c4f2]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@782168b7]
+]]></system-err>
+</testsuite>

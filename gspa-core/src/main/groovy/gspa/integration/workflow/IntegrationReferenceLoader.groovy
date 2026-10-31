@@ -60,10 +60,15 @@ class IntegrationReferenceLoader {
             state.anatomicalConstraints = shared.anatomicalConstraints
             state.complexClassification = new LinkedHashMap(shared.complexClassification)
             state.pathwayDatabase = shared.pathwayDatabase
+            state.ecToGoAlternatives = shared.ecToGoAlternatives
             state.moduleDefinitions = shared.moduleDefinitions
             state.reactionGraph = shared.reactionGraph
         }
         if (shared == null) {
+            if (ec2goFile != null) {
+                state.ecToGoAlternatives = gspa.ontology.PathwayLoader.loadEc2GoAlternatives(ec2goFile)
+                println "  EC-to-GO associations: ${state.ecToGoAlternatives.size()} ECs (all alternatives retained)"
+            }
             // GO ontology + ELK reasoner
             if (goOwlFile != null) {
                 try {
@@ -165,8 +170,9 @@ class IntegrationReferenceLoader {
 
         }
 
-        // SAT consistency checker: wire when --taxonomy, --taxon, --infer-taxon, or --enforce-stage2 is given.
-        boolean wantSat = (taxonomyFile != null) || (organismTaxon != null && !organismTaxon.trim().isEmpty()) || inferTaxon || enforceStage2
+        // SAT consistency checker: wire when --taxonomy, --taxon, --taxon-lineage, --infer-taxon, or --enforce-stage2 is given.
+        boolean wantSat = (taxonomyFile != null) || (organismTaxon != null && !organismTaxon.trim().isEmpty()) ||
+            (taxonLineage != null && !taxonLineage.trim().isEmpty()) || inferTaxon || enforceStage2
         if (wantSat) {
             try {
                 def taxonConstraints = new gspa.ontology.TaxonConstraints()
@@ -191,6 +197,10 @@ class IntegrationReferenceLoader {
                 }
                 if (taxonConstraints.constrainedTermCount() > 0) {
                     def checker = new gspa.ontology.SatConsistencyChecker(taxonConstraints)
+                    checker.goOntology = state.goOntology
+                    if (state.ecToGoAlternatives != null) {
+                        checker.ecToGoAlternatives = state.ecToGoAlternatives
+                    }
                     if (taxonomyFile != null && taxonomyFile.exists()) {
                         // Detect 3-column TSV (Term, Relationship, Other) vs 2-column legacy
                         String firstData = taxonomyFile.readLines().find { !it.trim().isEmpty() && !it.startsWith('#') } ?: ''
@@ -222,8 +232,15 @@ class IntegrationReferenceLoader {
                             println "  Inferred organism taxon: ${inf.taxon} (${inf.label})"
                         }
                     }
+                    if (taxonLineage != null && !taxonLineage.trim().isEmpty()) {
+                        checker.applyTaxonLineage(taxonLineage, checker.organismTaxon)
+                        println "  Applied taxon lineage (${taxonLineage}) for ${checker.organismTaxon ?: 'lineage table'}"
+                    }
+                    if (checker.organismTaxon && !checker.isOrganismTaxonInHierarchy()) {
+                        println "  [warn] Organism taxon ${checker.organismTaxon}: ${gspa.ontology.SatConsistencyChecker.STATUS_TAXON_NOT_IN_HIERARCHY}"
+                    }
                     state.satConsistencyChecker = checker
-                    println "  SAT checker: ${taxonConstraints.onlyInTaxon.size()} only_in + ${taxonConstraints.neverInTaxon.size()} never_in (organismTaxon=${checker.organismTaxon ?: 'none'})"
+                    println "  SAT checker: ${taxonConstraints.onlyInTaxon.size()} only_in + ${taxonConstraints.neverInTaxon.size()} never_in (organismTaxon=${checker.organismTaxon ?: 'none'}, inHierarchy=${checker.isOrganismTaxonInHierarchy()})"
                 }
             } catch (Exception e) {
                 throw new IllegalStateException("Failed to wire SAT consistency checker: ${e.message}", e)
@@ -261,6 +278,7 @@ class IntegrationReferenceLoader {
                 )
             }
             state.metabolicGaps = gaps
+            state.metabolicGapsAvailable = true
             println "  Metabolic gaps: ${gaps.size()}"
         }
 
@@ -339,7 +357,10 @@ class IntegrationReferenceLoader {
         def stream = getClass().getResourceAsStream(resourcePath)
         if (stream == null) return null
         try {
-            File tmp = File.createTempFile(prefix, suffix)
+            String tmpPath = System.getenv('TMPDIR') ?: System.getProperty('java.io.tmpdir')
+            File tmpDir = tmpPath ? new File(tmpPath) : null
+            if (tmpDir != null) tmpDir.mkdirs()
+            File tmp = tmpDir != null ? File.createTempFile(prefix, suffix, tmpDir) : File.createTempFile(prefix, suffix)
             tmp.deleteOnExit()
             tmp.withOutputStream { out -> stream.transferTo(out) }
             return tmp

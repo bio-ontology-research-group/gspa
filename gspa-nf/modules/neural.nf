@@ -2,9 +2,10 @@
  * Neural function predictors.
  *
  * Each process wraps benchmark/neural/run_neural_predictors.py with a fixed
- * --predictor flag and emits the standard 4-column TSV
+ * --predictor flag. Other predictors emit the standard 4-column TSV
  *   protein_id<TAB>term<TAB>score<TAB>annotation_type
  *
+ * CLEAN adds metadata_json plus a bound receipt and retained native CSV.
  * Channel I/O matches the rest of gspa-nf: tuple(sample_id, file).
  *
  * Containers (set in nextflow.config via withName): four of these processes
@@ -88,6 +89,9 @@ process CLEAN {
     output:
     tuple val(sample_id), path("${sample_id}.clean.tsv"), emit: results
 
+    tuple val(sample_id), path("${sample_id}.clean.tsv"), path("${sample_id}.clean.receipt.json"), emit: bundle
+    tuple val(sample_id), path("${sample_id}.clean.native.csv"), emit: native_csv
+
     script:
     def manifest_text = write_manifest(sample_id, proteins)
     """
@@ -98,8 +102,9 @@ EOF
         --predictor clean \\
         --manifest manifest.tsv \\
         --model-dir ${model_dir} \\
+        --clean-score-kind ${params.clean_score_kind} \\
         --batch-size ${params.clean_batch_size} \\
-        --min-score ${params.neural_min_score}
+        --min-score ${params.clean_min_score}
     """
 }
 

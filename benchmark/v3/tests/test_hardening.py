@@ -4,6 +4,8 @@ import json
 import os
 import sys
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))
@@ -178,6 +180,112 @@ class StaleOutputs(Base):
         res = self.run_it(m, phases=("evaluate",))
         self.assertEqual(res["n_not_executed"], 0)
         self.assertIn("full", res["evaluation"]["kinds"]["ec"]["arms"])
+
+    def test_reuse_rejects_changed_parser_library_and_backend(self):
+        m = self.manifest()
+        library = Path(self.write('parser-library.so', 'fixture-library'))
+        with patch.object(R.L, 'streaming_parser_sources', return_value=[library]):
+            self.run_it(m)
+            identity = R.inference_identity(m, m['arms'][0], m['genomes'])
+            self.assertIn('stage_ledger.py', identity['code'])
+            library.write_text('changed-library')
+            self.assertEqual(self.run_it(m, phases=('evaluate',))['n_not_executed'], 4)
+            library.write_text('fixture-library')
+            self.assertEqual(self.run_it(m, phases=('evaluate',))['n_not_executed'], 0)
+            changed = dict(R.L.parser_identity(), backend='different-backend')
+            with patch.object(R.L, 'parser_identity', return_value=changed):
+                self.assertEqual(self.run_it(m, phases=('evaluate',))['n_not_executed'], 4)
+
+    def test_reuse_rejects_changed_shared_verifier_code(self):
+        m = self.manifest(); self.run_it(m)
+        hashes = R.code_hashes(); hashes['stage_ledger.py'] = 'different-source'
+        with patch.object(R, 'code_hashes', return_value=hashes):
+            self.assertEqual(self.run_it(m, phases=('evaluate',))['n_not_executed'], 4)
+        self.assertEqual(self.run_it(m, phases=('evaluate',))['n_not_executed'], 0)
+
+    def test_reuse_rejects_changed_engine_reference_model_and_auxiliary(self):
+        m = self.manifest()
+        model = self.write("model.json", "{}\n")
+        reference = self.write("go.owl", "reference\n")
+        layout = self.write("layout.tsv", "layout\n")
+        m["gspa"]["shared_args"] = ["--theta", model, "--go-owl=" + reference]
+        m["genomes"][0]["genome_layout"] = layout
+        self.run_it(m)
+        for path in (self.stub, model, reference, layout):
+            with self.subTest(path=path):
+                with open(path) as fh:
+                    original = fh.read()
+                with open(path, "a") as fh:
+                    fh.write("\n")
+                res = self.run_it(m, phases=("evaluate",))
+                self.assertGreater(res["n_not_executed"], 0)
+                self.write(os.path.basename(path), original)
+                self.assertEqual(self.run_it(m, phases=("evaluate",))["n_not_executed"], 0)
+
+    def test_reuse_rejects_changed_arguments_and_genome_context(self):
+        m = self.manifest()
+        self.run_it(m)
+        m["arms"][1]["args"] = ["--enable-priors", "none"]
+        self.assertTrue(self.run_it(m, phases=("evaluate",))["execution_status"]["full"]["g1"].startswith("failed"))
+        m["arms"][1]["args"] = []
+        m["genomes"][0]["taxon"] = "NCBITaxon_562"
+        self.assertTrue(self.run_it(m, phases=("evaluate",))["execution_status"]["full"]["g1"].startswith("failed"))
+
+    def test_inputs_changed_during_execution_cannot_be_certified(self):
+        m = self.manifest()
+        model = self.write("model.json", "{}\n")
+        m["gspa"]["shared_args"] = ["--theta", model]
+        with open(self.stub, "a") as fh:
+            fh.write(f"\nwith open({model!r}, 'a') as changed: changed.write(' ')\n")
+        res = self.run_it(m)
+        self.assertEqual(res["n_not_executed"], 4)
+        self.assertIn("changed during", res["execution_status"]["full"]["g1"])
+
+    def test_legacy_records_without_input_identity_are_not_certified(self):
+        m = self.manifest()
+        self.run_it(m)
+        path = os.path.join(self.tmp, "out", "arms", "full", R.RUN_RECORD)
+        with open(path) as fh:
+            record = json.load(fh)
+        record.pop("inference_identity", None)
+        self.write(os.path.relpath(path, self.tmp), json.dumps(record))
+        self.assertTrue(self.run_it(m, phases=("evaluate",))["execution_status"]["full"]["g1"].startswith("failed"))
+
+    def test_success_exit_does_not_override_missing_failed_or_noop_stage(self):
+        for option in ("--missing-ledger", "--failed-ledger", "--rlc-suggester"):
+            with self.subTest(option=option):
+                m = self.manifest()
+                m["arms"][1]["args"] = [option]
+                result = self.run_it(m)
+                self.assertEqual(result["runs"]["full"]["returncode"], 0)
+                self.assertEqual(result["runs"]["full"]["status"], "failed")
+
+    def test_nonfinite_trailing_ledger_is_reported_as_execution_failure(self):
+        with open(self.stub, 'a') as stream:
+            stream.write('''
+for r in rows:
+    path = r[2] + ".stages.json"
+    with open(path) as fh: ledger = json.load(fh)
+    ledger["ignored_changes"] = [float("nan")]
+    with open(path, "w") as fh: json.dump(ledger, fh)
+''')
+        result = self.run_it(self.manifest())
+        self.assertEqual(result['n_not_executed'], 4)
+        for arm in ('stage0', 'full'):
+            self.assertEqual(result['runs'][arm]['returncode'], 0)
+            self.assertEqual(result['runs'][arm]['status'], 'failed')
+            self.assertTrue(all('invalid execution evidence' in reason
+                                for reason in result['runs'][arm]['failed'].values()))
+
+    def test_changed_or_removed_stage_ledger_invalidates_reuse(self):
+        m = self.manifest()
+        self.run_it(m)
+        path = self.out("full") + ".stages.json"
+        with open(path, "a") as fh:
+            fh.write("\n")
+        self.assertTrue(self.run_it(m, phases=("evaluate",))["execution_status"]["full"]["g1"].startswith("failed"))
+        os.remove(path)
+        self.assertTrue(self.run_it(m, phases=("evaluate",))["execution_status"]["full"]["g1"].startswith("failed"))
 
     def test_evaluate_only_rejects_modified_output_changed_claims_and_unrun_arms(self):
         m = self.manifest()

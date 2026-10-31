@@ -1,0 +1,60 @@
+{
+  "cases": 260,
+  "implementation": {
+    "benchmark/v3/check_nutrient_cobra.py": "c9988b1ef98cf48a86a498856091a6cdf447e6d85b0e6ea174aadeba20c1d96c",
+    "benchmark/v3/prepare_metabolic_benchmarks.py": "7645e1f76cd55686435960aff2dc0d1411c48cc50d3f97494f90752381903e75",
+    "benchmark/v3/run_nutrient_phenotypes.py": "6f821911f47a094a389896ad63ba3c950f607431466b401b5db2919b1674f66c",
+    "benchmark/v3/run_sulfonate_benchmark.py": "3ad241515c834d0f2ce6ff98e7f8003d7b71bd7c2d1c95b8846484b89658c8bf",
+    "scripts/metabolic_experiments.py": "6fe80779291e2844b18f59e8f01eb806830c1763b5087f80bb38d34d5549ade2"
+  },
+  "inputs_sha256": "f47d1c7fa3836c267e95b0a0a16149f6ce55993c3247b65b2968a0a9e0de99d2",
+  "model_sha256": "9c772d44ca43350e40dc7ee86c7aa148796856be1eea45e5406c6df8f7dcde28",
+  "plans": 780,
+  "plans_sha256": "ce0b798a0b75e74fc424769a56c87586ce7e099fcec3a18b2ec3e9cf8e8dd986",
+  "protocol": {
+    "assumptions": [
+      "M63 carbon source is glucose according to the cited 1996 methods; 2000 specifies Trp supplementation.",
+      "Flux ceilings are declared modeling assumptions, not conversion of measured concentrations.",
+      "Trace ion availability is a model diagnostic assumption; the complete sulfur-free trace recipe is unresolved.",
+      "Native maintenance and all internal reactions/GPRs remain unchanged.",
+      "In-frame experimental deletions are approximated by loss of the indicated gene product.",
+      "MG1655 model is not strain-matched EC1250; background trp-1 lesion is not mapped.",
+      "Wild-type column defines normalization; sulfate is a control, not a recovered function.",
+      "iML1515 may encode this literature; this is not an independent or masked recovery benchmark."
+    ],
+    "base_rates": {
+      "ca2": 1000.0,
+      "cl": 1000.0,
+      "cobalt2": 1000.0,
+      "cu2": 1000.0,
+      "fe2": 1000.0,
+      "fe3": 1000.0,
+      "glc__D": 10.0,
+      "h": 1000.0,
+      "h2o": 1000.0,
+      "k": 1000.0,
+      "mg2": 1000.0,
+      "mn2": 1000.0,
+      "mobd": 1000.0,
+      "na1": 1000.0,
+      "nh4": 10.0,
+      "ni2": 1000.0,
+      "pi": 1000.0,
+      "thm": 0.01,
+      "trp__L": 0.1,
+      "zn2": 1000.0
+    },
+    "growth_threshold": 1e-06,
+    "oxygen_uptake": 20.0,
+    "schema": "gspa.sulfonate_diagnostic/1",
+    "sulfur_uptake_ceilings": [
+      0.1,
+      1.0,
+      10.0
+    ]
+  },
+  "statuses": {
+    "ready": 216,
+    "unsupported": 564
+  }
+}

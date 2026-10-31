@@ -1,0 +1,46 @@
+{
+  "review": "route-review.jsonl",
+  "reviewer": "Claude Code claude-sonnet-5-5, read-only",
+  "items": [
+    {
+      "finding": "Unchecked visualization overlays",
+      "disposition": "Removed CLEAN direct TSV overlay; integrated CLEAN remains visible, with two explicit rendering regressions. Tutorial historical copy remains outside production scope."
+    },
+    {
+      "finding": "Receipt accepts impossible zero-cutoff filtering or missing proteins",
+      "disposition": "Reject filtered_calls !=0 at zero cutoff and require all bound proteins to occur at zero cutoff. Regression added."
+    },
+    {
+      "finding": "Invalid cutoff checked after model run",
+      "disposition": "Shared Python cutoff validation now runs before subprocess; Nextflow also rejects invalid cutoff before invoking CLEAN. Regression added."
+    },
+    {
+      "finding": "Missing CLI mode flag",
+      "disposition": "Added --clean-score-kind; real route harness uses it."
+    },
+    {
+      "finding": "Model directory must be writable; abrupt kill cleanup incomplete",
+      "disposition": "Document limitation. UUID isolation avoids reuse; no global cleanup or read-only-model copy abstraction added."
+    },
+    {
+      "finding": "Synthetic driver cannot prove native correctness",
+      "disposition": "Agreed. Full541 native attempt separately registered, retained and run via Slurm; no synthetic-model accuracy claim."
+    },
+    {
+      "finding": "Receipt does not verify native CSV bytes at import",
+      "disposition": "Documented explicitly: importer validates FASTA and typed output/receipt consistency, not native execution or native CSV hash. Native benchmark retains and checks native bytes separately."
+    },
+    {
+      "finding": "Generic conversion can lose native score semantics",
+      "disposition": "Reject typed/CLEAN input in generic converter before output creation; real typed importer required."
+    },
+    {
+      "finding": "Two-file publication is not crash atomic",
+      "disposition": "Normal exceptions clean outputs; power-loss/kill may leave incomplete pair, which typed parser rejects. No transactional durability claim."
+    },
+    {
+      "finding": "Newline concatenation risk",
+      "disposition": "Claims writers terminate each JSON record with newline; zero-byte builtin stream supported. Controlled dbCAN and CLEAN Nextflow gates check merged raw bytes."
+    }
+  ]
+}

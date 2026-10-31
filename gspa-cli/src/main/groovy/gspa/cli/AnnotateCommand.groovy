@@ -203,6 +203,10 @@ class AnnotateCommand implements Runnable {
             description = 'CLEAN checkpoint directory; overrides config')
     String cleanModelDir
 
+    @Option(names = ['--clean-score-kind'],
+            description = 'Native CLEAN values: gmm_confidence or distance; overrides config')
+    String cleanScoreKind
+
     @Option(names = ['--base-predictor'],
             description = 'Use DeepGO-PlusPlus as the base function predictor: '
                     + 'full (GPU, precomputed components) or light (CPU, self-contained from FASTA). '
@@ -663,6 +667,8 @@ class AnnotateCommand implements Runnable {
             config.predictors.neural.clean.modelDir = cleanModelDir
         }
 
+        if (cleanScoreKind) config.predictors.neural.clean.scoreKind = cleanScoreKind
+
         if (basePredictor) {
             config.predictors.neural.basePredictor = basePredictor
         }
@@ -709,10 +715,16 @@ class AnnotateCommand implements Runnable {
             def lc = config.predictors.neural.deepGoPlusPlusLight
             lc.minScore = Math.max(lc.minScore, minScore)
         }
-        // Wire the -t/--threads budget into the DIAMOND/sidecar thread count.
-        // (The option was previously parsed but never consumed by any predictor.)
+        // Wire the -t/--threads budget into HMMER and the DIAMOND/sidecar count.
         if (threads > 0) {
             config.predictors.neural.deepGoPlusPlusLight.threads = threads
+            config.predictors.domains.threads = threads
+            config.predictors.antifam.threads = threads
+            config.predictors.pathway.threads = threads
+            config.predictors.eggnog.threads = threads
+            config.predictors.amrfinder.threads = threads
+            config.predictors.dbcan.threads = threads
+            config.predictors.antismash.threads = threads
         }
     }
 }

@@ -23,6 +23,8 @@ class SbmlModelInfo {
 
     File model
     String sha256
+    /** Set by the workflow from the actual model source, never inferred from a neighbouring table. */
+    boolean fromCurrentRefiner = false
     /** gene product label -> id. */
     final Map<String, String> geneByLabel = new LinkedHashMap<>()
     final Set<String> geneIds = new LinkedHashSet<>()

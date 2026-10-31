@@ -10,7 +10,7 @@ import spock.lang.TempDir
  * Metabolic experiments and the community analysis through `gspa integrate`, with the real Python
  * sidecars and libsbml on SYNTHETIC toy networks (the generator lives with the core tests). Conditional
  * model results only; nothing here measures accuracy. Needs libsbml/scipy/numpy: GSPA_TEST_PYTHON or
- * /tmp/gspa-v3-testenv.
+ * ~/tmp/gspa-v3-testenv.
  */
 @IgnoreIf({ !ExperimentCliSpec.pythonPath().exists() })
 class ExperimentCliSpec extends Specification {
@@ -18,7 +18,7 @@ class ExperimentCliSpec extends Specification {
     final ObjectMapper mapper = new ObjectMapper()
     File models
 
-    static File pythonPath() { new File(System.getenv('GSPA_TEST_PYTHON') ?: '/tmp/gspa-v3-testenv/bin/python') }
+    static File pythonPath() { new File(System.getenv('GSPA_TEST_PYTHON') ?: new File(System.getProperty('user.home'), 'tmp/gspa-v3-testenv/bin/python').path) }
 
     def setup() {
         models = new File(dir, 'models')

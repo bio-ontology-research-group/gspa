@@ -1,0 +1,60 @@
+[
+  {
+    "name": "annotate-gmm_confidence",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/tmp/clean-route/q.faa",
+      "--config",
+      "/home/leechuck/tmp/clean-route/config-gmm_confidence.json",
+      "--output",
+      "/home/leechuck/tmp/clean-route/annotation-gmm_confidence",
+      "--claims-out",
+      "/home/leechuck/tmp/clean-route/annotate-gmm_confidence.jsonl",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "import-gmm_confidence",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "clean-claims",
+      "--proteins",
+      "/home/leechuck/tmp/clean-route/capture-gmm_confidence/input.faa",
+      "--tsv",
+      "/home/leechuck/tmp/clean-route/capture-gmm_confidence/query.clean.tsv",
+      "--receipt",
+      "/home/leechuck/tmp/clean-route/capture-gmm_confidence/query.clean.receipt.json",
+      "--score-kind",
+      "gmm_confidence",
+      "--output",
+      "/home/leechuck/tmp/clean-route/import-gmm_confidence.jsonl"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "annotate-missing",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/tmp/clean-route/q.faa",
+      "--config",
+      "/home/leechuck/tmp/clean-route/config-gmm_confidence.json",
+      "--output",
+      "/home/leechuck/tmp/clean-route/annotation-missing",
+      "--claims-out",
+      "/home/leechuck/tmp/clean-route/missing.jsonl",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  }
+]

@@ -1,5 +1,6 @@
 package gspa.io
 
+import groovy.json.JsonOutput
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.model.Feature
@@ -19,7 +20,8 @@ class GffWriter {
      * When includeAnnotations is true, adds GO/EC/Pfam to CDS attributes
      * and emits region-level annotations (signal peptide cleavage,
      * transmembrane helices, intrinsic disorder) as GFF3 subfeatures
-     * whose {@code Derives_from} points back to the parent CDS.
+     * whose {@code Derives_from} points back to the parent CDS. Full genomic
+     * regions are emitted independently, including those with no overlapping CDS.
      */
     static void writeGff3(Genome genome, File output,
                           boolean includeFasta = false,
@@ -34,13 +36,17 @@ class GffWriter {
                 }
             }
 
+            Set<String> occupiedIds = genome.contigs.collectMany { contig ->
+                contig.features.collect { it.id }.findAll { it != null }
+            } as Set<String>
+
             // Features
             genome.contigs.each { contig ->
                 contig.features.each { feature ->
                     Protein protein = null
                     if (includeAnnotations && feature.type == FeatureType.CDS) {
                         protein = contig.proteins.find {
-                            it.sourceFeature == feature || it.id == feature.id
+                            it.sourceFeature?.is(feature) || it.id == feature.id
                         }
                         if (protein && !protein.annotations.isEmpty()) {
                             addAnnotationAttributes(feature, protein)
@@ -48,9 +54,13 @@ class GffWriter {
                     }
                     writer.writeLine(feature.toGff3())
                     if (protein) {
-                        writeRegionSubfeatures(writer, feature, protein)
+                        writeRegionSubfeatures(writer, feature, protein, occupiedIds)
                     }
                 }
+            }
+
+            if (includeAnnotations) {
+                writeGenomicRegions(writer, genome, occupiedIds)
             }
 
             // Optional FASTA section
@@ -73,7 +83,8 @@ class GffWriter {
      * as GFF3 subfeature lines derived from the parent CDS. Residue indices
      * are mapped to genomic coordinates via the CDS start / strand.
      */
-    private static void writeRegionSubfeatures(Writer writer, Feature cds, Protein protein) {
+    private static void writeRegionSubfeatures(Writer writer, Feature cds, Protein protein,
+                                               Set<String> occupiedIds) {
         String parentId = cds.id
         if (!parentId) return
         int subIdx = 0
@@ -84,6 +95,7 @@ class GffWriter {
             String gff3Type = regionTypeToGff3(ann)
             subIdx++
             String id = "${parentId}_${ann.regionType ?: 'region'}_${subIdx}"
+            occupiedIds.add(id)
             List<String> attrs = [
                 "ID=${id}".toString(),
                 "Derives_from=${parentId}".toString(),
@@ -103,6 +115,35 @@ class GffWriter {
                 "${cds.seqId}\t${ann.source ?: 'gspa'}\t${gff3Type}\t${coords[0]}\t${coords[1]}\t${scoreStr}\t${strandStr}\t.\t${attrs.join(';')}"
             )
         }
+    }
+
+    /** Export original validated genomic records, never their per-CDS copies. */
+    private static void writeGenomicRegions(Writer writer, Genome genome, Set<String> occupiedIds) {
+        int index = 0
+        genome.metadata.each { String key, Object value ->
+            if (!key.startsWith('genomic_regions:')) return
+            (value as List<Annotation>).each { Annotation ann ->
+                String id
+                do {
+                    id = "gspa_genomic_region_${++index}"
+                } while (!occupiedIds.add(id))
+                Map<String, Object> attrs = [ID: id, Name: ann.value,
+                    region_type: ann.regionType, annotation_type: ann.type?.name(),
+                    evidence: ann.evidence, evidence_type: ann.evidenceType?.name()]
+                if (ann.metadata) attrs.metadata = JsonOutput.toJson(ann.metadata)
+                if (ann.provenance) attrs.provenance = JsonOutput.toJson(ann.provenance)
+                String attributes = attrs.findAll { k, v -> v != null }.collect { k, v ->
+                    "${k}=${escapeGff(v.toString())}"
+                }.join(';')
+                writer.writeLine([escapeGff(ann.contigId), escapeGff(ann.source ?: 'gspa'),
+                    FeatureType.REGION.gff3Type, ann.genomicStart, ann.genomicEnd,
+                    ann.metadata?.score_available == false ? '.' : Double.toString(ann.score), '.', '.', attributes].join('\t'))
+            }
+        }
+    }
+
+    private static String escapeGff(String value) {
+        URLEncoder.encode(value, 'UTF-8').replace('+', '%20')
     }
 
     /**

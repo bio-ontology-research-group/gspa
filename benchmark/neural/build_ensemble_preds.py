@@ -22,6 +22,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import json
 from collections import defaultdict
 from pathlib import Path
 
@@ -44,6 +45,10 @@ def load_one(path: Path):
             fields = line.rstrip("\n").split("\t")
             if len(fields) < 4:
                 continue
+            if 'metadata_json' in idx:
+                metadata = json.loads(fields[idx['metadata_json']])
+                if metadata.get('score_available') is False:
+                    continue
             try:
                 score = float(fields[idx["score"]])
             except ValueError:

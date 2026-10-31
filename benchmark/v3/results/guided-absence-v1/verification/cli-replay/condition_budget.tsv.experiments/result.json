@@ -1,0 +1,125 @@
+{
+  "schema" : "gspa.guided_absence_comparisons/1",
+  "input_model_sha256" : "d8eb981a1534f0befd8f43342b359283db345661dd6b4842177d859cd371a7de",
+  "max_solver_calls" : 48,
+  "max_experiments" : 1,
+  "comparisons" : [ {
+    "id" : "pE|EC|EC:2.3.3.3\tVITS",
+    "status" : "verified",
+    "result_file" : "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/condition_budget.tsv.experiments/comparison-0000/result.json",
+    "result_sha256" : "656d0aedfb12964f2eb311e722ada5e7ebf6e056eeb2ec9059377e8cf92c6709",
+    "facts" : {
+      "mode" : "manifest",
+      "strategy" : "fixed",
+      "seed" : 0,
+      "model_file" : "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/models/toy.xml",
+      "model_sha256" : "d8eb981a1534f0befd8f43342b359283db345661dd6b4842177d859cd371a7de",
+      "max_experiments" : 1,
+      "max_solver_calls" : 48,
+      "context_source" : "explicit_absence_scenarios",
+      "context" : {
+        "context_source" : "explicit_absence_scenarios",
+        "reaction" : "VITS",
+        "candidate_function_key" : "pE|EC|EC:2.3.3.3",
+        "metadata_source" : "user_manifest",
+        "candidate_sources" : [ {
+          "source" : "diamond",
+          "evidence_type" : "SEQUENCE_SIMILARITY",
+          "raw_score" : 0.6
+        } ],
+        "mapping_sources" : [ "reactions_tsv", "sbml_annotation" ],
+        "alternative_reactions" : [ ]
+      },
+      "reaction_mapping_table_present" : true,
+      "model_origin" : "supplied model; independence is not established by file format or presence of a reaction mapping table",
+      "analysis_type" : "absence_comparison",
+      "problem_sha256" : "286b5144032f73e0d6d986ac25dab06818fc36efd7718bcc223c552f5cd652f7",
+      "solver_calls_used" : 8,
+      "solver_calls_max" : 48,
+      "outcome" : "completed_with_skips_or_inconclusive",
+      "conditions_visited" : [ "control" ],
+      "conditions_unvisited" : [ "withdrawal", "transport_ko" ],
+      "comparisons" : [ {
+        "hypotheses" : [ "missing_annotation", "missing_sequence" ],
+        "comparable_phenotypes" : 2,
+        "status" : "distinguishable_under_assumptions",
+        "distinguishing_interventions" : [ {
+          "condition_id" : "control",
+          "perturbation" : "candidate_assignment_knockout"
+        } ]
+      }, {
+        "hypotheses" : [ "missing_annotation", "pathway_loss" ],
+        "comparable_phenotypes" : 2,
+        "status" : "distinguishable_under_assumptions",
+        "distinguishing_interventions" : [ {
+          "condition_id" : "control",
+          "perturbation" : "wild_type"
+        } ]
+      }, {
+        "hypotheses" : [ "missing_annotation", "external_supply" ],
+        "comparable_phenotypes" : 2,
+        "status" : "distinguishable_under_assumptions",
+        "distinguishing_interventions" : [ {
+          "condition_id" : "control",
+          "perturbation" : "candidate_assignment_knockout"
+        } ]
+      }, {
+        "hypotheses" : [ "missing_sequence", "pathway_loss" ],
+        "comparable_phenotypes" : 2,
+        "status" : "distinguishable_under_assumptions",
+        "distinguishing_interventions" : [ {
+          "condition_id" : "control",
+          "perturbation" : "wild_type"
+        }, {
+          "condition_id" : "control",
+          "perturbation" : "candidate_assignment_knockout"
+        } ]
+      }, {
+        "hypotheses" : [ "missing_sequence", "external_supply" ],
+        "comparable_phenotypes" : 2,
+        "status" : "same_evaluated_growth_classes",
+        "distinguishing_interventions" : [ ]
+      }, {
+        "hypotheses" : [ "pathway_loss", "external_supply" ],
+        "comparable_phenotypes" : 2,
+        "status" : "distinguishable_under_assumptions",
+        "distinguishing_interventions" : [ {
+          "condition_id" : "control",
+          "perturbation" : "wild_type"
+        }, {
+          "condition_id" : "control",
+          "perturbation" : "candidate_assignment_knockout"
+        } ]
+      } ],
+      "assembly" : {
+        "status" : "UNKNOWN",
+        "completeness_fraction" : null,
+        "source" : "synthetic test; not measured"
+      },
+      "function_search" : {
+        "status" : "UNKNOWN",
+        "source" : "synthetic test; not measured"
+      },
+      "gene_attribution" : "unverified",
+      "selected_explanation" : null,
+      "candidates_with_conditional_features" : 0,
+      "promotion" : "none",
+      "seconds" : 0.718,
+      "result_file" : "/home/leechuck/tmp/gspa-guided-absence-v1/cli-replay/condition_budget.tsv.experiments/comparison-0000/result.json",
+      "result_sha256" : "656d0aedfb12964f2eb311e722ada5e7ebf6e056eeb2ec9059377e8cf92c6709",
+      "interpretation" : "Four explicit reaction-level scenarios with separate candidate-assignment interventions. Growth is conditional on model and environmental assumptions; no explanation or gene assignment is verified."
+    }
+  } ],
+  "unvisited" : [ {
+    "id" : "pG|EC|EC:2.3.3.3\tVITS",
+    "reason" : "experiment_budget_exhausted",
+    "conditions" : [ "control", "withdrawal", "transport_ko" ]
+  } ],
+  "solver_calls_used" : 8,
+  "conditions_visited" : 1,
+  "promotion" : "none",
+  "calibrated_probability" : null,
+  "selected_explanation" : null,
+  "gene_attribution" : "unverified",
+  "outcome" : "completed_with_skips_or_inconclusive"
+}

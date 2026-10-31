@@ -1,0 +1,54 @@
+Most missing reference ECs were never proposed. The integrator keeps every claim it receives, and the family-excluded result is depressed by a search-cap bug. I did not open the per-genome `integrated.tsv`/claims files or the `ReportFindings` structures. The one data probe was a read-only `awk` over the cached `hits.tsv`. I made no edits and ran no models, JVM or tests.
+
+## Claim flow
+1. **Reference.**
+   - `build_reference` (`benchmark/v3/homology_baseline.py:96`) keeps only Swiss-Prot entries with a strict-experimental GO or EC label. For EC that means ECO:0000269 (`evidence_codes.py:19`).
+   - It drops cohort taxids and every cohort or Price genus. In `training-cohort/baseline_report.json` that leaves 82,364 of 573,661 entries.
+2. **Search.** DIAMOND `--sensitive --evalue 1e-5 --max-target-seqs 10` (`homology_baseline.py:113-114`). There is no identity floor.
+3. **Claims.**
+   - `claims_from_hits` (`:132-147`) gives each hit's reference labels the score identity × qcovhsp, keeping the maximum per function.
+   - In `family_excluded` mode it discards hits with identity ≥30 and qcov ≥80 (`:141`).
+   - `write_claims_jsonl` (`:184`) writes `SEQUENCE_SIMILARITY` claims and strips the `EC:` prefix.
+   - `replay_predictor_contract.py:103-117` regenerates these from `hits.tsv` and checks them byte-identical.
+4. **Integration retains everything.**
+   - `IterativeRefiner.refine` (`IterativeRefiner.groovy:48`) groups every claim with a functional score, and `buildResult` creates a provenance entry for every group. There is no probability cutoff. The 0.5 `MAP_THRESHOLD` only drives priors and GO "currently annotated" sets.
+   - The learned stage (`LearnedIntegrationStage.groovy:173-216`) rescores keys that already have a prior. It retracts only if `retractBelow` is set, and I found no cohort script that sets it. Unretained claims stay `scored_only`, but every claim was retained at baseline.
+   - EC defaults to the CATALYTIC role (`ContextFeatureExtractor.groovy:264`), and CATALYTIC is the only role that projects for EC (`LearnedIntegrationStage.groovy:271`).
+   - The one possible drop is `removed_no_projection` (`:199`). It would delete an EC key if an adapter or context supplied only a non-CATALYTIC role through `candidate_role` (`claimRole`, `ContextFeatureExtractor.groovy:275-283`) or `ctx.roles` (checked first, `:262`). The default homology claims don't set one.
+5. **The audit's "emitted" is the production TSV, not the raw claims.** `audit_context_comparison.py:243-247` reads `posterior_prob` rows per arm. `candidate_reference_matches` (`:129`) is the reference ECs among those rows, and it is the figure reported as "emitted" (15/39 and 5/39). Given step 4, this should equal the set of reference ECs in the raw claims. That is the main check for you: if raw claims have more reference ECs than the TSV, that points at `removed_no_projection`. If not, the ECs were never proposed.
+
+## Concrete bug (high confidence)
+`--max-target-seqs 10` is applied before the family filter. Family exclusion therefore removes hits from a list already cut to ten, so remote homologs ranked 11 or lower are never retrieved.
+
+On the cached `~/.cache/gspa-v3-data/training-cohort/baseline/hits.tsv`:
+
+| Measure | Queries |
+|---|---|
+| With any hit | 26,605 |
+| With ≥10 hits (cap saturated) | 10,910 |
+| Whose entire top 10 is family-level (≥30% identity, ≥80% coverage) | 3,193 |
+
+Those 3,193 queries can never yield a family-excluded claim. Another 14,517 queries have at least 10 hits but not all family-level; only family-excluded claims from hits within the cap survive for these.
+
+This directly depresses the 5/39 (family-excluded) number, and it also truncates the homology list for proteins with large families. Family-excluded claims cover 19,272 proteins versus 26,605 for homology.
+
+## Label-independent coverage options
+- **Cap.** Raise the cap to 500 and apply the family filter on the DIAMOND output before ranking. This is the cheapest fix.
+- **Search sensitivity.** Use `--very-sensitive` or `--ultra-sensitive`.
+- **Reference breadth.** The reference currently needs ECO:0000269 for any label (`:96`). Adding reviewed non-experimental Swiss-Prot ECs keeps the genus fence, so no cohort label enters inference. It should be a separate, declared arm because it changes the claim semantics.
+- **Scoring.** The score is identity × query coverage (`:143`). It ignores subject coverage and e-value, so partial-domain hits outrank good ones. That affects ranking, not candidate availability.
+- **Other sources.** Add EC from domain or HMM channels (InterPro, eggNOG, KOfam mappings). Measure each as a proposal-recall delta against the 39 reference ECs.
+
+## Complex subunits
+Whole-complex ECs such as 7.1.1.2 (NADH:quinone oxidoreductase) versus 1.5.98.3 (the 12-assertion cluster in the doc) should not count as isolated catalysis. Report these as a separate stratum with a fixed, pre-registered EC-to-complex equivalence list. Do not add alias remapping to the exact-match metric.
+
+## Minimal regression
+1. Write a ledger per reference (genome, protein, EC) with five stages: reference contains the EC; DIAMOND hit; claim in the jsonl; row in `integrated.tsv`; probability ≥ cutoff.
+2. Rerun only DIAMOND with the larger cap, then `claims_from_hits` with the family filter applied after retrieval.
+3. Pass criterion: raw-claim recall rises from the current 15/39 and 5/39. Fix the thresholds in advance, and never fit anything on these 37 proteins.
+4. Add a unit test for `claims_from_hits` with a synthetic hits file: ten family-level hits followed by a remote hit. Today the test fails, because the remote hit is never retrieved.
+
+## Confidence
+- **High:** the cap-before-filter bug, and that the legacy integrator keeps every claim.
+- **Medium-high:** that the missing ECs are mostly absent from the raw claims, pending your claims trace.
+- **Medium:** whether the strict-experimental reference plus genus fence is the main coverage limiter. I haven't checked whether an experimental-EC reference protein exists for each missing EC.

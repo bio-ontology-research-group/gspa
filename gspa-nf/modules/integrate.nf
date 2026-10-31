@@ -10,14 +10,14 @@
  *                     to lift the per-tool TSVs into a single claims.jsonl
  *   SIDECAR_CLAIMS  — wraps the bundled sidecar_to_claims.py to emit a
  *                     parallel claims.jsonl from the sidecar tools
- *                     (mDeepFRI, ProteInfer, CLEAN). Together with
+ *                     (mDeepFRI, ProteInfer). Typed CLEAN uses CLEAN_CLAIMS. Together with
  *                     BUILD_CLAIMS this delivers all 8 source tools to
  *                     the integrator (vs the historical 4 that silently
  *                     dropped the rest — see ClaimExtractor.SOURCE_TO_TYPE
  *                     fix in v1.5).
  *   MERGE_CLAIMS    — concatenates builtin + sidecar claims.
- *   OPERONS         — runs the bundled predict_operons.py (3-predictor
- *                     ensemble with Noisy-OR per-pair posterior).
+ *   OPERONS         — runs the bundled predict_operons.py (same-strand,
+ *                     distance-based groups; no learned operon probability).
  *   INTEGRATE       — invokes `gspa-cli integrate` on the merged claims
  *                     plus reference data + operons; emits
  *                     ${sample_id}_integrated.tsv + provenance + GAEF.
@@ -44,7 +44,7 @@ process BUILD_CLAIMS {
     path pfam2go_file
 
     output:
-    tuple val(sample_id), path("${sample_id}_claims.jsonl"), emit: claims
+    tuple val(sample_id), path("${sample_id}_claims_builtin.jsonl"), emit: claims
 
     script:
     def ips_arg = (interproscan_tsv.size() > 0) ? "--interproscan ${interproscan_tsv}" : ''
@@ -60,14 +60,15 @@ process BUILD_CLAIMS {
     python3 ${claims_parser} \\
         --results-dir preds \\
         --goa ${goa_file} \\
-        --output ${sample_id}_claims.jsonl \\
+        --output ${sample_id}_claims_builtin.jsonl \\
+        --allow-empty \\
         ${ips_arg} \\
         ${p2g_arg}
     """
 }
 
 /*
- * Sidecar tool claims — mDeepFRI / ProteInfer / CLEAN. These tools are not
+ * Sidecar tool claims — mDeepFRI / ProteInfer. These tools are not
  * handled by 02b_parse_predictors_to_claims.py because they emit per-protein
  * (term, score) TSVs in the same shape, so a separate parser exists. The
  * v1.5 fix to ClaimExtractor lets these source names actually contribute to
@@ -113,27 +114,91 @@ process SIDECAR_CLAIMS {
  * order is irrelevant — the integrator groups by (protein, function) and
  * applies Noisy-OR with per-EvidenceType correlation collapse.
  */
+process DBCAN_CLAIMS {
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/dbcan", mode: 'copy'
+    container 'eclipse-temurin:21-jre'
+
+    input:
+    tuple val(sample_id), path(overview), path(proteins)
+    path gspa_jar
+
+    output:
+    tuple val(sample_id), path("${sample_id}_claims_dbcan.jsonl"), emit: claims
+    tuple val(sample_id), path("${sample_id}_claims_dbcan.jsonl.import.json"), emit: receipt
+
+    script:
+    """
+    java -jar ${gspa_jar} dbcan-claims \\
+        --overview ${overview} --proteins ${proteins} \\
+        --output ${sample_id}_claims_dbcan.jsonl
+    """
+}
+
+process ANTISMASH_CLAIMS {
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/antismash", mode: 'copy'
+    container 'eclipse-temurin:21-jre'
+
+    input:
+    tuple val(sample_id), path(results), path(genome), path(gff), path(proteins)
+    path gspa_jar
+
+    output:
+    tuple val(sample_id), path("${sample_id}_claims_antismash.jsonl"), emit: claims
+    tuple val(sample_id), path("${sample_id}_claims_antismash.jsonl.import.json"), emit: receipt
+
+    script:
+    """
+    java -jar ${gspa_jar} antismash-claims \\
+        --results ${results} --genome ${genome} --gff3 ${gff} --proteins ${proteins} \\
+        --output ${sample_id}_claims_antismash.jsonl
+    """
+}
+
+process CLEAN_CLAIMS {
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/clean", mode: 'copy'
+    container 'eclipse-temurin:21-jre'
+
+    input:
+    tuple val(sample_id), path(tsv), path(receipt), path(proteins)
+    path gspa_jar
+
+    output:
+    tuple val(sample_id), path("${sample_id}_claims_clean.jsonl"), emit: claims
+    tuple val(sample_id), path("${sample_id}_claims_clean.jsonl.import.json"), emit: receipt
+
+    script:
+    """
+    java -jar ${gspa_jar} clean-claims \\
+        --tsv ${tsv} --receipt ${receipt} --proteins ${proteins} \\
+        --score-kind ${params.clean_score_kind} --min-score ${params.clean_min_score} \\
+        --output ${sample_id}_claims_clean.jsonl
+    """
+}
+
 process MERGE_CLAIMS {
     tag "$sample_id"
     publishDir "${params.outdir}/${sample_id}", mode: 'copy'
     container 'python:3.12-slim'
 
     input:
-    tuple val(sample_id), path(builtin_claims), path(sidecar_claims)
+    tuple val(sample_id), path(builtin_claims), path(sidecar_claims), path(dbcan_claims), path(clean_claims), path(antismash_claims)
 
     output:
     tuple val(sample_id), path("${sample_id}_claims.jsonl"), emit: claims
 
     script:
     """
-    cat ${builtin_claims} ${sidecar_claims} > ${sample_id}_claims.jsonl
+    cat ${builtin_claims} ${sidecar_claims} ${dbcan_claims} ${clean_claims} ${antismash_claims} > ${sample_id}_claims.jsonl
     """
 }
 
 /*
- * Operon prediction. Default: 3-predictor ensemble (distance + strict +
- * functional) with Noisy-OR per-pair posteriors; falls back to plain
- * distance when no GAF is available yet (first-pass run before integrate).
+ * Operon prediction uses same-strand adjacency within 300 bp and groups of
+ * at least two CDS. This script does not run OperonEnsemble or estimate an
+ * operon probability. Functional context is applied later by the JVM.
  *
  * Emits operons_for_integrate.tsv (the format `gspa integrate --operons`
  * consumes) plus operons.tsv + protein_to_operon.tsv for the visualizer.

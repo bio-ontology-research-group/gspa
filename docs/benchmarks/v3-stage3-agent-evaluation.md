@@ -1,6 +1,21 @@
 # v3 Stage 3 Anomaly Resolution Evaluation: Qwen-3.8-27B vs Equally Informed Simple Comparators
 
-Status (2026-10-26): **Completed on the 40 held-out test anomalies of `swissprot_label_rich_v1` (4 unseen genera, 0 training/calibration family overlap).** All inputs, resolutions, and scores are committed in `benchmark/v3/results/stage3-agent-evaluation/` and reproducible via `benchmark/v3/evaluate_stage3_agent.py` (unit-tested in `benchmark/v3/tests/test_evaluate_stage3_agent.py`).
+Audit status (2026-10-26): **invalid as evidence for recommendation 11; replacement pending**.
+The replacement implementation and its executed production-input checks are
+described in [the version-2 report](v3-stage3-production-comparison.md); independent
+biological validation is still pending.
+The generator embeds the true EC carrier in public anomaly IDs, inserts true GO
+annotations into public context, and supplies hard-coded learned probabilities for
+the nine decoy and sixteen taxonomic cases. Removing named truth fields does not
+remove those answer channels. The reported comparator scores therefore do not
+establish an equally informed held-out production comparison. See the
+[acceptance record](../../tasks/v3-acceptance.md). The historical description and
+artifacts below are retained for traceability, not accepted validation.
+
+Historical run: 40 constructed cases from `swissprot_label_rich_v1`, with artifacts
+in `benchmark/v3/results/stage3-agent-evaluation/` and generator
+`benchmark/v3/evaluate_stage3_agent.py` at commit `498560f` (the current script
+implements version 2 and cannot reproduce the invalid generator).
 
 | Artifact | Path | SHA-256 |
 | --- | --- | --- |

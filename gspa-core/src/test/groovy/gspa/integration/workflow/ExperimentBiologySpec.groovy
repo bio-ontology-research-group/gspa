@@ -28,7 +28,7 @@ class ExperimentBiologySpec extends Specification {
     SbmlModelInfo model
     Map template
 
-    static File pythonPath() { new File(System.getenv('GSPA_TEST_PYTHON') ?: '/tmp/gspa-v3-testenv/bin/python') }
+    static File pythonPath() { new File(System.getenv('GSPA_TEST_PYTHON') ?: new File(System.getProperty('user.home'), 'tmp/gspa-v3-testenv/bin/python').path) }
 
     def setup() {
         File helper = new File(dir, 'make_fixtures.py')
@@ -124,6 +124,22 @@ class ExperimentBiologySpec extends Specification {
         then:
         built.bindings[0].reactions == ['ACS']
         built.bindings[0].mapping == [ACS: ['reaction_graph_id'] as Set]
+    }
+
+    def 'intracellular product hints require exact declared targets and never imply secretion'() {
+        given:
+        model.reactionIds.add('DM_sec')
+        template.baseline.product_demands = ['DM_sec']
+        when:
+        def built = build([ec('pF', '4.4.4.4', 0.5d, [product_demand: 'DM_sec']),
+                           ec('pC', '6.2.1.1', 0.5d, [product_demand: 'secondary metabolite']),
+                           ec('pD', '1.9.3.1', 0.5d, [product_demand: 'DM_sec', product_exchange: 'EX_sec_e'])])
+        def products = built.manifest.context.evidence.findAll { it.type == 'bgc' }
+        then:
+        products.size() == 1
+        products[0].product_demand == 'DM_sec'
+        !products[0].product_exchange
+        built.report.evidence_unmapped.size() == 2
     }
 
     // ------------------------------------------------------------------ mapper

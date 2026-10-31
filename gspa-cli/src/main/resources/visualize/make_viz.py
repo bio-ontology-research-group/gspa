@@ -54,7 +54,8 @@ SIDECARS = [
     # creating a duplicate entry in the dropdown.
     ("mdf",        W / "mdf_out" / f"{GENOME_ID}.mdf.tsv",            0.10,  0.30),
     ("proteinfer", W / "proteinfer_out" / f"{GENOME_ID}.proteinfer.tsv", 0.30, 0.60),
-    ("clean",      W / "clean_out" / f"{GENOME_ID}.clean.tsv",          0.10,  0.10),
+    # CLEAN is rendered from integrated claims/provenance. Direct TSV overlays
+    # cannot validate its receipt or distinguish distances from confidences.
 ]
 
 # ---------------------------------------------------------------------------
@@ -599,6 +600,7 @@ NON_PREDICTION_STAGES = ("reference_preparation", "cohort_context", "metabolic_e
 LEGACY_STAGE_ORDER = ("evidence_integration", "dark_matter", "reaction_context", "cross_genome", "symbolic_enforcement",
                       "metabolic_refinement", "agent_completion")
 SCORING_MODES = {
+    "mixed": "Mixed: learned scores for supported inputs; legacy scores for unsupported inputs",
     "learned": "Learned: scores come from a frozen model",
     "legacy_heuristic": "Legacy heuristic: evidence combiner and hand-set priors; no trained model produced these scores",
 }
@@ -782,7 +784,7 @@ def scoring_state(raw, learned_stage):
     ran = bool(isinstance(learned_stage, dict) and learned_stage.get("status") == "executed")
     return {"mode": mode if known else "unknown", "reported": mode if isinstance(mode, str) else None, "note": raw.get("scoring_mode_note"),
             "label": SCORING_MODES.get(mode, "Unknown: this ledger does not record which scoring produced the scores"),
-            "consistent": ((mode == "learned") == ran) if known else None, "learned_ran": ran,
+            "consistent": ((mode in ("learned", "mixed")) == ran) if known else None, "learned_ran": ran,
             "claim": "Scores are not a measurement of accuracy."}
 
 
@@ -810,7 +812,11 @@ def build_learned(report, scoring, learned_stage, proteins):
     model = report["model"]
     sha = _text(model.get("sha256"))
     ident = {"id": _text(model.get("id")), "sha256": sha}
-    if scoring["mode"] != "learned" or not scoring["learned_ran"]:
+    unsupported_skip = (isinstance(learned_stage, dict) and learned_stage.get('status') == 'skipped'
+        and learned_stage.get('candidates_scored') == 0 and stage_sha == sha and bool(sha)
+        and report['candidates'] and all(isinstance(c, dict) and c.get('score_status') == 'unsupported'
+            and c.get('probability') is None and c.get('margin') is None for c in report['candidates']))
+    if not unsupported_skip and (scoring["mode"] not in ("learned", "mixed") or not scoring["learned_ran"]):
         why = (f"the stage ledger does not say the learned stage ran (scoring mode: {scoring['mode']})" if scoring["mode"] != "learned"
                else "the stage ledger's learned_integration stage did not execute")
         return {**base, "status": "not_trusted", "model": ident,
@@ -827,6 +833,7 @@ def build_learned(report, scoring, learned_stage, proteins):
         fk = canonical_function_key(c.get("function_key"))
         pid, ftype, fid = fk.rsplit("|", 2) if fk else (None, None, None)
         rec = {"k": fk, "ck": _text(c.get("candidate_key")), "p": pid, "t": ftype, "f": fid, "role": _text(c.get("role")),
+               "ss": _text(c.get("score_status")) or 'scored', "ur": _text(c.get("unsupported_reason")),
                "pr": _prob(c.get("probability")), "m": _prob(c.get("margin")), "up": c.get("above_display_threshold") is True,
                "proj": c.get("projected") is True, "lp": _prob(c.get("locus_probability")), "ln": _prob(c.get("locus_null_probability")),
                "src": _strings(c.get("supporting_sources")), "notes": _strings(c.get("notes")),
@@ -1218,7 +1225,7 @@ def main():
     # Snapshot before sidecar overlays: those add sources but never change an integrated posterior.
     integrated_snapshot = [dict(a, src=[list(x) for x in a["src"]]) for a in annos]
 
-    # ---- Merge sidecar predictor outputs (mDeepFRI, ProteInfer, CLEAN)
+    # ---- Merge sidecar predictor outputs (mDeepFRI, ProteInfer)
     # If (pid, term) is already in the integrator set: append the tool to
     # supporting_sources (so it shows as a chip in the detail panel).
     # Otherwise: add a new "tool-only" annotation with score-as-posterior.
@@ -3573,13 +3580,14 @@ const LEARNED_CANDS = LEARNED_OK ? LEARNED.candidates : [];
 const LEARNED_BY_PROTEIN = {};
 for (const c of LEARNED_CANDS) if (c.p != null) (LEARNED_BY_PROTEIN[c.p] = LEARNED_BY_PROTEIN[c.p] || []).push(c);
 const LEARNED_ROLES = {CATALYTIC: "Catalytic", ACCESSORY: "Accessory", TRANSPORTER: "Transporter", REGULATOR: "Regulator", COMPLEX_SUBUNIT: "Complex subunit", UNSPECIFIED: "Unspecified"};
-const LEARNED_ACTIONS = {rescored: "score replaced by the learned stage", added: "added by the learned stage", retracted: "retracted (below the retract threshold)",
+const LEARNED_ACTIONS = {unchanged_unsupported: "unsupported model input; preceding score retained", rescored: "score replaced by the learned stage", added: "added by the learned stage", retracted: "retracted (below the retract threshold)",
   removed_no_projection: "removed: no role could be projected", scored_only: "scored only; not written to the final table"};
 const learnedRole = r => LEARNED_ROLES[r] || String(r);
 const learnedRoleNote = r => r === "CATALYTIC" ? "" : r === "UNSPECIFIED" ? " (role not specified; not an enzyme assignment)" : " (not an enzyme assignment)";
 const learnedLocus = (v, c) => v != null ? ledgerProb(v) : '<span class="small">unavailable: ' + escapeHtml(LEARNED.locus_unavailable_reason || "no locus layer was computed for this candidate") + '</span>';
-const LEARNED_MODE_LABEL = {learned: "Learned", legacy_heuristic: "Legacy heuristic", unknown: "Unknown"};
+const LEARNED_MODE_LABEL = {learned: "Learned", mixed: "Mixed", legacy_heuristic: "Legacy heuristic", unknown: "Unknown"};
 function learnedProjectionText(c) {
+  if (c.ss === 'unsupported') return 'unsupported model input: ' + (c.ur || 'coverage unavailable') + '; preceding score retained';
   return c.proj ? "projected into the final table's role-free annotation" : "scored only: not projected into the final table";
 }
 function learnedCandidateHtml(c) {
@@ -3587,7 +3595,7 @@ function learnedCandidateHtml(c) {
     ' · marginal ' + ledgerProb(c.pr) + ' <span class="small">(independent of the other roles; marginals are not summed)</span>' +
     ' · locus ' + learnedLocus(c.lp) + ' <span class="small">(conditional within its function/role group)</span>' +
     ' · no candidate correct ' + learnedLocus(c.ln) +
-    '<div class="small">' + escapeHtml(learnedProjectionText(c)) + (c.up ? "" : "; below the advisory display threshold") +
+    '<div class="small">' + escapeHtml(learnedProjectionText(c)) + (c.up || c.ss === 'unsupported' ? "" : "; below the advisory display threshold") +
     ' · Sources: ' + (c.src.length ? c.src.map(escapeHtml).join(", ") : "none recorded (context-only candidate)") + '</div></li>';
 }
 function learnedTraceHtml(p) {
@@ -3641,7 +3649,7 @@ function updateLearned() {
   const s = learnedView.state;
   learnedMatches = learnedFilter(LEARNED_CANDS, s);
   const pages = Math.max(1, Math.ceil(learnedMatches.length / 100)); s.page = Math.max(0, Math.min(s.page, pages - 1));
-  document.getElementById("ln-count").textContent = learnedMatches.length.toLocaleString() + " of " + LEARNED_CANDS.length.toLocaleString() + " scored (protein, function, role) candidates.";
+  document.getElementById("ln-count").textContent = learnedMatches.length.toLocaleString() + " of " + LEARNED_CANDS.length.toLocaleString() + " (protein, function, role) candidates; " + LEARNED_CANDS.filter(c => c.ss === 'unsupported').length + " unsupported inputs.";
   document.getElementById("ln-rows").innerHTML = learnedMatches.slice(s.page * 100, s.page * 100 + 100).map(c => {
     const o = LEARNED.outcomes[c.k];
     return '<tr><td>' + (c.joined ? '<button class="text-button" data-lg-protein="' + escapeHtml(c.p) + '">' + escapeHtml(c.p) + '</button>' : escapeHtml(c.p ?? String(c.bad_key)) + '<div class="small">not joined: not a protein of this genome</div>') + '</td>' +
@@ -3720,9 +3728,14 @@ function renderLedger(sec) {
   for (const st of LEDGER.stages) {
     const executedChanges = st.status === "executed" && st.name !== "evidence_integration" && !st.no_prediction_changes;
     const c = executedChanges ? ledgerCount(LEDGER_ROWS.filter(r => r.s === st.name)) : null;
-    const notes = Object.entries(st.notes || {}).map(([k, v]) => escapeHtml(k + "=" + v)).join("; ");
+    const entries = Object.entries(st.notes || {});
+    const structured = entries.filter(([, v]) => v !== null && typeof v === 'object');
+    const notes = entries.filter(([, v]) => v === null || typeof v !== 'object').map(([k, v]) => escapeHtml(k + "=" + v)).join("; ");
+    const detail = structured.length ? '<details class="stage-details"><summary>Recorded assumptions and outcomes</summary><dl>' +
+      structured.map(([k, v]) => '<dt>' + escapeHtml(k) + '</dt><dd><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' +
+        escapeHtml(JSON.stringify(v, null, 2)) + '</pre></dd>').join('') + '</dl></details>' : '';
     h += '<tr><td>' + escapeHtml(st.label) + '</td><td>' + LEDGER_STATUS[st.status] + (st.status === "unknown" ? " (" + escapeHtml(st.reported_status) + ")" : "") +
-      (st.reason ? '<div class="small">' + escapeHtml(st.reason) + '</div>' : '') + (notes ? '<div class="small">' + notes + '</div>' : '') + '</td>' +
+      (st.reason ? '<div class="small">' + escapeHtml(st.reason) + '</div>' : '') + (notes ? '<div class="small">' + notes + '</div>' : '') + detail + '</td>' +
       (c ? LEDGER_CHANGES.map(k => '<td>' + ledgerCell(c.by_change[k]) + '</td>').join("") + '<td>' + ledgerCell(c.enzyme) +
         (c.complex_not_enzyme.functions ? '<div class="small">' + c.complex_not_enzyme.functions + ' GO complex term(s), not enzymes</div>' : '') +
         (c.unknown_class.functions ? '<div class="small">' + c.unknown_class.functions + ' unclassified (ontology unavailable)</div>' : '') + '</td>'

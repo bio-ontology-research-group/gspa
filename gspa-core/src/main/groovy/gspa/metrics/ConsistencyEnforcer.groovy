@@ -40,6 +40,7 @@ class ConsistencyEnforcer {
     GoOntology goOntology
     SatConsistencyChecker satChecker
     AnatomicalConstraints anatomicalConstraints
+    Map<String, List<String>> ecToGoAlternatives = [:]
     String mode = 'remove'
     double downrankFactor = 0.5
     double relaxFactor = 1.0d
@@ -52,11 +53,19 @@ class ConsistencyEnforcer {
         int annotationsAffected = 0
         int annotationsRelaxed = 0
         int violations = 0
+        boolean taxonInHierarchy = true
+        boolean constraintsApplied = true
+        String status = SatConsistencyChecker.STATUS_APPLIED
+        int ecClaimsChecked = 0
+        int ecClaimsNotCheckable = 0
+        int ecViolations = 0
+        Set<String> notCheckableEcTerms = new LinkedHashSet<>()
 
         @Override
         String toString() {
-            "ConsistencyEnforcer.Result(violations=${violations}, " +
-                "proteins=${proteinsAffected}, annotations=${annotationsAffected}, relaxed=${annotationsRelaxed})"
+            "ConsistencyEnforcer.Result(status=${status}, violations=${violations}, ecViolations=${ecViolations}, " +
+                "proteins=${proteinsAffected}, annotations=${annotationsAffected}, relaxed=${annotationsRelaxed}, " +
+                "ecChecked=${ecClaimsChecked}, ecNotCheckable=${ecClaimsNotCheckable})"
         }
     }
 
@@ -124,18 +133,64 @@ class ConsistencyEnforcer {
     // --- organism-asserted per-term ------------------------------------------
 
     private void enforceOrganism(Genome genome, Result result) {
+        if (satChecker?.organismTaxon && !satChecker.isOrganismTaxonInHierarchy()) {
+            result.taxonInHierarchy = false
+            result.constraintsApplied = false
+            result.status = SatConsistencyChecker.STATUS_TAXON_NOT_IN_HIERARCHY
+            Map<String, List<String>> ecMap = ecToGoAlternatives ?: satChecker?.ecToGoAlternatives ?: [:]
+            genome.proteins.each { Protein p ->
+                p.annotations.ecAnnotations().each { Annotation ann ->
+                    List<String> gos = SatConsistencyChecker.lookupEcToGo(ecMap, ann.value)
+                    if (gos.isEmpty()) {
+                        result.ecClaimsNotCheckable++
+                        result.notCheckableEcTerms << ann.value
+                    }
+                }
+            }
+            log.warn("Organism ${satChecker.organismTaxon}: ${SatConsistencyChecker.STATUS_TAXON_NOT_IN_HIERARCHY}")
+            return
+        }
         Set<String> forbidden = computeForbiddenTerms()
         log.info("Organism ${satChecker.organismTaxon}: ${forbidden.size()} GO terms forbidden by taxon/anatomical constraints")
         String defaultReason = "taxon-inconsistent for ${satChecker.organismTaxon}"
         Map<String, Boolean> termForbiddenMemo = new HashMap<>()
+        Map<String, List<String>> ecMap = ecToGoAlternatives ?: satChecker?.ecToGoAlternatives ?: [:]
+        GoOntology goOnt = goOntology ?: satChecker?.goOntology
         genome.proteins.each { Protein p ->
             List<Annotation> victims = p.annotations.goAnnotations().findAll { ann ->
                 Boolean memo = termForbiddenMemo.get(ann.value)
                 if (memo != null) return memo
                 boolean isBad = forbidden.contains(ann.value) ||
-                    (goOntology && goOntology.getAncestors(ann.value).any { forbidden.contains(it) })
+                    (goOnt && goOnt.getAncestors(ann.value).any { forbidden.contains(it) })
                 termForbiddenMemo.put(ann.value, isBad)
                 isBad
+            }
+            List<Annotation> ecAnns = p.annotations.ecAnnotations()
+            if (ecAnns) {
+                for (Annotation ann : ecAnns) {
+                    List<String> gos = SatConsistencyChecker.lookupEcToGo(ecMap, ann.value)
+                    if (gos.isEmpty()) {
+                        result.ecClaimsNotCheckable++
+                        result.notCheckableEcTerms << ann.value
+                        continue
+                    }
+                    result.ecClaimsChecked++
+                    List<String> violatingGos = []
+                    for (String goId : gos) {
+                        Boolean memo = termForbiddenMemo.get(goId)
+                        if (memo == null) {
+                            memo = forbidden.contains(goId) ||
+                                (goOnt != null && goOnt.getAncestors(goId).any { forbidden.contains(it) })
+                            termForbiddenMemo.put(goId, memo)
+                        }
+                        if (memo) violatingGos << goId
+                    }
+                    if (!violatingGos.isEmpty()) {
+                        ann.metadata = (ann.metadata ?: [:]) + [violating_go_terms: violatingGos]
+                        result.ecViolations++
+                        victims << ann
+                    }
+                }
             }
             if (victims) {
                 result.violations++
@@ -207,15 +262,43 @@ class ConsistencyEnforcer {
 
     private void enforceProtein(Protein p, Result result) {
         List<Annotation> go = p.annotations.goAnnotations()
-        if (go.size() < 2) return
-        Set<String> direct = go*.value as Set
-        Set<String> toCheck = goOntology ? goOntology.propagateAnnotations(direct) : direct
+        List<Annotation> ec = p.annotations.ecAnnotations()
+        Map<String, List<String>> ecMap = ecToGoAlternatives ?: satChecker?.ecToGoAlternatives ?: [:]
+        List<Annotation> checkableEc = []
+        for (Annotation ann : ec) {
+            List<String> gos = SatConsistencyChecker.lookupEcToGo(ecMap, ann.value)
+            if (gos.isEmpty()) {
+                result.ecClaimsNotCheckable++
+                result.notCheckableEcTerms << ann.value
+            } else {
+                result.ecClaimsChecked++
+                checkableEc << ann
+            }
+        }
+        if (go.size() + checkableEc.size() < 2) return
+        Set<String> toCheck = goOntology ? goOntology.propagateAnnotations(go*.value as Set) : new LinkedHashSet<>(go*.value)
+        toCheck.addAll(checkableEc*.value)
         def cr = satChecker.check(toCheck)
         if (cr.consistent) return
         result.violations += cr.violations.size()
         Set<String> conflicting = cr.violations.collectMany { it.involvedGoTerms ?: [] } as Set
-        if (!conflicting) return
-        List<Annotation> victims = go.findAll { ann -> annotationViolates(ann, conflicting) }
+        Set<String> conflictingClaims = cr.violations.collectMany { it.involvedClaims ?: [] } as Set
+        if (!conflicting && !conflictingClaims) return
+        List<Annotation> victims = []
+        victims.addAll(go.findAll { ann -> annotationViolates(ann, conflicting) })
+        for (Annotation ann : checkableEc) {
+            List<String> gos = SatConsistencyChecker.lookupEcToGo(ecMap, ann.value)
+            List<String> violatingGos = gos.findAll { g ->
+                conflicting.contains(g) || (goOntology != null && goOntology.propagateAnnotations([g] as Set).any { conflicting.contains(it) })
+            }
+            if (!violatingGos.isEmpty() || conflictingClaims.contains(ann.value)) {
+                if (!violatingGos.isEmpty()) {
+                    ann.metadata = (ann.metadata ?: [:]) + [violating_go_terms: violatingGos]
+                }
+                result.ecViolations++
+                victims << ann
+            }
+        }
         if (victims) applyAction(p, victims, result, effectiveAction(), 'co-annotation taxon conflict', conflicting)
     }
 
@@ -248,7 +331,7 @@ class ConsistencyEnforcer {
         }
         victims.each { Annotation a ->
             double before = a.score
-            String reason = resolveReason(a.value, defaultReason)
+            String reason = resolveReasonForAnnotation(a, defaultReason)
             if (action == 'downrank') {
                 a.score = a.score * downrankFactor
                 a.evidence = tag(a.evidence)
@@ -271,8 +354,8 @@ class ConsistencyEnforcer {
         victims.each { Annotation a ->
             double before = a.score
             double relaxedScore = before * relaxFactor
-            String baseReason = resolveReason(a.value, defaultReason)
-            List<String> relaxedAncestors = (goOntology != null && orgTax) ?
+            String baseReason = resolveReasonForAnnotation(a, defaultReason)
+            List<String> relaxedAncestors = (a.type == AnnotationType.GO && goOntology != null && orgTax) ?
                 relaxer.findValidRelaxedAncestors(a.value, orgTax, satChecker, goOntology, forbidden) : Collections.emptyList()
             if (!relaxedAncestors.isEmpty()) {
                 for (String relaxedGo : relaxedAncestors) {
@@ -305,6 +388,15 @@ class ConsistencyEnforcer {
         }
         result.proteinsAffected++
         result.annotationsAffected += victims.size()
+    }
+
+    private String resolveReasonForAnnotation(Annotation a, String defaultReason) {
+        if (a.type == AnnotationType.EC) {
+            List<String> violatingGos = (a.metadata?.get('violating_go_terms') ?: []) as List<String>
+            String base = violatingGos ? resolveReason(violatingGos[0], defaultReason) : defaultReason
+            return violatingGos ? "${base} (via ec2go: ${violatingGos.join(', ')})" : base
+        }
+        resolveReason(a.value, defaultReason)
     }
 
     private String resolveReason(String goId, String defaultReason) {

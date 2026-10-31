@@ -281,8 +281,8 @@ open(os.path.join(os.path.dirname(ns.output_json), 'args.txt'), 'w').write(ns.gr
         stagesA.core_reactions == 7
 
         and: 'evidence did not cross genomes'
-        posteriorsFromTsv(outA).keySet() == ['a1|EC|2.7.1.1'] as Set
-        posteriorsFromTsv(outB).keySet() == ['b1|EC|4.1.2.13'] as Set
+        posteriorsFromTsv(outA).keySet() == ['a1|EC|EC:2.7.1.1'] as Set
+        posteriorsFromTsv(outB).keySet() == ['b1|EC|EC:4.1.2.13'] as Set
         posteriorsFromTsv(outA) == posteriorsFromTsv(single)
     }
 

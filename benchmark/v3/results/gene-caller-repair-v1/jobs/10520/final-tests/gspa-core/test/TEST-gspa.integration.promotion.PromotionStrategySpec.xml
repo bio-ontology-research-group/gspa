@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.promotion.PromotionStrategySpec" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-28T06:42:12" hostname="node004" time="0.078">
+  <properties/>
+  <testcase name="AllAboveThresholdStrategy returns every input unchanged" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.004"/>
+  <testcase name="GreedyStrategy keeps best of competing suggestions for the same gap" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.011"/>
+  <testcase name="GreedyStrategy respects at-most-one per protein across gaps" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.003"/>
+  <testcase name="GreedyStrategy with maxPerIteration=1 degrades to strict best-first" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.002"/>
+  <testcase name="MaxSatStrategy picks the highest-weighted non-conflicting set" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.007"/>
+  <testcase name="MaxSatStrategy respects at-most-one per protein" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.003"/>
+  <testcase name="empty candidates produce empty output regardless of strategy" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.006"/>
+  <testcase name="BeamSearch picks top candidate per gap when no cross-gap conflicts" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.012"/>
+  <testcase name="BeamSearch with width &gt; 1 can beat greedy when top-1 blocks a better downstream" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.004"/>
+  <testcase name="MaxSat coherence bonus prefers completing one pathway (3 commits → 3 pairs) over higher individual scores" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.017"/>
+  <testcase name="BeamSearch degrades to single-path when width = 1" classname="gspa.integration.promotion.PromotionStrategySpec" time="0.006"/>
+  <system-out><![CDATA[09:42:12.687 [Test worker] INFO gspa.integration.promotion.GreedyStrategy -- GreedyStrategy iter=1: 4 candidates → 2 conflict-free commits
+09:42:12.691 [Test worker] INFO gspa.integration.promotion.GreedyStrategy -- GreedyStrategy iter=1: 3 candidates → 2 conflict-free commits
+09:42:12.694 [Test worker] INFO gspa.integration.promotion.GreedyStrategy -- GreedyStrategy iter=1: 3 candidates → 1 conflict-free commits
+09:42:12.700 [Test worker] INFO gspa.integration.promotion.GreedyStrategy -- GreedyStrategy iter=1: 4 candidates → 3 conflict-free commits
+09:42:12.703 [Test worker] INFO gspa.integration.promotion.GreedyStrategy -- GreedyStrategy iter=1: 3 candidates → 2 conflict-free commits
+09:42:12.723 [Test worker] INFO gspa.integration.promotion.BeamSearchStrategy -- BeamSearchStrategy iter=1: 4 candidates → 2 gaps × top-3 → beam 5 → 2 commits, score=5.500
+09:42:12.726 [Test worker] INFO gspa.integration.promotion.GreedyStrategy -- GreedyStrategy iter=1: 4 candidates → 2 conflict-free commits
+09:42:12.727 [Test worker] INFO gspa.integration.promotion.BeamSearchStrategy -- BeamSearchStrategy iter=1: 4 candidates → 2 gaps × top-3 → beam 5 → 2 commits, score=12.000
+09:42:12.730 [Test worker] INFO gspa.integration.promotion.GreedyStrategy -- GreedyStrategy iter=1: 4 candidates → 3 conflict-free commits
+09:42:12.745 [Test worker] INFO gspa.integration.promotion.MaxSatStrategy -- MaxSatStrategy iter=1: 4 candidates → 4 after top-3 pre-filter → 3 greedy commits → 3 after 2 2-opt passes (coherence=2.0)
+09:42:12.751 [Test worker] INFO gspa.integration.promotion.BeamSearchStrategy -- BeamSearchStrategy iter=1: 3 candidates → 2 gaps × top-3 → beam 1 → 2 commits, score=5.500
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

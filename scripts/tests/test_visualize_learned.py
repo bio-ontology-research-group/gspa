@@ -80,6 +80,31 @@ def learned_report(sha=SHA, locus_reason='locus layer disabled for this run'):
 
 
 class LearnedPayloadTest(base.LedgerTest):
+    def test_mixed_scores_preserve_unsupported_status_and_null_probability(self):
+        ledger = v2_ledger()
+        ledger['scoring_mode'] = 'mixed'
+        report = learned_report()
+        report['candidates'][0].update(score_status='unsupported', unsupported_reason='unseen_source_function_role_or_availability_profile', probability=None, margin=None, above_display_threshold=None)
+        got = self.learned_of(ledger=ledger, learned=report)
+        self.assertTrue(got['scoring']['consistent'])
+        self.assertEqual(got['learned']['status'], 'available')
+        c = got['learned']['candidates'][0]
+        self.assertEqual(c['ss'], 'unsupported')
+        self.assertIsNone(c['pr'])
+        self.assertIn('unseen', c['ur'])
+
+    def test_skipped_unsupported_report_requires_no_scores_and_matching_hash(self):
+        ledger = v2_ledger()
+        ledger['scoring_mode'] = 'legacy_heuristic'
+        stage = next(s for s in ledger['stages'] if s['name'] == 'learned_integration')
+        stage.update(status='skipped', candidates_scored=0)
+        report = learned_report()
+        for c in report['candidates']:
+            c.update(score_status='unsupported', probability=None, margin=None)
+        self.assertEqual(self.learned_of(ledger=ledger, learned=report)['learned']['status'], 'available')
+        report['candidates'][0]['probability'] = .8
+        self.assertEqual(self.learned_of(ledger=ledger, learned=report)['learned']['status'], 'not_trusted')
+
     def learned_of(self, **kw):
         data = self.render(ledger=kw.pop('ledger', v2_ledger()), learned=kw.pop('learned', learned_report()), **kw)
         return data['ledger']

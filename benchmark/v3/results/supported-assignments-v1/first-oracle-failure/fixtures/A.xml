@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version1/core" xmlns:fbc="http://www.sbml.org/sbml/level3/version1/fbc/version2" level="3" version="1" fbc:required="false">
+  <model id="toy" fbc:strict="false">
+    <listOfCompartments>
+      <compartment id="c" size="1" constant="true"/>
+      <compartment id="e" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="glc_e" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="vit_e" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="glc_c" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="pyr_c" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="atp_c" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="vit_c" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter id="lb_T_glc" value="0" constant="true"/>
+      <parameter id="ub_T_glc" value="1000" constant="true"/>
+      <parameter id="lb_GLYC" value="0" constant="true"/>
+      <parameter id="ub_GLYC" value="1000" constant="true"/>
+      <parameter id="lb_DM_pyr" value="0" constant="true"/>
+      <parameter id="ub_DM_pyr" value="1000" constant="true"/>
+      <parameter id="lb_ATPM" value="0" constant="true"/>
+      <parameter id="ub_ATPM" value="1000" constant="true"/>
+      <parameter id="lb_EX_glc_e" value="-1000" constant="true"/>
+      <parameter id="ub_EX_glc_e" value="1000" constant="true"/>
+      <parameter id="lb_T_vitin" value="0" constant="true"/>
+      <parameter id="ub_T_vitin" value="1000" constant="true"/>
+      <parameter id="lb_EX_vit_e" value="-1000" constant="true"/>
+      <parameter id="ub_EX_vit_e" value="1000" constant="true"/>
+      <parameter id="lb_BIO" value="0" constant="true"/>
+      <parameter id="ub_BIO" value="1000" constant="true"/>
+    </listOfParameters>
+    <listOfReactions>
+      <reaction id="T_glc" reversible="false" fast="false" fbc:lowerFluxBound="lb_T_glc" fbc:upperFluxBound="ub_T_glc">
+        <listOfReactants>
+          <speciesReference species="glc_e" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="glc_c" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+      </reaction>
+      <reaction id="GLYC" reversible="false" fast="false" fbc:lowerFluxBound="lb_GLYC" fbc:upperFluxBound="ub_GLYC">
+        <listOfReactants>
+          <speciesReference species="glc_c" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="pyr_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="atp_c" stoichiometry="4" constant="true"/>
+        </listOfProducts>
+      </reaction>
+      <reaction id="DM_pyr" reversible="false" fast="false" fbc:lowerFluxBound="lb_DM_pyr" fbc:upperFluxBound="ub_DM_pyr">
+        <listOfReactants>
+          <speciesReference species="pyr_c" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+      </reaction>
+      <reaction id="ATPM" reversible="false" fast="false" fbc:lowerFluxBound="lb_ATPM" fbc:upperFluxBound="ub_ATPM">
+        <listOfReactants>
+          <speciesReference species="atp_c" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+      </reaction>
+      <reaction id="EX_glc_e" reversible="true" fast="false" fbc:lowerFluxBound="lb_EX_glc_e" fbc:upperFluxBound="ub_EX_glc_e">
+        <listOfReactants>
+          <speciesReference species="glc_e" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+      </reaction>
+      <reaction id="T_vitin" reversible="false" fast="false" fbc:lowerFluxBound="lb_T_vitin" fbc:upperFluxBound="ub_T_vitin">
+        <listOfReactants>
+          <speciesReference species="vit_e" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="vit_c" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+      </reaction>
+      <reaction id="EX_vit_e" reversible="true" fast="false" fbc:lowerFluxBound="lb_EX_vit_e" fbc:upperFluxBound="ub_EX_vit_e">
+        <listOfReactants>
+          <speciesReference species="vit_e" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+      </reaction>
+      <reaction id="BIO" reversible="false" fast="false" fbc:lowerFluxBound="lb_BIO" fbc:upperFluxBound="ub_BIO">
+        <listOfReactants>
+          <speciesReference species="pyr_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="vit_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="atp_c" stoichiometry="3" constant="true"/>
+        </listOfReactants>
+      </reaction>
+    </listOfReactions>
+    <fbc:listOfObjectives fbc:activeObjective="bio">
+      <fbc:objective fbc:id="bio" fbc:type="maximize">
+        <fbc:listOfFluxObjectives>
+          <fbc:fluxObjective fbc:reaction="BIO" fbc:coefficient="1"/>
+        </fbc:listOfFluxObjectives>
+      </fbc:objective>
+    </fbc:listOfObjectives>
+  </model>
+</sbml>

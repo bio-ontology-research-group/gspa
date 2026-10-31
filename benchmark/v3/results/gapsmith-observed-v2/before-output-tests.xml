@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.pathway.GapsmithOutputContractSpec" tests="14" skipped="0" failures="14" errors="0" timestamp="2026-10-26T22:43:28" hostname="lc-dell" time="0.324">
+  <properties/>
+  <testcase name="observed target identifiers and EC values survive the real parser and claim extraction" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.19">
+    <failure message="Condition not satisfied:&#10;&#10;annotation != null&#10;|          |&#10;null       false&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+annotation != null
+|          |
+null       false
+
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.observed target identifiers and EC values survive the real parser and claim extraction(GapsmithOutputContractSpec.groovy:24)
+</failure>
+  </testcase>
+  <testcase name="weak observed hits remain candidates and complexes are not standalone EC assignments" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.052">
+    <failure message="Condition not satisfied:&#10;&#10;result['ABB58544.1']?.any { it.value=='EC:2.1.3.11' &amp;&amp; it.score==0.277d }&#10;|     |               |&#10;|     []              false&#10;[ABB58544.1:[]]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+result['ABB58544.1']?.any { it.value=='EC:2.1.3.11' &amp;&amp; it.score==0.277d }
+|     |               |
+|     []              false
+[ABB58544.1:[]]
+
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.weak observed hits remain candidates and complexes are not standalone EC assignments(GapsmithOutputContractSpec.groovy:40)
+</failure>
+  </testcase>
+  <testcase name="all rows including missing search evidence remain available for a separate context report" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.023">
+    <failure message="Condition failed with Exception:&#10;&#10;p.reactionObservations.size() == 8&#10;| |&#10;| groovy.lang.MissingPropertyException: No such property: reactionObservations for class: gspa.predictor.pathway.GapseqPredictor&#10;| &#9;at gspa.predictor.pathway.GapsmithOutputContractSpec.all rows including missing search evidence remain available for a separate context report(GapsmithOutputContractSpec.groovy:55)&#10;&lt;gspa.predictor.pathway.GapseqPredictor@3bb8aabc tool=gapsmith dataDir=null medium=null exportSbml=false taxonomy=Bacteria target=proteome threads=1 representativeIds=null log=Logger[gspa.predictor.pathway.GapseqPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=null&gt;&#10;" type="org.spockframework.runtime.ConditionFailedWithExceptionError">Condition failed with Exception:
+
+p.reactionObservations.size() == 8
+| |
+| groovy.lang.MissingPropertyException: No such property: reactionObservations for class: gspa.predictor.pathway.GapseqPredictor
+| 	at gspa.predictor.pathway.GapsmithOutputContractSpec.all rows including missing search evidence remain available for a separate context report(GapsmithOutputContractSpec.groovy:55)
+&lt;gspa.predictor.pathway.GapseqPredictor@3bb8aabc tool=gapsmith dataDir=null medium=null exportSbml=false taxonomy=Bacteria target=proteome threads=1 representativeIds=null log=Logger[gspa.predictor.pathway.GapseqPredictor] lastRunStatus=null workDir=null timeoutMinutes=120 environment=[:] executablePath=null&gt;
+
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.all rows including missing search evidence remain available for a separate context report(GapsmithOutputContractSpec.groovy:55)
+Caused by: groovy.lang.MissingPropertyException: No such property: reactionObservations for class: gspa.predictor.pathway.GapseqPredictor
+	... 1 more
+</failure>
+  </testcase>
+  <testcase name="duplicate pathway evidence collapses one candidate while retaining every original row" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.017">
+    <failure message="Condition not satisfied:&#10;&#10;result['ABB58505.1'].size() == 1&#10;|     |              |      |&#10;|     []             0      false&#10;[ABB58505.1:[]]&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+result['ABB58505.1'].size() == 1
+|     |              |      |
+|     []             0      false
+[ABB58505.1:[]]
+
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.duplicate pathway evidence collapses one candidate while retaining every original row(GapsmithOutputContractSpec.groovy:67)
+</failure>
+  </testcase>
+  <testcase name="column order is named and missing required columns are rejected" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.009">
+    <failure message="Condition not satisfied:&#10;&#10;result['ABB58505.1']*.value == ['EC:4.3.2.1']&#10;|     |               |     |&#10;|     []              []    false&#10;[ABB58505.1:[]]&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+result['ABB58505.1']*.value == ['EC:4.3.2.1']
+|     |               |     |
+|     []              []    false
+[ABB58505.1:[]]
+
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.column order is named and missing required columns are rejected(GapsmithOutputContractSpec.groovy:78)
+</failure>
+  </testcase>
+  <testcase name="malformed observed statistics and statuses are rejected: &#9;47.3&#9; to &#9;NaN&#9;" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.009">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.malformed observed statistics and statuses are rejected: #old to #replacement(GapsmithOutputContractSpec.groovy:92)
+</failure>
+  </testcase>
+  <testcase name="malformed observed statistics and statuses are rejected: &#9;47.3&#9; to &#9;101&#9;" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.malformed observed statistics and statuses are rejected: #old to #replacement(GapsmithOutputContractSpec.groovy:92)
+</failure>
+  </testcase>
+  <testcase name="malformed observed statistics and statuses are rejected: &#9;388&#9; to &#9;-1&#9;" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.malformed observed statistics and statuses are rejected: #old to #replacement(GapsmithOutputContractSpec.groovy:92)
+</failure>
+  </testcase>
+  <testcase name="malformed observed statistics and statuses are rejected: &#9;9.850e-133&#9; to &#9;-1&#9;" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.003">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.malformed observed statistics and statuses are rejected: #old to #replacement(GapsmithOutputContractSpec.groovy:92)
+</failure>
+  </testcase>
+  <testcase name="malformed observed statistics and statuses are rejected: &#9;99.1&#9; to &#9;Infinity&#9;" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.malformed observed statistics and statuses are rejected: #old to #replacement(GapsmithOutputContractSpec.groovy:92)
+</failure>
+  </testcase>
+  <testcase name="malformed observed statistics and statuses are rejected: &#9;good_blast&#9; to &#9;unknown_status&#9;" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.malformed observed statistics and statuses are rejected: #old to #replacement(GapsmithOutputContractSpec.groovy:92)
+</failure>
+  </testcase>
+  <testcase name="malformed observed statistics and statuses are rejected: &#9;FALSE&#9; to &#9;maybe&#9;" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.001">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.malformed observed statistics and statuses are rejected: #old to #replacement(GapsmithOutputContractSpec.groovy:92)
+</failure>
+  </testcase>
+  <testcase name="malformed observed statistics and statuses are rejected: &#9;4.3.2.1&#9; to &#9;garbage&#9;" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.0">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.malformed observed statistics and statuses are rejected: #old to #replacement(GapsmithOutputContractSpec.groovy:92)
+</failure>
+  </testcase>
+  <testcase name="truncated rows and multiple result tables are rejected" classname="gspa.predictor.pathway.GapsmithOutputContractSpec" time="0.002">
+    <failure message="Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown" type="org.spockframework.runtime.WrongExceptionThrownError">Expected exception of type 'gspa.predictor.ToolOutputContractException', but no exception was thrown
+	at app//org.spockframework.lang.SpecInternals.checkExceptionThrown(SpecInternals.java:95)
+	at app//org.spockframework.lang.SpecInternals.thrownImpl(SpecInternals.java:78)
+	at gspa.predictor.pathway.GapsmithOutputContractSpec.truncated rows and multiple result tables are rejected(GapsmithOutputContractSpec.groovy:111)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@18a3962d]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@78aea4b9]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@18a3962d]
+]]></system-err>
+</testsuite>

@@ -289,6 +289,25 @@ class ExportContractTests(unittest.TestCase):
         self.refused("already carries 'label'", mutate_row=lambda r: r.update(label=1))
         self.refused("non-finite", mutate_row=lambda r: r["features"].update({"seq.max_raw_any": None}))
 
+    def test_quality_observations_cannot_be_dropped_during_the_label_join(self):
+        self.refused('gene-model quality', mutate_row=lambda r: r.update(quality_evidence=[{'model_id': 'ANF00021'}]))
+
+    def test_local_reaction_availability_extension_is_backward_compatible(self):
+        for available in [False, True]:
+            with self.subTest(available=available), tempfile.TemporaryDirectory() as t:
+                fx = Fixture(Path(t))
+                def extend(row):
+                    row['available_contexts']['local_reaction'] = available
+                    row['features']['cohort.w.local_available'] = int(available)
+                fx.export('g1', [('p1', 'EC', 'EC:1.1.1.1', 'CATALYTIC')], mutate_row=extend)
+                self.assertEqual(P.validate_export_dir(fx.feature_dir/'g1', self.contract(fx)), 1)
+
+    def test_local_reaction_availability_must_match_the_feature(self):
+        self.refused('local_reaction', mutate_row=lambda r: r['available_contexts'].update(local_reaction=True))
+
+    def test_unknown_context_extension_is_still_rejected(self):
+        self.refused('available_contexts', mutate_row=lambda r: r['available_contexts'].update(invented=True))
+
     def test_shipped_contract_file_must_match(self):
         with tempfile.TemporaryDirectory() as t:
             fx = Fixture(Path(t))

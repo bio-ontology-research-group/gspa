@@ -1,13 +1,41 @@
 # v3 training cohort: acquisition, label join, feature export, learned context models, and production ablations
 
+The historical `fragmented_assembly_50pct` control below removes coordinates, not
+sequence evidence. A new [nucleotide-loss comparison](v3-sequence-loss.md) filters
+assemblies, proteins, claims and family membership together, preserves locus
+identity in evaluation, and reports 54 verified production runs with frozen
+calibration. Its negative results do not validate the earlier completion claims.
+
+The [verified shuffle/duplicate replay](v3-cohort-controls.md) now covers 59
+production genome/arm outputs with frozen calibration. Exact duplication changes
+learned probabilities by up to 0.001737; unchanged aggregate rankings do not prove
+score invariance. GO abstains and the shuffle does not reduce EC top-1 agreement.
+
+Audit qualification (2026-10-26): the marginal models and local GO results below
+do not establish completion of recommendations 4–7. Both model artifacts record
+`locus_model.trained=false`; complete locus/null and role validation are missing.
+The reaction-context ablations supplied no metabolic gaps, so that suggester had
+no work. Their execution count does not demonstrate a reaction-context effect.
+Corrected runners now reject skipped required ablation stages and unverified
+reuse; those historical runs need rebuilt inputs and replay. See the
+[acceptance record](../../tasks/v3-acceptance.md).
+
+The [version-2 locus truth replay](v3-locus-truth.md) rebuilt all 4,262 rows and
+refitted both models after repairing negative-label polarity and complete-group
+validation. Scoring parameters remain exactly unchanged. The cohort has 541
+positive candidate rows, 3,721 unconfirmed closed-world rows, no explicit negative
+assays and no complete locus groups. The refitted artifacts identify their target
+as reference-annotation support; both correctly keep the locus/null layer untrained.
+
 Status (2026-10-26): **the 19 selected proteomes were acquired, 18 resolved to exact assemblies, labels were
 joined by verified identity, the split and family audit passes (`family_disjoint_verified: true`), production
 `gspa integrate --feature-export-dir` candidate features were exported across all 18 genomes, `prepare_training_data.py build-table`
 produced the family-masked training table (`4,262` kept rows), `scripts/train_context_model.py` trained both
 `logistic` and `gbdt` context models with temperature calibration, and 10-arm production `gspa integrate`
 ablations plus 3 structural perturbation controls (`shuffled_neighborhoods`, `fragmented_assembly_50pct`,
-`duplicated_strain_5x`) were completed.** Everything below is reproducible with the commands in
-section 7; committed outputs are in `benchmark/v3/results/training-cohort/`, bulky data are in
+`duplicated_strain_5x`) were reported.** These historical runs do not satisfy the
+current execution and evaluation acceptance gates. Section 7 lists acquisition
+commands; the repaired control protocol has separate commands. Historical committed outputs are in `benchmark/v3/results/training-cohort/`, bulky data are in
 `~/.cache/gspa-v3-data/training-cohort/`. The selection (`results/label-rich-selection/`) was read and left
 unchanged.
 
@@ -18,7 +46,8 @@ unchanged.
 | Splits, protein list, MMseqs2 families, split audit, masking preview | `benchmark/v3/prepare_training_cohort.py` |
 | Homology baseline with the cohort fenced off, scoring, claim export | `benchmark/v3/homology_baseline.py` |
 | Production 10-arm `gspa integrate` ablation runner | `benchmark/v3/run_training_cohort_ablations.py` |
-| Structural perturbation controls (shuffled layout, fragmented contigs, duplicated strains) | `benchmark/v3/run_cohort_perturbations.py` |
+| Verified shuffle and duplicate-strain controls | `benchmark/v3/run_cohort_controls.py` |
+| Verified coordinate/sequence-loss controls | `benchmark/v3/run_sequence_loss_benchmark.py` |
 | Tests | `benchmark/v3/tests/test_acquire_training_cohort.py`, `test_swissprot_label_matching.py`, `test_homology_baseline.py` |
 
 Existing modules are reused rather than copied: `prepare_price_layout` (FASTA/GFF reading and label-free
@@ -183,19 +212,23 @@ All 18 genomes were run end-to-end through the production `gspa integrate` CLI a
 
 ### Structural Perturbation Controls (`perturbation_controls.json`, SHA-256 `f5a45c493fa281110474f557d98b6c29776ffdca7de125d6129a5005a21a0a50`)
 
-To verify that `learned_logistic`'s held-out gain comes from genuine genomic and cohort structure rather than an artifact, three controlled perturbations were executed through `gspa integrate`:
+The table below is a historical report, not accepted verification. Its runner reused
+an unverified baseline, pooled predictions by sequence identity, and selected GO
+Fmax thresholds on test labels. The coordinate-loss arm retained sequence claims.
+The [new verified control protocol](v3-cohort-controls.md) replaces shuffle and
+duplicate evaluation and preserves its negative findings. Historical values:
 
-| Perturbation Arm | Held-Out Test GO $F_{\max}$ | GO Precision / Recall | Held-Out Test EC Top-1 | Mechanistic Verification |
+| Perturbation Arm | Held-Out Test GO $F_{\max}$ | GO Precision / Recall | Held-Out Test EC Top-1 | Historical description (not a verified causal result) |
 | --- | --- | --- | --- | --- |
 | `baseline_unperturbed` | **0.3221** | 0.3529 / 0.2962 | **0.3784** | Unperturbed chromosomes, complete assemblies, 18-genome cohort |
-| `shuffled_neighborhoods` | **0.3110** ($-0.0111$) | 0.2878 / 0.3382 | 0.3784 | Permuting gene order along each contig destroys local operon/synteny support and drops precision from `0.3529` to `0.2878` |
+| `shuffled_neighborhoods` | **0.3110** ($-0.0111$) | 0.2878 / 0.3382 | 0.3784 | Reported layout shuffle; the selected test threshold is not a calibrated decision policy |
 | `fragmented_assembly_50pct` | **0.3044** ($-0.0177$) | 0.2916 / 0.3183 | **0.3243** ($-0.0541$) | Splitting genomes into 5-gene draft contigs and moving 50% of contigs to `unplacedProteins` degrades both GO $F_{\max}$ and EC top-1, while `CohortInference` abstains cleanly on unplaced windows |
-| `duplicated_strain_5x` | **0.3221** ($+0.0000$) | 0.3529 / 0.2962 | **0.3784** ($+0.0000$) | Duplicating a training genome 5× in the same `strainCluster` and `clade` leaves test GO $F_{\max}$ and EC top-1 completely unchanged (`max_abs_probability_diff = 0.0017` across all 156,101 test candidates) |
+| `duplicated_strain_5x` | **0.3221** ($+0.0000$) | 0.3529 / 0.2962 | **0.3784** ($+0.0000$) | Duplicating a training genome 5× in the same `strainCluster` and `clade` leaves those aggregate metrics unchanged, but changes probabilities by up to `0.0017`; this does not establish score invariance |
 
 ## 7. Commands
 
 ```bash
-PY=/tmp/gspa-v3-testenv/bin/python; B=benchmark/v3; D=~/.cache/gspa-v3-data/training-cohort
+PY="$HOME/tmp/gspa-v3-testenv/bin/python"; B=benchmark/v3; D=~/.cache/gspa-v3-data/training-cohort
 $PY -I $B/acquire_training_cohort.py proteomes      # UniProt proteome JSON, checked against the selection
 $PY -I $B/acquire_training_cohort.py assemblies     # NCBI report + exact package per organism
 $PY -I $B/acquire_training_cohort.py exclusions     # Price audit (needs price-families/taxonomy.xml)
@@ -205,6 +238,16 @@ $PY -I $B/prepare_training_cohort.py --provenance $D/provenance.json --labels $D
 $PY -I $B/homology_baseline.py --provenance $D/provenance.json --prepared $D/prepared --labels $D/labels/labels.tsv \
     --swissprot <uniprot_sprot.dat.gz> --go-obo $D/go-basic.obo --out-dir $D/baseline
 $PY -I $B/run_training_cohort_ablations.py          # 10-arm production gspa integrate ablation + bootstrap scoring
-$PY -I $B/run_cohort_perturbations.py               # shuffled, fragmented, and 5x-duplicated-strain controls
+# Run the separate prepare/run/calibrate/evaluate commands in v3-cohort-controls.md.
+# The old no-argument perturbation command has been retired.
 $PY -I -m unittest discover -s $B/tests -p 'test_*.py'
 ```
+
+## Model input coverage replay
+
+The later [input-coverage replay](v3-model-input-support.md) preserves all numerical
+features and fitted scoring parameters while adding actual predictor identities
+and frozen train/calibration coverage profiles. New production artifacts withhold
+unsupported probabilities; historical artifacts without coverage metadata cannot
+rescore production inputs. The resulting supported-only test metrics are not
+directly comparable to the original full-test scores above. Null remains untrained.

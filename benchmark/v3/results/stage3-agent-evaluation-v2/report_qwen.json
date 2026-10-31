@@ -1,0 +1,3129 @@
+{
+  "api_usage": {
+    "completed_calls": 392,
+    "completion_tokens": 71169,
+    "http_attempts": 392,
+    "prompt_tokens": 730626
+  },
+  "by_genome": {
+    "GCA_000008765.1": {
+      "abstained": 1
+    },
+    "GCA_000009985.1": {
+      "abstained": 7
+    },
+    "GCA_000147055.1": {
+      "abstained": 150
+    }
+  },
+  "cost_note": "All arms receive both learned scores; shared production includes both model runs. Decision time is additional.",
+  "counts": {
+    "abstained": 158
+  },
+  "decision_wall_seconds": 589.9315974549972,
+  "demonstrated_precision_lower_bound": null,
+  "details": [
+    {
+      "anomaly_id": "A_ac972ee5ab3ea8ac62b39695",
+      "genome_id": "GCA_000008765.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_ac972ee5ab3ea8ac62b39695",
+        "confidence": 0.0,
+        "function_id": "GO:0009307",
+        "protein_id": "",
+        "reason": "calibration policy abstention"
+      }
+    },
+    {
+      "anomaly_id": "A_f651b9c8c35b10cbbcbbf817",
+      "genome_id": "GCA_000009985.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_f651b9c8c35b10cbbcbbf817",
+        "confidence": 0.0,
+        "function_id": "GO:0009307",
+        "guardrail_status": "PASS",
+        "latency_sec": 7.1677,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_015a8526b901e71ed8daaca1",
+      "genome_id": "GCA_000009985.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_015a8526b901e71ed8daaca1",
+        "anomaly_type": "BORDERLINE_CONFLICT",
+        "confidence": 0.15,
+        "function_id": "GO:0042063",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.7199,
+        "protein_id": "",
+        "rationale": "Evidence is weak and conflicting: sequence similarity (0.653) is the only supporting claim, while learned models (GBDT 0.21, logistic 0.13) are low, RLGC Bayes factor is 0, no operon context, and the consistency prior is strongly negative (-0.68) against the anatomical prior (+0.65). Posterior sits at 0.48, below the 0.50 threshold for promotion. Insufficient support to confidently assign gliogenesis (GO:0042063).",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_58bbbb0a34472be660619f93",
+      "genome_id": "GCA_000009985.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_58bbbb0a34472be660619f93",
+        "confidence": 0.0,
+        "function_id": "GO:0043209",
+        "guardrail_status": "PASS",
+        "latency_sec": 4.7911,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_5145df5055cac31138204c34",
+      "genome_id": "GCA_000009985.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_5145df5055cac31138204c34",
+        "confidence": 0.0,
+        "function_id": "GO:0001774",
+        "guardrail_status": "PASS",
+        "latency_sec": 5.9036,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_6b8e02240944ec20ccb719ab",
+      "genome_id": "GCA_000009985.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_6b8e02240944ec20ccb719ab",
+        "anomaly_type": "BORDERLINE_CONFLICT",
+        "confidence": 0.15,
+        "function_id": "GO:0016610",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.0038,
+        "protein_id": "",
+        "rationale": "Evidence is conflicting and insufficient for a confident call. Sequence similarity to SwissProt nitrogenase is strong (raw 0.878, calibrated 0.819), but the learned models disagree (GBDT 0.239 vs logistic 0.512), the coherence prior is strongly negative (-0.75), there is no operon context (no nif operon neighbors), no RLGC support (BF 0.0), and no other annotations. The resulting posterior (0.391) sits well below a promotion threshold with a wide uncertainty margin (~0.109). Given the BORDERLINE_CONFLICT status and lack of corroborating pathway/operon evidence, abstaining is the safest resolution.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_755def6454f11a852f460ed4",
+      "genome_id": "GCA_000009985.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_755def6454f11a852f460ed4",
+        "anomaly_type": "BORDERLINE_CONFLICT",
+        "confidence": 0.15,
+        "function_id": "GO:0034349",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.1372,
+        "protein_id": "",
+        "rationale": "Evidence is weak and conflicting: the only supporting claim is a low sequence-similarity score (raw 0.335, calibrated 0.341) from a SwissProt diamond baseline, with no domain hits, no operon context, no RLGC evidence (BF=0.0), and no other annotations. The learned models strongly disagree (GBDT 0.057, logistic 0.027), and the final log-odds are negative (-0.521). The anatomical prior (0.65) is the sole driver pushing the posterior to ~0.37, which is well below a confident threshold. GO:0034349 (glial cell apoptotic process) is a highly specific animal neurobiology term, making it biologically implausible for this organism (NCBITaxon_342108) without strong supporting evidence. Given the borderline conflict and insufficient evidence, abstaining is the most defensible action.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_e58adec39df0e5b3da512d40",
+      "genome_id": "GCA_000009985.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_e58adec39df0e5b3da512d40",
+        "anomaly_type": "BORDERLINE_CONFLICT",
+        "confidence": 0.15,
+        "function_id": "GO:0021782",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.3628,
+        "protein_id": "",
+        "rationale": "Evidence is weak and conflicting: the only supporting claim is a low sequence-similarity score (raw 0.325, calibrated 0.332) from a SwissProt diamond baseline, with no domain hits, no operon context (not in a pathway operon, no neighbors), no RLGC evidence (BF=0.0), and no other annotations. The learned models strongly disagree with the annotation (GBDT 0.039, logistic 0.024), and the final log-odds are negative (-0.555) with a posterior of only 0.365. The anatomical prior (0.65) is the sole driver of the borderline posterior, but it is not corroborated by any independent functional or contextual evidence. Given the high uncertainty margin (0.135) and the absence of supporting data, the appropriate action is to abstain rather than promote, relax, or demote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_fb5bc37117e3db1d7baaf480",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_fb5bc37117e3db1d7baaf480",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.35,
+        "function_id": "GO:0004739",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 15.6893,
+        "protein_id": "",
+        "rationale": "ADN00020.1 shows only moderate sequence similarity (0.50) to PDH E1, with supporting annotations (TPP binding, Mg\u00b2\u207a binding, obsolete PDH activity) consistent with a pyruvate dehydrogenase E1 subunit. However, the posterior is 0.35 (below the 0.50 promotion threshold), there is no operon context, no RLGC evidence, and the GBDT score is low (0.11). Evidence is insufficient to confidently promote GO:0004739.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_bcbc1fdb38147164fda6d598",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_bcbc1fdb38147164fda6d598",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004346",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 18.4576,
+        "protein_id": "",
+        "rationale": "Both candidates (ADN00616.1 and ADN00737.1) have very weak evidence for glucose-6-phosphatase activity: low raw sequence similarity scores (~0.20-0.21), calibrated probabilities well below 0.50 (~0.23-0.24), no RLGC Bayes factor, no operon context, no domain hits, and no corroborating annotations. The pathway gap is genuine but the evidence is insufficient to confidently assign GO:0004346 to either candidate.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_54104337157137eb7e9d64c9",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_54104337157137eb7e9d64c9",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.16,
+        "function_id": "GO:0047938",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.3135,
+        "protein_id": "",
+        "rationale": "Candidate ADM98389.1 has weak evidence for GO:0047938 (glucose-6-phosphate 1-epimerase): posterior 0.161, logodds -1.649, only a low-confidence sequence similarity claim (calibrated 0.23), no operon context, no RLGC support, and no other annotations. Evidence is insufficient to promote or relax; abstaining is appropriate.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_bf69ed0311c3b63882932b18",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_bf69ed0311c3b63882932b18",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0004082",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.8007,
+        "protein_id": "",
+        "rationale": "Candidate ADM97577.1 is a phosphoglycerate mutase (EC 5.4.2.11, GO:0004619), not a bisphosphoglycerate mutase (GO:0004082). Sequence similarity (0.565) and model posteriors (~0.395) are below promotion thresholds, with no operon context, no RLGC support, and no pathway operon membership. The protein belongs to the same glycolytic pathway but catalyzes a different reaction, so it does not fill the BPG mutase gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_cd126d01b58bfb50184b3ebc",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_cd126d01b58bfb50184b3ebc",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.5113,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only moderate sequence similarity (0.556) to L-malate dehydrogenase (NAD+) and its other annotations point to EC 1.1.1.37 (malate dehydrogenase (NADP+)) with TCA/malate metabolic process terms, not the NAD+-dependent MDH (GO:0030060). No operon context, no RLGC evidence, and model posteriors are low (GBDT 0.20, logistic 0.41, final 0.39). Evidence is insufficient to confidently promote the NAD+ MDH annotation; abstaining is appropriate.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_a7c01c1fc0954ad258d0f238",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_a7c01c1fc0954ad258d0f238",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004449",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.2709,
+        "protein_id": "",
+        "rationale": "Candidate ADM98644.1 is already annotated as NADP+-dependent isocitrate dehydrogenase (GO:0004450, EC 1.1.1.42). Evidence for the NAD+ form (GO:0004449) is weak: low sequence similarity (0.31), no operon context, no RLGC support, and learned model probabilities are low (0.09-0.13). Posterior of 0.22 is insufficient for promotion.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_f0b8a8ece2303f9efc59009a",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_f0b8a8ece2303f9efc59009a",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0004739",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.2027,
+        "protein_id": "",
+        "rationale": "Candidate ADN00020.1 shows only moderate sequence similarity (0.50) to pyruvate dehydrogenase E1, with a negative final log-odds (-0.61) and low posterior (0.35). Supporting annotations (TPP binding, Mg2+ binding, obsolete PDH activity) are consistent with a PDH E1 subunit, but there is no operon context, no RLGC evidence, and no pathway operon support. The evidence is suggestive but insufficient to confidently promote GO:0004739; abstaining is the safer call.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_eae583fc036b1096b1f65c19",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_eae583fc036b1096b1f65c19",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0036440",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.5309,
+        "protein_id": "",
+        "rationale": "Candidate ADM97551.1 shows only weak evidence for citrate synthase (GO:0036440): posterior 0.205, negative log-odds (-1.354), low GBDT/logistic scores (~0.13-0.14), no operon context, and no RLGC support. Its other annotations (obsolete citrate (Si)-synthase, NADH binding, hexamerization) are not consistent with a canonical TCA citrate synthase. Insufficient evidence to promote or relax; abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_c7cc8eb938fb23047e687aae",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_c7cc8eb938fb23047e687aae",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0050440",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.5334,
+        "protein_id": "",
+        "rationale": "Candidate ADM97551.1 shows only weak sequence similarity (raw 0.28, calibrated 0.29) to 2-methylcitrate synthase, with a low posterior (0.205) and negative log-odds (-1.35). No operon context, no RLGC evidence, and no domain/pathway support. The existing annotations (obsolete citrate synthase, hexamerization, NADH binding) are not consistent with 2-methylcitrate synthase activity. Evidence is insufficient to promote or relax the annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_086896f0b2c5aa19ae0de551",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_086896f0b2c5aa19ae0de551",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0141148",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.2706,
+        "protein_id": "",
+        "rationale": "Candidate ADM98855.1 is already annotated as enoyl-ACP reductase (NADH) (GO:0004318), not the NADPH-specific GO:0141148. Evidence is weak: sequence similarity only 0.453, learned models low (0.13/0.25), no operon context, no RLGC support, and posterior 0.317 is below promotion threshold. The NADH vs NADPH cofactor distinction is biologically meaningful and not supported by current evidence, so I abstain rather than promote or relax.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_38827ff27bc7e27b003522c9",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_38827ff27bc7e27b003522c9",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0008860",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 17.3236,
+        "protein_id": "",
+        "rationale": "All five candidates show weak evidence for ferredoxin-NAD+ reductase activity (GO:0008860): posterior probabilities range from 0.10 to 0.21, all well below the 0.50 threshold for promotion. The top candidate ADN00495.1 (posterior 0.205) has its strongest annotations pointing to riboflavin reductase activity (GO:0042602, GO:0052875) and EC 1.5.1.41, not FNR. ADM97155.1 is annotated as rubredoxin-NAD+ reductase (GO:0015044), which is a related but distinct enzyme. No candidate has operon context, RLGC evidence, or strong sequence similarity supporting FNR assignment. The pathway gap in fatty acid degradation (KEGG:00071) is real but cannot be confidently resolved with the available candidates.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_7fe991d23fe27afeae2ed551",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_7fe991d23fe27afeae2ed551",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0003997",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.2255,
+        "protein_id": "",
+        "rationale": "Both candidates (ADN00596.1, ADN00599.1) have weak sequence similarity scores (0.17, 0.10), no operon context, no RLGC evidence, and posterior probabilities well below 0.50. Insufficient evidence to support acyl-CoA oxidase annotation.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_ca12ded8425f520c8a80c124",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_ca12ded8425f520c8a80c124",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0016937",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 20.0287,
+        "protein_id": "",
+        "rationale": "Both candidates (ADN00599.1, ADM99746.1) show only weak, uncorroborated sequence-similarity evidence (posterior 0.16 and 0.13; calibrated 0.23 and 0.19), with no operon context, no RLGC support, and no additional annotations. Neither reaches a defensible confidence threshold for promoting short-chain fatty acyl-CoA dehydrogenase activity (GO:0016937) in the fatty acid degradation pathway. Abstaining avoids introducing a low-confidence annotation.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_a006948ced43d3f373fb6f2a",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_a006948ced43d3f373fb6f2a",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0003853",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 14.2867,
+        "protein_id": "",
+        "rationale": "All three candidates (ADN00596.1, ADN00599.1, ADM99746.1) have only weak sequence-similarity evidence (calibrated probs 0.16-0.21), no operon context, no RLGC support, and learned model probabilities <0.1. None meet the threshold for a confident GO:0003853 annotation; abstaining is appropriate.",
+        "seed": 42,
+        "tool_calls": 7
+      }
+    },
+    {
+      "anomaly_id": "A_33da8d922e3b139bf850efaa",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_33da8d922e3b139bf850efaa",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0070991",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 18.354,
+        "protein_id": "",
+        "rationale": "Both candidates (ADN00596.1 and ADM99746.1) show only weak sequence similarity evidence (raw scores 0.22 and 0.18, calibrated posteriors 0.25 and 0.21) with no operon context, no RLGC support, and no corroborating annotations. Neither reaches the confidence threshold for annotation. The pathway gap for medium-chain fatty acyl-CoA dehydrogenase activity remains unresolved.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_7128ed9b7664ee98a0d2f3a2",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_7128ed9b7664ee98a0d2f3a2",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004466",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.9746,
+        "protein_id": "",
+        "rationale": "Both candidates (ADM99746.1, ADN00599.1) have weak sequence similarity scores (0.176, 0.154), no operon context, no RLGC evidence, and posterior probabilities (~0.15) far below the 0.50 threshold. Insufficient evidence to confidently assign long-chain fatty acyl-CoA dehydrogenase activity to either protein.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_393022db64964ea132595e93",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_393022db64964ea132595e93",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0017099",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 16.4947,
+        "protein_id": "",
+        "rationale": "Both candidates (ADM99746.1 and ADN00599.1) show only weak sequence similarity evidence (raw scores 0.168 and 0.154, calibrated ~0.20) with no supporting domain architecture, operon context, or RLGC evidence. Neither reaches a confidence threshold sufficient to assign GO:0017099 (VLCAD activity). The pathway gap is biologically plausible but the evidence is insufficient to confidently promote either candidate.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_ae717027ef1b028be3ec4ebb",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_ae717027ef1b028be3ec4ebb",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0003985",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 22.2109,
+        "protein_id": "",
+        "rationale": "Both candidates are \u03b2-oxidation thiolases (EC 2.3.1.16) already annotated with the parent GO:0003988 (acetyl-CoA C-acyltransferase). Neither has sufficient evidence for the specific GO:0003985 (acetyl-CoA C-acetyltransferase) \u2014 sequence similarity scores are moderate (0.45, 0.39), model probabilities are low, no operon context, and no RLGC support. The specific acetyl-CoA C-acetyltransferase activity is not well-supported by the available evidence.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_d7d2c8b12b70e5e5230d255b",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_d7d2c8b12b70e5e5230d255b",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004359",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 20.9358,
+        "protein_id": "",
+        "rationale": "Both candidates (ADM98271.1, ADM98269.1) have low posterior probabilities (~0.22) for glutaminase activity (GO:0004359), weak sequence similarity scores (~0.30-0.32), no operon context, no RLGC evidence, and their other annotations strongly suggest histidine biosynthetic functions (imidazoleglycerol-phosphate synthase, EC 3.5.1.2/4.3.2.10) rather than glutaminase. Neither candidate provides sufficient evidence to fill the pathway gap in arginine biosynthesis (KEGG:00220).",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_0eb104f10e8e0cacaf246a18",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_0eb104f10e8e0cacaf246a18",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.19,
+        "function_id": "GO:0004055",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 6.9857,
+        "protein_id": "",
+        "rationale": "Candidate ADN00621.1 shows only weak sequence similarity (raw 0.256, calibrated 0.274) to argininosuccinate synthase, with a low posterior of 0.19, negative log-odds (-1.44), no operon context, no RLGC support, and an unrelated existing annotation (identical protein binding). Evidence is insufficient to confidently assign GO:0004055.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_a3d62eeaa698e7a2cc7d43dd",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_a3d62eeaa698e7a2cc7d43dd",
+        "confidence": 0.0,
+        "function_id": "GO:0004088",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.2913,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 6
+      }
+    },
+    {
+      "anomaly_id": "A_087a4c499f19b2c40c788ba7",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_087a4c499f19b2c40c788ba7",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0003877",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 14.7456,
+        "protein_id": "",
+        "rationale": "Candidate ADM96893.1 has weak evidence for GO:0003877 (ATP:ADP adenylyltransferase): posterior 0.296, negative log-odds (-0.866), low GBDT (0.135) and logistic (0.245) scores, no operon context, and no RLGC support. Its existing annotations (lysine-tRNA ligase, general ligase, ATP binding) are inconsistent with a specific adenylyltransferase role. Insufficient evidence to promote or relax.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_fb620f639ccb7189c7cf891b",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_fb620f639ccb7189c7cf891b",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0047555",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 14.3209,
+        "protein_id": "",
+        "rationale": "Candidate ADN00204.1 has very weak evidence for cGMP phosphodiesterase activity: raw sequence similarity score 0.059 (calibrated 0.146), learned model probabilities ~0.033, negative log-odds (-2.171), no operon context, no RLGC evidence, and no supporting domain hits. The target function (GO:0047555) is also biologically incongruent with the KEGG:00230 purine metabolism pathway gap. Insufficient evidence to promote or relax; abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_5bac9b954364bcd4d6a63685",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_5bac9b954364bcd4d6a63685",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004081",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 14.5833,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM97247.1 has weak support for GO:0004081 (NudT/Nudix bis(5'-nucleosyl)-tetraphosphatase): posterior 0.224, negative log-odds (-1.244), low GBDT/logistic scores (~0.11-0.15), no operon context, and no RLGC evidence. Its existing annotations (mRNA 5'-diphosphatase, RNA NAD-cap hydrolase, RNA destabilization) point to a different Nudix/RNA-processing enzyme rather than a purine salvage NudT. Evidence is insufficient to promote or relax the annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_0c5729e3023d6b55ef3cc1db",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_0c5729e3023d6b55ef3cc1db",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004050",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 14.547,
+        "protein_id": "",
+        "rationale": "Candidate ADM97424.1 shows only weak evidence for apyrase activity (GO:0004050): posterior 0.185, negative log-odds (-1.483), low GBDT/logistic scores (~0.07-0.09), no operon context, and no RLGC support. Its existing annotations (5'-nucleotidase, UDP-sugar diphosphatase, nucleotide catabolism) are related but distinct from apyrase, and the single sequence-similarity claim (calibrated 0.264) is insufficient to confidently fill the purine metabolism pathway gap. Insufficient evidence to promote or relax.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_8ead98f1575b6b242d0c098e",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_8ead98f1575b6b242d0c098e",
+        "confidence": 0.0,
+        "function_id": "GO:0052614",
+        "guardrail_status": "PASS",
+        "latency_sec": 5.7798,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_34e847000fd0eb5412260546",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_34e847000fd0eb5412260546",
+        "confidence": 0.0,
+        "function_id": "GO:0017113",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.1326,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_a26843d011e74430fe284b74",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_a26843d011e74430fe284b74",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0106430",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 14.3168,
+        "protein_id": "",
+        "rationale": "Candidate ADM98935.1 shows only weak sequence similarity (raw 0.403, calibrated 0.404) and a low posterior (0.283) with negative log-odds (-0.93). It is not in a pathway operon and has no RLGC support. Its existing annotations (GO:0004152 dihydroorotate dehydrogenase activity, FMN binding, membrane) are consistent with a DHODH, but the evidence is insufficient to confidently assign the specific quinone-dependent form GO:0106430. Insufficient confidence to promote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_ce5d52495ef450ea00df8d08",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_ce5d52495ef450ea00df8d08",
+        "confidence": 0.0,
+        "function_id": "GO:0004070",
+        "guardrail_rejected": "symbolic constraint",
+        "proposal": {
+          "action": "PROMOTE",
+          "anomaly_id": "A_ce5d52495ef450ea00df8d08",
+          "anomaly_type": "PATHWAY_GAP",
+          "confidence": 0.62,
+          "function_id": "GO:0004070",
+          "function_type": "GO",
+          "guardrail_note": "",
+          "guardrail_status": "PASS",
+          "latency_sec": 26.4268,
+          "protein_id": "ADM96604.1",
+          "rationale": "ADM96604.1 has the highest sequence similarity (0.44) and posterior (0.308) among candidates. Its co-annotations include EC 2.1.3.2 (aspartate carbamoyltransferase), 'de novo' pyrimidine nucleobase biosynthetic process, and protein homotrimerization \u2014 all biologically consistent with ATCase (GO:0004070). The other two candidates are annotated as carbamoyl-phosphate synthase (EC 6.3.4.16/6.3.5.5), a distinct enzyme, making them unsuitable. Promoting ADM96604.1 fills the pathway gap in KEGG:00240 pyrimidine metabolism.",
+          "seed": 42,
+          "tool_calls": 5
+        },
+        "protein_id": ""
+      }
+    },
+    {
+      "anomaly_id": "A_77404b54b6af6a9dae2b4589",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_77404b54b6af6a9dae2b4589",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0033973",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.4909,
+        "protein_id": "",
+        "rationale": "Candidate ADM97602.1 shows only weak evidence for GO:0033973: posterior 0.2965, negative log-odds (-0.864), low GBDT (0.149) and logistic (0.227) scores, no operon context, and no RLGC support. The only supporting claim is a moderate sequence-similarity hit (0.423) to dCTP deaminase (EC 3.5.4.13), which is suggestive but insufficient to confidently promote the annotation. Given the low confidence and lack of corroborating evidence, abstaining is the safest resolution.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_d07d92f542692ddbae08c196",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_d07d92f542692ddbae08c196",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0047840",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.2623,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM99893.1 has weak support for GO:0047840 (dCTP diphosphatase): posterior 0.20, negative log-odds (-1.37), low GBDT/logistic scores (~0.10-0.12), no operon context, and no RLGC evidence. Its existing annotations (EC 3.6.1.66, dITP/ITP diphosphatase, purine NTP catabolism) indicate a purine-specific diphosphatase rather than a pyrimidine dCTP diphosphatase. Insufficient evidence to promote or relax; abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_8db2931988f31de7e52667da",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_8db2931988f31de7e52667da",
+        "confidence": 0.0,
+        "function_id": "GO:0004081",
+        "protein_id": "",
+        "reason": "calibration policy abstention"
+      }
+    },
+    {
+      "anomaly_id": "A_c974bcafa328c819e10712f4",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_c974bcafa328c819e10712f4",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004050",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 21.3818,
+        "protein_id": "",
+        "rationale": "Insufficient evidence to resolve the pathway gap. The sole candidate ADM97424.1 has a low posterior (0.185), weak sequence similarity (raw 0.244, calibrated 0.264), no RLGC support (BF=0.0), no operon context, and low learned model scores (GBDT 0.075, logistic 0.094). While the protein has related 5'-nucleotidase activity (GO:0008253), this is not sufficient to confidently assign apyrase activity (GO:0004050). The pathway gap in pyrimidine metabolism (KEGG:00240) remains unresolved with current evidence.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_f4759bbecaff44fa590f4223",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_f4759bbecaff44fa590f4223",
+        "confidence": 0.0,
+        "function_id": "GO:0004088",
+        "guardrail_status": "PASS",
+        "latency_sec": 5.9993,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_e10c359e473eaff8757b78f6",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_e10c359e473eaff8757b78f6",
+        "confidence": 0.0,
+        "function_id": "GO:0004070",
+        "guardrail_status": "PASS",
+        "latency_sec": 6.1466,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_ac93e2f7d7e941d470322954",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_ac93e2f7d7e941d470322954",
+        "confidence": 0.0,
+        "function_id": "GO:0047297",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.1756,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_a0bb23745bbc20877c594de6",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_a0bb23745bbc20877c594de6",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004359",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 26.1109,
+        "protein_id": "",
+        "rationale": "Both candidates (ADM98271.1, ADM98269.1) have low posterior probabilities (~0.22) for glutaminase activity (GO:0004359), weak sequence similarity scores (~0.31), no operon context, no RLGC evidence, and low model probabilities (GBDT ~0.05, logistic ~0.09). Critically, their existing annotations point to histidine biosynthesis functions (EC 3.5.1.2, EC 4.3.2.10, GO:0000105, GO:0000107), which are biologically inconsistent with glutaminase activity. The evidence does not support promoting either candidate to glutaminase, and the conflicting functional context makes a confident assignment impossible.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_b869b07ecf2f672ee59aa1d4",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_b869b07ecf2f672ee59aa1d4",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004351",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.6047,
+        "protein_id": "",
+        "rationale": "Candidate ADN00344.1 has weak evidence: low sequence similarity (raw 0.189, calibrated 0.224), no operon context, no RLGC support, and a posterior of only 0.157. This is far below the threshold to confidently assign glutamate decarboxylase activity (GO:0004351). Insufficient evidence to promote or relax.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_682c0057ae1555991a080147",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_682c0057ae1555991a080147",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004055",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.8606,
+        "protein_id": "",
+        "rationale": "Candidate ADN00621.1 has weak evidence for argininosuccinate synthase (GO:0004055): low sequence similarity (raw 0.256, calibrated 0.274), negative log-odds (-1.44), low model probabilities (GBDT 0.075, logistic 0.094), no operon context, no RLGC support, and an unrelated existing annotation (identical protein binding). Evidence is insufficient to promote the annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_826bac39cebd13503dcc0963",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_826bac39cebd13503dcc0963",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004088",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 15.403,
+        "protein_id": "",
+        "rationale": "All three candidates have low posterior probabilities (0.31-0.39) and negative log-odds, with no operon context or RLGC support. ADN00100.1 is annotated with GO:0004087 (ammonia CPS) rather than GO:0004088 (glutamine-hydrolyzing CPS), and its other annotations (6.3.4.16, 6.3.5.5) suggest arginine/pyrimidine biosynthesis rather than glutamine-dependent CPS. ADN00101.1 and ADM96604.1 have even weaker evidence and are annotated with pyrimidine biosynthesis functions. No candidate provides sufficient evidence to confidently assign GO:0004088.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_6d33754839ced202c9de878e",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_6d33754839ced202c9de878e",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0008480",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.5096,
+        "protein_id": "",
+        "rationale": "Candidate ADM97868.1 has weak evidence for GO:0008480 (sarcosine dehydrogenase): posterior 0.148, logodds -1.75, no operon context, no RLGC support, and only a low sequence-similarity claim (0.21). It is already annotated with the closely related glycine oxidase activity (GO:0043799 @0.52), which is a distinct but related function. Evidence is insufficient to confidently promote the sarcosine dehydrogenase annotation, so abstaining is appropriate.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_b2e4f24c47b0d31c29a2eb26",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_b2e4f24c47b0d31c29a2eb26",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0047865",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.2702,
+        "protein_id": "",
+        "rationale": "Candidate ADM97868.1 has weak evidence for GO:0047865 (dimethylglycine dehydrogenase): posterior 0.173, logodds -1.562, raw sequence score 0.222, no operon context, no RLGC support. It is already annotated as glycine oxidase (GO:0043799 @0.52), a related but distinct FAD-dependent oxidoreductase. Insufficient evidence to promote the DMG dehydrogenase annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_cd481d052ceead019fc1914e",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_cd481d052ceead019fc1914e",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.8847,
+        "protein_id": "",
+        "rationale": "Only a single weak sequence-similarity claim (0.56) supports GO:0030060; no operon context, no RLGC evidence, and the model posterior (0.389) is below the 0.5 threshold. Existing annotations (EC 1.1.1.37, TCA cycle, malate metabolic process) are consistent but insufficient to confidently assign L-malate dehydrogenase (NAD+) activity.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_4a34111de25519f14b60acfb",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_4a34111de25519f14b60acfb",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0010308",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.9347,
+        "protein_id": "",
+        "rationale": "Candidate ADM99749.1 has weak evidence for GO:0010308 (acireductone dioxygenase Ni2+ activity): sequence similarity raw score only 0.187 (calibrated 0.222), learned GBDT 0.106 and logistic 0.073, final logodds -1.692, posterior 0.155. No operon context, no RLGC evidence, no supporting domain hits or other annotations. Evidence is far below a confident assignment threshold, so abstain rather than promote or demote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_30405064a3f5ca28ec00fd4a",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_30405064a3f5ca28ec00fd4a",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0033744",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.0234,
+        "protein_id": "",
+        "rationale": "Candidate ADM99860.1 is a methionine sulfoxide reductase (EC 1.8.4.11) with only weak sequence similarity (raw 0.366, calibrated 0.369) and a low posterior (0.258). It is not in a pathway operon, has no RLGC support, and its existing annotations (peptide-methionine S-S-oxide reductase, protein repair) are consistent with Msr activity but do not strongly support the specific GO:0033744 assignment. Evidence is insufficient to confidently promote the annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_a0c572bd35ea3ab42679cae7",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_a0c572bd35ea3ab42679cae7",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0016768",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.1824,
+        "protein_id": "",
+        "rationale": "Candidate ADM99632.1 shows only weak sequence similarity (raw 0.365, calibrated 0.368) and a low posterior (0.258, logodds -1.06). Its other annotations point to spermidine/thermospermine synthase (GO:0004766, GO:0010487) and EC 2.5.1.16/22/79 rather than spermine synthase (GO:0016768, EC 2.5.1.19). No operon context, no RLGC evidence, and no supporting claims beyond a single weak similarity hit. Insufficient evidence to promote the annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_1af6ee1e843b6144e004e1d1",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_1af6ee1e843b6144e004e1d1",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.13,
+        "function_id": "GO:0050270",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.4945,
+        "protein_id": "",
+        "rationale": "Candidate ADM99433.1 shows only weak sequence similarity (raw 0.1377, calibrated 0.19) to S-adenosylhomocysteine deaminase, with no operon context, no RLGC evidence, and no supporting domain/functional annotations. Posterior remains low (~0.13), insufficient to confidently fill the KEGG:00270 pathway gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_6f05e0b8ce07de6fb644de56",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_6f05e0b8ce07de6fb644de56",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.18,
+        "function_id": "GO:0090614",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.9229,
+        "protein_id": "",
+        "rationale": "Evidence for GO:0090614 (5'-methylthioadenosine deaminase) on ADM98463.1 is weak: posterior 0.178, logodds -1.53, learned models ~0.07-0.09, no operon context, no RLGC support, and only a low-confidence sequence-similarity claim (0.25). The protein already carries a competing annotation GO:0000034 (adenine deaminase) at 0.52, which is more consistent with the deaminase family. Insufficient evidence to promote the pathway-gap term.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_f047fa2c3db9215684f5c78c",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_f047fa2c3db9215684f5c78c",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0034010",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 19.5202,
+        "protein_id": "",
+        "rationale": "Both candidates have low posterior probabilities (~0.16-0.17) for GO:0034010, no operon context, no RLGC evidence, and their other annotations point to unrelated functions (galacturonate/galactarate catabolism, iron binding, galactarate dehydratase). Neither provides sufficient evidence to fill the pathway gap for sulfolactate sulfo-lyase activity.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_1cb82ce9dff2180dfaf37afb",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_1cb82ce9dff2180dfaf37afb",
+        "confidence": 0.0,
+        "function_id": "GO:0052654",
+        "guardrail_status": "PASS",
+        "latency_sec": 7.1479,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_d121c84955485536f2bb6c87",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_d121c84955485536f2bb6c87",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0010285",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.7452,
+        "protein_id": "",
+        "rationale": "Candidate ADM99381.1 has weak evidence for GO:0010285 (posterior 0.205, logodds -1.353, raw sequence score 0.28). Its existing annotations strongly support alanine transaminase (EC 2.6.1.2, GO:0004021) rather than L,L-diaminopimelate transaminase. No operon context, no RLGC support, and learned models give low probabilities (0.09-0.13). Insufficient evidence to promote this annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_b9de8852aa10bc1faff94ef0",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_b9de8852aa10bc1faff94ef0",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0047769",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.4837,
+        "protein_id": "",
+        "rationale": "Candidate ADM99650.1 shows only weak sequence similarity (raw 0.258, calibrated 0.275) and a low posterior (0.193) for arogenate dehydratase (GO:0047769). It is not in a pathway operon, has no RLGC support, and its other annotations (chorismate mutase, prephenate dehydratase, EC 4.2.1.51/5.4.99.5) point to different aromatic amino acid biosynthesis steps rather than arogenate dehydratase. Evidence is insufficient to confidently assign the missing function.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_cb1a0b37f72056918ed60afe",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_cb1a0b37f72056918ed60afe",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0033797",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.7821,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM98740.1 has very weak support for GO:0033797 (selenate reductase): posterior 0.107, logodds -2.12, raw sequence score 0.073, no RLGC evidence, and no operon context. Its existing annotations strongly indicate a nitrate reductase (GO:0008940, GO:0009325) in anaerobic respiration, a distinct function from selenate reduction. Insufficient evidence to promote, and no basis to demote an existing annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_c9fcb5ee2c67b5512044031f",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_c9fcb5ee2c67b5512044031f",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004734",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.6158,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM98109.1 has weak evidence for GO:0004734 (pyrimidodiazepine synthase): low sequence similarity (raw 0.214, calibrated 0.242), negative log-odds (-1.591), low model probabilities (~0.09-0.11), no operon context, and no RLGC support. It is already annotated with glutathione dehydrogenase (ascorbate) activity (GO:0045174), which is consistent with the glutathione pathway but unrelated to pyrimidodiazepine synthase. Insufficient evidence to promote or relax; abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_9217e6b3e65df7566cb546e1",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_9217e6b3e65df7566cb546e1",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0016768",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.7834,
+        "protein_id": "",
+        "rationale": "Candidate ADM99632.1 shows only weak sequence similarity (raw 0.365, calibrated 0.368) and a low posterior (0.258, logodds -1.058). Its existing annotations point to spermidine/thermospermine synthase (GO:0004766, GO:0010487) and related EC 2.5.1.x activities, not spermine synthase (GO:0016768). No operon context, no RLGC evidence, and no pathway operon support. Evidence is insufficient to confidently assign GO:0016768.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_e45b171a667ae25ee5f90211",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_e45b171a667ae25ee5f90211",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.14,
+        "function_id": "GO:0004343",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 18.3798,
+        "protein_id": "",
+        "rationale": "Both candidates (ADN00720.1 and ADM97259.1) show very weak evidence for glucosamine 6-phosphate N-acetyltransferase activity: low sequence similarity scores (~0.15), no domain hits, no operon context, no RLGC evidence, and posterior probabilities of only ~0.14. Neither candidate meets the threshold for confident annotation.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_5896ba1b0057b8d8fc52e81e",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_5896ba1b0057b8d8fc52e81e",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0047912",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 18.3311,
+        "protein_id": "",
+        "rationale": "Candidate ADM97584.1 has only marginal sequence similarity (raw 0.223, calibrated 0.2485) to galacturonokinase, no RLGC evidence (BF=0.0), no operon context, and no corroborating domain or annotation evidence. Learned model probabilities are low (GBDT 0.107, logistic 0.085) and final logodds are strongly negative (-1.558), yielding a posterior of 0.174 well below the promotion threshold. Insufficient evidence to confidently assign GO:0047912; abstaining.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_f0b81a15535fcb9ad12d47d8",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_f0b81a15535fcb9ad12d47d8",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.14,
+        "function_id": "GO:0009702",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.4866,
+        "protein_id": "",
+        "rationale": "Candidate ADM97584.1 shows only weak sequence similarity (raw 0.147, calibrated 0.196) to L-arabinokinase, with no domain hits, no operon context, no RLGC evidence, and a low posterior (0.137). Evidence is insufficient to confidently assign GO:0009702.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_ee8245099983122653ff9006",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_ee8245099983122653ff9006",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0050373",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 16.7101,
+        "protein_id": "",
+        "rationale": "Neither candidate provides sufficient evidence for UDP-arabinose 4-epimerase (GO:0050373). ADM97586.1 (posterior 0.35) is better supported by sequence similarity (0.50) and is annotated as UDP-glucose 4-epimerase (GO:0003978) with galactose/colanic acid metabolism context, but its model probabilities (GBDT 0.24, logistic 0.31) and lack of operon/RLGC support fall short of a confident PROMOTE for the arabinose-specific function. ADN00526.1 (posterior 0.19) is even weaker, with low sequence score (0.25) and annotations pointing to a different epimerase (ADP-glyceromanno-heptose 6-epimerase, EC 5.1.3.20). Given the low posteriors, absence of pathway operon context, and zero RLGC Bayes factors, the evidence does not meet the threshold to confidently assign GO:0050373 to either protein.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_bde1efaf2d82e60ca1872cfd",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_bde1efaf2d82e60ca1872cfd",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.19,
+        "function_id": "GO:0033705",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.2087,
+        "protein_id": "",
+        "rationale": "Candidate ADN00174.1 has weak evidence for GO:0033705 (GDP-4-dehydro-6-deoxy-D-mannose reductase): posterior 0.19, negative log-odds (-1.452), low GBDT/logistic scores (~0.07-0.10), no operon context, and no RLGC support. Its only supporting claim is a weak sequence-similarity hit (raw 0.25, calibrated 0.27). Notably, the protein is already annotated with the closely related GDP-mannose 4,6-dehydratase activity (GO:0008446), which is the upstream step in the same nucleotide-sugar pathway, suggesting it is more likely the dehydratase than the reductase. Evidence is insufficient to promote the reductase annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_f59b32dbc08502ef4ed3e0df",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_f59b32dbc08502ef4ed3e0df",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0008781",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 16.8074,
+        "protein_id": "",
+        "rationale": "Evidence does not support GO:0008781 for ADM96526.1. Sequence similarity is weak (0.283), no operon context, no RLGC support, and the protein's existing annotations (EC 3.1.3.45, GO:0019143 KDO-8-P phosphatase) indicate a phosphatase function rather than a cytidylyltransferase. Posterior 0.207 is well below promotion threshold.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_7475b0ef62a67be4c2ef2748",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_7475b0ef62a67be4c2ef2748",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0050377",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.8514,
+        "protein_id": "",
+        "rationale": "Candidate ADM97613.1 shows only weak sequence similarity (raw 0.39, calibrated 0.39) and a low posterior (0.275) with negative log-odds (-0.97). It is not in a pathway operon and has no RLGC support. Its existing annotations (EC 4.2.1.46, dTDP-glucose 4,6-dehydratase GO:0008460) are related but distinct from UDP-glucose 4,6-dehydratase (GO:0050377), and the evidence is insufficient to confidently promote this annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_dc8c3188528521744cd9f01b",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_dc8c3188528521744cd9f01b",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.5809,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only moderate sequence similarity (0.556) to L-malate dehydrogenase (NAD+), with a posterior of 0.389 and negative log-odds (-0.452). Its other annotations (EC 1.1.1.37, glycolysis, TCA, malate metabolism) suggest a broader malate-related enzyme but do not specifically support NAD+-dependent malate dehydrogenase. No operon context, no RLGC evidence, and no pathway operon support. Evidence is insufficient to confidently promote this annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_08a9c9288a46f27c721b6a3a",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_08a9c9288a46f27c721b6a3a",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0046554",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.9863,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only moderate sequence similarity (0.556) and a posterior of 0.389, below the 0.50 threshold for promotion. Its existing annotations (EC 1.1.1.37, TCA cycle, malate metabolism) are consistent with a malate dehydrogenase but do not specifically support the NADP+-dependent form (GO:0046554) required for the Calvin cycle. No operon context, no RLGC evidence, and no pathway operon support. Insufficient evidence to confidently assign the NADP+ malate dehydrogenase function.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_26e4d6007257112946a88828",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_26e4d6007257112946a88828",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.14,
+        "function_id": "GO:0047100",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.0084,
+        "protein_id": "",
+        "rationale": "Candidate ADM99692.1 has weak support for GO:0047100 (GAPN): posterior 0.14, logodds -1.82, no operon context, no RLGC evidence, and only a low-confidence sequence similarity claim (0.20). Its other annotations (EC 1.2.1.10, aldehyde dehydrogenase NAD+, acetaldehyde dehydrogenase acetylating) point to a dehydrogenase but not specifically to the NADP+-dependent phosphorylating GAPN of the Calvin cycle. Insufficient evidence to promote; abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_dc4f457ef75352a3c916cb1d",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_dc4f457ef75352a3c916cb1d",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0050334",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.16,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM99494.1 has weak support for thiaminase activity (GO:0050334): posterior 0.231, negative log-odds (-1.202), no operon context, no RLGC evidence, and only a modest sequence-similarity claim (0.33). Its other annotations point to thiamine biosynthesis/salvage kinases (2.7.1.49, 2.7.4.7, HMPK, PMPK), not thiaminase. Evidence is insufficient to promote or demote confidently.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_3a54455fa0d367d2aa73a406",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_3a54455fa0d367d2aa73a406",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.13,
+        "function_id": "GO:0047884",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.6144,
+        "protein_id": "",
+        "rationale": "Candidate ADM97454.1 shows only weak sequence similarity (raw 0.12, calibrated 0.18) to FAD diphosphatase, with no domain hits, no operon context, no RLGC evidence, and a low posterior (0.126). Evidence is insufficient to confidently assign GO:0047884 to close the riboflavin metabolism pathway gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_d452daf9d4c772da7569280f",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_d452daf9d4c772da7569280f",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0017113",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.3108,
+        "protein_id": "",
+        "rationale": "Candidate ADM97359.1 has weak and inconsistent evidence for GO:0017113 (dihydropyrimidine dehydrogenase (NADP+) activity). Sequence similarity is low (raw 0.287, calibrated 0.299), learned models are low (~0.13), likelihood logodds is negative (-1.328), no operon context, and no RLGC support. The protein's other annotations (purine biosynthesis reductase/deaminase activities) are unrelated to dihydropyrimidine metabolism, and the target function is not part of the KEGG:00770 pantothenate/CoA pathway gap. Insufficient evidence to promote or relax; abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_5fe5de01d26e92eb75130b59",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_5fe5de01d26e92eb75130b59",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0052654",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 23.9952,
+        "protein_id": "",
+        "rationale": "Neither candidate provides sufficient evidence for GO:0052654 (L-leucine:2-oxoglutarate transaminase activity). ADN00478.1 has a posterior of only 0.2034 with weak sequence similarity (raw 0.277) and no operon or RLGC support; its existing annotation is the broader GO:0004084 (branched-chain-amino-acid:2-oxoglutarate transaminase), not the specific L-leucine transaminase. ADM99382.1 is even weaker (posterior 0.1422, raw 0.158, no supporting annotations). Without stronger sequence, domain, or pathway context evidence, the specific function cannot be confidently assigned.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_e9df90bad82f2ffa6dd5a665",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_e9df90bad82f2ffa6dd5a665",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004068",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 15.3938,
+        "protein_id": "",
+        "rationale": "Both candidates have weak evidence for aspartate 1-decarboxylase activity: ADM99621.1 (posterior 0.31, seq sim 0.44, no RLGC/operon support, unrelated autoprocessing annotation) and ADN00344.1 (posterior 0.16, seq sim 0.19). Neither reaches a defensible threshold to close the KEGG:00770 pathway gap, so no annotation is promoted.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_550fc449ab654fe971269b2d",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_550fc449ab654fe971269b2d",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0141148",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.588,
+        "protein_id": "",
+        "rationale": "The candidate ADM98855.1 is already annotated with the closely related NADH-dependent enoyl-ACP reductase activity (GO:0004318) at 0.57, not the NADPH-dependent form (GO:0141148). Sequence similarity evidence is weak (raw 0.453, calibrated 0.4532), learned model probabilities are low (GBDT 0.132, logistic 0.251), final log-odds are negative (-0.766), and there is no operon context or RLGC support. The evidence does not distinguish NADPH- vs NADH-dependent specificity, so promoting to GO:0141148 is not justified.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_4cde1ca9b0b6a70cb8008909",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_4cde1ca9b0b6a70cb8008909",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0004739",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.0092,
+        "protein_id": "",
+        "rationale": "Candidate ADN00020.1 shows only moderate sequence similarity (0.50) to pyruvate dehydrogenase E1, with a low posterior (0.35) and negative log-odds (-0.61). It carries the obsolete GO:0004738 and TPPT/magnesium binding annotations consistent with a PDH E1-like enzyme, but lacks operon context, RLGC support, or strong model agreement (GBDT 0.11). Evidence is insufficient to confidently promote GO:0004739, so abstaining is appropriate.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_15c037d92d742374c9fc5185",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_15c037d92d742374c9fc5185",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004734",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.9108,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM98109.1 has weak evidence for GO:0004734 (pyrimidodiazepine synthase): low sequence similarity (raw 0.214, calibrated 0.242), negative log-odds (-1.591), no operon context, no RLGC support, and a competing annotation to glutathione dehydrogenase (ascorbate) activity (GO:0045174 @0.52). The posterior (0.169) is far below a promotion threshold, so the pathway gap should not be filled with this candidate.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_83fbf2c7a40dcd46114bdcdb",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_83fbf2c7a40dcd46114bdcdb",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030366",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.764,
+        "protein_id": "",
+        "rationale": "Candidate ADM98023.1 has weak evidence for GO:0030366 (molybdopterin synthase activity): sequence similarity raw score only 0.275 (calibrated 0.289), learned model probabilities low (0.099/0.123), final logodds -1.371, no operon context, and no RLGC support. The only supporting annotations are the broader process GO:0006777 (Mo-molybdopterin cofactor biosynthetic process) and homodimerization, which are consistent with a molybdopterin pathway enzyme but do not specifically support the molybdopterin synthase (MOE1/MoaA) activity. The posterior (0.2025) is well below the promotion threshold, and the evidence is insufficient to confidently assign the specific molecular function. Abstaining is the appropriate call.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_efe1a35fc720f63ab874a4a4",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_efe1a35fc720f63ab874a4a4",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0008265",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 18.2294,
+        "protein_id": "",
+        "rationale": "Evidence is insufficient: single weak sequence-similarity claim (calibrated 0.22), negative final logodds (-1.705), no RLGC support, no operon context, and the target function (molybdenum cofactor sulfurtransferase) is not a canonical folate biosynthesis enzyme. Posterior 0.154 is far below promotion threshold with no strong counter-evidence to demote.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_aa2c6d4058cd697f296957e8",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_aa2c6d4058cd697f296957e8",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0003874",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.4258,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM99817.1 has weak evidence for GO:0003874 (6-pyruvoyltetrahydropterin synthase): posterior 0.234, negative log-odds (-1.185), no operon context, no RLGC support, and only a modest sequence-similarity claim (0.33). Notably, the protein is already annotated with GO:0070497 (6-carboxytetrahydropterin synthase activity), a closely related but distinct pterin-synthase function, suggesting it is more likely a 6-carboxytetrahydropterin synthase than a 6-pyruvoyltetrahydropterin synthase. Evidence is insufficient to confidently promote the target function.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_83da1702147368b0c58c0557",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_83da1702147368b0c58c0557",
+        "confidence": 0.0,
+        "function_id": "GO:0004479",
+        "guardrail_status": "PASS",
+        "latency_sec": 4.6295,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_32b92422d87e1ee85c4f77b0",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_32b92422d87e1ee85c4f77b0",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004826",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 16.6899,
+        "protein_id": "",
+        "rationale": "Both candidates have weak sequence similarity scores (0.21 and 0.11) with low posterior probabilities (0.17 and 0.12), no operon context, no RLGC support, and no domain evidence. ADM98631.1 additionally has conflicting annotations (membrane, protein binding) inconsistent with a cytosolic aminoacyl-tRNA synthetase. Evidence is insufficient to confidently assign GO:0004826 to either candidate.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_8d9047cccd9017fba9d7f6f5",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_8d9047cccd9017fba9d7f6f5",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0050560",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.9472,
+        "protein_id": "",
+        "rationale": "Candidate ADM98342.1 is already annotated as aspartate-tRNA ligase (GO:0004815, EC 6.1.1.12), not asparagine-tRNA(Asn) ligase (GO:0050560). Sequence similarity is weak (raw 0.384, calibrated 0.386), no operon context, no RLGC evidence, and posterior is only 0.27. Insufficient support to promote the asparaginyl-tRNA synthetase annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_c7708172e3f8bb3be0552230",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_c7708172e3f8bb3be0552230",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.12,
+        "function_id": "GO:0050567",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.1385,
+        "protein_id": "",
+        "rationale": "Candidate ADM99769.1 shows only weak sequence similarity (raw 0.118, calibrated 0.178) to glutaminyl-tRNA synthase (glutamine-hydrolyzing) activity, with no domain hits, no operon context, no RLGC evidence (BF=0.0), and no supporting annotations. The posterior (0.125) and log-odds (-1.947) are well below any promotion threshold. Insufficient evidence to confidently assign GO:0050567; abstaining.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_fd82ecb2632cfd22025fb03a",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_fd82ecb2632cfd22025fb03a",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0017113",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.355,
+        "protein_id": "",
+        "rationale": "Candidate ADM97359.1 has weak evidence for GO:0017113: sequence similarity raw score only 0.287 (calibrated 0.299), learned GBDT/logistic probabilities ~0.13, negative likelihood logodds (-1.328), no operon context, and no RLGC support. Its existing annotations (5-amino-6-(5-phosphoribosylamino)uracil reductase, diaminohydroxyphosphoribosylaminopyrimidine deaminase) are purine/pyrimidine salvage enzymes, not dihydropyrimidine dehydrogenase. Posterior 0.483 is below a confident threshold and the evidence does not clearly support promotion.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_95b28e3b3ee75563cc4639dc",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_95b28e3b3ee75563cc4639dc",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.13,
+        "function_id": "GO:0004566",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.3151,
+        "protein_id": "",
+        "rationale": "Evidence for ADM97757.1 as a beta-glucuronidase (GO:0004566) is weak: posterior 0.1285, negative log-odds (-1.914), low sequence similarity (0.127), no operon context, and no RLGC support. The protein is instead annotated with beta-galactosidase activity (GO:0004565 @0.53), a related but distinct glycosidase. Insufficient evidence to promote the target function.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_dd551d9770497a0966ccb8c1",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_dd551d9770497a0966ccb8c1",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0036440",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.4902,
+        "protein_id": "",
+        "rationale": "Evidence for ADM97551.1 as a citrate synthase (GO:0036440) is weak: posterior 0.205, negative log-odds (-1.354), low sequence similarity (0.28), no operon context, and no RLGC support. The only related annotation is obsolete citrate (Si)-synthase activity (GO:0004108), which is a distinct silicon-dependent enzyme, not the TCA citrate synthase. Insufficient confidence to promote or relax.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_7651e59316f63a1e1e6afb3b",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_7651e59316f63a1e1e6afb3b",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0050440",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.053,
+        "protein_id": "",
+        "rationale": "Evidence for ADM97551.1 as 2-methylcitrate synthase (GO:0050440) is weak: posterior 0.205, negative log-odds (-1.354), low GBDT/logistic scores (~0.13-0.14), no operon context, no RLGC support, and only a modest sequence-similarity claim (0.28). The existing annotations (obsolete citrate (Si)-synthase, NADH binding, hexamerization) are more consistent with a citrate synthase (GO:0004450) than a 2-methylcitrate synthase, and the pathway already has citrate synthase present. Insufficient support to promote the specific GO:0050440 assignment.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_cdc1f3699b0ab8ece18f271d",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_cdc1f3699b0ab8ece18f271d",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004449",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.8596,
+        "protein_id": "",
+        "rationale": "Candidate ADM98644.1 is already annotated as an NADP+-dependent isocitrate dehydrogenase (GO:0004450, EC 1.1.1.42) with moderate confidence (0.57), not the NAD+-dependent form (GO:0004449). Sequence similarity evidence is weak (raw 0.31, calibrated 0.32), learned models are low (0.09-0.13), posterior is only 0.22, no operon context, and no RLGC support. The pathway gap is better explained by a genuinely missing NAD+-IDH gene than by reassigning this NADP+-IDH. Insufficient evidence to promote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_7a3792eb3f13bfe231f786d9",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_7a3792eb3f13bfe231f786d9",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0050439",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 20.4552,
+        "protein_id": "",
+        "rationale": "Candidate ADM97556.1 shows only weak sequence similarity (0.406) and low model probabilities (GBDT 0.34, logistic 0.20) for GO:0050439. It lacks operon context and RLGC support. Its existing annotations (EC 1.2.4.2, GO:0004591 oxoglutarate dehydrogenase, TPP binding) indicate it is an OGDH component, not a 2-hydroxy-3-oxoadipate synthase. The posterior (0.285) is well below the promotion threshold, and the biological evidence contradicts the target function. No reliable candidate can be promoted to fill this TCA cycle gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_124657c3f9f709f78a7d92b7",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_124657c3f9f709f78a7d92b7",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0008683",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.4229,
+        "protein_id": "",
+        "rationale": "Candidate ADM97556.1 is already annotated as oxoglutarate dehydrogenase (GO:0004591, EC 1.2.4.2), a distinct TCA enzyme, not a 2-oxoglutarate decarboxylase (GO:0008683). Sequence similarity is weak (raw 0.406, calibrated 0.407), posterior is low (0.285), no operon context, and no RLGC evidence. The pathway gap is better explained by a missing dedicated decarboxylase than by reassigning this OGD protein. Insufficient evidence to promote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_46815eadf351be7a83dd7f02",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_46815eadf351be7a83dd7f02",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.181,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only weak sequence similarity (0.556) and a low posterior (0.389) with negative log-odds (-0.452). Its other annotations point to EC 1.1.1.37 (malate dehydrogenase (NADP+)-related) and fermentation/anaerobic respiration rather than the NAD+-dependent TCA malate dehydrogenase (GO:0030060). No operon context, no RLGC evidence, and no pathway operon support. Evidence is insufficient to confidently assign GO:0030060.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_5c676fffec144cfe5b4de1a2",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_5c676fffec144cfe5b4de1a2",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0036440",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.3003,
+        "protein_id": "",
+        "rationale": "Candidate ADM97551.1 shows only weak evidence for citrate synthase (GO:0036440): posterior 0.205, negative log-odds (-1.354), low sequence similarity (0.28), no operon context, and no RLGC support. Its other annotations (obsolete citrate (Si)-synthase, NADH binding, hexamerization) are more consistent with a citrate synthase-like or related enzyme but do not strongly support the canonical citrate synthase activity. Insufficient confidence to promote; abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_f3ba4f59058098340fc3c0e8",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_f3ba4f59058098340fc3c0e8",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0050440",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.153,
+        "protein_id": "",
+        "rationale": "Candidate ADM97551.1 shows only weak sequence similarity (raw 0.28, calibrated 0.29) and a low posterior (0.205) with negative log-odds (-1.35). No operon context, no RLGC support, and its other annotations (citrate synthase, NADH binding, hexamerization) are more consistent with a TCA citrate synthase than a 2-methylcitrate synthase. Evidence is insufficient to confidently assign GO:0050440.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_eb35c43a3feca4884d1c11de",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_eb35c43a3feca4884d1c11de",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004449",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.5975,
+        "protein_id": "",
+        "rationale": "Candidate ADM98644.1 is already annotated as an NADP+-dependent isocitrate dehydrogenase (GO:0004450, EC 1.1.1.42) with moderate confidence (0.57), not the NAD+-dependent form (GO:0004449). Sequence similarity evidence is weak (raw 0.31, calibrated 0.32), learned models are low (0.09-0.13), posterior is only 0.22, no operon context, and no RLGC support. The pathway already has GO:0004450 present, so the NAD+ form is not clearly missing. Insufficient evidence to promote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_5610aac4b93f2d74f756ee20",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_5610aac4b93f2d74f756ee20",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0050439",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.7678,
+        "protein_id": "",
+        "rationale": "Candidate ADM97556.1 is already annotated as an oxoglutarate dehydrogenase (EC 1.2.4.2, GO:0004591) with TPP/Mg2+ binding, not a 2-hydroxy-3-oxoadipate synthase (GO:0050439). Sequence similarity is weak (raw 0.406, calibrated 0.407), no operon context, no RLGC evidence, and posterior is only 0.285. The evidence does not support promoting this protein to the missing TCA function; abstaining is appropriate.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_76dc1328b232df1b60b32236",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_76dc1328b232df1b60b32236",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0008683",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.7488,
+        "protein_id": "",
+        "rationale": "Candidate ADM97556.1 is already annotated as oxoglutarate dehydrogenase (GO:0004591, EC 1.2.4.2) with TPP/Mg binding, not a 2-oxoglutarate decarboxylase (GO:0008683). Sequence similarity is weak (raw 0.406, calibrated 0.407), no operon context, no RLGC evidence, and posterior is only 0.285. The pathway gap is better explained by a true missing decarboxylase than by reassigning this OGD protein. Insufficient evidence to promote, relax, or demote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_512a34e8f49b654c6d3c5b62",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_512a34e8f49b654c6d3c5b62",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.0051,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only moderate sequence similarity (0.556) to L-malate dehydrogenase (NAD+) and its other annotations (EC 1.1.1.37, glycolysis, fermentation, anaerobic respiration) suggest a different enzyme (likely a dehydrogenase with NADH-dependent activity rather than NAD+-dependent malate dehydrogenase). No operon context, no RLGC evidence, and posterior of 0.389 is below the 0.50 threshold for promotion. The pathway gap (GO:0030060 missing from KEGG:M00011) is real but this candidate is not sufficiently supported to fill it.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_3b55f307d2d3557ade48a37b",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_3b55f307d2d3557ade48a37b",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0036440",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.1743,
+        "protein_id": "",
+        "rationale": "The only candidate ADM97551.1 has weak evidence: posterior 0.205, negative log-odds (-1.354), no operon context, no RLGC support, and only a modest sequence-similarity claim (0.28). Its other annotations (NADH binding, hexamerization, obsolete citrate (Si)-synthase) are more consistent with a citrate synthase-like enzyme but do not strongly support GO:0036440. Insufficient confidence to promote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_e447bcd5a40ba4eca186db12",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_e447bcd5a40ba4eca186db12",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0050440",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.5547,
+        "protein_id": "",
+        "rationale": "Candidate ADM97551.1 shows only weak sequence similarity (raw 0.28, calibrated 0.29) to 2-methylcitrate synthase, with a low posterior (0.205) and negative log-odds (-1.35). No operon context, no RLGC support, and existing annotations (hexamerization, NADH binding, obsolete citrate synthase) are not specific to 2-methylcitrate synthase. Evidence is insufficient to confidently assign GO:0050440.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_d166d7155f17c8b261f789f9",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_d166d7155f17c8b261f789f9",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.1715,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only weak sequence similarity (0.556) to L-malate dehydrogenase (NAD+) and is already annotated with EC 1.1.1.37 (malate dehydrogenase (NADP+)), a distinct enzyme. No operon context, no RLGC evidence, and model probabilities are low (GBDT 0.20, logistic 0.41). The posterior of 0.39 is below the promotion threshold, and the existing NADP+ malate dehydrogenase annotation suggests this is not the NAD+ enzyme needed for the glyoxylate cycle gap. Insufficient evidence to promote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_534a09cea32e865a79bb86d5",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_534a09cea32e865a79bb86d5",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.13,
+        "function_id": "GO:0004566",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.8024,
+        "protein_id": "",
+        "rationale": "Candidate ADM97757.1 shows only weak sequence similarity (raw 0.127, calibrated 0.184) to beta-glucuronidase, with no operon context, no RLGC evidence, and a strong competing annotation for beta-galactosidase (GO:0004565 @0.53). The posterior (0.1285) is far below the promotion threshold, and the evidence does not support assigning GO:0004566. Abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_0d341223c9cb948f3ac0dce6",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_0d341223c9cb948f3ac0dce6",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.19,
+        "function_id": "GO:0047769",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.5534,
+        "protein_id": "",
+        "rationale": "ADM99650.1 is already annotated as chorismate mutase (GO:0004106) and prephenate dehydratase (GO:0004664), not arogenate dehydratase. Sequence similarity evidence is weak (raw 0.258, calibrated 0.275), no operon context, no RLGC support, and learned models give low probabilities (~0.12-0.13). The posterior of 0.19 is well below the promotion threshold, so the pathway gap should not be filled with this candidate.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_8bfd3a9c95ffa1983792a265",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_8bfd3a9c95ffa1983792a265",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004635",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 20.8597,
+        "protein_id": "",
+        "rationale": "Neither candidate has sufficient evidence for GO:0004635. ADM98274.1 (posterior 0.31) is annotated as histidinol dehydrogenase (GO:0004399) with metal binding, inconsistent with cyclohydrolase. ADM98268.1 (posterior 0.23) is annotated as phosphoribosyl-ATP diphosphatase (GO:0004636), a different pathway enzyme. Both lack operon context, RLGC evidence, and strong sequence similarity (raw scores 0.44 and 0.32). No candidate meets the threshold for confident assignment.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_3ed91a29567659ee64e17c62",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_3ed91a29567659ee64e17c62",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004424",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.6812,
+        "protein_id": "",
+        "rationale": "Candidate ADM98272.1 has weak evidence for GO:0004424: posterior 0.205, negative log-odds (-1.353), low learned model probabilities (0.075/0.109), no operon context, and no RLGC support. Its existing annotations (EC 3.1.3.15, histidinol-phosphatase GO:0004401) indicate a different histidine-pathway enzyme, not imidazoleglycerol-phosphate dehydratase. Insufficient evidence to promote or relax.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_fae002300544456be20044de",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_fae002300544456be20044de",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.19,
+        "function_id": "GO:0004055",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.4794,
+        "protein_id": "",
+        "rationale": "Candidate ADN00621.1 shows only weak sequence similarity (raw 0.256, calibrated 0.274) to argininosuccinate synthase, with a low posterior of 0.19, negative log-odds (-1.44), no operon context, no RLGC support, and an unrelated existing annotation (identical protein binding). Evidence is insufficient to confidently assign GO:0004055, so I abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_264d7e26b03db87e4322222f",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_264d7e26b03db87e4322222f",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0010308",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.7014,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM99749.1 has weak evidence: low sequence similarity (raw 0.187, calibrated 0.222), no operon context, no RLGC support (BF=0.0), and learned model probabilities well below threshold (GBDT 0.106, logistic 0.073). Posterior 0.155 is far below the 0.50 promotion threshold. Insufficient evidence to confidently assign acireductone dioxygenase (Ni2+-requiring) activity (GO:0010308) to this protein.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_d82fcd77d1905b15be4f03fc",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_d82fcd77d1905b15be4f03fc",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0016034",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 13.3412,
+        "protein_id": "",
+        "rationale": "Both candidates have weak sequence similarity (raw ~0.20 and ~0.14), no operon context, no RLGC support, and learned model probabilities well below 0.5. ADM96545.1 carries unrelated stress/transcription annotations. Evidence is insufficient to confidently assign maleylacetoacetate isomerase activity to either protein.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_59635e6266787f6009ac5566",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_59635e6266787f6009ac5566",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004359",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 23.8003,
+        "protein_id": "",
+        "rationale": "Both candidates (ADM98271.1 and ADM98269.1) have very low posterior probabilities (~0.22), no operon context, no RLGC evidence, and only weak sequence similarity scores (~0.30-0.32). Critically, their existing annotations strongly indicate histidine biosynthesis function (GO:0000107 imidazoleglycerol-phosphate synthase, EC 4.3.2.10) rather than glutaminase activity. ADM98271.1 does carry an EC 3.5.1.2 annotation at 0.53, but this is contradicted by the stronger histidine biosynthesis annotations and the very low model probabilities (0.05-0.10). The evidence does not support promoting either candidate for GO:0004359 (glutaminase activity) in the purine biosynthesis pathway.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_044ab31797d32e9833ee8eb1",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_044ab31797d32e9833ee8eb1",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0103117",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.3357,
+        "protein_id": "",
+        "rationale": "Candidate ADN00038.1 shows only weak evidence for GO:0103117: posterior 0.2075, negative log-odds (-1.34), low sequence similarity (0.284), no operon context, and no RLGC support. Its existing annotations (EC 3.5.1.108, deacetylase, lipid A biosynthesis) are consistent with the pathway but do not specifically support UDP-3-O-acyl-GlcNAc deacetylase (LpxT) activity. Insufficient confidence to promote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_2e8e12d5f0ece3e710bce2bc",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_2e8e12d5f0ece3e710bce2bc",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0103117",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.7344,
+        "protein_id": "",
+        "rationale": "Candidate ADN00038.1 has weak evidence for GO:0103117: posterior 0.2075, negative log-odds (-1.34), low sequence similarity (0.284), no operon context, and no RLGC support. Its existing annotations (EC 3.5.1.108, lipid A biosynthesis, deacetylase activity) suggest a related but distinct deacetylase role rather than UDP-3-O-acyl-GlcNAc deacetylase. Insufficient confidence to promote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_6de7a877e6e99e239422a39a",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_6de7a877e6e99e239422a39a",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0141148",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.3437,
+        "protein_id": "",
+        "rationale": "Candidate ADM98855.1 is already annotated as an NADH-dependent enoyl-ACP reductase (GO:0004318), not the NADPH-dependent form (GO:0141148). Sequence similarity is weak (0.453), learned models are low (0.13/0.25), posterior is only 0.317, no operon context, and no RLGC support. Evidence does not support promoting the NADPH-specific annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_187313f0c4c02e36bb95b89e",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_187313f0c4c02e36bb95b89e",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0003997",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 16.7604,
+        "protein_id": "",
+        "rationale": "Both candidates (ADN00596.1 and ADN00599.1) show only weak sequence similarity evidence (raw scores 0.174 and 0.103, calibrated 0.213 and 0.170) with no RLGC support, no operon context, and no domain hits. Neither reaches sufficient confidence for PROMOTE. The beta-oxidation pathway gap is real but cannot be resolved with current evidence.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_ea9d7d0242ad06a862e68b01",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_ea9d7d0242ad06a862e68b01",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0070991",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 18.0567,
+        "protein_id": "",
+        "rationale": "Both candidates (ADN00596.1 and ADM99746.1) show only weak sequence similarity evidence (raw scores 0.22 and 0.18, calibrated probabilities 0.25 and 0.21) with no operon context, no RLGC evidence, and no supporting annotations. Neither reaches the confidence threshold for annotation. The beta-oxidation pathway gap (KEGG:M00087) remains unresolved with insufficient evidence to assign medium-chain fatty acyl-CoA dehydrogenase activity to either candidate.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_e27f093027599c9bd4f4dd3d",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_e27f093027599c9bd4f4dd3d",
+        "confidence": 0.0,
+        "function_id": "GO:0004466",
+        "guardrail_status": "PASS",
+        "latency_sec": 6.3665,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_97858af927e020b5a3909692",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_97858af927e020b5a3909692",
+        "confidence": 0.0,
+        "function_id": "GO:0017099",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.0186,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_ed7de907ea5408fda9acad69",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_ed7de907ea5408fda9acad69",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.13,
+        "function_id": "GO:0004452",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 12.4538,
+        "protein_id": "",
+        "rationale": "Candidate ADM99287.1 shows only weak sequence similarity (raw 0.139, calibrated 0.191) to IspG (GO:0004452), with a low posterior of 0.134, negative log-odds (-1.869), no RLGC support (BF=0.0), no domain hits, and no operon context (not in a pathway operon, no neighbors). Evidence is insufficient to confidently assign isopentenyl-diphosphate delta-isomerase activity; abstaining avoids a low-confidence annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_6dcd22dd55adcf5156846590",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_6dcd22dd55adcf5156846590",
+        "confidence": 0.0,
+        "function_id": "GO:0047372",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.4687,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 7
+      }
+    },
+    {
+      "anomaly_id": "A_7ba330b90a08454a74f51a19",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_7ba330b90a08454a74f51a19",
+        "confidence": 0.0,
+        "function_id": "GO:0003997",
+        "guardrail_status": "PASS",
+        "latency_sec": 7.6938,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_c1888b282186d3c27133b763",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_c1888b282186d3c27133b763",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0010349",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.965,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM97371.1 has weak evidence: low sequence similarity (raw 0.187, calibrated 0.222), no operon context, no RLGC support, and a posterior of only 0.156. This is far below the threshold to confidently assign L-galactose dehydrogenase activity (GO:0010349) to fill the ascorbate biosynthesis pathway gap. Insufficient evidence to promote or relax.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_258d099fa7f318f949ca3d93",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_258d099fa7f318f949ca3d93",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004068",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 15.5005,
+        "protein_id": "",
+        "rationale": "Neither candidate provides sufficient evidence for aspartate 1-decarboxylase activity. ADM99621.1 has only moderate sequence similarity (0.44) and an autoprocessing annotation inconsistent with a decarboxylase; ADN00344.1 has low similarity (0.19). No operon context, no RLGC support, and posterior probabilities (0.31 and 0.16) are well below the promotion threshold. The pathway gap remains unresolved.",
+        "seed": 42,
+        "tool_calls": 5
+      }
+    },
+    {
+      "anomaly_id": "A_0354fe5c6e23f264da577d7e",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_0354fe5c6e23f264da577d7e",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.11,
+        "function_id": "GO:0004733",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.3766,
+        "protein_id": "",
+        "rationale": "Candidate ADN00169.1 shows only weak sequence similarity (raw 0.088, calibrated 0.16) to pyridoxamine phosphate oxidase, with no domain hits, no operon context (not in a pathway operon, no neighbors), zero RLGC Bayes factor, and a low posterior (0.113). The evidence is insufficient to confidently assign GO:0004733, so I abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_4eab967b5eff21b6ee001b54",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_4eab967b5eff21b6ee001b54",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.13,
+        "function_id": "GO:0004566",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.4326,
+        "protein_id": "",
+        "rationale": "Candidate ADM97757.1 shows only weak sequence similarity (raw 0.127, calibrated 0.184) to beta-glucuronidase, with a low posterior (0.1285) and negative log-odds (-1.914). It is not in a pathway operon, has no RLGC support, and is already annotated with the closely related beta-galactosidase activity (GO:0004565 @0.53), suggesting it is a beta-galactosidase rather than a true glucuronidase. Evidence is insufficient to confidently promote GO:0004566.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_b43cad3f648116c606fe4c15",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_b43cad3f648116c606fe4c15",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0047105",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.8114,
+        "protein_id": "",
+        "rationale": "ADM99029.1 is a betaine-aldehyde dehydrogenase (GO:0008802) involved in glycine betaine biosynthesis from choline, not GABA biosynthesis. It lacks operon context, has no RLGC evidence, and only weak sequence similarity (0.512) to the target 4-trimethylammoniobutyraldehyde dehydrogenase. The pathway gap (GABA biosynthesis) is not supported by this candidate's known function.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_c25ed889fd10400bce8dfb62",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_c25ed889fd10400bce8dfb62",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0004329",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.3251,
+        "protein_id": "",
+        "rationale": "The single candidate ADM99437.1 has weak support for GO:0004329: posterior 0.294, negative log-odds (-0.875), low GBDT (0.135) and logistic (0.242) scores, no operon context, and no RLGC evidence. Its existing annotations (GO:0004477, GO:0004488) indicate it is a folate C1 enzyme but not a formate-tetrahydrofolate ligase. Sequence similarity alone (0.42) is insufficient to confidently fill the pathway gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_490d0a96a78687b86561570e",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_490d0a96a78687b86561570e",
+        "confidence": 0.0,
+        "function_id": "GO:0004329",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.2797,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_fdd05b421ac6dbe240a6390b",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_fdd05b421ac6dbe240a6390b",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0004487",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.3508,
+        "protein_id": "",
+        "rationale": "Candidate ADM99437.1 shows only weak sequence similarity (raw 0.443, calibrated 0.443) and a low posterior (0.310) with negative log-odds (-0.799). It is already annotated with the closely related NADP+ MTHFD activity (GO:0004488) and MTHFDH (GO:0004477), suggesting it is a single-domain MTHFDH rather than a dual NAD+/NADP+ enzyme. No operon context, no RLGC evidence, and no pathway operon support. Evidence is insufficient to confidently assign GO:0004487.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_b2696f4ed5afb24795d81959",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_b2696f4ed5afb24795d81959",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.14,
+        "function_id": "GO:0047100",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.6011,
+        "protein_id": "",
+        "rationale": "Candidate ADM99692.1 shows only weak sequence similarity (raw 0.152, calibrated 0.199) to GAPN (GO:0047100), with a low posterior of 0.14 and negative log-odds (-1.82). Its other annotations (EC 1.2.1.10, aldehyde dehydrogenase NAD+, acetaldehyde dehydrogenase acetylating) indicate an aldehyde dehydrogenase rather than a phosphorylating NADP+-dependent GAP dehydrogenase. No operon context, no RLGC evidence, and no pathway operon support. Evidence is insufficient to confidently assign GO:0047100.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_32a659dbe4b9c302c15aafc4",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_32a659dbe4b9c302c15aafc4",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.7811,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only weak sequence similarity (0.556) to L-malate dehydrogenase (NAD+) and is already annotated with EC 1.1.1.37 (malate dehydrogenase (NADP+)), a distinct enzyme. No operon context, no RLGC evidence, and model probabilities are low (GBDT 0.20, logistic 0.41). The posterior of 0.39 is below the promotion threshold, and the existing NADP+ malate dehydrogenase annotation suggests this is a different isoform. Insufficient evidence to confidently assign GO:0030060.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_dd35fee4cb56b2c21b2951e5",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_dd35fee4cb56b2c21b2951e5",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.3936,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only weak sequence similarity (0.556) to L-malate dehydrogenase (NAD+), with a posterior of 0.389 and negative log-odds (-0.452). Its other annotations (EC 1.1.1.37, glycolysis, TCA, malate metabolism) suggest a broader metabolic role but do not specifically support NAD+-dependent malate dehydrogenase activity. No operon context, no RLGC evidence, and no pathway operon membership. Evidence is insufficient to confidently promote this annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_cc34275bda3cfcb6d8470629",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_cc34275bda3cfcb6d8470629",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0046554",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.3044,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only weak sequence similarity (0.556) and a low posterior (0.389) with negative log-odds (-0.452). Its other annotations (EC 1.1.1.37, glycolysis, TCA, malate metabolism) are generic and do not specifically support NADP+-dependent malate dehydrogenase (GO:0046554). No operon context, no RLGC evidence, and no pathway operon membership. Evidence is insufficient to confidently promote this protein to fill the pathway gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_d7a1fd31f0e9f2e7a1414cdd",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_d7a1fd31f0e9f2e7a1414cdd",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0043866",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.6036,
+        "protein_id": "",
+        "rationale": "Candidate ADM99810.1 shows only weak evidence for GO:0043866: posterior 0.177, log-odds -1.54, sequence similarity calibrated prob 0.25, no operon context, and no RLGC support. Its existing annotations (EC 1.8.4.8, GO:0004604) indicate it is a phosphoadenylyl-sulfate reductase (thioredoxin), which is a distinct but related step in the same assimilatory sulfate reduction pathway. The evidence is insufficient to confidently promote the target function, and the protein is already annotated with a closely related activity, so abstaining is the safest resolution.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_a621304734b63e36eb621c0f",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_a621304734b63e36eb621c0f",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0050311",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.8167,
+        "protein_id": "",
+        "rationale": "Candidate ADM99811.1 shows only weak sequence similarity (raw 0.33, calibrated 0.34) and a low posterior (0.237) for GO:0050311 (ferredoxin sulfite reductase). Its other annotations point to the NADPH sulfite reductase complex (GO:0009337) rather than the ferredoxin-dependent enzyme, and there is no operon context, no RLGC evidence, and no pathway operon support. Evidence is insufficient to confidently promote the annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_92f7066ff5bedc762a204bd7",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_92f7066ff5bedc762a204bd7",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.1901,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only moderate sequence similarity (0.556) to L-malate dehydrogenase (NAD+) and is already annotated with EC 1.1.1.37 (malate dehydrogenase (NADP+)), which is a distinct enzyme. The posterior (0.389) and log-odds (-0.452) are below promotion thresholds, there is no operon context, and no RLGC support. The pathway gap is better explained by a missing NAD+-specific MDH not confidently represented by this NADP+ enzyme.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_bf4121fe773c8b7f33e39a51",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_bf4121fe773c8b7f33e39a51",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0030060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.6433,
+        "protein_id": "",
+        "rationale": "Candidate ADM96824.1 shows only moderate sequence similarity (0.556) to L-malate dehydrogenase (NAD+) and is already annotated with EC 1.1.1.37 (malate dehydrogenase (NADP+)) plus TCA/malate metabolic process terms, suggesting it is the NADP+ isozyme rather than the NAD+ form. No operon context, no RLGC evidence, and posterior (0.389) is below the promotion threshold. Insufficient evidence to confidently assign GO:0030060.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_efcd7e09ad0041651f16899d",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_efcd7e09ad0041651f16899d",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0003985",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 16.5486,
+        "protein_id": "",
+        "rationale": "Both candidates are annotated as fatty acid beta-oxidation acyl-CoA dehydrogenases (EC 2.3.1.16) with GO:0003988 (acyltransferase) and beta-oxidation terms, not thiolase (EC 2.3.1.9). Sequence similarity to acetyl-CoA C-acetyltransferase is weak (0.45 and 0.39), below promotion threshold. No operon context, no RLGC support, and model posteriors are low (0.32, 0.28). The pathway gap is real but neither candidate is a credible thiolase; abstaining avoids misannotation.",
+        "seed": 42,
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_9d1452b90d8cfcece8703704",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_9d1452b90d8cfcece8703704",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0043956",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.0209,
+        "protein_id": "",
+        "rationale": "Candidate ADM97450.1 has weak support for GO:0043956: posterior 0.212, negative log-odds (-1.311), low learned model probabilities (~0.09-0.12), no operon context, and no RLGC evidence. Its existing annotations (EC 4.1.3.36, menaquinone biosynthesis, bicarbonate binding) are unrelated to 3-hydroxypropionate bi-cycle dehydratase activity. Insufficient evidence to promote or relax.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_cfaea4fcf18f6f03c32c342a",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_cfaea4fcf18f6f03c32c342a",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0010285",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 16.4685,
+        "protein_id": "",
+        "rationale": "Candidate ADM99381.1 shows only weak sequence similarity to GO:0010285 (raw 0.28, calibrated 0.293) and is already annotated as a general alanine transaminase (EC 2.6.1.2, GO:0004021 @0.58). No operon context, no RLGC evidence, and learned models give low probabilities (0.09-0.13). Posterior 0.2054 is far below promotion threshold. Insufficient evidence to assign the specific DAP aminotransferase function.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_ee9b0c3b82f93bf264f3e52f",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_ee9b0c3b82f93bf264f3e52f",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0008674",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.0244,
+        "protein_id": "",
+        "rationale": "Candidate ADM98359.1 shows only weak sequence similarity (raw 0.194, calibrated 0.227) and a low posterior (0.159) for GO:0008674. It is not in a pathway operon, has no RLGC support, and its other annotations are spread across multiple unrelated aldolase/decarboxylase activities (GO:0008675, GO:0008700, GO:0008948, EC 4.1.1.112/4.1.2.14/4.1.3.42), indicating a promiscuous aldolase rather than a specific 2-dehydro-3-deoxy-6-phosphogalactonate aldolase. Evidence is insufficient to confidently fill the pathway gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_90774ad2a931e441c4b80dc1",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_90774ad2a931e441c4b80dc1",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0141148",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.7728,
+        "protein_id": "",
+        "rationale": "Candidate ADM98855.1 is already annotated as an NADH-dependent enoyl-ACP reductase (GO:0004318), not the NADPH-dependent form (GO:0141148). Sequence similarity is weak (0.453), learned models are low (0.13-0.25), posterior is only 0.317, no operon context, and no RLGC support. The evidence does not justify promoting the NADPH-specific annotation; the protein likely belongs to the NADH branch already present in the pathway.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_4ed74bcc91c4dd350330ccc2",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_4ed74bcc91c4dd350330ccc2",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0003874",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.8671,
+        "protein_id": "",
+        "rationale": "Candidate ADM99817.1 shows only weak sequence similarity (raw 0.328, calibrated 0.3345) and a low posterior (0.234) for GO:0003874. It is not in a pathway operon, has no RLGC support, and its other annotations (zinc binding, tRNA queuosine biosynthesis, 6-carboxytetrahydropterin synthase activity) suggest a related but distinct pterin/queuosine enzyme rather than a confident PTPS. Evidence is insufficient to promote or demote.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_0289bb7228486ec4eb9783aa",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_0289bb7228486ec4eb9783aa",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0003874",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.8519,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM99817.1 has weak evidence for GO:0003874 (6-pyruvoyltetrahydropterin synthase): posterior 0.234, negative log-odds (-1.185), no operon context, no RLGC support, and only a modest sequence-similarity claim (0.33). Notably, the protein is already annotated with GO:0070497 (6-carboxytetrahydropterin synthase activity), which is a distinct but related pterin-synthase function, suggesting it is more likely a carboxy-pterin synthase than a 6-pyruvoyl-pterin synthase. Given the low confidence and conflicting functional annotation, I abstain from promoting the target function.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_68aa65fe026787e8a9dee625",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_68aa65fe026787e8a9dee625",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0003874",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.7867,
+        "protein_id": "",
+        "rationale": "Candidate ADM99817.1 shows only weak sequence similarity (raw 0.328, calibrated 0.3345) and a low posterior (0.234) for GO:0003874. It is not in a pathway operon, has no RLGC support, and its other annotations (zinc binding, tRNA queuosine biosynthesis, 6-carboxytetrahydropterin synthase activity) suggest a different pterin-related enzyme rather than 6-pyruvoyltetrahydropterin synthase. Evidence is insufficient to confidently fill the pathway gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_152cc86fbb840a7604cfb683",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_152cc86fbb840a7604cfb683",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.19,
+        "function_id": "GO:0004055",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.268,
+        "protein_id": "",
+        "rationale": "Candidate ADN00621.1 shows only weak sequence similarity (raw 0.256, calibrated 0.274) to argininosuccinate synthase, with no operon context, no RLGC support (BF=0.0), and a negative log-odds (-1.44). Its only other annotation is a generic protein-binding term, not consistent with ASS activity. Evidence is insufficient to confidently fill the pathway gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_c68d0ae8d86c28b8fed4cd29",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_c68d0ae8d86c28b8fed4cd29",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.19,
+        "function_id": "GO:0004055",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 9.88,
+        "protein_id": "",
+        "rationale": "The sole candidate ADN00621.1 has weak evidence for argininosuccinate synthase (GO:0004055): low sequence similarity (raw 0.256, calibrated 0.274), negative log-odds (-1.44), low model probabilities (~0.07-0.09), no operon context, no RLGC support, and an unrelated existing annotation (identical protein binding). The posterior (0.19) is well below the promotion threshold, so the pathway gap cannot be confidently resolved.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_b27c9808551bba4be165e5a9",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_b27c9808551bba4be165e5a9",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0008466",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.499,
+        "protein_id": "",
+        "rationale": "The sole candidate ADN00397.1 has weak evidence for glycogenin (GO:0008466): posterior 0.163, negative log-odds (-1.636), low sequence similarity (raw 0.202, calibrated 0.233), no operon context, and no RLGC support. It is already annotated as a 1,4-alpha-glucan branching enzyme (GO:0003844 @0.53), a distinct glycogen pathway enzyme, making a dual glycogenin assignment biologically unlikely. Insufficient evidence to promote or relax; abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_098dca11737adc919725acbe",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_098dca11737adc919725acbe",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0051060",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 8.4052,
+        "protein_id": "",
+        "rationale": "Candidate ADN00396.1 has weak evidence for pullulanase activity (GO:0051060): posterior 0.153, negative log-odds (-1.711), low sequence similarity (0.18), no operon context, and no RLGC support. Its existing annotations (amylo-alpha-1,6-glucosidase/isoamylase) are related but distinct from pullulanase. Insufficient evidence to promote or demote confidently.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_7ec0dee4ec6557810c88f30e",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_7ec0dee4ec6557810c88f30e",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0103117",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.9602,
+        "protein_id": "",
+        "rationale": "Candidate ADN00038.1 shows only weak sequence similarity (raw 0.284, calibrated 0.296) and a low posterior (0.2075) with negative log-odds (-1.34). It lacks operon context (no pathway operon neighbors) and has no RLGC support (BF=0.0). While it carries related annotations (deacetylase activity, lipid A biosynthesis, EC 3.5.1.108), the evidence is insufficient to confidently assign GO:0103117 (UDP-3-O-acyl-GlcNAc deacetylase) to close the Raetz pathway gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_4a699ee2c00fe113495c5895",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_4a699ee2c00fe113495c5895",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.2,
+        "function_id": "GO:0030366",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.5185,
+        "protein_id": "",
+        "rationale": "Candidate ADM98023.1 shows only weak sequence similarity (raw 0.275, calibrated 0.289) and a low posterior (0.2025) with negative log-odds (-1.371). No operon context, no RLGC evidence, and no pathway operon support. The existing annotations (Mo-molybdopterin biosynthetic process, homodimerization) are consistent with the pathway but do not provide sufficient evidence to confidently assign molybdopterin synthase activity (GO:0030366). Insufficient evidence to promote or relax.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_62300fcc1637affd600b45e7",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_62300fcc1637affd600b45e7",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0050334",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 11.7836,
+        "protein_id": "",
+        "rationale": "Candidate ADM99494.1 is a thiamine biosynthesis kinase (EC 2.7.1.49/2.7.4.7, GO:0008902/GO:0008972), not a thiaminase. Its existing annotations are consistent with thiamine biosynthesis/salvage, and there is no domain, operon, or RLGC evidence supporting thiaminase activity (GO:0050334). The low posterior (0.231) and negative log-odds (-1.202) reflect weak sequence similarity only. Insufficient evidence to promote, relax, or demote; abstain.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_d5ed38b2c47d3b13944ec4d7",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_d5ed38b2c47d3b13944ec4d7",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.15,
+        "function_id": "GO:0047769",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 14.5506,
+        "protein_id": "",
+        "rationale": "The sole candidate ADM99650.1 has weak evidence: low sequence similarity (raw 0.258, calibrated 0.275), no RLGC support (BF=0.0), no operon context, and negative log-odds (-1.433). While it is annotated with other phenylalanine biosynthesis functions (chorismate mutase, prephenate dehydratase), the evidence for arogenate dehydratase activity (GO:0047769) is insufficient to promote. The pathway gap may be genuine but no candidate meets the threshold for confident annotation.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_b96bbc9691dbf81f7bd1c95b",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_b96bbc9691dbf81f7bd1c95b",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.1,
+        "function_id": "GO:0052624",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 10.8864,
+        "protein_id": "",
+        "rationale": "Candidate ADN00504.1 shows only weak sequence similarity (raw 0.323, calibrated 0.33) and a low posterior (0.231) with negative log-odds (-1.201). It is not in a pathway operon and has no RLGC support. Its existing annotations point to ubiquinone/menaquinone methyltransferase activity (GO:0008425, GO:0006744, GO:0009234) rather than phylloquinone-specific GO:0052624, so evidence is insufficient to confidently assign the missing phylloquinone methyltransferase function.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    },
+    {
+      "anomaly_id": "A_c81372485744a0cf6af24d6c",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_c81372485744a0cf6af24d6c",
+        "confidence": 0.0,
+        "function_id": "GO:0004088",
+        "guardrail_status": "PASS",
+        "latency_sec": 5.4191,
+        "protein_id": "",
+        "rationale": "Agent did not emit a resolution within turn budget.",
+        "tool_calls": 4
+      }
+    },
+    {
+      "anomaly_id": "A_5ef13e1e0fe0312dfeaed2c8",
+      "genome_id": "GCA_000147055.1",
+      "outcome": "abstained",
+      "resolution": {
+        "action": "ABSTAIN",
+        "anomaly_id": "A_5ef13e1e0fe0312dfeaed2c8",
+        "anomaly_type": "PATHWAY_GAP",
+        "confidence": 0.19,
+        "function_id": "GO:0004055",
+        "function_type": "GO",
+        "guardrail_note": "",
+        "guardrail_status": "PASS",
+        "latency_sec": 5.6533,
+        "protein_id": "",
+        "rationale": "Candidate ADN00621.1 has weak evidence for argininosuccinate synthase (GO:0004055): posterior 0.19, negative log-odds (-1.44), low sequence similarity (0.256, calibrated 0.27), no operon context, no RLGC support, and an unrelated annotation (identical protein binding). Evidence is insufficient to confidently fill the pathway gap.",
+        "seed": 42,
+        "tool_calls": 3
+      }
+    }
+  ],
+  "known_decision_precision": null,
+  "limitations": [
+    "Existing marginal models have no trained null layer.",
+    "Stage-1 selection; no reaction gaps supplied.",
+    "Existing development cohort; not a new blind dataset.",
+    "Unknown truth is not a negative.",
+    "Repeated case decisions are clustered within genome; counts are case-level."
+  ],
+  "mode": "qwen_agent",
+  "n_cases": 158,
+  "net_known_gain": 0,
+  "policy_sha256": "ce36a8f35cf96d22c882be641031afed91ad9921c4ddebcdf9651e41761e6087",
+  "public_sha256": "030b3d907d8fcdbc85b5773098756cfd21b11fcbf019eb9299c1c3f10c42a454",
+  "schema": "gspa.agent-evaluation/2",
+  "shared_production_wall_seconds": 359.18,
+  "test_truth_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+}

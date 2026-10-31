@@ -25,12 +25,14 @@ class ClaimExtractor {
         'mmseqs2'        : EvidenceType.SEQUENCE_SIMILARITY,
         'hmmer'          : EvidenceType.SEQUENCE_DOMAIN,
         'pfam'           : EvidenceType.SEQUENCE_DOMAIN,
+        'antifam'        : EvidenceType.GENE_MODEL_QUALITY,
         'interproscan'   : EvidenceType.SEQUENCE_DOMAIN,
         'foldseek'       : EvidenceType.STRUCTURE_SIMILARITY,
         'eggnog-mapper'  : EvidenceType.ORTHOLOGY,
         'eggnog'         : EvidenceType.ORTHOLOGY,
         'operon'         : EvidenceType.GENOMIC_CONTEXT,
-        'gapseq'         : EvidenceType.METABOLIC_CONTEXT,
+        'gapseq'         : EvidenceType.METABOLIC_CONTEXT, // legacy claims; new hit annotations set sequence type explicitly
+        'gapsmith'       : EvidenceType.SEQUENCE_SIMILARITY,
         'crossfeeding'   : EvidenceType.METABOLIC_CONTEXT,
         'signalp'        : EvidenceType.LOCALIZATION,
         'psortb'         : EvidenceType.LOCALIZATION,
@@ -72,6 +74,9 @@ class ClaimExtractor {
      * whether to skip or default.
      */
     static EvidenceType resolveType(Annotation a) {
+        if (a.type == AnnotationType.PSEUDOGENE || a.source?.trim()?.equalsIgnoreCase('antifam')) {
+            return EvidenceType.GENE_MODEL_QUALITY
+        }
         if (a.evidenceType != null) return a.evidenceType
         if (a.source != null) return SOURCE_TO_TYPE[a.source.toLowerCase(Locale.ROOT)]
         return null
@@ -85,16 +90,19 @@ class ClaimExtractor {
     EvidenceClaim fromAnnotation(String proteinId, Annotation ann) {
         EvidenceType type = resolveType(ann)
         if (type == null) return null
+        // The claim owns a copy; the source annotation (claim.origin) keeps its supplied spelling.
+        Map<String, Object> claimMetadata = ann.metadata != null ? new LinkedHashMap<String, Object>(ann.metadata) : new LinkedHashMap<String, Object>()
+        String functionId = EcIdentity.ingest(ann.type, ann.value, claimMetadata)
         new EvidenceClaim(
             proteinId: proteinId,
             functionType: ann.type,
-            functionId: ann.value,
+            functionId: functionId,
             goAspect: ann.goAspect,
             evidenceType: type,
             source: ann.source,
             rawScore: ann.score,
-            calibratedProb: calibration.calibrate(ann.source ?: '', ann.score),
-            metadata: ann.metadata != null ? new LinkedHashMap<>(ann.metadata) : [:],
+            calibratedProb: type == EvidenceType.GENE_MODEL_QUALITY || ann.metadata?.score_available == false ? null : calibration.calibrate(ann.source ?: '', ann.score),
+            metadata: claimMetadata,
             origin: ann,
         )
     }
@@ -138,19 +146,36 @@ class ClaimExtractor {
                 rec.function_type = c.functionType?.name()
                 rec.function_id = c.functionId
                 rec.source = c.source
-                rec.evidence_type = c.evidenceType?.name()
+                rec.evidence_type = c.isQualityObservation() ? EvidenceType.GENE_MODEL_QUALITY.name() : c.evidenceType?.name()
                 rec.go_aspect = c.goAspect
                 rec.raw_score = c.rawScore
-                rec.calibrated_prob = c.calibratedProb
+                rec.calibrated_prob = c.hasFunctionalScore() ? c.calibratedProb : null
                 Map<String, Object> meta = new LinkedHashMap<>()
                 (c.metadata ?: [:]).each { k, v ->
-                    meta[k as String] = (v == null || v instanceof Number || v instanceof String || v instanceof Boolean) ? v : v.toString()
+                    meta[k as String] = jsonMetadataValue(v)
                 }
                 rec.metadata = meta
                 w.writeLine(mapper.writeValueAsString(rec))
             }
         }
         claims.size()
+    }
+
+    /** Preserve JSON-shaped provenance, including predictor contracts; opaque values keep their legacy text form. */
+    private static Object jsonMetadataValue(Object value) {
+        if (value == null || value instanceof Number || value instanceof String || value instanceof Boolean) return value
+        if (value instanceof Map) {
+            Map<String, Object> result = new LinkedHashMap<>()
+            value.each { key, nested -> result[key as String] = jsonMetadataValue(nested) }
+            return result
+        }
+        if (value instanceof Collection) return value.collect { jsonMetadataValue(it) }
+        if (value.getClass().isArray()) {
+            return (0..<java.lang.reflect.Array.getLength(value)).collect {
+                jsonMetadataValue(java.lang.reflect.Array.get(value, it))
+            }
+        }
+        value.toString()
     }
 
     /**
@@ -195,8 +220,12 @@ class ClaimExtractor {
                 if (type == null && source) {
                     type = SOURCE_TO_TYPE[(source as String).toLowerCase(Locale.ROOT)]
                 }
+                if ((rec.function_type as String)?.equalsIgnoreCase('PSEUDOGENE') || source?.trim()?.equalsIgnoreCase('antifam')) {
+                    type = EvidenceType.GENE_MODEL_QUALITY
+                }
                 if (type == null) return    // unresolved claim; skip
-                double calibrated = rec.calibrated_prob != null
+                AnnotationType functionType = AnnotationType.valueOf((rec.function_type as String).toUpperCase(Locale.ROOT))
+                Double calibrated = type == EvidenceType.GENE_MODEL_QUALITY || rec.metadata?.score_available == false ? null : rec.calibrated_prob != null
                     ? ((Number) rec.calibrated_prob).doubleValue()
                     : calibration.calibrate(source ?: '', raw)
                 String pid = rec.protein_id as String
@@ -204,16 +233,18 @@ class ClaimExtractor {
                     if (pid.contains('|')) hasPipeProteinId = true
                     else hasBareProteinId = true
                 }
+                Map<String, Object> claimMetadata = new LinkedHashMap<String, Object>((rec.metadata ?: [:]) as Map)
+                String functionId = EcIdentity.ingest(functionType, rec.function_id as String, claimMetadata)
                 out << new EvidenceClaim(
                     proteinId: pid,
-                    functionType: AnnotationType.valueOf((rec.function_type as String).toUpperCase(Locale.ROOT)),
-                    functionId: rec.function_id as String,
+                    functionType: functionType,
+                    functionId: functionId,
                     goAspect: rec.go_aspect as String,
                     evidenceType: type,
                     source: source,
                     rawScore: raw,
                     calibratedProb: calibrated,
-                    metadata: (rec.metadata ?: [:]) as Map,
+                    metadata: claimMetadata,
                 )
             }
         }

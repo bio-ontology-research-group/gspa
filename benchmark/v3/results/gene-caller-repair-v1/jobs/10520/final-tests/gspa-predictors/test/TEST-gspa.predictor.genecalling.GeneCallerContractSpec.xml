@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.genecalling.GeneCallerContractSpec" tests="26" skipped="0" failures="0" errors="0" timestamp="2026-10-28T06:44:02" hostname="node004" time="3.891">
+  <properties/>
+  <testcase name="both callers join reversed proteins by identity and retain public coordinate-order IDs [type: class gspa.predictor.genecalling.PyrodigalCaller, #0]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.104"/>
+  <testcase name="both callers join reversed proteins by identity and retain public coordinate-order IDs [type: class gspa.predictor.genecalling.ProdigalCaller, #1]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.043"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: missing protein, #0]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.045"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: extra protein, #1]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.039"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: duplicate protein, #2]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.036"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: duplicate CDS, #3]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.04"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: wrong coordinate, #4]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.038"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: wrong end, #5]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.039"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: wrong strand, #6]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.039"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: bad GFF, #7]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.038"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: missing coverage, #8]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.035"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: wrong coverage, #9]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.035"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: unknown contig, #10]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.041"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: native error, #11]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.036"/>
+  <testcase name="malformed or incomplete output never mutates the original genome [fault: garbage FAA, #12]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.036"/>
+  <testcase name="observed native zero output remains successful with no false gene-absence inference [type: class gspa.predictor.genecalling.PyrodigalCaller, source: pyrodigal-3.7.1, #0]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.042"/>
+  <testcase name="observed native zero output remains successful with no false gene-absence inference [type: class gspa.predictor.genecalling.ProdigalCaller, source: prodigal-2.6.3, #1]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.038"/>
+  <testcase name="observed numeric-contig native metadata does not create false ambiguity" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.874"/>
+  <testcase name="a skipped sequence is partial and stale success cannot survive the next empty run" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.049"/>
+  <testcase name="successful process with missing outputs fails instead of reporting zero" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.023"/>
+  <testcase name="existing CDS is preserved and a missing executable is unavailable" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.01"/>
+  <testcase name="availability requires successful recognizable native version output [type: class gspa.predictor.genecalling.ProdigalCaller, toolName: Prodigal, flag: -v, #0]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.041"/>
+  <testcase name="availability requires successful recognizable native version output [type: class gspa.predictor.genecalling.PyrodigalCaller, toolName: pyrodigal, flag: -V, #1]" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.039"/>
+  <testcase name="a missing protein on the second contig leaves both original contigs untouched" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.044"/>
+  <testcase name="process cleanup preserves an interrupt received while waiting" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="0.036"/>
+  <testcase name="timeout bounds output consumption and terminates descendants holding the log open" classname="gspa.predictor.genecalling.GeneCallerContractSpec" time="2.036"/>
+  <system-out><![CDATA[09:44:02.369 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: GFF CDS lacks a protein sequence
+09:44:02.410 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: missing or ambiguous CDS identity for unknown
+09:44:02.447 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: empty or duplicate FASTA identifier
+09:44:02.488 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: missing or ambiguous CDS identity for chr_1
+09:44:02.527 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: missing or ambiguous CDS identity for chr_2
+09:44:02.567 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: missing or ambiguous CDS identity for chr_2
+09:44:02.607 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: missing or ambiguous CDS identity for chr_2
+09:44:02.645 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: malformed GFF row
+09:44:02.680 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: native GFF does not cover every submitted contig
+09:44:02.715 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: duplicate, unknown or inconsistent native contig coverage
+09:44:02.757 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: invalid CDS coordinate, strand or phase
+09:44:02.794 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- native process failed; native diagnostic
+
+09:44:02.831 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: sequence data before FASTA header
+09:44:02.872 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- native caller completed with no CDS calls; this does not establish biological gene absence
+09:44:02.911 [Test worker] INFO gspa.predictor.genecalling.ProdigalCaller -- native caller completed with no CDS calls; this does not establish biological gene absence
+09:44:03.832 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- contigs without nucleotide sequence were not analysed
+09:44:03.834 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: no contig carries nucleotide sequence; gene caller was not executed
+09:44:03.857 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: successful native exit but required GFF/protein output is missing or GFF is empty
+09:44:03.864 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- cannot start executable: Cannot run program "/home/leechuck/tmp/spock_existing_CDS_is_pre_0_dir13396297324456767992/not-installed" (in directory "/home/leechuck/tmp/gspa_pyrodigal_3696456214813292955"): Exec failed, error: 2 (No such file or directory) 
+09:44:03.867 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: gene calling requires input without existing CDS or proteins
+09:44:03.992 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- IllegalArgumentException: GFF CDS lacks a protein sequence
+09:44:06.056 [Test worker] INFO gspa.predictor.genecalling.PyrodigalCaller -- process timed out after 2000 ms; before timeout
+
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

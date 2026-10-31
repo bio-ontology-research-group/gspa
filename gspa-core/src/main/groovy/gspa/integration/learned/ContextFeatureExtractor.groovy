@@ -130,11 +130,12 @@ class ContextFeatureExtractor {
             if (c == null || !c.proteinId || c.functionType == null || !c.functionId) {
                 throw new IllegalArgumentException("claim #${i} lacks protein id, function type or function id")
             }
-            byFunction.computeIfAbsent(c.functionKey()) { new ArrayList<EvidenceClaim>() } << c
+            if (c.hasFunctionalScore()) byFunction.computeIfAbsent(c.functionKey()) { new ArrayList<EvidenceClaim>() } << c
             i++
         }
         extraKeys?.each { String k ->
             ExternalContext.requireFunctionKey(k)
+            if (IntegrationState.splitFunctionKey(k)[1] == 'PSEUDOGENE') return
             byFunction.putIfAbsent(k, new ArrayList<EvidenceClaim>())
         }
         new Prepared(this, buildIndex(claims, state), byFunction, state, ctx)
@@ -158,7 +159,7 @@ class ContextFeatureExtractor {
             this.state = state
             this.ctx = ctx
             Map<String, String> st = ctx?.predictorStatus
-            nNotFullyRun = st ? st.values().count { it in ['FAILED', 'UNAVAILABLE', 'PARTIAL'] } as int : 0
+            nNotFullyRun = st ? st.values().count { it in ['SKIPPED', 'FAILED', 'UNAVAILABLE', 'PARTIAL'] } as int : 0
             nRanClean = st ? st.values().count { it in ['SUCCESS', 'SUCCESS_ZERO'] } as int : 0
         }
 
@@ -184,7 +185,7 @@ class ContextFeatureExtractor {
             String[] parts = IntegrationState.splitFunctionKey(functionKey)
             AnnotationType type = AnnotationType.valueOf(parts[1])
             List<CandidateFeatures> out = []
-            for (CandidateRole role : roleSet(functionKey, parts[2], type, state, ctx)) {
+            for (CandidateRole role : roleSet(functionKey, parts[2], type, state, ctx, group)) {
                 out << owner.build(parts[0], type, parts[2], group, role, index, state, ctx, nNotFullyRun, nRanClean)
             }
             out
@@ -203,6 +204,7 @@ class ContextFeatureExtractor {
     }
 
     static class Index {
+        Map<String, List<Map>> qualityByProtein = [:]
         /** function key -> strongest baseline raw score */
         Map<String, Double> baselineMax = [:]
         /** function keys with at least one claim */
@@ -221,6 +223,11 @@ class ContextFeatureExtractor {
     Index buildIndex(List<EvidenceClaim> claims, IntegrationState state) {
         Index ix = new Index()
         claims.each { EvidenceClaim c ->
+            if (c.isQualityObservation()) {
+                ix.qualityByProtein.computeIfAbsent(c.proteinId) { [] } << gspa.integration.GeneModelQuality.record(c)
+                return
+            }
+            if (!c.hasFunctionalScore()) return
             ix.anyClaimKeys << c.functionKey()
             ix.proteinsWithAnyClaim << c.proteinId
             if (baselineGroup(c.evidenceType) != null && usableRaw(c.rawScore)) {
@@ -243,13 +250,17 @@ class ContextFeatureExtractor {
     }
 
     /**
-     * Roles of a candidate: explicit ones from structured context, else conservative derivation.
-     * Depends only on the function (identical for every claim of one key), not on claim order.
+     * Structured context takes precedence over adapter-supplied roles; without either, use
+     * conservative function defaults. Conflicting adapter roles remain separate alternatives,
+     * in enum order, without a score cutoff. They are observations, not confirmed role labels.
      */
     static List<CandidateRole> roleSet(String functionKey, String functionId, AnnotationType type,
-                                               IntegrationState state, ExternalContext ctx) {
+                                               IntegrationState state, ExternalContext ctx,
+                                               List<EvidenceClaim> claims = []) {
+        Set<CandidateRole> supplied = claims.collect { claimRole(it) }.findAll { it != null } as Set<CandidateRole>
         List<CandidateRole> explicit = ctx?.roles?.get(functionKey)
         if (explicit) return explicit.unique(false)
+        if (supplied) return CandidateRole.values().findAll { supplied.contains(it) }
         if (type == AnnotationType.EC) return [CandidateRole.CATALYTIC]
         // A GO complex term says the protein belongs to a complex, not that it catalyses anything.
         if (type == AnnotationType.GO && state?.complexClassification?.containsKey(functionId)) {
@@ -258,11 +269,29 @@ class ContextFeatureExtractor {
         [CandidateRole.UNSPECIFIED]
     }
 
+    /** Strict optional metadata contract. A typo must not silently change a candidate's identity. */
+    private static CandidateRole claimRole(EvidenceClaim claim) {
+        Object value = claim.metadata?.get('candidate_role')
+        if (value == null) return null
+        if (value instanceof CharSequence) {
+            try {
+                return CandidateRole.valueOf(value.toString().trim().toUpperCase(Locale.ROOT))
+            } catch (IllegalArgumentException ignored) { /* report with the source identity below */ }
+        }
+        throw new IllegalArgumentException("Invalid candidate_role for ${claim.functionKey()} from ${claim.source}: ${value}")
+    }
+
     CandidateFeatures build(String pid, AnnotationType ftype, String fid, List<EvidenceClaim> group,
                                     CandidateRole role, Index ix, IntegrationState state, ExternalContext ctx,
                                     int nNotFullyRun, int nRanClean) {
         double[] v = new double[contract.size()]
         List<String> prov = []
+        group.findAll { it.metadata?.get('candidate_role') != null }.collect { EvidenceClaim claim ->
+            "candidate_role ${claimRole(claim).name()} supplied by ${claim.source}".toString()
+        }.unique().sort().each { String observation ->
+            prov << (ctx?.roles?.get(IntegrationState.functionKey(pid, ftype, fid)) ?
+                observation + '; structured context takes precedence' : observation)
+        }
         def set = { String name, double value -> v[idx[name]] = value }
         String fkey = IntegrationState.functionKey(pid, ftype, fid)
 
@@ -296,12 +325,17 @@ class ContextFeatureExtractor {
         Map<String, Double> bySource = [:]
         Map<String, Double> byGroup = [:]
         Set<String> otherNames = new TreeSet<>()
+        Set<String> sequenceSources = new TreeSet<>()
+        List<Map> sequenceContracts = []
         double bestPident = -1
         int ignored = 0
         for (EvidenceClaim c : group) {
             String g = baselineGroup(c.evidenceType)
             if (g == null) continue
             if (!usableRaw(c.rawScore)) { ignored++; continue }
+            sequenceSources << ((c.source ?: '').trim().toLowerCase(Locale.ROOT) ?: '(unnamed)')
+            sequenceContracts << [source: ((c.source ?: '').trim().toLowerCase(Locale.ROOT) ?: '(unnamed)'),
+                                  contract: c.metadata?.predictor_contract]
             String s = normalizeSource(c.source)
             if (s == 'other') otherNames << (c.source ?: '(unnamed)')
             bySource[s] = Math.max(bySource.getOrDefault(s, -1.0d), c.rawScore)
@@ -366,7 +400,7 @@ class ContextFeatureExtractor {
         set('ctx.competitor.n_with_claim', compN)
 
         // ---- listed metabolic gaps (indicators only)
-        if (state != null && state.metabolicGaps) {
+        if (state != null && (state.metabolicGapsAvailable || state.metabolicGaps)) {
             set('ctx.gap.available', 1)
             boolean listed = false, guessed = false
             state.metabolicGaps.each { g ->
@@ -394,17 +428,12 @@ class ContextFeatureExtractor {
             }
         }
         ExternalContext.Cohort co = ctx?.cohort?.get(fkey)
-        if (co != null && co.nGenomes > 0) {
-            set('cohort.available', 1)
-            set('cohort.log_n_genomes', Math.log(1.0d + co.nGenomes))
-            set('cohort.frac_with_orthogroup', co.nWithOrthogroup / (double) co.nGenomes)
-            if (co.nWithOrthogroup > 0) {
-                set('cohort.frac_with_function_seq', co.nWithFunctionSeq / (double) co.nWithOrthogroup)
-                set('cohort.frac_with_context', co.nWithContext / (double) co.nWithOrthogroup)
-            }
-            set('cohort.n_genomes_incomplete', co.nIncomplete)
+        // Legacy raw counts remain readable for provenance but cannot contribute
+        // to the version-3 model. Use the ancestry-adjusted block exclusively.
+        if (co?.weighted != null) {
+            CohortFeatureColumns.extract(co.weighted, { String n, Object x -> set(n, x as double) }, co.localOnly)
+            if (co.localOnly) prov << 'Local reaction context supplied; no independent cohort peers, recurrence unavailable.'
         }
-        if (co?.weighted != null) CohortFeatureColumns.extract(co.weighted, { String n, Object x -> set(n, x as double) })
 
         // ---- assembly
         Protein prot = ix.proteinById[pid]
@@ -441,7 +470,10 @@ class ContextFeatureExtractor {
             }
         }
 
-        new CandidateFeatures(pid, ftype, fid, role, contract, v, prov)
+        List<Map> quality = ix.qualityByProtein.get(pid) ?: []
+        if (quality) prov << 'Gene-model quality observations are present; current models cannot calibrate this input.'
+        new CandidateFeatures(pid, ftype, fid, role, contract, v, prov, new ArrayList<String>(sequenceSources), quality,
+            ctx?.cohort?.get(fkey)?.contextMode ?: gspa.integration.cohort.ContextMode.UNIVERSAL, sequenceContracts)
     }
 
     private static String normalizeEc(String ec) {

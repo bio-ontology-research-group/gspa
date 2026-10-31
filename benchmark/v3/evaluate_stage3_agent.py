@@ -1,686 +1,468 @@
 #!/usr/bin/env python3
-"""
-v3 Item 11: Evaluate the Stage 3 anomaly-resolution agent (qwen3.8-27b) against
-equally informed simple rankers and learned context classifiers on held-out
-unseen families/genomes from swissprot_label_rich_v1.
+"""Truth-separated comparison of production-selected Stage-3 anomalies.
 
-All comparators receive the exact same candidate set and evidence features per
-unresolved anomaly:
-  1. abstain_only             - always ABSTAIN (0 corrections, 0 harms)
-  2. rank_by_raw_seq          - single-feature ranker on raw sequence score
-  3. rank_by_stage1_posterior - single-feature ranker on Stage 1 Bayesian posterior
-  4. rank_by_context_support  - single-feature ranker on cohort + local context support
-  5. learned_logistic         - calibrated logistic context model + SymbolicGuardrail
-  6. learned_gbdt             - calibrated GBDT context model + SymbolicGuardrail
-  7. qwen_agent_no_guardrail  - live qwen3.8-27b agent without SymbolicGuardrail
-  8. qwen_agent_guarded       - live qwen3.8-27b agent with SymbolicGuardrail
+prepare reads only content-verified production runs. suggest reads only the
+public bundle. calibrate reads calibration truth; evaluate reads test truth only
+after requiring a frozen policy. Unknown labels are never converted to negatives.
+The invalid v1 generator is available in git history, not as an executable mode.
 """
 from __future__ import annotations
 
 import argparse
-import csv
+import copy
 import hashlib
 import json
-import subprocess
+import math
+from pathlib import Path
 import sys
 import time
-from collections import defaultdict
-from pathlib import Path
-from typing import Any
+import concurrent.futures
+import threading
+from collections import Counter, defaultdict
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "benchmark" / "agent"))
-sys.path.insert(0, str(ROOT / "benchmark" / "v3"))
+sys.path.insert(0, str(ROOT / 'benchmark/agent'))
+import run_gspa_agent as agent
+import v3_runner as runner
 
-import homology_baseline as H  # noqa: E402
-import run_gspa_agent as agent_mod  # noqa: E402
-from v3_metrics import load_obo  # noqa: E402
-
-CACHE = Path("/home/leechuck/.cache/gspa-v3-data/training-cohort")
-RES_COHORT = ROOT / "benchmark" / "v3" / "results" / "training-cohort"
-OUT_DIR = ROOT / "benchmark" / "v3" / "results" / "stage3-agent-evaluation"
-
-# Cross-kingdom GO terms that violate bacterial/archaeal taxonomic or Uberon/PO anatomical constraints
-EUKARYOTIC_CONTAMINANT_TERMS = [
-    ("GO:0005634", "nucleus", "CC"),
-    ("GO:0005739", "mitochondrion", "CC"),
-    ("GO:0009507", "chloroplast", "CC"),
-    ("GO:0005783", "endoplasmic reticulum", "CC"),
-    ("GO:0005794", "Golgi apparatus", "CC"),
-    ("GO:0007399", "nervous system development", "BP"),
-    ("GO:0048856", "anatomical structure development", "BP"),
-    ("GO:0009790", "embryo development", "BP"),
-]
+MODES = ('abstain_only', 'rank_by_raw_seq', 'rank_by_stage1_posterior',
+         'rank_by_context_support', 'learned_logistic', 'learned_gbdt')
+FORBIDDEN = {'truth', 'label', 'labels', 'ground_truth', 'expected_action',
+             'expected_protein_id', 'expected_function_id', 'is_true_target',
+             'valid_ancestors_in_truth', 'y_true', 'is_true'}
 
 
-def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'),
+                                     allow_nan=False).encode()).hexdigest()
 
 
-def build_heldout_anomalies(
-    cache_dir: Path = CACHE,
-    cohort_res_dir: Path = RES_COHORT,
-) -> list[dict[str, Any]]:
+def read(path):
+    return json.loads(Path(path).read_text())
+
+
+def write(path, data):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Outputs are immutable: a test run cannot silently replace its frozen policy.
+    with path.open('x') as fh:
+        json.dump(data, fh, indent=2, sort_keys=True, allow_nan=False)
+        fh.write('\n')
+
+
+def reject_truth(value):
+    if isinstance(value, dict):
+        if FORBIDDEN & set(value):
+            raise ValueError('truth fields in public evidence')
+        for child in value.values():
+            reject_truth(child)
+    elif isinstance(value, list):
+        for child in value:
+            reject_truth(child)
+
+
+def probability(value):
+    if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value) or not 0 <= value <= 1:
+        raise ValueError(f'invalid probability: {value!r}')
+    return float(value)
+
+
+def verified_run(path):
+    old = read(path)
+    identity = old.get('inference_identity')
+    if not identity:
+        raise ValueError('production run lacks input identity')
+    current = runner.load_run_record(str(Path(path).parent), identity['genomes'],
+                                    {'gspa': identity['launch']}, identity['arm'])
+    if len(current['genomes']) != len(identity['genomes']):
+        raise ValueError(f'unverified production run: {current["failed"]}')
+    return old
+
+
+def prepare(source):
+    """No truth-path argument and no reading of truth files in this phase."""
+    if source.get('schema') != 'gspa.agent-evidence-sources/2':
+        raise ValueError('expected production evidence sources v2')
+    runs = {name: verified_run(path) for name, path in source['runs'].items()}
+    if set(runs) != {'stage1', 'learned_logistic', 'learned_gbdt'}:
+        raise ValueError('require baseline plus actual logistic and GBDT production runs')
+    base = runs['stage1']
+    for name, run in runs.items():
+        if run['inference_identity']['genomes'] != base['inference_identity']['genomes']:
+            raise ValueError(f'{name}: unmatched claims or genome context')
+        if run['inference_identity']['launch'] != base['inference_identity']['launch']:
+            raise ValueError(f'{name}: unmatched production configuration')
+        if name != 'stage1':
+            args = run['inference_identity']['arm']['args']
+            if len(args) != 2 or args[0] != '--learned-model':
+                raise ValueError('model arm must differ only by its frozen learned artifact')
+            model_path = str(Path(args[1]).resolve())
+            expected_files = {k: v for k, v in run['inference_identity']['files'].items() if k != model_path}
+            if expected_files != base['inference_identity']['files']:
+                raise ValueError('model arm reference or executable differs from baseline')
+    cases, coverage = [], []
+    for gid in sorted(base['genomes']):
+        split = source['splits'][gid]['split']
+        if split not in ('calibration', 'test'):
+            raise ValueError('only calibration and test cases are admitted')
+        output = base['genomes'][gid]['path']
+        anomaly_file = output + '.anomalies.jsonl'
+        if anomaly_file not in base['artifacts'].get(gid, {}):
+            raise ValueError('anomaly export not covered by production receipt')
+        predictions = {mode: {**runner.parse_integrated(r['genomes'][gid]['path'], 'go'),
+                               **runner.parse_integrated(r['genomes'][gid]['path'], 'ec')}
+                       for mode, r in runs.items()}
+        records = [json.loads(line) for line in Path(anomaly_file).read_text().splitlines() if line.strip()]
+        coverage.append({'genome_id': gid, 'split': split, 'n_anomalies': len(records),
+                         'extractor_limit': 150, 'possibly_capped': len(records) >= 150})
+        for ordinal, record in enumerate(records):
+            reject_truth(record)
+            a = copy.deepcopy(record)
+            # Ignore source identifiers; the new ID has no exposed protein/function fields.
+            a.pop('anomaly_id')
+            aid = 'A_' + digest([gid, ordinal, a])[:24]
+            a['anomaly_id'] = aid
+            a['genome_id'] = gid
+            target = a['target_function_id'].removeprefix('EC:')
+            ids = [c['protein_id'] for c in a['candidates']]
+            if len(set(ids)) != len(ids):
+                raise ValueError('duplicate candidate protein')
+            for c in a['candidates']:
+                pid = c['protein_id']
+                c['function_id'] = a['target_function_id']
+                # A suggestion score is not the baseline's actual called probability.
+                c['baseline_probability'] = predictions['stage1'].get((pid, target), 0.0)
+                c['model_probabilities'] = {
+                    mode: predictions[mode].get((pid, target))
+                    for mode in ('learned_logistic', 'learned_gbdt')}
+                c['raw_sequence_score'] = max((float(e['raw_score']) for e in c.get('supporting_claims', [])
+                                                if e.get('raw_score') is not None), default=None)
+                for value in c['model_probabilities'].values():
+                    if value is not None:
+                        probability(value)
+                probability(c['baseline_probability'])
+            cases.append({'split': split, 'genome_id': gid, 'anomaly': a})
+    return {'schema': 'gspa.agent-public/2', 'cases': cases, 'coverage': coverage,
+            'source_sha256': digest(source), 'source_receipts': {
+                name: runner.hash_record(path) for name, path in source['runs'].items()},
+            'shared_production_wall_seconds': sum(r['runtime_sec'] for r in runs.values()),
+            'limitations': source.get('limitations', [])}
+
+
+def abstain(a, **extra):
+    return {'anomaly_id': a['anomaly_id'], 'action': 'ABSTAIN', 'protein_id': '',
+            'function_id': a['target_function_id'], 'confidence': 0.0, **extra}
+
+
+def rank(mode, a):
+    if mode not in MODES:
+        raise ValueError('unknown comparator')
+    if mode == 'abstain_only':
+        return abstain(a)
+    def score(c):
+        if mode == 'rank_by_raw_seq':
+            return c.get('raw_sequence_score')
+        if mode == 'rank_by_stage1_posterior':
+            return c['baseline_probability']
+        if mode == 'rank_by_context_support':
+            # Frozen single-feature context comparator; no truth-derived weights.
+            return float(bool(c.get('in_pathway_operon')))
+        return c['model_probabilities'].get(mode)
+    eligible = [(score(c), c['protein_id']) for c in a['candidates'] if score(c) is not None]
+    if not eligible:
+        return abstain(a, reason='no measured score')
+    if any(not math.isfinite(s) for s, _ in eligible):
+        raise ValueError('nonfinite candidate score')
+    score_value, pid = sorted(eligible, key=lambda p: (-p[0], p[1]))[0]
+    return {'anomaly_id': a['anomaly_id'], 'action': 'PROMOTE', 'protein_id': pid,
+            'function_id': a['target_function_id'], 'confidence': score_value}
+
+
+def shared_guardrail(a, proposal, guardrail):
+    """Same final constraints for every arm; rejects rather than inventing another action."""
+    if proposal.get('anomaly_id') != a['anomaly_id']:
+        raise ValueError('resolution has wrong case ID')
+    r = copy.deepcopy(proposal)
+    action = r.get('action')
+    if action == 'ABSTAIN':
+        return r
+    target, fid = a['target_function_id'], r.get('function_id')
+    reason = None
+    if action not in ('PROMOTE', 'DEMOTE', 'RELAX'):
+        reason = 'invalid action'
+    elif r.get('protein_id') not in {c['protein_id'] for c in a['candidates']}:
+        reason = 'outside candidate set'
+    elif action != 'RELAX' and fid != target:
+        reason = 'changed target function'
+    elif action == 'RELAX' and (not target.startswith('GO:') or fid == target or fid not in guardrail.go_ancestors(target)):
+        reason = 'not a strict verified ancestor'
+    elif action in ('PROMOTE', 'RELAX') and fid.startswith('GO:') and not guardrail.check_go_term(fid, a.get('organism_taxon', ''))['valid']:
+        reason = 'symbolic constraint'
+    if reason:
+        return abstain(a, guardrail_rejected=reason, proposal=r)
+    confidence = r.get('confidence')
+    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not math.isfinite(confidence):
+        return abstain(a, error='invalid decision score', proposal=r)
+    return r
+
+
+def public_cases(public):
+    reject_truth(public)
+    if public.get('schema') != 'gspa.agent-public/2':
+        raise ValueError('expected public bundle v2')
+    cases = public['cases']
+    ids = [c['anomaly']['anomaly_id'] for c in cases]
+    if len(set(ids)) != len(ids):
+        raise ValueError('duplicate case ID')
+    return cases
+
+
+def suggest(public, mode, guardrail, solve=None):
+    cases = public_cases(public)
+    start = time.monotonic()
+    rows = []
+    for case in cases:
+        a = copy.deepcopy(case['anomaly'])
+        proposal = solve(a) if solve else rank(mode, a)
+        rows.append(shared_guardrail(a, proposal, guardrail))
+    return {'schema': 'gspa.agent-proposals/2', 'public_sha256': digest(public), 'mode': mode,
+            'guardrail_policy': 'shared-reject-v2', 'resolutions': rows,
+            'decision_wall_seconds': time.monotonic() - start,
+            'shared_production_wall_seconds': public['shared_production_wall_seconds']}
+
+
+def suggest_agent(public, guardrail, model='qwen3.8-27b', api_base=None, max_turns=2, workers=4, seed=42):
+    """Bounded production agent, same public evidence and final constraints as all rankers.
+
+    Counts HTTP attempts including retries, tokens actually reported by the
+    endpoint, and errors. No fabricated zero cost when usage is absent.
     """
-    Build held-out unresolved Stage 3 anomalies from the 4 test-split genomes of
-    swissprot_label_rich_v1 using real production gspa integrate outputs.
-    """
-    splits = {}
-    with open(cohort_res_dir / "splits.tsv", encoding="utf-8") as fh:
-        for r in csv.DictReader(fh, delimiter="\t"):
-            splits[r["genome_id"]] = r["split"]
-    test_genomes = sorted(g for g, s in splits.items() if s == "test")
-
-    prov = json.loads((cache_dir / "provenance.json").read_text(encoding="utf-8"))
-    acc_to_tax = {
-        r["assembly"]["used_accession"]: f"NCBITaxon_{t}"
-        for t, r in prov["organisms"].items()
-        if r.get("assembly", {}).get("status") == "resolved"
-    }
-
-    pid_to_seq = {}
-    seq_to_pid = {}
-    with open(cache_dir / "prepared" / "proteins.tsv", encoding="utf-8") as fh:
-        for r in csv.DictReader(fh, delimiter="\t"):
-            pid_to_seq[(r["genome_id"], r["genome_protein_id"])] = r["protein_id"]
-            seq_to_pid[(r["genome_id"], r["protein_id"])] = r["genome_protein_id"]
-
-    go_dag = load_obo(str(cache_dir / "go-basic.obo"))
-    truth = H.read_truth(cohort_res_dir / "labels.tsv", cache_dir / "prepared" / "proteins.tsv")
-
-    # Load production outputs for test genomes: stage1, cohort_rlc, learned_logistic, learned_gbdt
-    ablation_dir = cache_dir / "ablation_runs"
-    stage1_dir = ablation_dir / "homology_cohort_rlc"
-    log_dir = ablation_dir / "homology_learned_logistic"
-    gbdt_dir = ablation_dir / "homology_learned_gbdt"
-
-    guardrail = agent_mod.SymbolicGuardrail(
-        ROOT / "gspa-core" / "src" / "main" / "resources",
-        cache_dir / "go-basic.obo",
-    )
-
-    anomalies: list[dict[str, Any]] = []
-
-    for gid in test_genomes:
-        org_tax = acc_to_tax[gid]
-        # Load raw claims
-        raw_claims = defaultdict(dict)
-        claims_file = cache_dir / "baseline" / "claims" / "homology" / f"{gid}.claims.jsonl"
-        with open(claims_file, encoding="utf-8") as fh:
-            for line in fh:
-                if line.strip():
-                    c = json.loads(line)
-                    fid = c["function_id"]
-                    if c.get("function_type") == "EC" and not fid.startswith("EC:"):
-                        fid = "EC:" + fid
-                    sc = float(c["raw_score"])
-                    if sc > raw_claims[c["protein_id"]].get(fid, 0.0):
-                        raw_claims[c["protein_id"]][fid] = sc
-
-        # Load stage1/cohort_rlc posteriors
-        s1_post = defaultdict(dict)
-        s1_lo = defaultdict(dict)
-        s1_priors = defaultdict(dict)
-        with open(stage1_dir / f"{gid}.integrated.tsv", encoding="utf-8") as fh:
-            for line in fh:
-                if not line.strip() or line.startswith("#") or line.startswith("protein_id\t"):
-                    continue
-                parts = line.rstrip("\n").split("\t")
-                if len(parts) < 9:
-                    continue
-                pid, ftype, fid, prob, lo, pr = parts[0], parts[1], parts[2], float(parts[4]), float(parts[6]), parts[8]
-                if ftype == "EC" and not fid.startswith("EC:"):
-                    fid = "EC:" + fid
-                s1_post[pid][fid] = prob
-                s1_lo[pid][fid] = lo
-                s1_priors[pid][fid] = pr
-
-        # Load learned probabilities and features
-        log_data = json.loads((log_dir / f"{gid}.integrated.tsv.learned.json").read_text(encoding="utf-8"))
-        gbdt_data = json.loads((gbdt_dir / f"{gid}.integrated.tsv.learned.json").read_text(encoding="utf-8"))
-        log_by_pf = {}
-        for c in log_data.get("candidates", []):
-            fk_parts = c["function_key"].split("|")
-            pid, ftype, fid = fk_parts[0], fk_parts[1], fk_parts[2]
-            if ftype == "EC" and not fid.startswith("EC:"):
-                fid = "EC:" + fid
-            p = float(c["probability"])
-            if p > log_by_pf.get((pid, fid), -1.0):
-                log_by_pf[(pid, fid)] = p
-
-        gbdt_by_pf = {}
-        for c in gbdt_data.get("candidates", []):
-            fk_parts = c["function_key"].split("|")
-            pid, ftype, fid = fk_parts[0], fk_parts[1], fk_parts[2]
-            if ftype == "EC" and not fid.startswith("EC:"):
-                fid = "EC:" + fid
-            p = float(c["probability"])
-            if p > gbdt_by_pf.get((pid, fid), -1.0):
-                gbdt_by_pf[(pid, fid)] = p
-
-        feats_by_pf = {}
-        feat_jsonl = cache_dir / "features" / gid / "candidate_features.jsonl"
-        if feat_jsonl.exists():
-            with open(feat_jsonl, encoding="utf-8") as fh:
-                for line in fh:
-                    if line.strip():
-                        r = json.loads(line)
-                        pid = r["protein_id"]
-                        fid = r["function_id"]
-                        if r.get("function_type") == "EC" and not fid.startswith("EC:"):
-                            fid = "EC:" + fid
-                        feats_by_pf[(pid, fid)] = r.get("features", {})
-
-        # Load layout for neighborhood inspection
-        layout_order = []
-        layout_idx = {}
-        with open(cache_dir / "layout" / f"{gid}.layout.tsv", encoding="utf-8") as fh:
-            for line in fh:
-                if not line.strip() or line.startswith("#") or line.startswith("protein_id\t"):
-                    continue
-                parts = line.rstrip("\n").split("\t")
-                layout_idx[parts[0]] = (parts[1], len(layout_order))
-                layout_order.append(parts[0])
-
-        def get_neighbors_summary(pid: str) -> dict[str, list[str]]:
-            if pid not in layout_idx:
-                return {}
-            contig, idx = layout_idx[pid]
-            out = {}
-            for j in range(max(0, idx - 3), min(len(layout_order), idx + 4)):
-                npid = layout_order[j]
-                if npid == pid or layout_idx[npid][0] != contig:
-                    continue
-                top_fns = sorted(s1_post.get(npid, {}).items(), key=lambda kv: -kv[1])[:3]
-                if top_fns:
-                    out[npid] = [f"{fn} ({sc:.2f})" for fn, sc in top_fns]
-            return out
-
-        # 1. PATHWAY_GAP / BORDERLINE_CONFLICT on EC-labeled test proteins
-        ec_truth_g: dict[str, set[str]] = defaultdict(set)
-        for seq_id, ec_id in truth.get(gid, {}).get("EC", set()):
-            ec_truth_g[seq_id].add(ec_id)
-        go_truth_g: dict[str, set[str]] = defaultdict(set)
-        for seq_id, go_id in truth.get(gid, {}).get("GO", set()):
-            go_truth_g[seq_id].add(go_id)
-        for seq_id, true_ecs in sorted(ec_truth_g.items()):
-            if not true_ecs:
-                continue
-            true_pid = seq_to_pid.get((gid, seq_id))
-            if not true_pid:
-                continue
-            for target_ec in sorted(true_ecs):
-                # Find all proteins in this genome that claim target_ec, plus same-locus neighbors
-                claimants = [p for p, fdict in raw_claims.items() if target_ec in fdict]
-                if true_pid not in claimants:
-                    continue
-                # Add up to 3 top competing claimants or same-locus neighbors with EC claims
-                competitors = [p for p in claimants if p != true_pid]
-                competitors.sort(key=lambda p: -raw_claims[p].get(target_ec, 0.0))
-                if not competitors and true_pid in layout_idx:
-                    contig, idx = layout_idx[true_pid]
-                    for j in range(max(0, idx - 4), min(len(layout_order), idx + 5)):
-                        npid = layout_order[j]
-                        if npid != true_pid and layout_idx[npid][0] == contig and raw_claims.get(npid):
-                            competitors.append(npid)
-                selected_pids = [true_pid] + competitors[:3]
-                selected_pids.sort()
-
-                cand_list = []
-                for cpid in selected_pids:
-                    f = feats_by_pf.get((cpid, target_ec), {})
-                    raw_sc = raw_claims.get(cpid, {}).get(target_ec, max(raw_claims.get(cpid, {}).values(), default=0.05) * 0.35)
-                    post_sc = s1_post.get(cpid, {}).get(target_ec, raw_sc * 0.5)
-                    lo_sc = s1_lo.get(cpid, {}).get(target_ec, -1.5)
-                    coh_sup = float(f.get("cohort.w.support_fraction", 0.0))
-                    loc_pos = float(f.get("cohort.w.local_context_positive", 0.0))
-                    nbr_sup = float(f.get("ctx.nbr.support_max", 0.0))
-                    log_p = log_by_pf.get((cpid, target_ec), post_sc * 0.6)
-                    gbdt_p = gbdt_by_pf.get((cpid, target_ec), post_sc * 0.6)
-                    neigh_map = get_neighbors_summary(cpid)
-                    cand_list.append({
-                        "protein_id": cpid,
-                        "function_id": target_ec,
-                        "current_posterior": round(post_sc, 4),
-                        "final_logodds": round(lo_sc, 4),
-                        "raw_sequence_score": round(raw_sc, 4),
-                        "cohort_support_fraction": round(coh_sup, 4),
-                        "local_context_positive": round(loc_pos, 4),
-                        "neighborhood_support_max": round(nbr_sup, 4),
-                        "learned_logistic_prob": round(log_p, 4),
-                        "learned_gbdt_prob": round(gbdt_p, 4),
-                        "rlgc_bayes_factor": round(coh_sup * 2.0 + loc_pos + nbr_sup, 4),
-                        "in_pathway_operon": bool(loc_pos > 0 or nbr_sup > 0),
-                        "operon_id": f"{gid}_loc_{layout_idx.get(cpid, ('c', 0))[1] // 4}",
-                        "operon_neighbors": neigh_map,
-                        "supporting_claims": [
-                            {
-                                "source": "diamond_swissprot_genus_heldout",
-                                "evidence_type": "SEQUENCE_SIMILARITY",
-                                "raw_score": round(raw_sc, 4),
-                                "priors_fired": s1_priors.get(cpid, {}).get(target_ec, "none"),
-                            }
-                        ],
-                        "other_annotations": [
-                            f"{fn}:{sc:.2f}" for fn, sc in sorted(s1_post.get(cpid, {}).items(), key=lambda kv: -kv[1])[:4]
-                        ],
-                        "is_true_target": (cpid == true_pid),
-                    })
-
-                anom_id = f"ANOM_EC_{gid}_{true_pid}_{target_ec.replace(':', '_')}"
-                anomalies.append({
-                    "anomaly_id": anom_id,
-                    "anomaly_type": "PATHWAY_GAP",
-                    "genome_id": gid,
-                    "organism_taxon": org_tax,
-                    "target_function_id": target_ec,
-                    "target_function_label": f"Enzyme {target_ec}",
-                    "context": {
-                        "pathway_coverage": 0.75,
-                        "missing_terms": [target_ec],
-                        "present_terms": [],
-                        "n_candidates": len(cand_list),
-                    },
-                    "candidates": cand_list,
-                    "expected_action": "PROMOTE",
-                    "expected_protein_id": true_pid,
-                    "expected_function_id": target_ec,
-                })
-
-        # 2. True-absent decoy EC anomalies (where true carrier is withheld; any PROMOTE is a false positive harm!)
-        for idx_d, (seq_id, true_ecs) in enumerate(sorted(ec_truth_g.items())[:3]):
-            true_pid = seq_to_pid.get((gid, seq_id))
-            if not true_pid or not true_ecs:
-                continue
-            target_ec = sorted(true_ecs)[0]
-            # Pick 2 labeled non-carrier proteins in this genome as weak decoys
-            other_seq_ids = [s for s in sorted(ec_truth_g.keys()) if s != seq_id and target_ec not in ec_truth_g[s]][:2]
-            decoy_pids = [seq_to_pid[(gid, s)] for s in other_seq_ids if (gid, s) in seq_to_pid]
-            if not decoy_pids:
-                continue
-            cand_list = []
-            for dpid in decoy_pids:
-                cand_list.append({
-                    "protein_id": dpid,
-                    "function_id": target_ec,
-                    "current_posterior": 0.22,
-                    "final_logodds": -1.265,
-                    "raw_sequence_score": 0.19,
-                    "cohort_support_fraction": 0.05,
-                    "local_context_positive": 0.0,
-                    "neighborhood_support_max": 0.0,
-                    "learned_logistic_prob": 0.11,
-                    "learned_gbdt_prob": 0.08,
-                    "rlgc_bayes_factor": 0.05,
-                    "in_pathway_operon": False,
-                    "operon_id": f"{gid}_decoy_{idx_d}",
-                    "operon_neighbors": get_neighbors_summary(dpid),
-                    "supporting_claims": [
-                        {
-                            "source": "diamond_weak_paralog",
-                            "evidence_type": "SEQUENCE_SIMILARITY",
-                            "raw_score": 0.19,
-                            "priors_fired": "none",
-                        }
-                    ],
-                    "other_annotations": [
-                        f"{fn}:{sc:.2f}" for fn, sc in sorted(s1_post.get(dpid, {}).items(), key=lambda kv: -kv[1])[:3]
-                    ],
-                    "is_true_target": False,
-                })
-            anomalies.append({
-                "anomaly_id": f"ANOM_DECOY_{gid}_{idx_d}_{target_ec.replace(':', '_')}",
-                "anomaly_type": "BORDERLINE_CONFLICT",
-                "genome_id": gid,
-                "organism_taxon": org_tax,
-                "target_function_id": target_ec,
-                "target_function_label": f"Ambiguous weak paralog candidate for {target_ec}",
-                "context": {
-                    "note": "Primary carrier already assigned elsewhere or absent; candidates are weak paralogs without operon support.",
-                    "missing_terms": [target_ec],
-                    "present_terms": [],
-                },
-                "candidates": cand_list,
-                "expected_action": "ABSTAIN_OR_DEMOTE",
-                "expected_protein_id": "",
-                "expected_function_id": target_ec,
-            })
-
-        # 3. TAXON_CONSTRAINT_CONFLICT anomalies on GO-labeled test proteins
-        for idx_t, (seq_id, true_gos) in enumerate(sorted(go_truth_g.items())[:4]):
-            tpid = seq_to_pid.get((gid, seq_id))
-            if not tpid:
-                continue
-            bad_go, bad_label, aspect = EUKARYOTIC_CONTAMINANT_TERMS[idx_t % len(EUKARYOTIC_CONTAMINANT_TERMS)]
-            chk = guardrail.check_go_term(bad_go, org_tax)
-            valid_ancs = guardrail.find_nearest_valid_ancestors(bad_go, org_tax) if not chk["valid"] else []
-            # Propagate true_gos over GO DAG to check if a valid ancestor is genuinely true for this protein
-            true_closure = set(true_gos)
-            for tg in list(true_gos):
-                true_closure |= guardrail.go_ancestors(tg)
-            matching_ancs = [a for a in valid_ancs if a in true_closure]
-            exp_action = "RELAX_OR_DEMOTE" if matching_ancs else "ABSTAIN_OR_DEMOTE"
-            anomalies.append({
-                "anomaly_id": f"ANOM_TAXON_{gid}_{tpid}_{bad_go.replace(':', '_')}",
-                "anomaly_type": "BORDERLINE_CONFLICT",
-                "genome_id": gid,
-                "organism_taxon": org_tax,
-                "target_function_id": bad_go,
-                "target_function_label": bad_label,
-                "context": {
-                    "go_aspect": aspect,
-                    "missing_terms": [bad_go],
-                    "present_terms": sorted(list(true_gos))[:4],
-                },
-                "candidates": [
-                    {
-                        "protein_id": tpid,
-                        "function_id": bad_go,
-                        "current_posterior": 0.58,
-                        "final_logodds": 0.322,
-                        "raw_sequence_score": 0.62,
-                        "cohort_support_fraction": 0.0,
-                        "local_context_positive": 0.0,
-                        "neighborhood_support_max": 0.0,
-                        "learned_logistic_prob": 0.14,
-                        "learned_gbdt_prob": 0.09,
-                        "rlgc_bayes_factor": 0.0,
-                        "in_pathway_operon": False,
-                        "operon_id": f"{gid}_tax_{idx_t}",
-                        "operon_neighbors": get_neighbors_summary(tpid),
-                        "supporting_claims": [
-                            {
-                                "source": "eukaryotic_homology_hit",
-                                "evidence_type": "SEQUENCE_SIMILARITY",
-                                "raw_score": 0.62,
-                            }
-                        ],
-                        "other_annotations": [f"{g}:0.75" for g in sorted(list(true_gos))[:3]],
-                        "is_true_target": False,
-                    }
-                ],
-                "expected_action": exp_action,
-                "expected_protein_id": tpid,
-                "expected_function_id": matching_ancs[0] if matching_ancs else bad_go,
-                "valid_ancestors_in_truth": matching_ancs,
-            })
-
-    return anomalies
+    cases = public_cases(public)
+    if max_turns < 2 or workers < 1:
+        raise ValueError('at least two turns needed for the full-evidence agent prompt')
+    base, resolved = agent.resolve_endpoint_and_model(model, api_base)
+    key = agent.load_api_key()
+    original_call, original_open = agent.call_chat_completion, agent.urllib.request.urlopen
+    stats, lock = Counter(), threading.Lock()
+    def counted_open(*args, **kwargs):
+        with lock:
+            stats['http_attempts'] += 1
+        return original_open(*args, **kwargs)
+    def counted_call(**kwargs):
+        try:
+            response = original_call(**kwargs)
+        except Exception:
+            with lock:
+                stats['failed_calls'] += 1
+            raise
+        with lock:
+            stats['completed_calls'] += 1
+            usage = response.get('usage')
+            if not usage or any(usage.get(k) is None for k in ('prompt_tokens', 'completion_tokens')):
+                stats['calls_without_token_usage'] += 1
+            else:
+                for k in ('prompt_tokens', 'completion_tokens'):
+                    stats[k] += usage[k]
+        return response
+    def solve(case):
+        a = copy.deepcopy(case['anomaly'])
+        raw = agent.solve_single_anomaly(a, guardrail, set(), base, key, resolved, model,
+                                        False, max_turns, seed, 0.0)
+        return shared_guardrail(a, raw, guardrail)
+    start = time.monotonic()
+    try:
+        agent.call_chat_completion, agent.urllib.request.urlopen = counted_call, counted_open
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+            rows = list(pool.map(solve, cases))
+    finally:
+        agent.call_chat_completion, agent.urllib.request.urlopen = original_call, original_open
+    return {'schema': 'gspa.agent-proposals/2', 'public_sha256': digest(public), 'mode': 'qwen_agent',
+            'guardrail_policy': 'shared-reject-v2', 'resolutions': rows,
+            'decision_wall_seconds': time.monotonic() - start,
+            'shared_production_wall_seconds': public['shared_production_wall_seconds'],
+            'endpoint': base, 'model': resolved, 'max_turns': max_turns, 'workers': workers,
+            'seed': seed, 'temperature': 0.0, 'api_usage': dict(stats),
+            'billing_cost': None,
+            'usage_limitation': 'Tokens for failed calls or responses without usage are unknown; no billing rate assumed.'}
 
 
-def run_simple_comparator(
-    mode: str,
-    anomalies: list[dict[str, Any]],
-    guardrail: agent_mod.SymbolicGuardrail,
-) -> tuple[list[dict[str, Any]], float]:
-    """Run deterministic/learned comparator on the identical anomaly list."""
-    t0 = time.time()
-    out = []
-    for anom in anomalies:
-        aid = anom["anomaly_id"]
-        target_func = anom["target_function_id"]
-        org_tax = anom.get("organism_taxon", "")
-        cands = anom.get("candidates", [])
-        if mode == "abstain_only" or not cands:
-            out.append({
-                "anomaly_id": aid,
-                "action": "ABSTAIN",
-                "protein_id": "",
-                "function_id": target_func,
-                "confidence": 0.0,
-                "guardrail_status": "PASS",
-            })
+def checked_predictions(public, proposals):
+    cases = public_cases(public)
+    if proposals.get('public_sha256') != digest(public) or proposals.get('guardrail_policy') != 'shared-reject-v2':
+        raise ValueError('proposals do not match public evidence/constraint policy')
+    rows = proposals['resolutions']
+    by_id = {r['anomaly_id']: r for r in rows}
+    if len(by_id) != len(rows) or set(by_id) != {c['anomaly']['anomaly_id'] for c in cases}:
+        raise ValueError('missing, duplicate or extra resolutions; failures must be explicit')
+    return by_id
+
+
+def truth_map(records, cases, split):
+    allowed = {c['genome_id'] for c in cases if c['split'] == split}
+    truth = {}
+    for row in records:
+        if row['genome_id'] not in allowed:
+            raise ValueError(f'{split} truth file contains another split or unknown genome')
+        if row['status'] not in ('positive', 'negative', 'unknown') or not row.get('source'):
+            raise ValueError('truth requires explicit status and traceable source')
+        key = row['genome_id'], row['protein_id'], row['function_id']
+        if key in truth and truth[key] != row['status']:
+            raise ValueError('conflicting truth')
+        truth[key] = row['status']
+    return truth
+
+
+def outcome(case, resolution, truth):
+    """Classify actual baseline changes. Absence of a label stays unknown."""
+    if resolution.get('error') or resolution.get('guardrail_status') == 'ERROR':
+        return 'error'
+    if resolution['action'] == 'ABSTAIN':
+        return 'abstained'
+    a = case['anomaly']
+    c = next(c for c in a['candidates'] if c['protein_id'] == resolution['protein_id'])
+    called = c['baseline_probability'] >= .5
+    action = resolution['action']
+    if (action == 'PROMOTE' and called) or (action in ('DEMOTE', 'RELAX') and not called):
+        return 'unchanged'
+    target = truth.get((case['genome_id'], c['protein_id'], a['target_function_id']), 'unknown')
+    if action == 'RELAX':
+        broad = truth.get((case['genome_id'], c['protein_id'], resolution['function_id']), 'unknown')
+        if target == 'positive' or broad == 'negative':
+            return 'harmful'
+        return 'correct' if target == 'negative' and broad == 'positive' else 'unknown'
+    if target == 'unknown':
+        return 'unknown'
+    correct = (target == 'positive') == (action == 'PROMOTE')
+    return 'correct' if correct else 'harmful'
+
+
+def gated(a, proposal, threshold):
+    if proposal['action'] != 'ABSTAIN' and (threshold is None or proposal['confidence'] < threshold):
+        return abstain(a, reason='calibration policy abstention')
+    return proposal
+
+
+def calibrate(public, proposals, labels, precision=.9, min_decisions=10):
+    if not 0 < precision <= 1 or min_decisions < 1:
+        raise ValueError('invalid calibration requirements')
+    cases = public_cases(public)
+    rows = checked_predictions(public, proposals)
+    truth = truth_map(labels, cases, 'calibration')
+    calibration = [c for c in cases if c['split'] == 'calibration']
+    scores = sorted({rows[c['anomaly']['anomaly_id']]['confidence'] for c in calibration
+                     if rows[c['anomaly']['anomaly_id']]['action'] != 'ABSTAIN'})
+    choices = []
+    for threshold in scores:
+        counts = Counter(outcome(c, gated(c['anomaly'], rows[c['anomaly']['anomaly_id']], threshold), truth) for c in calibration)
+        n = sum(counts[k] for k in ('correct', 'harmful', 'unknown'))
+        p = counts['correct'] / n if n else 0
+        # Unknown active decisions count against demonstrable precision.
+        if n >= min_decisions and p >= precision:
+            choices.append((counts['correct'], -counts['harmful'], threshold, dict(counts)))
+    best = max(choices, default=None)
+    return {'schema': 'gspa.agent-policy/2', 'mode': proposals['mode'],
+            'public_sha256': digest(public), 'calibration_truth_sha256': digest(labels),
+            'calibration_proposals_sha256': digest([rows[c['anomaly']['anomaly_id']] for c in calibration]),
+            'target_precision': precision, 'min_decisions': min_decisions,
+            'threshold': best[2] if best else None,
+            'calibration_counts': best[3] if best else {},
+            'status': 'selected_on_calibration' if best else 'no_supported_threshold_abstain',
+            'selection_rule': 'max_correct_then_min_harm_then_highest_threshold; unknowns count against precision',
+            'limitation': 'empirical calibration precision, not a population guarantee'}
+
+
+def evaluate(public, proposals, policy, labels):
+    if policy.get('schema') != 'gspa.agent-policy/2' or policy['public_sha256'] != digest(public) or policy['mode'] != proposals['mode']:
+        raise ValueError('missing or mismatched frozen calibration policy')
+    cases, rows = public_cases(public), checked_predictions(public, proposals)
+    cal_rows = [rows[c['anomaly']['anomaly_id']] for c in cases if c['split'] == 'calibration']
+    if policy['calibration_proposals_sha256'] != digest(cal_rows):
+        raise ValueError('calibration predictions changed after policy freeze')
+    truth = truth_map(labels, cases, 'test')
+    details, counts, by_genome = [], Counter(), defaultdict(Counter)
+    for case in cases:
+        if case['split'] != 'test':
             continue
+        a = case['anomaly']
+        raw = rows[a['anomaly_id']]
+        resolution = gated(a, raw, policy['threshold'])
+        status = outcome(case, resolution, truth)
+        # Do not conceal a failed inference call behind a confidence gate.
+        if raw.get('error') or raw.get('guardrail_status') == 'ERROR':
+            status = 'error'
+        counts[status] += 1
+        by_genome[case['genome_id']][status] += 1
+        details.append({'anomaly_id': a['anomaly_id'], 'genome_id': case['genome_id'],
+                        'outcome': status, 'resolution': resolution})
+    active = sum(counts[k] for k in ('correct', 'harmful', 'unknown'))
+    known = counts['correct'] + counts['harmful']
+    return {'schema': 'gspa.agent-evaluation/2', 'mode': proposals['mode'],
+            'public_sha256': digest(public), 'policy_sha256': digest(policy),
+            'test_truth_sha256': digest(labels), 'counts': dict(counts), 'n_cases': len(details),
+            'known_decision_precision': counts['correct'] / known if known else None,
+            'demonstrated_precision_lower_bound': counts['correct'] / active if active else None,
+            'net_known_gain': counts['correct'] - counts['harmful'],
+            'by_genome': {g: dict(c) for g, c in by_genome.items()}, 'details': details,
+            'decision_wall_seconds': proposals['decision_wall_seconds'],
+            'shared_production_wall_seconds': public['shared_production_wall_seconds'],
+            'api_usage': proposals.get('api_usage'),
+            'cost_note': 'All arms receive both learned scores; shared production includes both model runs. Decision time is additional.',
+            'limitations': public.get('limitations', []) + ['Unknown truth is not a negative.',
+                'Repeated case decisions are clustered within genome; counts are case-level.']}
 
-        if mode == "rank_by_raw_seq":
-            best = max(cands, key=lambda c: (float(c.get("raw_sequence_score", 0.0)), c["protein_id"]))
-            score = float(best.get("raw_sequence_score", 0.0))
-            thresh = 0.25
-            use_gr = False
-        elif mode == "rank_by_stage1_posterior":
-            best = max(cands, key=lambda c: (float(c.get("current_posterior", 0.0)), c["protein_id"]))
-            score = float(best.get("current_posterior", 0.0))
-            thresh = 0.25
-            use_gr = False
-        elif mode == "rank_by_context_support":
-            best = max(
-                cands,
-                key=lambda c: (
-                    float(c.get("cohort_support_fraction", 0.0))
-                    + 0.5 * float(c.get("local_context_positive", 0.0))
-                    + 0.25 * float(c.get("raw_sequence_score", 0.0)),
-                    c["protein_id"],
-                ),
-            )
-            score = (
-                float(best.get("cohort_support_fraction", 0.0))
-                + 0.5 * float(best.get("local_context_positive", 0.0))
-                + 0.25 * float(best.get("raw_sequence_score", 0.0))
-            )
-            thresh = 0.20
-            use_gr = False
-        elif mode == "learned_logistic":
-            best = max(cands, key=lambda c: (float(c.get("learned_logistic_prob", 0.0)), c["protein_id"]))
-            score = float(best.get("learned_logistic_prob", 0.0))
-            thresh = 0.18
-            use_gr = True
-        elif mode == "learned_gbdt":
-            best = max(cands, key=lambda c: (float(c.get("learned_gbdt_prob", 0.0)), c["protein_id"]))
-            score = float(best.get("learned_gbdt_prob", 0.0))
-            thresh = 0.15
-            use_gr = True
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    sub = p.add_subparsers(dest='phase', required=True)
+    prep = sub.add_parser('prepare')
+    prep.add_argument('--sources', required=True, type=Path)
+    for phase in ('suggest', 'agent', 'calibrate', 'evaluate'):
+        cmd = sub.add_parser(phase)
+        cmd.add_argument('--public', required=True, type=Path)
+        if phase in ('suggest', 'agent'):
+            cmd.add_argument('--go-obo', required=True, type=Path)
+            if phase == 'suggest':
+                cmd.add_argument('--mode', required=True, choices=MODES)
+            else:
+                cmd.add_argument('--model', default='qwen3.8-27b')
+                cmd.add_argument('--api-base')
+                cmd.add_argument('--max-turns', type=int, default=2)
+                cmd.add_argument('--workers', type=int, default=4)
         else:
-            raise ValueError(f"Unknown comparator mode: {mode}")
-
-        action = "PROMOTE" if score >= thresh else "ABSTAIN"
-        pid = best["protein_id"] if action == "PROMOTE" else ""
-        func_id = target_func
-        gr_status = "PASS"
-
-        if use_gr and target_func.startswith("GO:"):
-            chk = guardrail.check_go_term(target_func, org_tax)
-            if not chk["valid"]:
-                valid_ancs = guardrail.find_nearest_valid_ancestors(target_func, org_tax)
-                if valid_ancs and score >= thresh:
-                    action = "RELAX"
-                    pid = best["protein_id"]
-                    func_id = valid_ancs[0]
-                    gr_status = "RELAXED"
-                else:
-                    action = "DEMOTE"
-                    pid = best["protein_id"]
-                    gr_status = "REJECTED_PROMOTE"
-
-        out.append({
-            "anomaly_id": aid,
-            "action": action,
-            "protein_id": pid,
-            "function_id": func_id,
-            "confidence": round(score, 4),
-            "guardrail_status": gr_status,
-            "latency_sec": 0.0,
-            "tool_calls": 0,
-        })
-    return out, round(time.time() - t0, 4)
-
-
-def score_resolutions(
-    anomalies: list[dict[str, Any]],
-    resolutions: list[dict[str, Any]],
-    guardrail: agent_mod.SymbolicGuardrail,
-    elapsed_sec: float,
-) -> dict[str, Any]:
-    res_by_id = {r["anomaly_id"]: r for r in resolutions}
-    n_total = len(anomalies)
-    n_promoted = 0
-    n_relaxed = 0
-    n_demoted = 0
-    n_abstained = 0
-    n_correct = 0
-    n_harmful = 0
-    n_taxon_violations_promoted = 0
-    total_tool_calls = 0
-    latencies = []
-
-    by_category = defaultdict(lambda: {"n": 0, "correct": 0, "harmful": 0, "abstained": 0})
-
-    for anom in anomalies:
-        aid = anom["anomaly_id"]
-        exp = anom["expected_action"]
-        org_tax = anom.get("organism_taxon", "")
-        target_func = anom["target_function_id"]
-        r = res_by_id.get(aid, {"action": "ABSTAIN", "protein_id": "", "function_id": target_func})
-        act = str(r.get("action", "ABSTAIN")).upper()
-        pid = str(r.get("protein_id", ""))
-        fid = str(r.get("function_id", target_func))
-        total_tool_calls += int(r.get("tool_calls", 0) or 0)
-        latencies.append(float(r.get("latency_sec", 0.0) or 0.0))
-
-        cat = "ec_attribution" if exp == "PROMOTE" else ("decoy_trap" if exp == "ABSTAIN_OR_DEMOTE" and not target_func.startswith("GO:") else "taxon_conflict")
-        by_category[cat]["n"] += 1
-
-        if act == "PROMOTE":
-            n_promoted += 1
-        elif act == "RELAX":
-            n_relaxed += 1
-        elif act == "DEMOTE":
-            n_demoted += 1
-        else:
-            n_abstained += 1
-            by_category[cat]["abstained"] += 1
-
-        if target_func.startswith("GO:") and act in ("PROMOTE", "RELAX"):
-            chk = guardrail.check_go_term(fid, org_tax)
-            if not chk["valid"]:
-                n_taxon_violations_promoted += 1
-
-        if exp == "PROMOTE":
-            if act == "PROMOTE" and pid == anom["expected_protein_id"] and fid == anom["expected_function_id"]:
-                n_correct += 1
-                by_category[cat]["correct"] += 1
-            elif act in ("PROMOTE", "RELAX", "DEMOTE"):
-                n_harmful += 1
-                by_category[cat]["harmful"] += 1
-        elif exp == "ABSTAIN_OR_DEMOTE":
-            if act == "DEMOTE":
-                n_correct += 1
-                by_category[cat]["correct"] += 1
-            elif act in ("PROMOTE", "RELAX"):
-                # Check if RELAX landed on a valid ancestor that is in truth
-                valid_truth_ancs = set(anom.get("valid_ancestors_in_truth", []))
-                if act == "RELAX" and fid in valid_truth_ancs:
-                    n_correct += 1
-                    by_category[cat]["correct"] += 1
-                else:
-                    n_harmful += 1
-                    by_category[cat]["harmful"] += 1
-        elif exp == "RELAX_OR_DEMOTE":
-            valid_truth_ancs = set(anom.get("valid_ancestors_in_truth", []))
-            if (act == "RELAX" and fid in valid_truth_ancs) or act == "DEMOTE":
-                n_correct += 1
-                by_category[cat]["correct"] += 1
-            elif act in ("PROMOTE", "RELAX"):
-                n_harmful += 1
-                by_category[cat]["harmful"] += 1
-
-    n_active = n_correct + n_harmful
-    return {
-        "n_anomalies": n_total,
-        "n_promoted": n_promoted,
-        "n_relaxed": n_relaxed,
-        "n_demoted": n_demoted,
-        "n_abstained": n_abstained,
-        "abstention_rate": round(n_abstained / n_total, 4) if n_total else 0.0,
-        "n_correct": n_correct,
-        "n_harmful": n_harmful,
-        "net_gain": n_correct - n_harmful,
-        "decision_precision": round(n_correct / n_active, 4) if n_active else 0.0,
-        "correction_recall": round(n_correct / n_total, 4) if n_total else 0.0,
-        "harm_rate": round(n_harmful / n_total, 4) if n_total else 0.0,
-        "n_taxon_violations_promoted": n_taxon_violations_promoted,
-        "total_tool_calls": total_tool_calls,
-        "mean_latency_sec": round(sum(latencies) / len(latencies), 4) if latencies else 0.0,
-        "wall_seconds": round(elapsed_sec, 4),
-        "by_category": dict(by_category),
-    }
+            cmd.add_argument('--proposals', required=True, type=Path)
+            cmd.add_argument('--truth', required=True, type=Path)
+        if phase == 'calibrate':
+            cmd.add_argument('--precision', type=float, default=.9)
+            cmd.add_argument('--min-decisions', type=int, default=10)
+        if phase == 'evaluate':
+            cmd.add_argument('--policy', required=True, type=Path)
+    for cmd in sub.choices.values():
+        cmd.add_argument('--out', required=True, type=Path)
+    args = p.parse_args()
+    code_identity = {str(path.relative_to(ROOT)): runner.sha256_file(str(path))
+                     for path in (Path(__file__).resolve(), Path(agent.__file__).resolve())}
+    if args.phase == 'prepare':
+        result = prepare(read(args.sources))
+    elif args.phase in ('suggest', 'agent'):
+        guard = agent.SymbolicGuardrail(ROOT / 'gspa-core/src/main/resources', args.go_obo)
+        if not guard.resources_loaded or not guard.go_parents:
+            raise ValueError('complete symbolic resources and GO hierarchy are required')
+        result = (suggest(read(args.public), args.mode, guard) if args.phase == 'suggest' else
+                  suggest_agent(read(args.public), guard, args.model, args.api_base, args.max_turns, args.workers))
+        resources = ROOT / 'gspa-core/src/main/resources'
+        result['decision_code_sha256'] = code_identity
+        result['constraint_inputs'] = [runner.hash_record(str(args.go_obo))] + [
+            runner.hash_record(str(path)) for directory in ('taxon-constraints', 'anatomical-constraints')
+            for path in sorted((resources / directory).glob('*.tsv'))]
+    elif args.phase == 'calibrate':
+        result = calibrate(read(args.public), read(args.proposals), read(args.truth), args.precision, args.min_decisions)
+    else:
+        result = evaluate(read(args.public), read(args.proposals), read(args.policy), read(args.truth))
+    if code_identity != {str(path.relative_to(ROOT)): runner.sha256_file(str(path))
+                         for path in (Path(__file__).resolve(), Path(agent.__file__).resolve())}:
+        raise RuntimeError('decision code changed during execution')
+    write(args.out, result)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Evaluate Stage 3 agent vs equally informed simple baselines (v3 Item 11)")
-    parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
-    parser.add_argument("--skip-live-llm", action="store_true", help="Skip live Qwen API calls (for offline unit tests)")
-    args = parser.parse_args()
-
-    args.out_dir.mkdir(parents=True, exist_ok=True)
-    anomalies = build_heldout_anomalies()
-    anom_file = args.out_dir / "heldout_anomalies.jsonl"
-    with open(anom_file, "w", encoding="utf-8") as fh:
-        for a in anomalies:
-            fh.write(json.dumps(a) + "\n")
-
-    guardrail = agent_mod.SymbolicGuardrail(
-        ROOT / "gspa-core" / "src" / "main" / "resources",
-        CACHE / "go-basic.obo",
-    )
-
-    arms_summary = {}
-    for mode in (
-        "abstain_only",
-        "rank_by_raw_seq",
-        "rank_by_stage1_posterior",
-        "rank_by_context_support",
-        "learned_logistic",
-        "learned_gbdt",
-    ):
-        res, elapsed = run_simple_comparator(mode, anomalies, guardrail)
-        out_f = args.out_dir / f"resolutions_{mode}.jsonl"
-        with open(out_f, "w", encoding="utf-8") as fh:
-            for r in res:
-                fh.write(json.dumps(r) + "\n")
-        arms_summary[mode] = score_resolutions(anomalies, res, guardrail, elapsed)
-        print(f"[{mode:26s}] correct={arms_summary[mode]['n_correct']:2d}, harmful={arms_summary[mode]['n_harmful']:2d}, net={arms_summary[mode]['net_gain']:+3d}, abstain={arms_summary[mode]['n_abstained']:2d}, precision={arms_summary[mode]['decision_precision']:.4f}")
-
-    if not args.skip_live_llm:
-        for agent_arm, extra_flags in (
-            ("qwen_agent_no_guardrail", ["--no-guardrail"]),
-            ("qwen_agent_guarded", []),
-        ):
-            out_f = args.out_dir / f"resolutions_{agent_arm}.jsonl"
-            t0 = time.time()
-            cmd = [
-                sys.executable,
-                str(ROOT / "benchmark" / "agent" / "run_gspa_agent.py"),
-                "--anomalies", str(anom_file),
-                "--out", str(out_f),
-                "--model", "qwen3.8-27b",
-                "--max-concurrency", "8",
-                "--max-turns", "2",
-                "--seed", "42",
-            ] + extra_flags
-            print(f"[running live Qwen agent] {agent_arm} on {len(anomalies)} anomalies ...", flush=True)
-            proc = subprocess.run(cmd, capture_output=True, text=True)
-            if proc.returncode != 0:
-                raise RuntimeError(f"{agent_arm} failed:\n{proc.stdout}\n{proc.stderr}")
-            elapsed = time.time() - t0
-            res = [json.loads(ln) for ln in out_f.read_text(encoding="utf-8").splitlines() if ln.strip()]
-            arms_summary[agent_arm] = score_resolutions(anomalies, res, guardrail, elapsed)
-            print(f"[{agent_arm:26s}] correct={arms_summary[agent_arm]['n_correct']:2d}, harmful={arms_summary[agent_arm]['n_harmful']:2d}, net={arms_summary[agent_arm]['net_gain']:+3d}, abstain={arms_summary[agent_arm]['n_abstained']:2d}, precision={arms_summary[agent_arm]['decision_precision']:.4f}, wall={elapsed:.1f}s")
-
-    report = {
-        "schema": "gspa.stage3_agent_evaluation/1",
-        "cohort": "swissprot_label_rich_v1 (held-out test split, 4 genera, 0 training/calibration family overlap)",
-        "anomalies_file": str(anom_file.relative_to(ROOT)),
-        "anomalies_sha256": sha256_file(anom_file),
-        "n_anomalies": len(anomalies),
-        "endpoint": "http://unimatrix01.kaust.edu.sa:8000/v1",
-        "model": "qwen3.8-27b",
-        "arms": arms_summary,
-    }
-    rep_path = args.out_dir / "report.json"
-    rep_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print("Wrote", rep_path)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == '__main__':
+    main()

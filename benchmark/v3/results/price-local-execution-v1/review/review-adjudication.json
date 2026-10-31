@@ -1,0 +1,23 @@
+{
+  "review": "Claude Sonnet5.5, read only",
+  "accepted": [
+    "Preflight path separation and same-device requirement before inference.",
+    "Explicit TMPDIR inside container in addition to JVM scratch property.",
+    "fsync staged files/directories before atomic publication; sync affected parent directories after rename.",
+    "Durable result marker even when engine returns before creating its attempt.",
+    "Document manual republish from durable locator and result; retain failures.",
+    "Finalizer independently binds publication identity, inventory and hashes; tests retain original absolute receipts."
+  ],
+  "qualified": [
+    "Actual selected container root is an empty directory skeleton (11 empty subdirectories); no symlinks, devices or large files. Retain strict checker for this specific input; generic sandbox/SIF support is not required.",
+    "Host /usr and /lib binds remain explicit; executable hashes are not claimed to attest all system libraries.",
+    "Slurm scratch persistence is an operational requirement, not inferred from a path name. Failed private files are never removed by this wrapper; durable locator records node and path.",
+    "No promise of crash-proof shared storage beyond filesystem fsync semantics and later complete byte verification."
+  ],
+  "subsequent_checks": [
+    "Added same-directory bind guard before engine exec, with both rejecting and executing subprocess regressions.",
+    "Early engine failure writes a durable return-code record even without a local attempt.",
+    "Final64remote cases and two complete production/published pilot arms pass in10292.",
+    "Frozen final sources reside inprice-production-v3; earlier v1 and v2 sources remain unchanged."
+  ]
+}

@@ -1,0 +1,54 @@
+[
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You choose the next in-silico metabolic experiment from a fixed menu to help discriminate competing gene-function hypotheses. Results are model-conditional, not proof. Reply with one JSON object: {\"experiment_id\": \"<id from menu>\", \"reason\": \"<short>\"} or {\"stop\": true, \"reason\": \"<short>\"}."
+      },
+      {
+        "role": "user",
+        "content": "{\"admissible_menu\": [{\"experiment_id\": \"knockout:H_coup\", \"kind\": \"knockout\", \"description\": \"knock out BIOMASS\", \"evidence_ids\": [\"E_coup\"], \"competing_hypotheses\": [], \"min_calls\": 1, \"max_calls\": 1}, {\"experiment_id\": \"knockout:H_sec\", \"kind\": \"knockout\", \"description\": \"knock out g6\", \"evidence_ids\": [\"E_sec\"], \"competing_hypotheses\": [], \"min_calls\": 1, \"max_calls\": 1}, {\"experiment_id\": \"product:EX_coup_e\", \"kind\": \"product\", \"description\": \"conditional feasibility vs. forced production of EX_coup_e\", \"evidence_ids\": [\"E_coup\"], \"competing_hypotheses\": [], \"min_calls\": 3, \"max_calls\": 6}, {\"experiment_id\": \"product:EX_sec_e\", \"kind\": \"product\", \"description\": \"conditional feasibility vs. forced production of EX_sec_e\", \"evidence_ids\": [\"E_sec\"], \"competing_hypotheses\": [], \"min_calls\": 3, \"max_calls\": 6}], \"completed_results\": [{\"experiment_id\": \"baseline\", \"status\": \"completed\", \"outcome\": \"growth\", \"growth_ratio\": null}], \"solver_calls_left\": 53}"
+      }
+    ],
+    "response": "{\"experiment_id\": \"knockout:H_coup\", \"reason\": \"Testing the knockout of the biomass objective (H_coup) is the most direct way to validate the core growth hypothesis and establish a baseline for metabolic viability before investigating specific secondary products.\"}"
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You choose the next in-silico metabolic experiment from a fixed menu to help discriminate competing gene-function hypotheses. Results are model-conditional, not proof. Reply with one JSON object: {\"experiment_id\": \"<id from menu>\", \"reason\": \"<short>\"} or {\"stop\": true, \"reason\": \"<short>\"}."
+      },
+      {
+        "role": "user",
+        "content": "{\"admissible_menu\": [{\"experiment_id\": \"knockout:H_sec\", \"kind\": \"knockout\", \"description\": \"knock out g6\", \"evidence_ids\": [\"E_sec\"], \"competing_hypotheses\": [], \"min_calls\": 1, \"max_calls\": 1}, {\"experiment_id\": \"product:EX_coup_e\", \"kind\": \"product\", \"description\": \"conditional feasibility vs. forced production of EX_coup_e\", \"evidence_ids\": [\"E_coup\"], \"competing_hypotheses\": [], \"min_calls\": 3, \"max_calls\": 6}, {\"experiment_id\": \"product:EX_sec_e\", \"kind\": \"product\", \"description\": \"conditional feasibility vs. forced production of EX_sec_e\", \"evidence_ids\": [\"E_sec\"], \"competing_hypotheses\": [], \"min_calls\": 3, \"max_calls\": 6}], \"completed_results\": [{\"experiment_id\": \"baseline\", \"status\": \"completed\", \"outcome\": \"growth\", \"growth_ratio\": null}, {\"experiment_id\": \"knockout:H_coup\", \"status\": \"completed\", \"outcome\": \"growth_lost\", \"growth_ratio\": 0.0}], \"solver_calls_left\": 52}"
+      }
+    ],
+    "response": "{\"experiment_id\": \"knockout:H_sec\", \"reason\": \"H_coup knockout caused growth loss, suggesting it is essential. Testing H_sec knockout will determine if it is also essential or if there is redundancy, helping to distinguish the specific roles of these genes.\"}"
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You choose the next in-silico metabolic experiment from a fixed menu to help discriminate competing gene-function hypotheses. Results are model-conditional, not proof. Reply with one JSON object: {\"experiment_id\": \"<id from menu>\", \"reason\": \"<short>\"} or {\"stop\": true, \"reason\": \"<short>\"}."
+      },
+      {
+        "role": "user",
+        "content": "{\"admissible_menu\": [{\"experiment_id\": \"product:EX_coup_e\", \"kind\": \"product\", \"description\": \"conditional feasibility vs. forced production of EX_coup_e\", \"evidence_ids\": [\"E_coup\"], \"competing_hypotheses\": [], \"min_calls\": 3, \"max_calls\": 6}, {\"experiment_id\": \"product:EX_sec_e\", \"kind\": \"product\", \"description\": \"conditional feasibility vs. forced production of EX_sec_e\", \"evidence_ids\": [\"E_sec\"], \"competing_hypotheses\": [], \"min_calls\": 3, \"max_calls\": 6}], \"completed_results\": [{\"experiment_id\": \"baseline\", \"status\": \"completed\", \"outcome\": \"growth\", \"growth_ratio\": null}, {\"experiment_id\": \"knockout:H_coup\", \"status\": \"completed\", \"outcome\": \"growth_lost\", \"growth_ratio\": 0.0}, {\"experiment_id\": \"knockout:H_sec\", \"status\": \"completed\", \"outcome\": \"growth_unchanged\", \"growth_ratio\": 1.0}], \"solver_calls_left\": 51}"
+      }
+    ],
+    "response": "{\"experiment_id\": \"product:EX_coup_e\", \"reason\": \"H_coup is essential (growth lost on KO), so testing forced production of its product EX_coup_e helps confirm its metabolic role and distinguish it from H_sec, which is non-essential.\"}"
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You choose the next in-silico metabolic experiment from a fixed menu to help discriminate competing gene-function hypotheses. Results are model-conditional, not proof. Reply with one JSON object: {\"experiment_id\": \"<id from menu>\", \"reason\": \"<short>\"} or {\"stop\": true, \"reason\": \"<short>\"}."
+      },
+      {
+        "role": "user",
+        "content": "{\"admissible_menu\": [{\"experiment_id\": \"product:EX_sec_e\", \"kind\": \"product\", \"description\": \"conditional feasibility vs. forced production of EX_sec_e\", \"evidence_ids\": [\"E_sec\"], \"competing_hypotheses\": [], \"min_calls\": 3, \"max_calls\": 6}], \"completed_results\": [{\"experiment_id\": \"baseline\", \"status\": \"completed\", \"outcome\": \"growth\", \"growth_ratio\": null}, {\"experiment_id\": \"knockout:H_coup\", \"status\": \"completed\", \"outcome\": \"growth_lost\", \"growth_ratio\": 0.0}, {\"experiment_id\": \"knockout:H_sec\", \"status\": \"completed\", \"outcome\": \"growth_unchanged\", \"growth_ratio\": 1.0}, {\"experiment_id\": \"product:EX_coup_e\", \"status\": \"completed\", \"outcome\": \"growth_unchanged\", \"growth_ratio\": 1.0}], \"solver_calls_left\": 45}"
+      }
+    ],
+    "response": "{\"experiment_id\": \"product:EX_sec_e\", \"reason\": \"H_sec knockout showed no growth loss, suggesting H_sec is not essential for biomass. Testing forced production of EX_sec_e will determine if the secretory pathway is functional and can be upregulated, helping to distinguish if H_sec has a non-essential but measurable role in secretion.\"}"
+  }
+]

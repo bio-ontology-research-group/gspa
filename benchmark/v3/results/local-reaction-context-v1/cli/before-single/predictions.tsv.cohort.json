@@ -1,0 +1,66 @@
+{
+  "schema" : "gspa.cohort-context/1",
+  "genome_id" : "GCA_000012525.1",
+  "baseline" : {
+    "label" : "stage0_raw_max_score",
+    "snapshot_id" : "stage0_raw_max_score:1319a4e511f05b849f1f86e8",
+    "note" : "Stage 0 raw predictor scores only; not the legacy prior baseline (posteriors after heuristic priors)"
+  },
+  "engine" : {
+    "engine" : "cohort-v3",
+    "baselineSnapshotId" : "stage0_raw_max_score:1319a4e511f05b849f1f86e8",
+    "config" : {
+      "halfWidthBp" : 5000,
+      "anchorMinConfidence" : 0.5,
+      "minAnchors" : 1,
+      "maxHops" : 1,
+      "hopAlpha" : 0.5,
+      "densityTolerance" : 1,
+      "minMembershipWeight" : 0.05,
+      "cladeCap" : 1.0,
+      "jointMinEffective" : 0.5,
+      "permutations" : 200,
+      "seed" : 20261026,
+      "holdout" : "STRAIN_CLUSTER",
+      "treeCutDistance" : 0.05
+    },
+    "phylogenySource" : "explicit-ids",
+    "nGenomes" : 1,
+    "nClaims" : 5281,
+    "duplicateEvidencePolicy" : "complete-observed-input-within-strain/1"
+  },
+  "cohort_genomes" : [ "GCA_000012525.1" ],
+  "held_out_genomes" : [ "GCA_000012525.1" ],
+  "n_peer_genomes" : 0,
+  "metadata" : {
+    "supplied_for_this_genome" : true,
+    "genomes_without_metadata" : [ ],
+    "phylogeny_supplied" : true,
+    "note" : "Genomes without metadata are read as unknown: one unresolved block, never independent; adjusted intervals and permutation p are withheld when no peer has a resolved clade."
+  },
+  "candidates" : {
+    "ec_calls" : 1696,
+    "ec_calls_without_reaction" : 514,
+    "candidates" : 5281,
+    "keys_with_cohort_features" : 0,
+    "keys_without_peers" : 1182,
+    "keys_with_unknown_family" : 0,
+    "keys_with_reaction_alternatives" : 0
+  },
+  "no_peers" : true,
+  "reaction_ambiguity" : [ ],
+  "orthogroup_input" : {
+    "source" : "cohort_orthogroups_file",
+    "rows_in_file" : 49463,
+    "rows_of_genomes_outside_cohort" : 46802,
+    "genomes_outside_cohort" : [ "GCA_000007005.1", "GCA_000007065.1", "GCA_000008485.1", "GCA_000008765.1", "GCA_000009085.1", "GCA_000009965.1", "GCA_000009985.1", "GCA_000011125.1", "GCA_000011205.1", "GCA_000011585.1", "GCA_000012285.1", "GCA_000025685.1", "GCA_000027305.1", "GCA_000046845.1", "GCA_000145295.1", "GCA_000147055.1", "GCA_000195915.1" ],
+    "proteins_with_family" : 2661
+  },
+  "unplaced_proteins" : {
+    "declared" : 0,
+    "with_ec_calls" : 0,
+    "in_families" : 0,
+    "note" : "Declared unplaced proteins are real proteins without a usable coordinate: family PRESENT, local context UNKNOWN (no window, no anchor, no coordinate invented). Family-search completeness (familySearchComplete) is independent of location completeness."
+  },
+  "interpretation" : "Features for the learned stage, not evidence that a function is correct. A genome without peers has no cohort features (unavailable, not negative). Complementary-unannotated is an unsupported label, never evidence of loss."
+}

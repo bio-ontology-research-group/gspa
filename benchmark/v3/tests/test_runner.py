@@ -42,6 +42,14 @@ for r in rows:
             if "--score-above-one" in args:
                 ps = "1.5"
             fh.write("\\t".join([c["protein_id"], c["function_type"], c["function_id"], "", ps]) + "\\n")
+    stages = [{"name": n, "status": "executed"} for n in ("reference_preparation", "evidence_integration")]
+    if "--rlc-suggester" in args:
+        stages.append({"name": "reaction_context", "status": "skipped", "reason": "no gaps"})
+    if "--failed-ledger" in args:
+        stages[-1]["status"] = "failed"
+    if "--missing-ledger" not in args:
+        with open(r[2] + ".stages.json", "w") as fh:
+            json.dump({"schema_version": 2, "genome_id": r[0], "stages": stages}, fh)
 if "--fail-after-write" in args:
     sys.exit(2)
 '''
@@ -181,7 +189,7 @@ class Orchestration(Base):
         # hashed artefacts
         self.assertEqual(len(res["runs"]["full"]["genomes"]["g1"]["sha256"]), 64)
         self.assertEqual(len(res["provenance"]["inputs"]["g1"]["claims"]["sha256"]), 64)
-        self.assertEqual(set(res["provenance"]["code"]), {"v3_runner.py", "v3_metrics.py"})
+        self.assertEqual(set(res["provenance"]["code"]), {"v3_runner.py", "v3_metrics.py", "stage_ledger.py"})
         # stage0 keeps decoys at their raw scores; full halves them -> top-1 unchanged, pairs corrected
         ec = res["evaluation"]["kinds"]["ec"]
         self.assertAlmostEqual(ec["arms"]["stage0"]["ec_top1"]["top1_accuracy"], 1.0)

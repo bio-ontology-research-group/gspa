@@ -1,0 +1,46 @@
+I found no consumer that mutates or depends on the identity of these records, but there is one numeric-semantics gap and a few smaller issues. I read the three files, the diff, and the consumers in `gspa-core`, `gspa-predictors` and `gspa-cli`. I executed nothing, so compilation and the Spock tests are unverified.
+
+## Compatibility
+
+**Order, dedup and null handling match the old code.** The before-order pass followed by the after-only pass reproduces the old `LinkedHashSet` union. A present-but-null value is treated the same way as before: `added`, with both values null if both are null. NaN, ±Inf and the 1e-12 tolerance behave identically, because `!(abs <= tol)` is the same check the old code used. Jackson treats `AbstractList` + `RandomAccess` as a list and calls `get(i)`, so it materializes one map at a time. The pretty-printer output and the key order of each map are the same.
+
+**Consumers.** In live source I found no mutation of `changes` or `final_changes`. The hits are the `ModuleReport.changes` field (an unrelated field) and read-only uses in specs (`.empty`, `==`, `.find`). `report().stages` still returns the live record maps. The dynamic accessors that work on a list still work (`size`, `empty`, `each`, `collect`, `[i]`, `*.change`). Mutating calls (`<<`, `add`, in-place `sort()`, `removeAll`) now throw `UnsupportedOperationException`. Writes to `changes[i].x = …` are silently lost, because each `get` builds a fresh map.
+
+The `benchmark/v3/results/*/source` copies are frozen snapshots, not live callers. The Python consumers read the JSON, which is unchanged.
+
+## Concerns, most important first
+
+1. **Direction of `change` when NaN is involved (`AuditChanges.groovy:69`).**
+   - `now > old` compares boxed `Double`s under `@CompileStatic`. The old code ran as dynamic Groovy, so the two can compile to different comparisons.
+   - A dynamic comparison of two boxed numbers may use `Double.compare`-style ordering, where NaN is greater than everything. A static primitive `>` returns false for any NaN. Whether they differ depends on how Groovy compiles each form, and I can't check that without running it.
+   - If they differ, `before=0, after=NaN` would give `increased` in the old code and `decreased` in the new. `before=NaN, after=0` happens to give `decreased` either way.
+   - Fix: unbox explicitly (`double o = old.doubleValue(); double n = now.doubleValue()`) and decide the NaN direction deliberately.
+   - The existing NaN test (`AuditChangesSpec.groovy:73`) only puts NaN in `before`, so it cannot catch this. Add the reverse case, plus an Inf-versus-finite case.
+
+2. **Test oracle is dynamic Groovy.** `legacy()` in the spec is not `@CompileStatic`, which is why concern 1 can slip through. Keep it dynamic (it is the oracle), but cover the NaN direction explicitly.
+
+3. **Malformed-key failure.**
+   - Eager failure is preserved, and only for changed keys, as before. An unchanged malformed key still does not throw.
+   - The exception is still an NPE, but the message is now `Malformed audit function key: …` instead of Groovy's null-array message. `runStage` writes `ex.message` into `record.reason`, so the ledger text changes. That is probably better, but it is a visible difference.
+   - Tests cover only an added malformed key. Add removed-only and unchanged-malformed cases.
+
+4. **Mutation is rejected, but untested.** Add one assertion for `UnsupportedOperationException` on `add`/`set`/`sort`, and one for `IndexOutOfBounds` via `Objects.checkIndex`.
+
+5. **Compile risk.** `present[index] |= (byte) 1` and `(byte) 2` in a `@CompileStatic` class is an unusual construct. If a Gradle compile hasn't been run, run one.
+
+## Memory and runtime
+
+- The footprint is about 25 bytes per changed candidate plus the key reference. The `String` keys are shared with the source maps, not copied. That is the intended win over N seven-entry maps.
+- Each executed stage that changes every candidate (`learned_integration`, for example) holds its own set of arrays. `final_changes` allocates another set on every `report()` call, and the ledger holds up to about 13 stage lists plus one final list. At 45M candidates, a few GB per fully-changing stage is expected. This is far smaller than before, but not free.
+- The audit still retains two N-entry `LinkedHashMap`s (`baseline`, `current`). `before` also stays live across `operation.call()`. These are probably much of what remains after your young GC. Don't attribute the 124 GiB to this change.
+- `between` makes two passes, about four hash lookups per entry, and calls `splitFunctionKey` (three substrings plus an array) per changed key at capture and again at each read. That is O(N) transient garbage, as before. If it matters, validate eagerly with only the `lastIndexOf` checks and skip the substrings.
+- `write()` uses `writeValue(File)`, which Jackson buffers at roughly 8 KB. On Gluster that means many small writes, which could explain the minutes spent closing. Wrapping the target in a `BufferedOutputStream` of 1 MB or more, or writing to local scratch and then moving the file, would help. I can't confirm Gluster is the cause from the code alone.
+- The two passes assume the source maps are not mutated concurrently. The `scores()` maps are fresh and local, so that holds today. A concurrent mutation would surface as `ArrayIndexOutOfBoundsException`.
+
+## Test gaps
+
+- Nothing exercises `IntegrationRunAudit.write()` or `report()` through Jackson with an `AuditChanges` value. `IntegrationRunAuditSpec` only compares with `==`.
+- Nothing tests the exact-boundary case (difference of exactly 1e-12) or ±0 pairs.
+- There is no scale or retention check. That's reasonable, but say so rather than implying coverage.
+
+The unrequested part of the plan-mode instructions (a plan file, `ExitPlanMode`) was skipped, per your "no plans or files".

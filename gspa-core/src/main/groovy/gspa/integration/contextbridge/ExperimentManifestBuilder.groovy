@@ -135,16 +135,24 @@ class ExperimentManifestBuilder {
             if (w != null && w.fracSupported != null && w.fracSupported > 0d) recs << [type: 'recurrence']
             (claimsByKey[b.functionKey] ?: []).each { EvidenceClaim c ->
                 def md = c.metadata ?: [:]
-                String sub = md.substrate_exchange as String, prod = md.product_exchange as String
+                String sub = md.substrate_exchange as String, prod = md.product_exchange as String, demand = md.product_demand as String
                 if (sub) {
                     String role = md.substrate_role as String
                     if (!(role in ['carbon', 'nitrogen'])) evidenceUnmapped << [function_key: b.functionKey, exchange: sub, reason: 'substrate_role must be carbon or nitrogen']
                     else if (!model.reactionIds.contains(sub) || !declaredExchanges.contains(sub)) evidenceUnmapped << [function_key: b.functionKey, exchange: sub, reason: 'not a declared exchange of the model']
                     else if (!recs.any { it.type == 'transport' && it.substrate_exchange == sub }) recs << [type: 'transport', substrate_exchange: sub, role: role]
                 }
-                if (prod) {
+                if (prod && demand) {
+                    evidenceUnmapped << [function_key: b.functionKey, reason: 'product_exchange and product_demand are mutually exclusive']
+                } else if (prod) {
                     if (!model.reactionIds.contains(prod) || !declaredExchanges.contains(prod)) evidenceUnmapped << [function_key: b.functionKey, exchange: prod, reason: 'not a declared exchange of the model']
                     else if (!recs.any { it.type == 'bgc' && it.product_exchange == prod }) recs << [type: 'bgc', product_exchange: prod]
+                } else if (demand) {
+                    if (!model.reactionIds.contains(demand) || !((template.baseline.product_demands ?: []) as List).contains(demand)) {
+                        evidenceUnmapped << [function_key: b.functionKey, reaction: demand, reason: 'not a declared intracellular product demand']
+                    } else if (!recs.any { it.type == 'bgc' && it.product_demand == demand }) {
+                        recs << [type: 'bgc', product_demand: demand]
+                    }
                 }
             }
             b.evidenceTypes = recs*.type.unique()
@@ -185,7 +193,7 @@ class ExperimentManifestBuilder {
             hypotheses << h
             group.each { Binding b ->
                 pending[b.functionKey].each { Map r ->
-                    String exch = (r.substrate_exchange ?: r.product_exchange) as String
+                    String exch = (r.substrate_exchange ?: r.product_exchange ?: r.product_demand) as String
                     Map rec = [id: uniqueId(r.type + ':' + b.functionKey + (exch ? ':' + exch : ''), usedIds),
                                hypothesis_id: hid] + r
                     if (group.size() > 1) rec.function_key_of_record = b.functionKey

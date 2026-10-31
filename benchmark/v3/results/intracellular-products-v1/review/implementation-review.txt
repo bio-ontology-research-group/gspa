@@ -1,0 +1,63 @@
+I've finished reading the diffs and context, and no further tool calls are needed. Nothing was edited and nothing was run. This is the read-only review you asked for, covering only the `product_demand` extension. Line numbers are from the current files.
+
+**Overall:** I found no blocking correctness bug in the core demand-versus-secretion separation. A demand never opens uptake. Secretion fields are renamed to synthesis fields, so `max_secretion` does not leak into demand results. Mutual exclusion with `product_exchange`, the budget (3 calls minimum, 4 per masked cell) and the sign handling (`secretion_sign` for coefficient ±1) all hold. I did not run anything, so the points below come from reading the code.
+
+## Findings (new code unless marked)
+
+**1. Medium: the reporter's own bounds are never validated.** `scripts/metabolic_experiments.py:368-405`, `product_target`.
+- It checks that the demand is single-metabolite with |coefficient| = 1, has no GPR, is not in `external`, and is not biomass or maintenance. It never checks the model bounds on the drain direction.
+- If the drain-direction upper bound is 0 (a blocked reporter), the result is `no_synthesis_possible_in_model_at_*`. That reads as a biological negative but really means the reporter is blocked.
+- If the drain-direction lower bound is above 0 (a forced drain), baseline growth is computed under an unintended forced flux. It can also produce a spurious `synthesis_unavoidable_in_model`.
+- A small upper bound (for example 1) saturates both wild type and knockout, so a masked comparison reports `retained` regardless of the biology.
+- Suggested fix: reject the demand unless the drain-direction `ub > 0`, the drain-direction `lb <= 0`, and the cap is large relative to `flux_tol`.
+
+**2. Medium: a product condition overwrites an informative growth contrast.** `scripts/masked_assignment_experiments.py:196-210`.
+- For a demand condition, `output['status']` is set to `inconclusive` whenever the product intervals are not all optimal.
+- This also happens when the growth contrast is complete and informative. Examples are `knockout_no_growth` under `growth_fraction`, and `knockout_infeasible_with_maintenance`.
+- A product-exchange condition with the same growth contrast stays `completed`. Lethal-knockout cells therefore drop out of any scoring that filters on `status`.
+- The reverse inconsistency is that `contrast: no_growing_control` is flipped to `completed` under `maintenance_only`. The unit test asserts that case, so it looks intended.
+- Suggested fix: keep the growth-contrast status and report product status separately in `product_contrast`. If the overwrite is intended, say so in the docs.
+
+**3. Medium-low: the knockout is measured at a different growth floor than wild type.** `masked_assignment_experiments.py:173-182`, and `metabolic_experiments.py` `_fixed_growth_lb`.
+- Under `growth_fraction`, each state's product floor is 0.x times its own maximum growth.
+- A knockout that cuts growth heavily but stays above the threshold gets a much lower absolute floor, which frees resources. That can produce `synthesis_capacity_retained` or `reduced` for reasons unrelated to the knocked-out function.
+- Suggested fix: use a shared absolute floor, such as `min(wt_growth, ko_growth)` times the fraction. Otherwise, document that `product_contrast` is confounded by the growth floor.
+
+**4. Low: unavoidable-synthesis fields are meaningless for demands.** `metabolic_experiments.py:906-940`.
+- With uptake closed and the lower bound at 0, `product_min` is always 0 unless the drain is forced (see #1).
+- The second product LP therefore spends budget on nothing. `synthesis_unavoidable_in_model` and `min_synthesis_*` can mislead the planner. The same applies to the `_product_checks` min LP when `intracellular` is true.
+
+**5. Low: the oracle does not cover the new contrast logic.** `benchmark/v3/check_masked_assignment_cobra.py:109-150`.
+- `agrees` only compares keys present in the production phenotype. If production skips `product_interval` and the oracle computes one, that goes undetected.
+- Cell-level `contrast`, `status` and `product_contrast` are never compared. The new `product_contrast` logic from #2 and #3 is therefore checked only by unit tests.
+- `check_intracellular_products.py:155-163` asserts `status` and `product_contrast` directly, but only for the Sco-GEM fixture.
+
+**6. Low: evidence ranking and hypothesis attribution on combined items.** `metabolic_experiments.py:612-629`, with `evidence_key` at `:993`.
+- A combined item `synthesis:X@cond` carries the union of `evidence_ids` and `hypothesis_ids` from both parents.
+- `evidence_key` counts distinct evidence types, so combined items always outrank their components under the `evidence` strategy. The ranking comes from how the item was built, not from stronger evidence.
+- If the condition also supports another hypothesis, the combined item is attributed to that hypothesis too.
+
+**7. Low: bad input aborts the whole run instead of being rejected.**
+- `Runner.run` calls `product_target` at `:770`, before the `try`. A hand-written or panel item with a bad target raises `ManifestError` and kills the run. Menu-built items go through the graceful `rejected` path.
+- In `MaskedAssignmentBuilder.groovy` (`:150-155`), Groovy accepts any demand listed in `baseline.product_demands` that is a model reaction. Python then validates in `validate_assignment_manifest` (`masked_assignment_experiments.py:113-116`). One non-intracellular or gene-associated entry makes the whole manifest fail, where Groovy intended it to be reported as unmapped.
+
+**8. Low: the planner circularity guard skips `product_demand`.** `benchmark/v3/run_planner_benchmark.py:189`.
+- `assert_no_forced_objective` checks only `product_exchange`. This is currently shielded because `bgc` is a forbidden evidence type. It is a defense-in-depth gap if a different evidence type ever carries `product_demand`.
+
+**9. Low: "intracellular" is only "not in `extracellular_compartments`".**
+- A periplasmic (`p`) species passes as intracellular. This is acceptable if documented.
+
+**Pre-existing, not introduced here**
+- `scripts/metabolic_experiments.py:798, 808, 811` compare `growth >= growth_threshold`. The masked path (`masked_assignment_experiments.py:173` and the oracle at `check_masked_assignment_cobra.py:85`) uses `growth > threshold`. At exactly the threshold the two paths classify growth differently.
+- The `agrees` tolerance and one-directional comparison existed before.
+
+**Leakage and identity**
+- I found no new leakage path.
+- Demand IDs come only from candidate hints or claim metadata, plus the template allow-list.
+- No target GPR or `reactions.tsv` is used.
+- The masked ID mask (`C<n>`, `H<n>`) is intact.
+- The condition merge key now includes `product_demand`, which is correct.
+- `QWEN_PROMPT_SCHEMA` moved to `/3`, and I found no stale `/2` consumers outside tests.
+- `check_intracellular_products.py` uses the known germicidin products and the true reaction set as the H1 and demand controls. Its H1 `synthesis_capacity_lost` assertion is therefore tautological by construction. That is consistent with the "not discovery" framing, and the docstring says so.
+
+I did not examine the JVM report-ordering fix or the rerun.

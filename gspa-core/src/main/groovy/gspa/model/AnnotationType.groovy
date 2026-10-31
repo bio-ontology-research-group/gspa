@@ -29,6 +29,6 @@ enum AnnotationType {
     PLASMID,            // Genomic region: extrachromosomal plasmid
     VIRAL_CONTIG,       // Whole-contig viral classification
     PHAGE_FUNCTION,     // Per-protein phage gene category (capsid, integrase, ...)
-    PSEUDOGENE,         // Spurious / pseudogenic ORF flagged by an AntiFam HMM
+    PSEUDOGENE,         // Legacy namespace: AntiFam gene-model flag, not proof of whole-protein inactivity
     CUSTOM              // User-defined annotation type
 }

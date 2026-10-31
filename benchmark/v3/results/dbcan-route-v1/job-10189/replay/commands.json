@@ -1,0 +1,201 @@
+[
+  {
+    "name": "annotate-4",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/q.faa",
+      "--config",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/config-4.json",
+      "--output",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/annotation-4",
+      "--claims-out",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/annotate-4.jsonl",
+      "--threads",
+      "2",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "import-4",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "dbcan-claims",
+      "--proteins",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/q.faa",
+      "--overview",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/native-4.tsv",
+      "--output",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/import-4.jsonl"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "integrate-4",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/import-4.jsonl",
+      "--out",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/integrated-4.tsv",
+      "--lite",
+      "--enable-priors",
+      "none"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "annotate-5",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "annotate",
+      "--proteins",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/q.faa",
+      "--config",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/config-5.json",
+      "--output",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/annotation-5",
+      "--claims-out",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/annotate-5.jsonl",
+      "--threads",
+      "2",
+      "--no-metrics"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "import-5",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "dbcan-claims",
+      "--proteins",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/q.faa",
+      "--overview",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/native-5.tsv",
+      "--output",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/import-5.jsonl"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "integrate-5",
+    "command": [
+      "java",
+      "-jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "integrate",
+      "--claims",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/import-5.jsonl",
+      "--out",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/integrated-5.tsv",
+      "--lite",
+      "--enable-priors",
+      "none"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "empty-builtin-default",
+    "command": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "/home/leechuck/Public/software/gspa/benchmark/02b_parse_predictors_to_claims.py",
+      "--results-dir",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/empty-builtin-inputs",
+      "--goa",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/goa.gaf",
+      "--output",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/empty-builtin.jsonl"
+    ],
+    "exit_code": 1
+  },
+  {
+    "name": "empty-builtin-allowed",
+    "command": [
+      "/home/leechuck/tmp/gspa-v3-testenv/bin/python",
+      "/home/leechuck/Public/software/gspa/benchmark/02b_parse_predictors_to_claims.py",
+      "--results-dir",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/empty-builtin-inputs",
+      "--goa",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/goa.gaf",
+      "--output",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/empty-builtin.jsonl",
+      "--allow-empty"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "nextflow",
+    "command": [
+      "/home/leechuck/bin/nextflow",
+      "-c",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/nextflow.config",
+      "run",
+      "/home/leechuck/Public/software/gspa/gspa-nf/main.nf",
+      "-work-dir",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/nf-work",
+      "-with-trace",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/trace.tsv",
+      "--input",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/q.fna",
+      "--dbcan_db",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/database",
+      "--gspa_jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "--goa",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/goa.gaf",
+      "--go_owl",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/go.owl",
+      "--ec2go",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/ec2go",
+      "--pathways",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/pathways.tsv",
+      "--outdir",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/nextflow-output"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "nextflow-missing-output",
+    "command": [
+      "/home/leechuck/bin/nextflow",
+      "-c",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/nextflow.config",
+      "run",
+      "/home/leechuck/Public/software/gspa/gspa-nf/main.nf",
+      "-work-dir",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/nf-missing-work",
+      "-with-trace",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/missing-trace.tsv",
+      "--input",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/q.fna",
+      "--dbcan_db",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/database",
+      "--gspa_jar",
+      "/home/leechuck/Public/software/gspa/gspa-cli/build/libs/gspa-3.0.0.jar",
+      "--goa",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/goa.gaf",
+      "--go_owl",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/go.owl",
+      "--ec2go",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/ec2go",
+      "--pathways",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/pathways.tsv",
+      "--outdir",
+      "/home/leechuck/tmp/gspa-dbcan-route-v1/replay/missing-output"
+    ],
+    "exit_code": 1
+  }
+]

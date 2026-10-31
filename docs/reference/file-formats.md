@@ -88,7 +88,14 @@ Example:
 
 Producers: `benchmark/02b_parse_predictors_to_claims.py` (DIAMOND, Pfam,
 InterProScan, eggNOG-mapper), `gspa-cli/src/main/resources/visualize/sidecar_to_claims.py`
-(mDeepFRI, ProteInfer, CLEAN), as used by the Nextflow pipeline.
+(mDeepFRI, ProteInfer), as used by the Nextflow pipeline. Typed CLEAN outputs use
+`gspa clean-claims --tsv <output.clean.tsv> --receipt <output.clean.receipt.json>
+--proteins <input.faa> --score-kind <gmm_confidence|distance> --output <claims.jsonl>`.
+The five-column TSV adds `metadata_json`; the receipt binds the original FASTA,
+output hash, native protein mapping, score semantics and coverage counts.
+Distance observations retain `native_score` and `score_available: false`; their
+numeric placeholder must not be used as a confidence score. Import validates
+these artifacts but does not certify that a model was executed or calibrated.
 
 ### Operons TSV {#operons-tsv}
 

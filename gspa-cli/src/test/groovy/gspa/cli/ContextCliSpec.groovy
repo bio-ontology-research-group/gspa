@@ -26,6 +26,37 @@ class ContextCliSpec extends Specification {
 
     private static Map stageOf(Map ledger, String name) { ledger.stages.find { it.name == name } }
 
+    def 'CLI context modes preserve every candidate and report the selected relation'() {
+        given:
+        def files = fx.genome('g1')
+        File meta = fx.metadata(['g1'])
+        Map metadata = mapper.readValue(meta, Map)
+        metadata.genomes.g1.plausibleReactions = ['r1']
+        meta.text = mapper.writeValueAsString(metadata)
+        File pathways = new File(dir, 'pathways.tsv')
+        pathways.text = 'pathway_id\tgroup_id\treaction_id\tsource\nP\tfocal\tr2\tfixture\nP\tfocal\tr2b\tfixture\nP\tother\tr4\tfixture\n'
+        Map modes = [:]
+        Map predictions = [:]
+
+        when:
+        ['UNIVERSAL','PATHWAY','ORGANISM'].each { String mode ->
+            File out = new File(dir, mode + '.tsv')
+            File export = new File(dir, mode + '-features')
+            def args = ['--claims', files.claims.path, '--out', out.path, '--genome-id', 'g1',
+                        '--genome-layout', files.layout.path, '--orthogroups', files.orthogroups.path,
+                        '--cohort-context-mode', mode, '--feature-export-dir', export.path] + fx.cohortArgs(meta)
+            if (mode == 'PATHWAY') args += ['--cohort-pathways', pathways.path]
+            assert execute(args) == 0
+            modes[mode] = new File(export, 'candidate_features.jsonl').readLines().collect { mapper.readValue(it, Map) }
+            predictions[mode] = out.text
+        }
+
+        then:
+        modes.values().collect { it*.candidate_key.toSet() }.unique().size() == 1
+        predictions.values().toSet().size() == 1
+        modes.every { mode, rows -> rows.findAll { it.function_type == 'EC' }.every { it.cohort_context_mode == mode } }
+    }
+
     def 'a batch with --cohort is two-pass: one snapshot for every genome, then each genome consumes its held-out features'() {
         given:
         def ids = ['g1', 'g2', 'g3']

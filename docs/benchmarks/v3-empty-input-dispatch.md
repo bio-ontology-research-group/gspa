@@ -1,0 +1,67 @@
+# Empty-protein inputs and pipeline state
+
+Status: repair verified by before/after regressions and the full remote JVM gate.
+No whole audit requirement is accepted.
+
+The annotation pipeline previously returned as soon as a loaded genome had no
+proteins. This suppressed nucleotide-level predictors even when complete contig
+sequence was available, omitted requested predictor statuses, and bypassed
+requested integration. Reusing the same pipeline could leave its previous raw
+claims, integration result and stage ledger attached to a new empty or rejected
+input.
+
+The repair clears per-input state before loading the next genome. Available
+protein predictors receive `SKIPPED` with an explicit no-protein reason; missing
+executables remain `UNAVAILABLE`. Neither outcome is a successful negative scan.
+Empty proteomes bypass clustering, while genome predictors receive the nucleotide
+input normally. Requested integration uses the shared workflow on the empty
+candidate set, so its validation and ledger are not silently bypassed.
+
+`SKIPPED` is an added predictor-manifest outcome. The manifest retains schema
+`gspa.predictor-run-manifest/1` and adds a summary counter; consumers must accept
+the new outcome. External-context validation accepts it, and feature extraction
+counts it under sources not fully run, separate from successful scans. Existing
+status meanings and feature-column names remain unchanged.
+
+Seven pipeline regressions cover nucleotide dispatch with no proteins, unavailable
+tools, zero gene-caller output, state clearing after empty and rejected inputs,
+ordinary protein dispatch, and an integration ledger for the new empty genome.
+A separate feature test checks skipped coverage; the manifest test includes the
+new outcome. These are mechanism tests, not real-tool accuracy measurements.
+
+Validation runs on Unimatrix node005. The first attempt (10164) reproduced five
+production defects; its sixth failing case had a fixture error, because the
+protein-only configuration omitted `proteinFasta`. After repair, 86 of 87 focused
+cases passed, with only that fixture failing. The corrected fixture and the
+original production sources are retained for the next before/after comparison.
+The first result-copy trap also omitted a parent directory; its logs and original
+before-test XML survive, but the after-test XML was not copied before scratch
+cleanup. This is an execution-evidence limitation, not a passing gate.
+
+Job 10165 reproduced all six corrected failures, passed all 87 focused checks
+and the full 1,363-test gate. Job 10166 added the seventh case and retained the
+shared workflow for explicitly requested empty-input integration. All seven
+cases fail against the original sources at their intended assertions; all 88
+focused checks then pass. Its forced full gate passes **1,364 tests, zero failures
+or errors, six optional skips**, across 145 suites. Slurm and the job’s own receipt
+both report exit zero. No local model execution was used.
+
+The final diff changes empty-input dispatch, per-run state reset and the skipped
+coverage state. It does not validate the underlying genomic predictors against
+biological truth. Gene-caller zero-output reporting remains limited by its
+existing interface, which cannot distinguish a failed process from genuine
+absence of called genes. The subsequent [genomic GFF repair and CLI replay](v3-genomic-region-output.md)
+now verifies twelve original/intermediate/final engine runs, including empty
+inputs, successful-zero scans and failed scans. It exposed and repaired the
+missing export of original genomic regions and incorrect colocated-CDS protein
+matching. The final full gate passes 1,369 tests with six optional skips.
+
+The source/test/log checkpoint is preserved in
+`benchmark/v3/results/empty-input-dispatch-v1/`. It retains both corrected
+before/after runs and the initial fixture/publication failures. The remote source
+and runtime packages remain bound by SHA-256 in the job records.
+
+Remote package and job records:
+`/data/hohndor/gspa-v3/empty-input-v1/`.
+The context comparison continues independently with its immutable earlier JAR;
+this source change does not alter that registered experiment.

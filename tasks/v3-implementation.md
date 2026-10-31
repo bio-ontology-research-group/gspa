@@ -5,7 +5,12 @@ The authoritative scope is all twelve items in `tasks/todo.md`. The release is
 authorized after implementation, biological validation, and full benchmark reporting.
 No item is complete merely because its scaffolding or synthetic test passes.
 
-## Acceptance and evidence
+Current status: **in progress, not accepted**. The authoritative item-by-item gates and
+verified progress are in [v3-acceptance.md](v3-acceptance.md). The following table
+preserves the prior release claims for traceability; its “Completed” labels were
+rejected by the follow-up audit and must not be used as current status.
+
+## Historical release claims (superseded by the acceptance audit)
 
 | Item | Required evidence before completion | Status |
 | --- | --- | --- |
@@ -35,7 +40,7 @@ experimental versus synthetic truth and missing coverage. Dataset preparation,
 model training, calibration and final test labels are separate. Benchmark
 execution must use production inference, not parallel scoring formulas.
 
-## Current work and process handles
+## Historical process notes (handles are not evidence of running jobs)
 
 - Root branch `development/v3.0.0`; core workflow source through `3c75a38`; community benchmark through `0501c14`. All twelve
   acceptance gates remain open. Real-data learned-model fitting is still pending.

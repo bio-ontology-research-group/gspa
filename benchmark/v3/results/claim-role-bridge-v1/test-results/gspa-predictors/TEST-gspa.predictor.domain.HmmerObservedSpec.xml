@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.predictor.domain.HmmerObservedSpec" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-10-26T23:14:33" hostname="lc-dell" time="0.061">
+  <properties/>
+  <testcase name="HMMER availability and version use its supported help probe" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.006"/>
+  <testcase name="a failed or wrong-program help response is not an available HMMER tool [output: # hmmsearch :: search&#10;# HMMER 3.4 (fixture version), exitCode: 2, #0]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.005"/>
+  <testcase name="a failed or wrong-program help response is not an available HMMER tool [output: # hmmbuild :: build&#10;# HMMER 3.4 (fixture version), exitCode: 0, #1]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.005"/>
+  <testcase name="a failed or wrong-program help response is not an available HMMER tool [output: unrelated program, exitCode: 0, #2]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.004"/>
+  <testcase name="observed domtblout retains the query accession and independent domain statistics" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.005"/>
+  <testcase name="malformed HMMER statistics and missing accessions cannot become annotations [column: 12, value: NaN, #0]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.002"/>
+  <testcase name="malformed HMMER statistics and missing accessions cannot become annotations [column: 12, value: Infinity, #1]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.001"/>
+  <testcase name="malformed HMMER statistics and missing accessions cannot become annotations [column: 12, value: -1e-5, #2]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.001"/>
+  <testcase name="malformed HMMER statistics and missing accessions cannot become annotations [column: 12, value: not-a-number, #3]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.001"/>
+  <testcase name="malformed HMMER statistics and missing accessions cannot become annotations [column: 13, value: NaN, #4]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.001"/>
+  <testcase name="malformed HMMER statistics and missing accessions cannot become annotations [column: 13, value: -Infinity, #5]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.0"/>
+  <testcase name="malformed HMMER statistics and missing accessions cannot become annotations [column: 13, value: not-a-number, #6]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.001"/>
+  <testcase name="malformed HMMER statistics and missing accessions cannot become annotations [column: 4, value: -, #7]" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.001"/>
+  <testcase name="a finite negative domain bit score has zero normalized confidence" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.002"/>
+  <testcase name="installed HMMER is available with a configured model and reports its version" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.005"/>
+  <testcase name="real hmmsearch executes through predictBatch for matching and no-hit proteins" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.011"/>
+  <testcase name="real hmmsearch failure on a malformed model is FAILED rather than no-hit" classname="gspa.predictor.domain.HmmerObservedSpec" time="0.004"/>
+  <system-out><![CDATA[02:14:33.896 [Test worker] INFO gspa.predictor.domain.HmmerPredictor -- Running hmmer: /usr/bin/hmmsearch --domtblout /home/leechuck/tmp/spock_real_hmmsearch_exec_0_tmp11505541260243269767/gspa_hmmer_1793056473896/hmmer_domtbl.tsv --noali -E 1 --domE 1.0E-5 --cpu 1 /home/leechuck/Public/software/gspa/gspa-predictors/build/resources/test/observed-output/hmmer/profile.hmm /home/leechuck/tmp/spock_real_hmmsearch_exec_0_tmp11505541260243269767/gspa_hmmer_1793056473896/input.faa
+02:14:33.902 [Test worker] INFO gspa.predictor.domain.HmmerPredictor -- Running hmmer: /usr/bin/hmmsearch --domtblout /home/leechuck/tmp/spock_real_hmmsearch_exec_0_tmp11505541260243269767/gspa_hmmer_1793056473902/hmmer_domtbl.tsv --noali -E 1 --domE 1.0E-5 --cpu 1 /home/leechuck/Public/software/gspa/gspa-predictors/build/resources/test/observed-output/hmmer/profile.hmm /home/leechuck/tmp/spock_real_hmmsearch_exec_0_tmp11505541260243269767/gspa_hmmer_1793056473902/input.faa
+02:14:33.909 [Test worker] INFO gspa.predictor.domain.HmmerPredictor -- Running hmmer: /usr/bin/hmmsearch --domtblout /home/leechuck/tmp/spock_real_hmmsearch_fail_0_tmp14681938578069872027/gspa_hmmer_1793056473908/hmmer_domtbl.tsv --noali -E 1 --domE 1.0E-5 --cpu 1 /home/leechuck/tmp/spock_real_hmmsearch_fail_0_tmp14681938578069872027/invalid.hmm /home/leechuck/tmp/spock_real_hmmsearch_fail_0_tmp14681938578069872027/gspa_hmmer_1793056473908/input.faa
+02:14:33.911 [Test worker] ERROR gspa.predictor.domain.HmmerPredictor -- hmmer failed with exit code 1: 
+Error: File format problem in trying to open HMM file /home/leechuck/tmp/spock_real_hmmsearch_fail_0_tmp14681938578069872027/invalid.hmm.
+Format tag is 'not': unrecognized.
+Current H3 format is 'HMMER3/f'. Previous H2/H3 formats also supported.
+
+
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

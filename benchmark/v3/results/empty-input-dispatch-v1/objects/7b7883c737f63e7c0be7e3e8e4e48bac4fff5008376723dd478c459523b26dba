@@ -1,0 +1,58 @@
+#!/bin/bash
+#SBATCH --job-name=gspa-empty-input
+#SBATCH --partition=debug
+#SBATCH --nodelist=node005
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=16G
+#SBATCH --time=00:30:00
+#SBATCH --output=/data/hohndor/gspa-v3/empty-input-v1/slurm/%j.log
+set -euo pipefail
+package=/data/hohndor/gspa-v3/empty-input-v1
+work=/scratch/$SLURM_JOB_ID/gspa-empty-input
+jobout=$package/jobs/$SLURM_JOB_ID
+mkdir -p "$work/fs" "$jobout"
+export TMPDIR=/scratch/$SLURM_JOB_ID/tmp
+mkdir -p "$TMPDIR"
+finish() {
+ code=$?
+ trap - EXIT
+ set +e
+ for module in gspa-core gspa-predictors gspa-cli; do
+  src="$work/fs/home/leechuck/Public/software/gspa/$module/build"
+  if [ -d "$src/test-results" ]; then rsync -a "$src/test-results/" "$jobout/final-tests/$module/" || code=90; fi
+ done
+ printf '%s\n' "$code" > "$jobout/exit-code.txt"
+ exit "$code"
+}
+trap finish EXIT
+hostname > "$jobout/hostname.txt"
+cp "$package/run.sbatch" "$jobout/"
+sha256sum "$package/before.tar.zst" "$package/after.tar.zst" "$package/baseline-sources.tar" "$package/python-runtime.tar.zst" > "$jobout/packages.sha256"
+zstd -dc "$package/before.tar.zst" | tar -xf - -C "$work/fs"
+tar -xf "$package/baseline-sources.tar" -C "$work/fs"
+zstd -dc "$package/python-runtime.tar.zst" | tar -xf - -C "$work/fs"
+mkdir -p "$work/fs/home/leechuck/tmp"
+container=(singularity exec --no-home --no-mount tmp --pwd /home/leechuck/Public/software/gspa
+ --bind /usr,/lib,/lib64,/bin,/etc
+ --bind "$work/fs/home/leechuck:/home/leechuck"
+ --bind "$work/fs/usr/lib/jvm/java-21-openjdk-amd64:/usr/lib/jvm/java-21-openjdk-amd64"
+ --env TMPDIR=/home/leechuck/tmp --env JAVA_TOOL_OPTIONS=-Djava.io.tmpdir=/home/leechuck/tmp
+ --env JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+ --env PATH=/home/leechuck/tmp/gspa-v3-testenv/bin:/usr/lib/jvm/java-21-openjdk-amd64/bin:/usr/bin:/bin
+ --env GSPA_TEST_PYTHON=/home/leechuck/tmp/gspa-v3-testenv/bin/python
+ --env GRADLE_USER_HOME=/home/leechuck/.gradle
+ /data/hohndor/gspa-v3/observed-gap-context-modes-v1-relocation/container-root)
+set +e
+"${container[@]}" ./gradlew :gspa-predictors:test --tests gspa.predictor.PipelineEmptyInputSpec --offline --no-daemon --max-workers=2 > "$jobout/before.log" 2>&1
+before=$?
+set -e
+printf '%s\n' "$before" > "$jobout/before-exit-code.txt"
+rsync -a "$work/fs/home/leechuck/Public/software/gspa/gspa-predictors/build/test-results/" "$jobout/before-tests/"
+python3 - "$jobout/before-tests/test/TEST-gspa.predictor.PipelineEmptyInputSpec.xml" <<'PY'
+import sys,xml.etree.ElementTree as E
+r=E.parse(sys.argv[1]).getroot()
+assert int(r.attrib['tests'])==6 and int(r.attrib['failures'])==6 and int(r.attrib['errors'])==0,r.attrib
+PY
+zstd -dc "$package/after.tar.zst" | tar -xf - -C "$work/fs"
+"${container[@]}" ./gradlew :gspa-predictors:test --tests gspa.predictor.PipelineEmptyInputSpec --tests gspa.predictor.PipelineDispatchSpec --tests gspa.predictor.AdapterRunContractSpec --offline --no-daemon --max-workers=2 > "$jobout/after-focused.log" 2>&1
+"${container[@]}" ./gradlew test --rerun-tasks --offline --no-daemon --max-workers=2 > "$jobout/full-tests.log" 2>&1

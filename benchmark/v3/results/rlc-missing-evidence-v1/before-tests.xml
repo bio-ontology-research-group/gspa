@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.suggester.ReactionLocalContextSuggesterSpec" tests="7" skipped="0" failures="3" errors="0" timestamp="2026-10-26T22:15:34" hostname="lc-dell" time="0.457">
+  <properties/>
+  <testcase name="emits a singleton assigning the gap's GO to the operon-central dark gene" classname="gspa.integration.suggester.ReactionLocalContextSuggesterSpec" time="0.312"/>
+  <testcase name="prefers p_mid over p_far even when p_far has a stronger neighbour annotation" classname="gspa.integration.suggester.ReactionLocalContextSuggesterSpec" time="0.009"/>
+  <testcase name="no-op when reaction graph is not wired" classname="gspa.integration.suggester.ReactionLocalContextSuggesterSpec" time="0.001"/>
+  <testcase name="no-op when genome layout is not wired" classname="gspa.integration.suggester.ReactionLocalContextSuggesterSpec" time="0.002"/>
+  <testcase name="absent predictions supply no reaction-neighbor support, commitment or self penalty" classname="gspa.integration.suggester.ReactionLocalContextSuggesterSpec" time="0.091">
+    <failure message="Condition not satisfied:&#10;&#10;row.diversity.toDouble() == 0.9d&#10;|   |         |          |&#10;|   1.137500  1.1375     false&#10;[protein_id:p_mid, reaction_id:r3, pathway_id:TEST, ec:3.3.3.3, go_term:GO:3333333, log_density:-0.234968, diversity:1.137500, commitment:0.693147, self:0.500000, strand_consistency:1.000000, log_intergenic:3.041393, n_anchors:3, n_nbr_gos:3, n_candidates:4, rlc_rank:1, rlc_score:-0.894755, rlc_q:0.701832]&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+row.diversity.toDouble() == 0.9d
+|   |         |          |
+|   1.137500  1.1375     false
+[protein_id:p_mid, reaction_id:r3, pathway_id:TEST, ec:3.3.3.3, go_term:GO:3333333, log_density:-0.234968, diversity:1.137500, commitment:0.693147, self:0.500000, strand_consistency:1.000000, log_intergenic:3.041393, n_anchors:3, n_nbr_gos:3, n_candidates:4, rlc_rank:1, rlc_score:-0.894755, rlc_q:0.701832]
+
+	at gspa.integration.suggester.ReactionLocalContextSuggesterSpec.absent predictions supply no reaction-neighbor support, commitment or self penalty(ReactionLocalContextSuggesterSpec.groovy:169)
+</failure>
+  </testcase>
+  <testcase name="explicitly observed probability one half remains evidence in every feature" classname="gspa.integration.suggester.ReactionLocalContextSuggesterSpec" time="0.015">
+    <failure message="Condition not satisfied:&#10;&#10;row.diversity.toDouble() == .5d&#10;|   |         |          |&#10;|   0.937500  0.9375     false&#10;[protein_id:p_mid, reaction_id:r3, pathway_id:TEST, ec:3.3.3.3, go_term:GO:3333333, log_density:-0.372195, diversity:0.937500, commitment:0.693147, self:0.500000, strand_consistency:1.000000, log_intergenic:3.041393, n_anchors:4, n_nbr_gos:3, n_candidates:4, rlc_rank:2, rlc_score:-1.231981, rlc_q:0.317088]&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+row.diversity.toDouble() == .5d
+|   |         |          |
+|   0.937500  0.9375     false
+[protein_id:p_mid, reaction_id:r3, pathway_id:TEST, ec:3.3.3.3, go_term:GO:3333333, log_density:-0.372195, diversity:0.937500, commitment:0.693147, self:0.500000, strand_consistency:1.000000, log_intergenic:3.041393, n_anchors:4, n_nbr_gos:3, n_candidates:4, rlc_rank:2, rlc_score:-1.231981, rlc_q:0.317088]
+
+	at gspa.integration.suggester.ReactionLocalContextSuggesterSpec.explicitly observed probability one half remains evidence in every feature(ReactionLocalContextSuggesterSpec.groovy:181)
+</failure>
+  </testcase>
+  <testcase name="adding unannotated neighboring genes cannot manufacture reaction diversity" classname="gspa.integration.suggester.ReactionLocalContextSuggesterSpec" time="0.026">
+    <failure message="Condition not satisfied:&#10;&#10;row.diversity.toDouble() == original&#10;|   |         |          |  |&#10;|   1.249121  1.249121   |  1.1375&#10;|                        false&#10;[protein_id:p_mid, reaction_id:r3, pathway_id:TEST, ec:3.3.3.3, go_term:GO:3333333, log_density:-0.234968, diversity:1.249121, commitment:0.693147, self:0.500000, strand_consistency:1.000000, log_intergenic:3.041393, n_anchors:3, n_nbr_gos:3, n_candidates:11, rlc_rank:1, rlc_score:-0.783134, rlc_q:0.204212]&#10;" type="org.spockframework.runtime.SpockComparisonFailure">Condition not satisfied:
+
+row.diversity.toDouble() == original
+|   |         |          |  |
+|   1.249121  1.249121   |  1.1375
+|                        false
+[protein_id:p_mid, reaction_id:r3, pathway_id:TEST, ec:3.3.3.3, go_term:GO:3333333, log_density:-0.234968, diversity:1.249121, commitment:0.693147, self:0.500000, strand_consistency:1.000000, log_intergenic:3.041393, n_anchors:3, n_nbr_gos:3, n_candidates:11, rlc_rank:1, rlc_score:-0.783134, rlc_q:0.204212]
+
+	at gspa.integration.suggester.ReactionLocalContextSuggesterSpec.adding unannotated neighboring genes cannot manufacture reaction diversity(ReactionLocalContextSuggesterSpec.groovy:198)
+</failure>
+  </testcase>
+  <system-out><![CDATA[01:15:34.910 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+01:15:34.924 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+01:15:34.927 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: no reaction graph wired; skipping
+01:15:34.929 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: no genome layout wired; skipping
+01:15:34.941 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+01:15:35.031 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+01:15:35.041 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+01:15:35.056 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@25ddbbbb]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@1536602f]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@25ddbbbb]
+]]></system-err>
+</testsuite>

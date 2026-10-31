@@ -1,0 +1,44 @@
+**Verdict:** the design is sound, but `run_price_local.py` has one blocker, and a few other points need a fix or a decision before the full132 registration. I read the code and ran nothing.
+
+## Required fixes
+
+**1. Container identity check will probably abort every run** (`run_price_local.py:118,131`). `tree_hashes(container)` is applied to the container root.
+- `tree_hashes` raises on any symlink or non-regular file. A Singularity sandbox directory normally has both (`/bin -> usr/bin`, `/var/run`, device nodes), so `run()` would likely raise before launching.
+- `run()` rejects a `.sif` file, since `container.is_dir()` is required.
+- The check also gives false assurance. `/usr,/lib,/lib64,/bin,/etc,/data` are bound from the host over the container, so the executed java, python and libraries are the host's. The registered inputs only pin the java and python executables and the jar, not the JDK library tree. That gap already exists in `P` and is not new.
+- It also reads the whole root twice and puts a huge JSON into the locator.
+- **Fix:** replace it with a symlink-tolerant identity (path, mode, `readlink` target, or sha256 for regular files; skip device nodes), or hash only what is actually executed from the container (the Singularity binary and any container-only files). Add a test with a container containing a symlink.
+
+**2. Preflight happens only after hours of compute.** `publish()` checks that staging is outside `attempts/` and that source and destination don't overlap. `run()` calls it only after the run. `staged.rename` also needs staging on the same device as `attempts/<index>`, and nothing checks that.
+- A wrong staging mount (`EXDEV`) would waste a 45M-case run.
+- **Fix:** before launching, call the same validation. Also check that `os.stat(staging_root).st_dev == os.stat(logical_parent).st_dev`.
+- Also confirm the container's own `/tmp` is writable. `--no-mount tmp` plus `--no-home` means a `TMPDIR` under `$HOME` is not visible. Java is covered by the explicit `java.io.tmpdir`, but any default-`tempfile` use inside the engine is not.
+
+**3. A publication failure can lose a completed run.**
+- On an exception after a successful run, `local_parent` is retained, but `scratch` is typically per-job (`/scratch/123`) and wiped at job end. Either require a persistent scratch for the wrapper, or fail loudly if `scratch` looks job-ephemeral.
+- The staged uuid directory is not recorded in the locator, and there is no republish path. The recipe would be `publish(local, destination, staging, execution+returncode)` from the locator and `.result.json`. I suggest a small `--publish-only --locator` mode (a few lines), since this is exactly the failed-job recovery case. If that is out of scope, document the recipe instead.
+
+**4. Durability before the rename** (`publish`, line 75). `copytree` followed by rehash proves the node's page cache holds the right bytes, not that the shared filesystem does. Given the writeback stalls you describe, a node crash after `rename` could leave a visible `completed.json` over unflushed data.
+- **Fix:** `fsync` each staged file and the staging directory tree before `rename`.
+- `finalize` would catch this by rehashing, so it fails closed. The cost is a wasted attempt, not a false success.
+
+## Checked, no change needed
+
+- **Finalizer premature success:** none found.
+  - Inside the container, `completed.json` exists only in private scratch.
+  - On the host, `attempts/<index>` is an empty directory until the atomic rename.
+  - `.publication.lock` and staging are outside the `*/completed.json` glob.
+  - A failed attempt publishes without `completed.json`.
+  - Two completed attempts for one index make `finalize` fail closed.
+- **Receipt paths:** the bind puts the final logical path in every receipt and manifest, so `finalize` rehashes the same absolute paths. `out` is passed `.resolve()`d, so call `finalize` with the same resolved path or the arm-receipt parent check fails closed.
+- **Engine identity:** `P.run` runs unchanged under the host python. The wrapper checks the registration and `plan.json` hash before launching, and the inner engine checks inputs at start and before `completed.json`. `prepare` registers every top-level `benchmark/v3/*.py`, so `run_price_local.py` and `run_price_matrix_capacity.py` must be in place and frozen before registration. Any later edit makes `check` fail.
+- **Copy and hash integrity:** hash, copy, rehash both copies, and the same-attempt exclusivity (`x`-mode locator, `exist_ok=False`, destination check under the lock) are sound. Contradictory exit codes and completion markers are rejected.
+- **Retries:** reusing an attempt id fails, so a retry needs a new id. That is intended.
+- **`-Djava.io.tmpdir` in `run_price_matrix_capacity.py:53`:** correct and placed before `-jar`. It is scoped to the per-run `gspa-capacity-*` directory under `scratch`, which also covers the fallback to `$TMPDIR` or `~/tmp`. The path is baked into each arm's receipt command, so receipts are per attempt and not reusable. This is harmless, and the engine, output schema and math are unchanged. The new test asserts the option appears exactly once, precedes `-jar`, is an existing directory inside `scratch`, has the right prefix, and matches `command.json`.
+
+## Test gaps (add only with fixes 1–2)
+
+- No test covers `run()` or `command` plumbing beyond the bind string. Add one for a container with symlinks, one for the preflight, and one for a failed return code with neither `completed.json` nor `failed.json`.
+- The `publish` tests are otherwise good.
+
+I made no edits and wrote no plan file, as you asked.

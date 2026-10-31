@@ -29,6 +29,7 @@ Independence rules recorded in every export
 from __future__ import annotations
 
 import argparse
+import os
 import ast
 import csv
 import datetime as dt
@@ -1035,7 +1036,7 @@ def quality_report(manifest: dict[str, Any], res: dict[str, Any], rows: list[dic
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("command", choices=["acquire", "normalize", "all"])
-    p.add_argument("--out", type=Path, default=Path("/tmp/gspa-v3-metabolic-data"))
+    p.add_argument("--out", type=Path, default=Path(os.environ.get("TMPDIR", str(Path.home() / "tmp"))) / "gspa-v3-metabolic-data")
     p.add_argument("--only", nargs="*", default=None, help="restrict acquisition to these source ids")
     p.add_argument("--force", action="store_true")
     args = p.parse_args(argv)

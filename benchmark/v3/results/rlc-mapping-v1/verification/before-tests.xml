@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="gspa.integration.workflow.RlcMappingWorkflowSpec" tests="3" skipped="0" failures="3" errors="0" timestamp="2026-10-26T23:56:28" hostname="lc-dell" time="1.198">
+  <properties/>
+  <testcase name="standalone EC mapping is sufficient for RLC anchor lookup" classname="gspa.integration.workflow.RlcMappingWorkflowSpec" time="0.926">
+    <failure message="Condition not satisfied:&#10;&#10;solo.result.integrated.suggestions.size() &gt; 0&#10;|    |      |          |           |      |&#10;|    |      |          []          0      false&#10;|    |      IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions)&#10;|    &lt;gspa.integration.workflow.IntegrationWorkflow$Result@4ea17147 genomeId=g integrated=IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions) state=gspa.integration.IntegrationState@309dcdf3 audit=gspa.integration.IntegrationRunAudit@7573b9ee claims=[gspa.integration.EvidenceClaim(p2, GO, GO:0000001, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false), gspa.integration.EvidenceClaim(p4, GO, GO:0000003, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false)] qualityReport=[schema:gspa.gene-model-quality/1, antifam_scan_status:UNKNOWN, antifam_scan_complete:false, observations:[], flagged_proteins:[], functional_scoring:Quality observations do not supply positive functional evidence or a calibrated penalty. Existing functional evidence is retained; the current learned models do not score flagged proteins., interpretation:A match can indicate a spurious ORF or a local gene-boundary error. It does not establish whole-protein inactivity. No match, or an unknown/incomplete scan, does not establish a correct gene model.] maxIter=6 elapsedNanos=428735513 context=null cohortReport=null learned=null featureExport=null&gt;&#10;[result:gspa.integration.workflow.IntegrationWorkflow$Result@4ea17147, features:protein_id&#9;reaction_id&#9;pathway_id&#9;ec&#9;go_term&#9;log_density&#9;diversity&#9;commitment&#9;self&#9;strand_consistency&#9;log_intergenic&#9;n_anchors&#9;n_nbr_gos&#9;n_candidates&#9;rlc_rank&#9;rlc_score&#9;rlc_q&#10;]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+solo.result.integrated.suggestions.size() &gt; 0
+|    |      |          |           |      |
+|    |      |          []          0      false
+|    |      IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions)
+|    &lt;gspa.integration.workflow.IntegrationWorkflow$Result@4ea17147 genomeId=g integrated=IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions) state=gspa.integration.IntegrationState@309dcdf3 audit=gspa.integration.IntegrationRunAudit@7573b9ee claims=[gspa.integration.EvidenceClaim(p2, GO, GO:0000001, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false), gspa.integration.EvidenceClaim(p4, GO, GO:0000003, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false)] qualityReport=[schema:gspa.gene-model-quality/1, antifam_scan_status:UNKNOWN, antifam_scan_complete:false, observations:[], flagged_proteins:[], functional_scoring:Quality observations do not supply positive functional evidence or a calibrated penalty. Existing functional evidence is retained; the current learned models do not score flagged proteins., interpretation:A match can indicate a spurious ORF or a local gene-boundary error. It does not establish whole-protein inactivity. No match, or an unknown/incomplete scan, does not establish a correct gene model.] maxIter=6 elapsedNanos=428735513 context=null cohortReport=null learned=null featureExport=null&gt;
+[result:gspa.integration.workflow.IntegrationWorkflow$Result@4ea17147, features:protein_id	reaction_id	pathway_id	ec	go_term	log_density	diversity	commitment	self	strand_consistency	log_intergenic	n_anchors	n_nbr_gos	n_candidates	rlc_rank	rlc_score	rlc_q
+]
+
+	at gspa.integration.workflow.RlcMappingWorkflowSpec.standalone EC mapping is sufficient for RLC anchor lookup(RlcMappingWorkflowSpec.groovy:46)
+</failure>
+  </testcase>
+  <testcase name="all GO alternatives survive the production mapping path and file order is irrelevant" classname="gspa.integration.workflow.RlcMappingWorkflowSpec" time="0.174">
+    <failure message="Condition not satisfied:&#10;&#10;forward.result.integrated.suggestions.size() &gt; 0&#10;|       |      |          |           |      |&#10;|       |      |          []          0      false&#10;|       |      IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions)&#10;|       &lt;gspa.integration.workflow.IntegrationWorkflow$Result@21ea996f genomeId=g integrated=IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions) state=gspa.integration.IntegrationState@3f9b7fe1 audit=gspa.integration.IntegrationRunAudit@2f79f192 claims=[gspa.integration.EvidenceClaim(p2, GO, GO:0000001, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false), gspa.integration.EvidenceClaim(p4, GO, GO:0000003, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false)] qualityReport=[schema:gspa.gene-model-quality/1, antifam_scan_status:UNKNOWN, antifam_scan_complete:false, observations:[], flagged_proteins:[], functional_scoring:Quality observations do not supply positive functional evidence or a calibrated penalty. Existing functional evidence is retained; the current learned models do not score flagged proteins., interpretation:A match can indicate a spurious ORF or a local gene-boundary error. It does not establish whole-protein inactivity. No match, or an unknown/incomplete scan, does not establish a correct gene model.] maxIter=6 elapsedNanos=86395081 context=null cohortReport=null learned=null featureExport=null&gt;&#10;[result:gspa.integration.workflow.IntegrationWorkflow$Result@21ea996f, features:protein_id&#9;reaction_id&#9;pathway_id&#9;ec&#9;go_term&#9;log_density&#9;diversity&#9;commitment&#9;self&#9;strand_consistency&#9;log_intergenic&#9;n_anchors&#9;n_nbr_gos&#9;n_candidates&#9;rlc_rank&#9;rlc_score&#9;rlc_q&#10;]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+forward.result.integrated.suggestions.size() &gt; 0
+|       |      |          |           |      |
+|       |      |          []          0      false
+|       |      IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions)
+|       &lt;gspa.integration.workflow.IntegrationWorkflow$Result@21ea996f genomeId=g integrated=IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions) state=gspa.integration.IntegrationState@3f9b7fe1 audit=gspa.integration.IntegrationRunAudit@2f79f192 claims=[gspa.integration.EvidenceClaim(p2, GO, GO:0000001, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false), gspa.integration.EvidenceClaim(p4, GO, GO:0000003, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false)] qualityReport=[schema:gspa.gene-model-quality/1, antifam_scan_status:UNKNOWN, antifam_scan_complete:false, observations:[], flagged_proteins:[], functional_scoring:Quality observations do not supply positive functional evidence or a calibrated penalty. Existing functional evidence is retained; the current learned models do not score flagged proteins., interpretation:A match can indicate a spurious ORF or a local gene-boundary error. It does not establish whole-protein inactivity. No match, or an unknown/incomplete scan, does not establish a correct gene model.] maxIter=6 elapsedNanos=86395081 context=null cohortReport=null learned=null featureExport=null&gt;
+[result:gspa.integration.workflow.IntegrationWorkflow$Result@21ea996f, features:protein_id	reaction_id	pathway_id	ec	go_term	log_density	diversity	commitment	self	strand_consistency	log_intergenic	n_anchors	n_nbr_gos	n_candidates	rlc_rank	rlc_score	rlc_q
+]
+
+	at gspa.integration.workflow.RlcMappingWorkflowSpec.all GO alternatives survive the production mapping path and file order is irrelevant(RlcMappingWorkflowSpec.groovy:57)
+</failure>
+  </testcase>
+  <testcase name="shared references preserve the same independent multivalued mapping" classname="gspa.integration.workflow.RlcMappingWorkflowSpec" time="0.096">
+    <failure message="Condition not satisfied:&#10;&#10;shared.result.integrated.suggestions.size() &gt; 0&#10;|      |      |          |           |      |&#10;|      |      |          []          0      false&#10;|      |      IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions)&#10;|      &lt;gspa.integration.workflow.IntegrationWorkflow$Result@2ce03e86 genomeId=g integrated=IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions) state=gspa.integration.IntegrationState@1c628f6a audit=gspa.integration.IntegrationRunAudit@9b47400 claims=[gspa.integration.EvidenceClaim(p2, GO, GO:0000001, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false), gspa.integration.EvidenceClaim(p4, GO, GO:0000003, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false)] qualityReport=[schema:gspa.gene-model-quality/1, antifam_scan_status:UNKNOWN, antifam_scan_complete:false, observations:[], flagged_proteins:[], functional_scoring:Quality observations do not supply positive functional evidence or a calibrated penalty. Existing functional evidence is retained; the current learned models do not score flagged proteins., interpretation:A match can indicate a spurious ORF or a local gene-boundary error. It does not establish whole-protein inactivity. No match, or an unknown/incomplete scan, does not establish a correct gene model.] maxIter=6 elapsedNanos=4744366 context=null cohortReport=null learned=null featureExport=null&gt;&#10;[result:gspa.integration.workflow.IntegrationWorkflow$Result@2ce03e86, features:protein_id&#9;reaction_id&#9;pathway_id&#9;ec&#9;go_term&#9;log_density&#9;diversity&#9;commitment&#9;self&#9;strand_consistency&#9;log_intergenic&#9;n_anchors&#9;n_nbr_gos&#9;n_candidates&#9;rlc_rank&#9;rlc_score&#9;rlc_q&#10;]&#10;" type="org.spockframework.runtime.ConditionNotSatisfiedError">Condition not satisfied:
+
+shared.result.integrated.suggestions.size() &gt; 0
+|      |      |          |           |      |
+|      |      |          []          0      false
+|      |      IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions)
+|      &lt;gspa.integration.workflow.IntegrationWorkflow$Result@2ce03e86 genomeId=g integrated=IntegratedAnnotationSet(2 annotations, 2 provenance entries, 0 suggestions) state=gspa.integration.IntegrationState@1c628f6a audit=gspa.integration.IntegrationRunAudit@9b47400 claims=[gspa.integration.EvidenceClaim(p2, GO, GO:0000001, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false), gspa.integration.EvidenceClaim(p4, GO, GO:0000003, null, SEQUENCE_SIMILARITY, diamond, 0.9, 0.9, [:], null, null, false)] qualityReport=[schema:gspa.gene-model-quality/1, antifam_scan_status:UNKNOWN, antifam_scan_complete:false, observations:[], flagged_proteins:[], functional_scoring:Quality observations do not supply positive functional evidence or a calibrated penalty. Existing functional evidence is retained; the current learned models do not score flagged proteins., interpretation:A match can indicate a spurious ORF or a local gene-boundary error. It does not establish whole-protein inactivity. No match, or an unknown/incomplete scan, does not establish a correct gene model.] maxIter=6 elapsedNanos=4744366 context=null cohortReport=null learned=null featureExport=null&gt;
+[result:gspa.integration.workflow.IntegrationWorkflow$Result@2ce03e86, features:protein_id	reaction_id	pathway_id	ec	go_term	log_density	diversity	commitment	self	strand_consistency	log_intergenic	n_anchors	n_nbr_gos	n_candidates	rlc_rank	rlc_score	rlc_q
+]
+
+	at gspa.integration.workflow.RlcMappingWorkflowSpec.shared references preserve the same independent multivalued mapping(RlcMappingWorkflowSpec.groovy:68)
+</failure>
+  </testcase>
+  <system-out><![CDATA[02:56:29.187 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:56:29.286 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:56:29.383 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+02:56:29.399 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:56:29.400 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:56:29.434 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 0 suggestions / 1 gaps (skipped: closed=0, no-graph=1, no-anchors=0, low-density=0)
+02:56:29.493 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:56:29.547 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:56:29.570 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 2 EC-to-GO mappings
+02:56:29.574 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 0 pathway(s) from pathways.tsv; total now 0
+02:56:29.578 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+02:56:29.578 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:56:29.578 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:56:29.614 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+02:56:29.754 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:56:29.793 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:56:29.799 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 2 EC-to-GO mappings
+02:56:29.799 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 0 pathway(s) from pathways.tsv; total now 0
+02:56:29.802 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+02:56:29.802 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:56:29.802 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:56:29.803 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 0 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=1, low-density=0)
+02:56:29.822 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:56:29.866 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:56:29.871 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 2 EC-to-GO mappings
+02:56:29.871 [Test worker] INFO gspa.ontology.PathwayLoader -- Loaded 0 pathway(s) from pathways.tsv; total now 0
+02:56:29.873 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+02:56:29.873 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:56:29.873 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:56:29.879 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 1 suggestions / 1 gaps (skipped: closed=0, no-graph=0, no-anchors=0, low-density=0)
+02:56:29.894 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:56:29.918 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:56:29.923 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+02:56:29.924 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:56:29.924 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:56:29.925 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 0 suggestions / 1 gaps (skipped: closed=0, no-graph=1, no-anchors=0, low-density=0)
+02:56:29.937 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded anatomical cross-products for 2674 GO terms
+02:56:29.966 [Test worker] INFO gspa.ontology.AnatomicalConstraints -- Loaded 8331 anatomy-taxon constraints across 2178 structures
+02:56:29.975 [Test worker] INFO gspa.integration.IterativeRefiner -- Refining 2 claims across 2 (protein, function) groups (maxIter=6, damping=0.5)
+02:56:29.975 [Test worker] DEBUG gspa.integration.IterativeRefiner -- iter 0: mean |Δp| = 0.00000
+02:56:29.975 [Test worker] INFO gspa.integration.IterativeRefiner -- Converged at iteration 0 (Δp=0.00000 < 0.005)
+02:56:29.976 [Test worker] INFO gspa.integration.suggester.ReactionLocalContextSuggester -- RLGC: emitted 0 suggestions / 1 gaps (skipped: closed=0, no-graph=1, no-anchors=0, low-density=0)
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@736309a9]
+SLF4J(W): Found provider [org.apache.logging.slf4j.SLF4JServiceProvider@4e93dcb9]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@736309a9]
+]]></system-err>
+</testsuite>

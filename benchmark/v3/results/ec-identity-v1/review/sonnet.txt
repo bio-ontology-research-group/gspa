@@ -1,0 +1,29 @@
+The semantics in `ec_identity.py` are conservative and correct. I found no blocking bug. I read both files only and did not run the tests, the audit or `audit.json`, so the 1309 / 8472 counts are unchecked. As a consistency check, 1202+101+6 = 1309, and 1206 chain-resolved + 102 ambiguous + 6 deleted = 1314 transferred.
+
+**What holds up**
+- **Resolution** (`resolve`, lines 63-85): it follows only single-destination chains ending at an active entry. A split returns `ambiguous` with `canonical_id=None`, and a deleted end returns `deleted`. Nothing picks a branch, and a split stays ambiguous even if its destinations later converge (tested).
+- **Legacy classification** (`audit`, lines 88-100): a legacy alias counts as equivalent only if source and target resolve to the same active ID. An ambiguous source stays ambiguous even when the legacy target is one of its destinations.
+- **Malformed source graph:**
+  - The parser rejects duplicate IDs, unterminated or undescribed entries, unknown transfer or deletion syntax, and duplicate destinations.
+  - `validate_transfer_graph` checks every branch for missing targets and cycles, including self-loops.
+  - `build` calls it before any audit, so a bad source is an error and not a fact about the enzymes. The ambiguous branches are checked too.
+  - The output directory is created with `exist_ok=False`, so an existing audit cannot be overwritten.
+
+**Findings, most important first**
+1. **The release pin is not enforced.** The code records a sha256 but never compares it to an expected value. It also doesn't check the release date `02-Sep-2026` in the header. A different `enzyme.dat` would produce a valid-looking audit. Add `--expect-sha256`, or assert the release string, and fail on mismatch.
+2. **Duplicate legacy keys are accepted silently.** `json.loads` at line 118 keeps the last value for a repeated alias key. That is the "pick last" behaviour you want excluded. Use an `object_pairs_hook` that raises on duplicates. Also check that `aliases` is a dict of string to string. A list value would currently crash with an `AttributeError` inside `resolve`.
+3. **The audit file is not portable.** `inputs` is keyed by the resolved absolute path, so the same audit on a different machine has different content. Key it by basename or role (`source`, `legacy`) and store the sha as the value.
+4. **No standalone consumer API.** Later Price scoring needs a loader that checks the schema and sha and returns a map from old ID to canonical ID. The map should hold only `unique_active_equivalence` rows. Everything else must fall back to exact-ID identity, and an unknown ID should be a hard error, not a silent miss. Merging is safe for many-to-one transfers, since the old-to-new mapping is a function. It must never run in the reverse direction.
+5. **Minor:**
+   - The preliminary `.nN` flag appears in `resolution` but not in `disposition`. Surface it so a preliminary-ID equivalence can't pass as a stable one.
+   - The error messages omit the offending ID.
+   - A failed write after `mkdir` leaves an empty directory that blocks a rerun. Write to a temp name and rename.
+
+**Regression tests to add** (the existing 6 tests cover splits, cycles, deleted and unknown, graph validation, and parser basics):
+- **Real-data pin:** a test that skips when the source file is absent. Otherwise it asserts the sha, the source counts 6980/1314/178, the resolution counts 8186/102/184, and the legacy counts 1202/101/6. This is the main regression to add, since all of these numbers are currently unasserted.
+- **Parser syntax:** the mixed `a, b and c` form.
+- **Graph shapes:** a self-transfer, and a single transfer that lands on a split.
+- **Legacy dispositions:** `legacy_target_unresolved`, an unknown legacy source and a preliminary alias.
+- **`build` end to end:** the duplicate-key rejection, an existing output directory, and the sha and counts in the output.
+
+On the benchmark: the audit should be a complete standalone reference for full Price scoring. It is a source-level audit, so it needs no partial benchmark run and shouldn't be reported as one.

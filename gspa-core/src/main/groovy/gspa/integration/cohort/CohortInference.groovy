@@ -4,6 +4,10 @@ import gspa.model.GenomeLayout
 import gspa.model.ProteinLocus
 import gspa.ontology.ReactionGraph
 import groovy.transform.CompileStatic
+import groovy.transform.PackageScope
+
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 /**
  * Cohort-wide inference of reaction-local context for (gene, reaction)
@@ -30,14 +34,24 @@ import groovy.transform.CompileStatic
  * (O(genes) memory each). Matched backgrounds use density buckets and a
  * per-(genome, family) contaminated-window set, so a lookup costs
  * O(bucket size) rather than O(genes). Peer features are cached per
- * (family, reaction, holdout key). Work still grows with
+ * (family, reaction, holdout key); within one run the holdout key fixes the
+ * exact peer list. Work still grows with
  * distinct (family, reaction) pairs x peer genomes; for very dense EC
  * candidate sets, shard by genome batch or reaction and merge records.</p>
  */
 @CompileStatic
 class CohortInference {
 
-    static final String VERSION = 'cohort-v2'
+    static final String VERSION = 'cohort-v3'
+
+    /**
+     * Permutation seeding scheme: the seed is a SHA-256 of (configured seed,
+     * family, reaction, canonical signature of the permutation input: the
+     * weighted evidence units of the informative peers and their background
+     * pools), so identical peer evidence gets an identical null whatever the
+     * holdout label, peer order or number of collapsed exact copies.
+     */
+    static final String PERMUTATION_SEED_SCHEME = 'content:v2'
 
     private enum WState { FULL, TRUNCATED, UNKNOWN }
 
@@ -67,7 +81,8 @@ class CohortInference {
 
     private static class PermMember {
         boolean positive
-        boolean[] pool
+        int poolSize
+        int poolPositive
     }
 
     private static class PeerObs {
@@ -113,6 +128,7 @@ class CohortInference {
     private final Map<String, boolean[]> positivityCache = new HashMap<>()
     private final Map<String, Set<String>> contaminatedCache = new HashMap<>()
     private final Map<String, Map<String, Double>> peerCache = new HashMap<>()
+    private final Map<String, String> evidenceIdentities
 
     CohortInference(CohortInput input, ReactionGraph graph, CohortConfig config) {
         config.validate()
@@ -139,6 +155,11 @@ class CohortInference {
                 }
             }
         }
+        evidenceIdentities = CohortEvidenceIdentity.fingerprints(input, claimsBy)
+    }
+
+    private List<CladeModel.Unit> evidenceUnits(Collection<String> genomes) {
+        clades.units(genomes, evidenceIdentities)
     }
 
     CladeModel cladeModel() { clades }
@@ -153,6 +174,9 @@ class CohortInference {
         result.provenance.put('phylogenySource', input.treeNewick ? 'supplied-tree+explicit-ids' : 'explicit-ids')
         result.provenance.put('nGenomes', input.genomes.size())
         result.provenance.put('nClaims', input.claims.size())
+        result.provenance.put('duplicateEvidencePolicy', CohortEvidenceIdentity.POLICY)
+        result.provenance.put('signatureAvailabilityPolicy', 'minimum-distinct-anchors-or-unknown/1')
+        result.provenance.put('permutationSeed', PERMUTATION_SEED_SCHEME)
 
         List<CohortInput.CandidateClaim> claims = new ArrayList<>(input.claims)
         Collections.sort(claims, { CohortInput.CandidateClaim a, CohortInput.CandidateClaim b ->
@@ -205,7 +229,7 @@ class CohortInference {
                 familyKey: fKey, membershipWeight: primary == null ? 0d : primary.weight,
                 baselineConfidence: claim.baselineConfidence)
 
-        Map<String, ReactionContext.Link> links = contextModel.links(r)
+        Map<String, ReactionContext.Link> links = contextModel.links(r, g)
         Set<String> holdout = clades.holdoutSet(g, cfg.holdout, input.genomes.keySet())
         String hk = holdoutKey(g)
         List<String> peers = new ArrayList<>()
@@ -222,12 +246,13 @@ class CohortInference {
         List<CohortInput.CandidateClaim> proteinClaims = claimsBy.get(g)?.get(p) ?: Collections.<CohortInput.CandidateClaim>emptyList()
         rec.features.put('n_reaction_alternatives', (double) Math.max(0, proteinClaims.size() - 1))
         if (fKey != null) {
-            rec.features.putAll(peerFeatures(fKey, r, hk, peers, seedFor(fKey, r, hk)))
+            rec.features.putAll(peerFeatures(fKey, r, hk, peers, cfg.seed))
         } else {
             rec.states.put('family', 'unknown')
         }
         rec.states.put('phylogeny_metadata', clades.metadata.get(g))
         rec.states.put('assembly_status', assemblyStatus(g).name())
+        rec.states.put('reaction_signature', links.size() >= cfg.minAnchors ? 'testable' : 'untestable')
 
         // Raw role evidence only: no probabilities, no null distribution, no threshold.
         String gpKey = g + '|' + p
@@ -246,7 +271,7 @@ class CohortInference {
             CohortInput.FamilyAssignment a = assigns[i]
             CohortResult.Alternative alt = new CohortResult.Alternative(kind: 'family', familyKey: a.familyKey(),
                     reactionId: r, weight: a.weight)
-            alt.features.putAll(peerFeatures(a.familyKey(), r, hk, peers, seedFor(a.familyKey(), r, hk)))
+            alt.features.putAll(peerFeatures(a.familyKey(), r, hk, peers, cfg.seed))
             rec.alternatives.add(alt)
         }
         int rxnAltCount = 0
@@ -266,6 +291,7 @@ class CohortInference {
         rec.provenance.put('nPeerGenomes', peers.size())
         rec.provenance.put('familyResolution', primary?.subfamilyId ? 'subfamily' : (primary == null ? 'none' : 'orthogroup'))
         rec.provenance.put('seed', cfg.seed)
+        rec.provenance.put('permutationSeed', PERMUTATION_SEED_SCHEME)
         rec
     }
 
@@ -280,8 +306,72 @@ class CohortInference {
         }
     }
 
-    private long seedFor(String f, String r, String hk) {
-        cfg.seed ^ (31L * (31L * f.hashCode() + r.hashCode()) + hk.hashCode())
+    /** Permutation seed for (family, reaction) against the given peers; depends only on evidence content. */
+    @PackageScope
+    long permutationSeed(String familyKey, String reactionId, List<String> peers) {
+        contentSeed(cfg.seed, familyKey, reactionId, permutationSignature(familyKey, reactionId, peers))
+    }
+
+    /** Canonical signature of the permutation input for (family, reaction) against the given peers. */
+    @PackageScope
+    String permutationSignature(String familyKey, String reactionId, List<String> peers) {
+        Map<String, PeerObs> byGenome = permutationInput(observePeers(familyKey, reactionId, peers, null))
+        byGenome.isEmpty() ? '' : permutationSignature(evidenceUnits(byGenome.keySet()), byGenome)
+    }
+
+    /**
+     * Canonical, order-free signature of exactly what the permutation consumes:
+     * per unit (already sorted by clade, then cluster) its clade id, cluster id,
+     * exact weight and the sorted per-member background-pool descriptors.
+     * Units are built after the evidence-identity collapse, and members are
+     * described by their pools, not by genome id, so neither the holdout label,
+     * the peer order, nor which exact copy represents a collapsed duplicate can
+     * change it. Whole-genome identity fingerprints are deliberately not used:
+     * they also change with unrelated claims elsewhere in a genome.
+     */
+    private static String permutationSignature(List<CladeModel.Unit> units, Map<String, PeerObs> byGenome) {
+        StringBuilder sb = new StringBuilder('cohort-perm-units/v2;')
+        for (CladeModel.Unit u : units) {
+            List<String> members = new ArrayList<>()
+            for (String g : u.genomes) {
+                StringBuilder m = new StringBuilder()
+                // Pool order is kept: it is the order in which draws are consumed.
+                for (PermMember pm : byGenome.get(g).perm) {
+                    m.append(pm.positive ? '+' : '-').append(pm.poolSize).append('/').append(pm.poolPositive).append(',')
+                }
+                members.add(m.toString())
+            }
+            Collections.sort(members)
+            field(sb, 'U')
+            field(sb, u.cladeId)
+            field(sb, u.clusterId)
+            field(sb, Long.toHexString(Double.doubleToLongBits(u.weight)))
+            field(sb, Integer.toString(members.size()))
+            for (String m : members) field(sb, m)
+        }
+        sha256(sb.toString()).encodeHex().toString()
+    }
+
+    private static long contentSeed(long baseSeed, String f, String r, String signature) {
+        StringBuilder sb = new StringBuilder('cohort-perm-seed/' + PERMUTATION_SEED_SCHEME + ';')
+        field(sb, Long.toString(baseSeed))
+        field(sb, f)
+        field(sb, r)
+        field(sb, signature)
+        byte[] h = sha256(sb.toString())
+        long v = 0L
+        for (int i = 0; i < 8; i++) v = (v << 8) | (h[i] & 0xffL)
+        v
+    }
+
+    /** Length-prefixed field: unambiguous for any content, including separators. */
+    private static void field(StringBuilder sb, String s) {
+        String v = s == null ? '' : s
+        sb.append(s == null ? '-' : Integer.toString(v.length())).append(':').append(v).append(';')
+    }
+
+    private static byte[] sha256(String s) {
+        MessageDigest.getInstance('SHA-256').digest(s.getBytes(StandardCharsets.UTF_8))
     }
 
     private AssemblyStatus assemblyStatus(String g) {
@@ -352,14 +442,25 @@ class CohortInference {
             if (inFamily(g, q, familyKey)) continue
             for (CohortInput.CandidateClaim c : cs) {
                 if (c.reactionId == reactionId) continue
-                ReactionContext.Link link = links.get(c.reactionId)
+                ReactionContext.Link link = contextModel.findLink(links, c.reactionId)
                 if (link == null) continue
                 double w = link.weight * c.baselineConfidence
-                Double prev = out.get(c.reactionId)
-                if (prev == null || w > prev.doubleValue()) out.put(c.reactionId, w)
+                Double prev = out.get(link.reactionId)
+                if (prev == null || w > prev.doubleValue()) out.put(link.reactionId, w)
             }
         }
         out
+    }
+
+    /** Named-pathway alternatives are one evidence unit, including in null windows. */
+    private Set<String> observedGroups(Set<String> reactions, Map<String, ReactionContext.Link> links) {
+        if (cfg.contextMode != ContextMode.PATHWAY || reactions == null) return reactions
+        Set<String> groups = new HashSet<>()
+        for (String r : reactions) {
+            ReactionContext.Link link = contextModel.findLink(links, r)
+            if (link != null) groups.add(link.reactionId)
+        }
+        groups
     }
 
     /** Per-genome window table (built once), with density buckets for matched-background lookup. */
@@ -400,7 +501,7 @@ class CohortInference {
         boolean[] hit = positivityCache.get(key)
         if (hit != null) return hit
         GenomeWindows gw = windowsOf(g)
-        Set<String> have = confidentReactions.get(g)
+        Set<String> have = observedGroups(confidentReactions.get(g), links)
         if (have == null || have.size() < cfg.minAnchors || links.size() < cfg.minAnchors) {
             positivityCache.put(key, gw.allFalse)
             return gw.allFalse
@@ -418,10 +519,11 @@ class CohortInference {
         boolean[] out = new boolean[gw.all.size()]
         for (WindowInfo w : gw.all) {
             int n = 0
-            if (w.reactions.size() <= links.size()) {
-                for (String x : w.reactions) if (links.containsKey(x)) n++
+            Set<String> observed = observedGroups(w.reactions, links)
+            if (observed.size() <= links.size()) {
+                for (String x : observed) if (links.containsKey(x)) n++
             } else {
-                for (String x : links.keySet()) if (w.reactions.contains(x)) n++
+                for (String x : links.keySet()) if (observed.contains(x)) n++
             }
             out[w.idx] = n >= cfg.minAnchors
         }
@@ -481,6 +583,7 @@ class CohortInference {
         Map<String, Double> f = new LinkedHashMap<>()
         f.put('signature_size', (double) links.size())
         f.put('signature_empty', links.isEmpty() ? 1d : 0d)
+        f.put('signature_testable', links.size() >= cfg.minAnchors ? 1d : 0d)
         Set<String> orgSet = input.organismSet(g)
         int cur = 0, up = 0, down = 0, both = 0, org = 0
         for (ReactionContext.Link l : links.values()) {
@@ -488,7 +591,7 @@ class CohortInference {
             if (l.flow == ReactionContext.Flow.UPSTREAM) up++
             if (l.flow == ReactionContext.Flow.DOWNSTREAM) down++
             if (l.flow == ReactionContext.Flow.BOTH) both++
-            if (orgSet != null && orgSet.contains(l.reactionId)) org++
+            if (orgSet != null && !Collections.disjoint(orgSet, ReactionContext.alternativesOf(l))) org++
         }
         f.put('signature_curated_edges', (double) cur)
         f.put('signature_upstream', (double) up)
@@ -532,7 +635,7 @@ class CohortInference {
             if (link.flow == ReactionContext.Flow.DOWNSTREAM) down++
             if (link.flow == ReactionContext.Flow.BOTH) both++
             if (link.curated) cur++
-            if (orgSet != null && orgSet.contains(a)) org++
+            if (orgSet != null && !Collections.disjoint(orgSet, ReactionContext.alternativesOf(link))) org++
         }
         f.put('local_anchor_weight', wt)
         f.put('local_anchor_upstream', (double) up)
@@ -541,8 +644,8 @@ class CohortInference {
         f.put('local_anchor_curated', (double) cur)
         if (orgSet != null && !an.isEmpty()) f.put('local_anchor_organism_fraction', org / (double) an.size())
         boolean positive = an.size() >= cfg.minAnchors
-        f.put('local_context_positive', positive ? 1d : 0d)
-        if (!links.isEmpty()) {
+        if (links.size() >= cfg.minAnchors) {
+            f.put('local_context_positive', positive ? 1d : 0d)
             boolean[] m = matched(g, r, links, familyKey, w.size(), ws, closedKey(g, l))
             int pos = 0
             for (boolean b : m) if (b) pos++
@@ -562,7 +665,7 @@ class CohortInference {
         List<Member> members = familyIndex.get(familyKey)?.get(h) ?: Collections.<Member>emptyList()
         if (members.isEmpty()) {
             if (certified) {
-                Set<String> have = confidentReactions.get(h) ?: Collections.<String>emptySet()
+                Set<String> have = observedGroups(confidentReactions.get(h), links) ?: Collections.<String>emptySet()
                 int n = 0
                 for (String x : links.keySet()) if (have.contains(x)) n++
                 o.state = (!links.isEmpty() && n >= cfg.minAnchors) ? 'PATHWAY_WITHOUT_FAMILY' : 'TRUE_ABSENT'
@@ -576,6 +679,15 @@ class CohortInference {
         for (Member m : members) pAll = Math.max(pAll, m.weight)
         o.singleCopy = members.size() == 1 && certified
         o.multiCopy = members.size() > 1
+        // A negative window requires a testable expected signature. No links,
+        // or fewer possible distinct anchors than minAnchors, cannot distinguish
+        // missing context from missing network knowledge. Family presence and
+        // copy information remain observed independently of that limitation.
+        if (links.size() < cfg.minAnchors) {
+            o.state = 'UNKNOWN_CONTEXT'
+            o.presence = pAll
+            return o
+        }
         // A copy whose context cannot be read (no coordinate, or a window that is not fully observed) is unresolved:
         // it may be the supported copy, so it forbids calling the genome NEGATIVE. It is still family PRESENT.
         boolean unresolved = false
@@ -598,7 +710,14 @@ class CohortInference {
             o.bgN += mt.length
             o.bgRateSum += CohortStats.jeffreys(pos, mt.length)
             o.bgGenomeN++
-            if (ws == WState.FULL) o.perm.add(new PermMember(positive: positive, pool: mt))
+            if (ws == WState.FULL) o.perm.add(new PermMember(positive: positive, poolSize: mt.length, poolPositive: pos))
+        }
+        // Sampling a boolean pool depends only on its success count, not input
+        // contig/protein order. Canonical member order also makes copies with
+        // renamed/reordered records replay the same randomization stream.
+        o.perm.sort { PermMember a, PermMember b ->
+            int c = a.poolSize <=> b.poolSize
+            c == 0 ? a.poolPositive <=> b.poolPositive : c
         }
         if (pPos > 0d) {
             o.state = 'SUPPORTED'
@@ -620,7 +739,7 @@ class CohortInference {
         Agg a = new Agg()
         Map<String, PeerObs> byGenome = new LinkedHashMap<>()
         for (PeerObs o : obs) if (o.present()) byGenome.put(o.genomeId, o)
-        for (CladeModel.Unit u : clades.units(byGenome.keySet())) {
+        for (CladeModel.Unit u : evidenceUnits(byGenome.keySet())) {
             double n = u.genomes.size()
             double sup = 0d, neg = 0d, unk = 0d
             for (String g : u.genomes) {
@@ -637,15 +756,37 @@ class CohortInference {
         a
     }
 
-    private Map<String, Double> peerFeatures(String familyKey, String r, String hk, List<String> peers, long seed) {
+    /**
+     * Observes every peer. In ORGANISM mode each peer uses its own links and
+     * their union is written to {@code organismLinks} when given.
+     */
+    private List<PeerObs> observePeers(String familyKey, String r, List<String> peers, Map<String, ReactionContext.Link> organismLinks) {
+        boolean organism = cfg.contextMode == ContextMode.ORGANISM
+        Map<String, ReactionContext.Link> links = organism ? null : contextModel.links(r)
+        List<PeerObs> obs = new ArrayList<>()
+        for (String h : peers) {
+            Map<String, ReactionContext.Link> ownLinks = organism ? contextModel.links(r, h) : links
+            if (organism && organismLinks != null) organismLinks.putAll(ownLinks)
+            obs.add(observe(h, familyKey, r, ownLinks))
+        }
+        obs
+    }
+
+    /**
+     * Peer features. The cache stays keyed by (family, reaction, holdout key):
+     * within one run the holdout key fixes the exact peer list, and several
+     * features (raw genome counts, peer counts) count every peer genome, so a
+     * coarser content key would be wrong. The permutation seed is derived from
+     * content inside {@link #addPermutation}; {@code baseSeed} is the configured seed.
+     */
+    private Map<String, Double> peerFeatures(String familyKey, String r, String hk, List<String> peers, long baseSeed) {
         String cacheKey = familyKey + '|' + r + '|' + hk
         Map<String, Double> hit = peerCache.get(cacheKey)
         if (hit != null) return hit
         Map<String, Double> f = new LinkedHashMap<>()
-        Map<String, ReactionContext.Link> links = contextModel.links(r)
-
-        List<PeerObs> obs = new ArrayList<>()
-        for (String h : peers) obs.add(observe(h, familyKey, r, links))
+        boolean organism = cfg.contextMode == ContextMode.ORGANISM
+        Map<String, ReactionContext.Link> links = organism ? new TreeMap<String, ReactionContext.Link>() : contextModel.links(r)
+        List<PeerObs> obs = observePeers(familyKey, r, peers, organism ? links : null)
 
         // Descriptive, unadjusted genome counts (not independent evidence).
         Map<String, Integer> raw = new LinkedHashMap<>()
@@ -655,21 +796,22 @@ class CohortInference {
 
         // Categorical composition over ALL peers (absence vs unobserved vs context).
         Set<String> peerClades = new LinkedHashSet<>()
-        int known = 0
-        for (String h : peers) { peerClades.add(clades.clade.get(h)); if (clades.cladeKnown(h)) known++ }
+        for (String h : peers) peerClades.add(clades.clade.get(h))
         f.put('cohort_n_peer_genomes', (double) peers.size())
         f.put('cohort_n_peer_clades', (double) peerClades.size())
         f.put('cohort_no_peers', peers.isEmpty() ? 1d : 0d)
-        f.put('cohort_phylogeny_known_fraction', peers.isEmpty() ? 0d : known / (double) peers.size())
         double total = 0d
+        double knownWeight = 0d, organismKnownWeight = 0d
         Map<String, Double> comp = new LinkedHashMap<>()
         for (String s : ['SUPPORTED', 'NEGATIVE', 'UNKNOWN_CONTEXT', 'TRUE_ABSENT', 'UNOBSERVED_ABSENT', 'PATHWAY_WITHOUT_FAMILY']) comp.put(s, 0d)
         Map<String, PeerObs> byGenome = new LinkedHashMap<>()
         for (PeerObs o : obs) byGenome.put(o.genomeId, o)
-        for (CladeModel.Unit u : clades.units(peers)) {
+        for (CladeModel.Unit u : evidenceUnits(peers)) {
             for (String g : u.genomes) {
                 double w = u.weight / u.genomes.size()
                 total += w
+                if (clades.cladeKnown(g)) knownWeight += w
+                if (input.organismSet(g) != null) organismKnownWeight += w
                 PeerObs o = byGenome.get(g)
                 if (o.state == 'SUPPORTED' || o.state == 'NEGATIVE') {
                     comp.put('SUPPORTED', comp.get('SUPPORTED') + w * o.supportedShare)
@@ -679,6 +821,7 @@ class CohortInference {
                 }
             }
         }
+        f.put('cohort_phylogeny_known_fraction', total > 0d ? knownWeight / total : 0d)
         if (total > 0d) {
             f.put('cohort_frac_supported', comp.get('SUPPORTED') / total)
             f.put('cohort_frac_negative', comp.get('NEGATIVE') / total)
@@ -691,10 +834,10 @@ class CohortInference {
         // Per-genome plausible reaction sets of the peers (unknown peers are skipped, not counted as "no").
         Set<String> withSet = new LinkedHashSet<>()
         for (String h : peers) if (input.organismSet(h) != null) withSet.add(h)
-        f.put('cohort_peer_organism_set_known_fraction', peers.isEmpty() ? 0d : withSet.size() / (double) peers.size())
+        f.put('cohort_peer_organism_set_known_fraction', total > 0d ? organismKnownWeight / total : 0d)
         if (!withSet.isEmpty()) {
             double wsum = 0d, hits = 0d
-            for (CladeModel.Unit u : clades.units(withSet)) {
+            for (CladeModel.Unit u : evidenceUnits(withSet)) {
                 for (String g : u.genomes) {
                     double w = u.weight / u.genomes.size()
                     wsum += w
@@ -710,7 +853,7 @@ class CohortInference {
         for (PeerObs o : obs) if (o.informative() && clades.cladeKnown(o.genomeId)) cladeResolved = true
         // Phylogeny-adjusted CI and permutation p need at least one informative genome with a resolved clade.
         boolean adjusted = effN > 0d && cladeResolved
-        f.put('cohort_informative_genomes', (double) agg.informativeGenomes)
+        f.put('cohort_informative_genomes', (double) obs.count { PeerObs o -> o.informative() })
         f.put('cohort_informative_clades', (double) agg.informativeClades.size())
         f.put('cohort_coverage', peerClades.isEmpty() ? 0d : agg.informativeClades.size() / (double) peerClades.size())
         f.put('cohort_effective_n', effN)
@@ -742,7 +885,7 @@ class CohortInference {
             if (o.present() && o.singleCopy) single.add(o)
             if (o.present() && (o.singleCopy || o.multiCopy)) copyKnown.add(o.genomeId)
         }
-        for (CladeModel.Unit u : clades.units(copyKnown)) {
+        for (CladeModel.Unit u : evidenceUnits(copyKnown)) {
             for (String g : u.genomes) {
                 double w = u.weight / u.genomes.size()
                 mcTotal += w
@@ -754,11 +897,13 @@ class CohortInference {
         f.put('cohort_single_copy_effective_n', sAgg.informative())
         if (sAgg.informative() > 0d) f.put('cohort_single_copy_support_fraction', CohortStats.jeffreys(sAgg.supported, sAgg.informative()))
 
-        f.put('signature_empty', links.isEmpty() ? 1d : 0d)
+        // Organism-mode peers have distinct signatures. Their structural union
+        // defines joint coverage; it must not overwrite the focal signature.
+        f.put(organism ? 'cohort_signature_empty' : 'signature_empty', links.isEmpty() ? 1d : 0d)
         if (!links.isEmpty() && effN > 0d) {
             addBackground(f, obs, agg, effN)
             addJoint(f, obs, links)
-            if (adjusted) addPermutation(f, obs, seed)
+            if (adjusted) addPermutation(f, obs, familyKey, r, baseSeed)
         }
         peerCache.put(cacheKey, f)
         f
@@ -769,13 +914,13 @@ class CohortInference {
         for (PeerObs o : obs) if (o.informative() && o.bgGenomeN > 0) byGenome.put(o.genomeId, o)
         double wSum = 0d, bgSum = 0d
         int bgN = 0
-        for (CladeModel.Unit u : clades.units(byGenome.keySet())) {
+        for (PeerObs o : byGenome.values()) bgN += o.bgN
+        for (CladeModel.Unit u : evidenceUnits(byGenome.keySet())) {
             double rate = 0d, share = 0d
             for (String g : u.genomes) {
                 PeerObs o = byGenome.get(g)
                 rate += o.bgRateSum / o.bgGenomeN
                 share += o.presence
-                bgN += o.bgN
             }
             double n = u.genomes.size()
             double w = u.weight * share / n
@@ -797,7 +942,7 @@ class CohortInference {
         Map<String, PeerObs> byGenome = new LinkedHashMap<>()
         for (PeerObs o : obs) if (o.informative()) byGenome.put(o.genomeId, o)
         int size = links.size()
-        List<CladeModel.Unit> units = clades.units(byGenome.keySet())
+        List<CladeModel.Unit> units = evidenceUnits(byGenome.keySet())
         Map<String, Double> reactionWeight = new LinkedHashMap<>()
         double wSum = 0d, meanSingle = 0d
         List<Double> unitW = new ArrayList<>()
@@ -834,7 +979,7 @@ class CohortInference {
             CladeModel.Unit u = units[i]
             double m = 0d
             for (String g : u.genomes) {
-                Set<String> have = confidentReactions.get(g) ?: Collections.<String>emptySet()
+                Set<String> have = observedGroups(confidentReactions.get(g), links) ?: Collections.<String>emptySet()
                 int c = 0
                 for (String x : covered) if (links.containsKey(x) && !have.contains(x)) c++
                 m += c / (double) size
@@ -844,15 +989,20 @@ class CohortInference {
         f.put('cohort_complementary_unannotated', unannotated / wSum)
     }
 
-    private void addPermutation(Map<String, Double> f, List<PeerObs> obs, long seed) {
-        if (cfg.permutations <= 0) return
-        List<PeerObs> use = new ArrayList<>()
-        for (PeerObs o : obs) if (o.informative() && !o.perm.isEmpty()) use.add(o)
-        f.put('cohort_perm_available', use.isEmpty() ? 0d : 1d)
-        if (use.isEmpty()) return
+    /** Informative peers with a background pool, by genome: the genomes the permutation uses. */
+    private static Map<String, PeerObs> permutationInput(List<PeerObs> obs) {
         Map<String, PeerObs> byGenome = new LinkedHashMap<>()
-        for (PeerObs o : use) byGenome.put(o.genomeId, o)
-        List<CladeModel.Unit> units = clades.units(byGenome.keySet())
+        for (PeerObs o : obs) if (o.informative() && !o.perm.isEmpty()) byGenome.put(o.genomeId, o)
+        byGenome
+    }
+
+    private void addPermutation(Map<String, Double> f, List<PeerObs> obs, String familyKey, String r, long baseSeed) {
+        if (cfg.permutations <= 0) return
+        Map<String, PeerObs> byGenome = permutationInput(obs)
+        f.put('cohort_perm_available', byGenome.isEmpty() ? 0d : 1d)
+        if (byGenome.isEmpty()) return
+        List<CladeModel.Unit> units = evidenceUnits(byGenome.keySet())
+        long seed = contentSeed(baseSeed, familyKey, r, permutationSignature(units, byGenome))
         double wTotal = 0d
         for (CladeModel.Unit u : units) wTotal += u.weight
         double tObs = 0d
@@ -860,7 +1010,7 @@ class CohortInference {
             double s = 0d
             for (String g : u.genomes) {
                 boolean any = false
-                for (PermMember m : byGenome.get(g).perm) if (m.pool.length > 0 && m.positive) any = true
+                for (PermMember m : byGenome.get(g).perm) if (m.poolSize > 0 && m.positive) any = true
                 if (any) s += 1d
             }
             tObs += u.weight * s / u.genomes.size()
@@ -873,10 +1023,18 @@ class CohortInference {
             double t = 0d
             for (CladeModel.Unit u : units) {
                 double s = 0d
+                // One randomization stream per strain cluster and draw. Genomes
+                // in this unit are dependent observations: independently drawing
+                // a background for each exact copy would shrink the unit's null
+                // variance and manufacture significance from duplicated evidence.
+                // Replaying the same stream couples corresponding member pools;
+                // adding copies also cannot consume draws belonging to other units.
+                long unitSeed = rnd.nextLong()
                 for (String g : u.genomes) {
+                    Random withinUnit = new Random(unitSeed)
                     boolean any = false
                     for (PermMember m : byGenome.get(g).perm) {
-                        if (m.pool[rnd.nextInt(m.pool.length)]) any = true
+                        if (withinUnit.nextInt(m.poolSize) < m.poolPositive) any = true
                     }
                     if (any) s += 1d
                 }

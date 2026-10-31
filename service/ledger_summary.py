@@ -25,6 +25,7 @@ STAGE_LABELS = {'reference_preparation': 'Reference preparation', 'cohort_contex
                 'community_metabolism': 'Community metabolism', 'learned_integration': 'Learned integration (frozen model)',
                 'feature_export': 'Feature export'}
 SCORING = {'learned': 'Learned: scores come from a frozen model',
+           'mixed': 'Mixed: learned scores for supported inputs; legacy scores for unsupported inputs',
            'legacy_heuristic': 'Legacy heuristic: evidence combiner and hand-set priors; no trained model produced these scores'}
 
 
@@ -40,12 +41,13 @@ def _text(v):
 def _learned(run_dir, mode, stage):
     """Availability and identity of the learned-stage report; never its scores, never a zero for absence.
 
-    Trusted needs the learned mode, an executed learned_integration stage and a report model hash equal
-    to the ledger's. Without a ledger hash the report is available but explicitly unverified.
+    Learned and mixed scoring require an executed stage. A skipped stage may
+    retain a hash-matched abstention report containing only unsupported candidates
+    with no scores. Without a ledger hash an executed report is explicitly unverified.
     """
     path = Path(run_dir) / LEARNED_NAME
     if not path.is_file():
-        if mode == 'learned':
+        if mode in ('learned', 'mixed'):
             return {'status': 'unavailable', 'reason': 'The ledger says the learned stage ran, but no learned-stage report was written; '
                                                        'its scores are unavailable, not zero.'}
         return {'status': 'not_applicable' if mode == 'legacy_heuristic' else 'unavailable',
@@ -58,18 +60,25 @@ def _learned(run_dir, mode, stage):
     except (ValueError, KeyError, TypeError, AttributeError, OSError):
         return {'status': 'unavailable', 'reason': 'The learned-stage report could not be read or is not a gspa learned-stage report; '
                                                    'per-candidate scores are unavailable.'}
-    if mode != 'learned':
+    expected = _text(stage.get('model_sha256')) if isinstance(stage, dict) else None
+    sha = _text(model.get('sha256'))
+    unsupported_only = bool(mode == 'legacy_heuristic' and isinstance(stage, dict)
+        and stage.get('status') == 'skipped' and stage.get('candidates_scored') == 0
+        and expected and expected == sha and raw['candidates']
+        and all(isinstance(c, dict) and c.get('score_status') == 'unsupported'
+                and c.get('probability') is None and c.get('margin') is None for c in raw['candidates']))
+    if not unsupported_only and mode not in ('learned', 'mixed'):
         return {'status': 'not_trusted', 'reason': 'A learned-stage report exists, but the ledger does not say the learned stage ran.'}
-    if not (isinstance(stage, dict) and stage.get('status') == 'executed'):
+    if not unsupported_only and not (isinstance(stage, dict) and stage.get('status') == 'executed'):
         return {'status': 'not_trusted', 'reason': "A learned-stage report exists, but the ledger's learned_integration stage did not execute; "
                                                    'its scores are not trusted.'}
-    expected, sha = _text(stage.get('model_sha256')), _text(model.get('sha256'))
     if expected and expected != sha:
         return {'status': 'not_trusted', 'reason': "The report's model hash is " + ('absent' if not sha else 'different') +
                                                    ' while the stage ledger records one; its scores are not trusted.'}
     counts = raw.get('counts')
     return {'status': 'available', 'model_id': _text(model.get('id')), 'model_sha256': (sha or '')[:12] or None,
-            'hash_verified': bool(expected and sha), 'counts': counts if isinstance(counts, dict) else None}
+            'hash_verified': bool(expected and sha), 'unsupported_only': unsupported_only,
+            'counts': counts if isinstance(counts, dict) else None}
 
 
 def summarize(run_dir):

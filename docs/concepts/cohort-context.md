@@ -23,9 +23,45 @@ The input has no label fields. Features are computed from sequence/evidence cand
 
 ## What is computed
 
-**Reaction signature.** For reaction R the signature is the set of network neighbours within `maxHops` (default 1, via shared non-currency metabolites in `ReactionGraph`) plus curated interaction partners. Each link carries a hop distance, weight `alpha^d`, a flow class (upstream, downstream, bidirectional, curated, distal) that respects reaction direction, and, if an organism reaction set exists, whether the neighbour is plausible in the organism. This is not a named-pathway lookup.
+**Reaction signature.** `--cohort-context-mode` selects `UNIVERSAL` (default),
+`PATHWAY`, or `ORGANISM`. It changes the context relation while retaining the
+same EC-derived candidate universe. In workflow JSON use `cohortConfig.contextMode`.
 
-**Windows and anchors.** A window is the genes whose midpoints lie within `halfWidthBp` of the candidate gene. A window is *context-positive* when it contains at least `minAnchors` distinct anchor reactions: confident baseline claims (≥ `anchorMinConfidence`) on other genes that belong to R's signature. The candidate gene itself, any gene of the same family (same-family leak) and R itself are never anchors.
+| Mode | Context relation | Required input |
+|---|---|---|
+| `UNIVERSAL` | Network neighbours within `maxHops` (default 1), through shared non-currency metabolites, plus independent curated interactions. | Reaction graph and EC aliases. |
+| `PATHWAY` | Other named reaction groups in a pathway containing the focal reaction. Alternative mappings are one evidence unit; overlapping groups are merged and any component containing a focal alternative is excluded. No direction or curated interaction evidence is inferred. | `--cohort-pathways` TSV with `pathway_id`, `group_id`, `reaction_id`, `source`; one row per alternative. |
+| `ORGANISM` | Network traversal restricted to each genome's own plausible reactions, including intermediate nodes, plus independent curated interactions. The focal reaction remains a hypothesis even when absent from that set. | `--cohort-metadata` with `plausibleReactions` for every target and peer genome. |
+
+Network links retain hop distance, weight `alpha^d` and orientation. Pathway links
+use one-hop weight and an unoriented `PATHWAY` flow. Pathway mode rejects supplied
+interaction edges. A header-only pathway file and an empty organism reaction set
+are known empty inputs; missing inputs are errors. Unknown graph reaction IDs,
+duplicate pathway mappings and conflicting group sources are rejected.
+
+Each organism peer is observed and compared with background windows using its
+own restricted signature. Joint coverage uses the structural union of peer
+signatures; the target's local signature availability remains separate.
+These restrictions describe network plausibility, not flux feasibility.
+
+Exported rows carry `cohort_context_mode` outside numerical feature contract v3.
+Model input-support schema 1 covers universal context only; schema 2 binds each
+source/function/role/availability profile to a mode and requires both classes in
+training and calibration for that profile. Existing universal models abstain on
+other modes with `unseen_reaction_context_mode`. Choosing a mode does not make an
+existing model calibrated for it.
+
+**Windows and anchors.** A window is the genes whose midpoints lie within `halfWidthBp` of the candidate gene. A window is *context-positive* when it contains at least `minAnchors` distinct anchor reactions (independent mapping groups in pathway mode): confident baseline claims (≥ `anchorMinConfidence`) on other genes that belong to R's signature. The candidate gene itself, any gene of the same family (same-family leak) and R itself are never anchors.
+
+**Signature availability.** A signature with fewer than `minAnchors` possible
+distinct reactions is untestable (`signature_testable = 0`), including an empty
+signature. A present family then has `UNKNOWN_CONTEXT`, not negative recurrence;
+its membership and copy observations remain available. The raw report retains
+descriptive layout/anchor counts but omits local positivity and enrichment.
+The learned bridge retains layout availability and withholds the local-context
+feature group. A testable signature with no observed anchors can still supply
+negative evidence when the window is fully observed. Certified family absence
+is assessed independently of signature availability.
 
 **Peers and holdout.** Features for a gene in genome G use only the peer genomes: G and everything not independent of G (`HoldoutLevel`: genome, strain cluster by default, or clade) are removed. With no peers the output says so (`cohort_no_peers`, `cohort_insufficient_peers`), and nothing is imputed.
 
@@ -80,7 +116,7 @@ that wiring had to supply and is kept as the contract.* Required by the caller:
 4. Call `new CohortInference(input, graph, config).run()` once per batch, after all genomes' baselines exist and before the learned scorer. Join `FeatureRecord.features` on `(genomeId, proteinId, reactionId)`; proteins use FAA seqids. Pass the maps to the learned model unchanged, treating an absent key as missing, and let calibration choose any "often" threshold. Use `holdout = STRAIN_CLUSTER` or `CLADE` consistently with the train/test split used for the learned model, and never feed `aggregates` as per-gene features.
 5. Persist `CohortResult.provenance` and each record's `provenance` in the run audit.
 6. Role posterior and null are the learned stage's: feed it `roleEvidence`/`role_evidence_*` and `role_evidence_missing` as raw inputs.
-7. A single-genome run produces `cohort_no_peers = 1`; the workflow must route that case to a cohort-free feature set rather than interpret it as negative evidence.
+7. A single-genome run produces `cohort_no_peers = 1`. The workflow retains computed local-window and intrinsic features in a `localOnly` context, while peer statistics remain null and `cohort.w.available = 0`. Local availability is independent (`cohort.w.local_available`); missing peers are never negative recurrence evidence.
 
 ## Cost and limits
 

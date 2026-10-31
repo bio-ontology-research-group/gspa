@@ -7,6 +7,20 @@ evidence and competing hypotheses imply *under that model*. It sits next to
 `service/metabolic_conditions.py` (nutrient dependence) and does not replace
 either, nor any scoring.
 
+For competing **gene assignments with the original target GPR masked**, see
+[masked assignment experiments](../benchmarks/v3-masked-assignment-experiments.md).
+That format supports both explicit assignment clauses and automatic construction
+from this run's raw/context candidates through `--experiment-mode evidence_guided`.
+It compares every assignment, including null, under each selected condition. Its
+conditional signatures do not become ordinary FBA confidence features. The
+reaction-perturbation format documented below remains available separately.
+
+For competing **absence explanations**, see [explicit absence comparisons](../benchmarks/v3-absence-comparison.md)
+and [automatic comparisons from run gaps](../benchmarks/v3-guided-absence.md).
+The guided route retains candidate/reaction alternatives, shares one solver and
+condition budget, and preserves unavailable evidence. It does not classify
+biological absence or promote annotations.
+
 ## What the output means
 
 - Every result is **conditional** on the model, medium, bounds and maintenance
@@ -42,12 +56,29 @@ either, nor any scoring.
   successful conditions report `growth_without_baseline` in that case. Neither
   recovery nor lack of recovery alone establishes a candidate protein function.
 - `config.product_requirement` explicitly selects `growth_fraction` (default)
-  or `maintenance_only`. The latter tests product secretion even when biomass
+  or `maintenance_only`. The latter tests product capacity even when biomass
   growth is zero, retaining the declared ATP maintenance and model bounds without
   an added biomass floor. Results record the requirement, actual biomass lower
   bound, and `min_secretion_at_required_state`. It can reveal feasible secondary
   metabolism in non-growing cells; it does not establish expression or observed
   production. The growth-based legacy field is omitted in maintenance-only mode.
+- Intracellular products use `product_demand`, with the exact existing reaction
+  listed in `baseline.product_demands`. The target must drain one unit of one
+  intracellular metabolite, have no gene rule, and differ from biomass and
+  maintenance. It cannot itself be deleted by the experiment. No reaction or
+  transport is invented, and uptake through the demand remains closed. Results
+  carry `target_kind: intracellular_synthesis_capacity`, `max_synthesis` and
+  `min_synthesis_at_required_state`, separately from secretion fields. A result
+  shows conditional synthesis capacity, not expression, secretion or a recovered
+  gene function. `product_exchange` and `product_demand` are mutually exclusive.
+- Both product types combine with existing interventions linked to their evidence
+  record or candidate hypothesis. The masked route reports separate
+  `growth_status` and `product_status`: maintenance-only secretion can be
+  informative without growth. Its `secretion_capacity_*` classifications stay
+  distinct from `synthesis_capacity_*`; unassessed intervals remain unknown.
+  Extracellular exchange intervals describe net secretion. If the specified
+  medium supplies that metabolite, a negative signed interval represents uptake,
+  not negative synthesis or a measured secretion rate.
 
 Exchange signs are read from stoichiometry, so both `M_e ->` (v < 0 uptake) and
 the refiner's reversed `-> M_e` (v > 0 uptake) are handled. Boundary species are
@@ -101,12 +132,22 @@ co-required subunits or isozymes). A hypothesis with `"perturbation": "reaction"
 `reactions`; a gene named beside them is an annotation and is never deleted, even when it is in the GPR. Genes resolve to reactions through
 the SBML GPR (gene-product id or label).
 
+Explicit `knockout` modifications require known gene IDs or declared labels and
+known reaction IDs. All knockout identities are checked before bounds change;
+unknown identifiers fail instead of acting as harmless deletions. Labels shared
+by genes, or colliding with another gene's ID, make the SBML input ambiguous and
+are rejected at loading. Multiple deletion records form one combined intervention
+so both AND complexes and OR isozymes are evaluated correctly. Unmapped genes
+listed only as candidate annotations remain distinct from executed deletions.
+See the [identity and community regression report](../benchmarks/v3-knockout-identity.md).
+
 The admissible menu is derived only from these records:
 
 | Record | Experiment(s) |
 |---|---|
 | `transport` + `substrate_exchange` + `role` (carbon/nitrogen) | `carbon_source:<ex>` / `nitrogen_source:<ex>` (baseline sources swapped for the candidate) |
-| `bgc` + `product_exchange` | `product:<ex>` |
+| `bgc` + `product_exchange` | `product:<ex>`, plus `product:<ex>@<condition-id>` for existing interventions linked to the same hypothesis or evidence record |
+| `bgc` + `product_demand` | `synthesis:<demand>`, plus `synthesis:<demand>@<condition-id>` for existing interventions linked to the same hypothesis or evidence record |
 | any record with `condition_hint: "oxygen_removal"` | `oxygen_removal` |
 | `model_condition` + `condition_hint: "carbon_swap"`/`"nitrogen_swap"` + `exchange` | `carbon_source:<ex>` / `nitrogen_source:<ex>` (written by the evidence-guided builder from exact model identity; ignored when ordering by evidence) |
 | `condition_hint: "supplement_removal"` + `exchange` | `supplement_removal:<ex>` |
@@ -134,8 +175,26 @@ rejected.
 | `evidence` | deterministic: most distinct evidence types, then records, then competitors (an ordering, not a probability) |
 | `qwen` | agent picks one id at a time given the menu and prior results; replies not in the menu are rejected and logged; after `qwen.max_invalid` invalid replies the run falls back to `evidence` order, logged |
 
-Qwen only sees the menu and compact prior outcomes. It cannot edit the model or
-run code. Endpoint conventions match `benchmark/agent/run_gspa_agent.py`: key
+The standard Qwen prompt uses `gspa.metabolic_planner_observation/3`: the menu,
+prior evidence types and hypothesis bindings, medium/objective assumptions,
+growth results, reaction FVA/knockout checks and typed product minimum/maximum ranges.
+Version 3 adds intracellular targets and synthesis measurements; archived version
+2 runs retain their original schema. Product experiments remain excluded from
+learned enzyme features. Each product experiment reserves two additional LP
+calls for its minimum and maximum, under the same global solver budget.
+Failed, unassessed and budget-truncated checks remain distinct from zero flux.
+Each request records its prompt schema and SHA-256 in the selection log. Local
+prompt-construction errors fail directly; endpoint errors retain the documented
+fallback. The historical Keio benchmark uses its separate frozen prompt and is
+identified as `custom_unversioned`, not as this production prompt.
+
+Arbitrary metadata, model matrices and endpoint credentials are excluded from
+the prompt projection. Identifiers and allowed text fields are not anonymized;
+benchmark builders must keep target truth out of those fields. The agent cannot
+edit the model or run code. Its rationale is not validated biological evidence:
+the [feedback diagnostic](../benchmarks/v3-planner-feedback.md) retains examples
+of Qwen overinterpreting optional flux despite the conditional-result instructions.
+Endpoint conventions match `benchmark/agent/run_gspa_agent.py`: key
 from `BORG_LLM_API_KEY` / `OPENAI_API_KEY` / `~/.config/borg-llm/api-key`
 (never printed or written), base URL from `--api-base` or `GSPA_LLM_URL`.
 

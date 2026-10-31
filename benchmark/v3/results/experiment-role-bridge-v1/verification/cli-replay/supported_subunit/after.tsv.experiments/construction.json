@@ -1,0 +1,62 @@
+{
+  "context_source" : "evidence_guided_masked_assignments",
+  "candidate_protein" : "query",
+  "mask_gene" : "pD",
+  "candidates_rejected" : [ ],
+  "excluded_claims" : [ ],
+  "measured_evidence" : [ {
+    "function_key" : "query|EC|EC:6.2.1.1",
+    "channel" : "sequence",
+    "source" : "synthetic_predictor",
+    "evidence_type" : "SEQUENCE_SIMILARITY",
+    "raw_score" : 0.001
+  }, {
+    "function_key" : "query|EC|EC:6.2.1.1",
+    "channel" : "domain",
+    "source" : "synthetic independent partner evidence",
+    "id" : "complex",
+    "raw_score" : 0.6
+  } ],
+  "evidence_unmapped" : [ ],
+  "assignment_support" : [ {
+    "id" : "complex",
+    "function_key" : "query|EC|EC:6.2.1.1",
+    "source" : "synthetic independent partner evidence",
+    "partners" : [ "gB" ],
+    "group" : null
+  } ],
+  "assignment_groups_rejected" : [ ],
+  "joint_mapping_truncated" : [ ],
+  "hypotheses" : [ {
+    "id" : "H1",
+    "reaction" : "ACS",
+    "reactions" : [ "ACS" ],
+    "assignments" : {
+      "ACS" : [ [ "MASKED_TARGET", "gB" ] ]
+    },
+    "candidates" : [ {
+      "function_key" : "query|EC|EC:6.2.1.1",
+      "mapping_sources" : [ "sbml_annotation" ],
+      "roles" : [ "COMPLEX_SUBUNIT" ],
+      "role_source" : "raw_claims",
+      "raw_role_observations" : [ {
+        "source" : "synthetic_predictor",
+        "evidence_type" : "SEQUENCE_SIMILARITY",
+        "candidate_role" : "COMPLEX_SUBUNIT"
+      } ]
+    } ],
+    "evidence" : {
+      "domain" : 0.6,
+      "sequence" : 0.001
+    },
+    "supporting_records" : [ "complex" ],
+    "assignment_groups" : [ ]
+  } ],
+  "hypotheses_truncated" : [ ],
+  "max_non_null_hypotheses" : 20,
+  "conditions" : 3,
+  "ranking_rule" : "strongest measured channel, then canonical assignment; repeated channels take max; not calibrated probabilities",
+  "assignment_assumption" : "target-alone only without structural support; required partners form AND clauses; named evidence groups support joint activities; alternative mappings remain distinct and bounded; no hidden GPR used",
+  "excluded_sources" : "target GPR, model gene annotations, reactions.tsv, final integration probabilities, FBA and learned/inferred claims; no function is inferred from a gene identifier",
+  "interpretation" : "conditional comparisons; no function recovery, calibrated probability or promotion"
+}
