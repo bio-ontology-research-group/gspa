@@ -1,0 +1,94 @@
+[
+ {
+  "name": "T5-cohort-learned-abstained",
+  "origin": "new 18-genome cohort run on Shaheen (routes-closure-v1/cohort18, CLI batch arm, job 15733547), genome GCA_000007005.1",
+  "states": [
+   "cohort context executed",
+   "learned stage requested, model abstained (all 26,328 candidates unsupported: predictor contract unavailable)",
+   "feature export executed",
+   "taxon applied"
+  ],
+  "tsv": "/home/leechuck/tmp/routes-closure/cohort18/direct/GCA_000007005.1.integrated.tsv",
+  "genome_id": "GCA_000007005.1",
+  "proteins_faa": "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000007005.1/protein.faa",
+  "layout": "/home/leechuck/.cache/gspa-v3-data/training-cohort/layout/GCA_000007005.1.layout.tsv",
+  "provenance": "/home/leechuck/tmp/routes-closure/cohort18/direct/GCA_000007005.1.integrated.tsv.provenance.json",
+  "expect": {
+   "scoring_mode": "legacy_heuristic",
+   "null_candidates": 26328,
+   "taxon_state": "applied",
+   "stage_status": {
+    "cohort_context": "executed",
+    "learned_integration": "skipped",
+    "feature_export": "executed"
+   },
+   "browser_text": [
+    "Cohort context",
+    "26328 unsupported"
+   ],
+   "portal_text": [
+    "model abstained",
+    "26,328 unsupported"
+   ]
+  }
+ },
+ {
+  "name": "T9b-controlled-learned-report-missing",
+  "origin": "CONTROLLED: T5 output with the learned report removed (no real output has an executed learned stage without its report)",
+  "states": [
+   "learned report missing"
+  ],
+  "tsv": "/home/leechuck/tmp/routes-closure/cohort18/direct/GCA_000007005.1.integrated.tsv",
+  "genome_id": "GCA_000007005.1",
+  "proteins_faa": "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000007005.1/protein.faa",
+  "layout": "/home/leechuck/.cache/gspa-v3-data/training-cohort/layout/GCA_000007005.1.layout.tsv",
+  "drop_learned": true,
+  "expect": {
+   "scoring_mode": "legacy_heuristic",
+   "learned_missing": true,
+   "browser_text": [
+    "Learned integration"
+   ],
+   "portal_text": [
+    "Stages:"
+   ]
+  }
+ },
+ {
+  "name": "T8-web-job-protein-only",
+  "origin": "real web-route job on this workstation (portal worker, rebuilt JAR, GCA_000011125.1 proteins, archaea preset; amr/bgc/localization/metabolism/operons disabled)",
+  "states": [
+   "protein-only input without coordinates",
+   "analyses skipped / not applicable",
+   "symbolic enforcement executed (relax)",
+   "learned model abstained (deployment option)"
+  ],
+  "tsv": "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/integrated.tsv",
+  "job_folder": "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180",
+  "provenance": "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/provenance.json",
+  "actions": "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/actions.tsv",
+  "analyses": "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/analyses.json",
+  "extra_run_files": [
+   "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/quality_gspa.json",
+   "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/integrated.tsv.modules.json",
+   "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/integrated.tsv.quality.json"
+  ],
+  "expect": {
+   "scoring_mode": "legacy_heuristic",
+   "null_candidates": 57570,
+   "partial_data": true,
+   "stage_status": {
+    "symbolic_enforcement": "executed",
+    "learned_integration": "skipped"
+   },
+   "browser_text": [
+    "Symbolic constraint enforcement",
+    "57570 unsupported"
+   ],
+   "portal_text": [
+    "model abstained",
+    "57,570 unsupported"
+   ]
+  }
+ }
+]

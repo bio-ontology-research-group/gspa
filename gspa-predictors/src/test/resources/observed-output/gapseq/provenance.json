@@ -1,0 +1,49 @@
+{
+  "schema": "gspa.observed-output/1",
+  "tool": "gapseq",
+  "description": "gapseq 2.1.0 (conda env /project/k10018/sw/envs/gapseq; sequence DB 1.5 Bacteria 2026-05-29; blast 2.17.0) `find -p all -t Bacteria -M nucl` on the E. coli BW25113 GCF_000750555.1 genome: the nucleotide route the GapseqPredictor runs for target=genome. gapseq translates the genome itself (4,314 ORFs, 33.26 % ORF coverage) and names hits by its own ORF ids with coordinates in stitle, which is why the adapter's contract refuses to attribute nucleotide hits to proteins (typed FAILED, zero claims). Reactions.tbl is 15.7 MB; the stored subset is deterministic (3 comment lines, header row, first 500 data rows) and the full file's hash is recorded below",
+  "captured": "2026-11-02 on Shaheen III (k10018), Slurm job 15745873, node nid00635",
+  "tool_version": "gapseq version: 2.1.0",
+  "command": "/project/k10018/sw/envs/gapseq/bin/gapseq find -p all -t Bacteria -M nucl -K 32 -f /scratch/hohndor/gspa-cert/results/gapseq/observed/out /scratch/hohndor/gspa-cert/bw25113/GCF_000750555.1.fna",
+  "run": {
+    "exit_code": 0,
+    "seconds": 449.193014365,
+    "date": "2026-11-02T03:20:54+03:00",
+    "node": "nid00635"
+  },
+  "inputs": {
+    "fixtures": {
+      "bw25113/GCF_000750555.1.fna": "68717167e3332c8a57faac6fe79d24aadd623a186f822f223f67bb9fd5600c5b"
+    }
+  },
+  "certification": "benchmark/v3/results/adapter-certification-v1/gapseq",
+  "files": {
+    "GCF_000750555.1-all-Pathways.tbl": "0e590558f0d06226ea77257d53cd1b66a897d3381bc75b3773ed3f57d5274037",
+    "GCF_000750555.1-all-Reactions.first500.tbl": "a7ea39de6437abd676596aea39fa3a9749eab038ff54683a67c38dfa6fbc2aa6",
+    "GCF_000750555.1-all-find_aligner.log": "64fe65c057f869e73dc182d6a05d9b6a29ff5519720261e3b600ca42502c4411",
+    "stdout.txt": "1deb9685316f21522a2924e43264c330f5ba5796a0de2c1499126bc629a3ef8f"
+  },
+  "full_outputs_not_stored": {
+    "GCF_000750555.1-all-Reactions.tbl": {
+      "sha256": "14bda5cf3d831961a15d0f29719ce76ae5b9767815223e847fad513fe5ec3455",
+      "bytes": 15735953,
+      "data_rows": 39913,
+      "status_counts": {
+        "bad_blast": 26717,
+        "good_blast": 8201,
+        "no_blast": 3626,
+        "no_seq_data": 1024,
+        "spontaneous": 345
+      },
+      "kept_at": "/mnt/data2/leechuck/gspa-cert/shaheen-results/gapseq/observed/out/ (ws) and /scratch/hohndor/gspa-cert/results/gapseq/observed/out/ (Shaheen)"
+    },
+    "GCF_000750555.1.faa.gz (gapseq's own translation)": {
+      "sha256": "eee2afb98c9ff81528f98184a0846826cef6765eb17ce414e1647d05ea342ca0",
+      "bytes": 935577
+    },
+    "GCF_000750555.1.gff (gapseq's own gene calls)": {
+      "sha256": "c69ed3c556e1343888a2447d593214be3209eb336796347bdf224b50a5f869c9",
+      "bytes": 1063565
+    }
+  }
+}

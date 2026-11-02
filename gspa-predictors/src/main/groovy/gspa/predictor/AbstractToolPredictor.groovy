@@ -38,25 +38,44 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
     /** Parse the tool's output into annotations */
     abstract Map<String, List<Annotation>> parseOutput(File outputDir)
 
+    /**
+     * Arguments that make the tool print its version and exit 0. Tools without a
+     * {@code --version} flag (MMseqs2, FoldSeek use the {@code version} subcommand)
+     * override this; otherwise the availability probe reports them as missing.
+     */
+    protected List<String> versionArguments() { ['--version'] }
+
     @Override
     boolean isAvailable() {
+        def exec = executablePath ?: executable
         try {
-            def exec = executablePath ?: executable
-            def proc = [exec, '--version'].execute()
+            def proc = ([exec] + versionArguments()).execute()
             proc.waitForOrKill(10000)
-            return proc.exitValue() == 0
-        } catch (Exception e) {
-            // Also try --help or -h as some tools don't have --version
-            try {
-                def exec = executablePath ?: executable
-                def proc = [exec, '--help'].execute()
-                proc.waitForOrKill(10000)
-                return proc.exitValue() <= 1 // some tools return 1 for --help
-            } catch (Exception e2) {
-                return false
-            }
+            if (proc.exitValue() == 0) return true
+        } catch (Exception ignored) {
+            // launch failure: fall through to the --help probe, which also fails when absent
+        }
+        // Some tools have no version flag; --help must still run (exit 0 or 1).
+        try {
+            def proc = [exec, '--help'].execute()
+            proc.waitForOrKill(10000)
+            return proc.exitValue() <= 1
+        } catch (Exception e2) {
+            return false
         }
     }
+
+    /**
+     * Protein ids of the current {@link #predictBatch} input, for parsers that need to
+     * compare the tool's per-protein records with what was submitted.
+     */
+    protected Set<String> currentInputIds = [] as Set
+
+    /**
+     * Inputs the tool did not analyse, as reported by the parser (per-protein record
+     * tools such as the Metapredict driver). Non-empty makes the run PARTIAL.
+     */
+    protected List<String> uncoveredInputs = []
 
     /** Generic reason; subclasses with configuration prerequisites refine it. */
     @Override
@@ -68,7 +87,7 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
     String getVersion() {
         try {
             def exec = executablePath ?: executable
-            def proc = [exec, '--version'].execute()
+            def proc = ([exec] + versionArguments()).execute()
             proc.waitForOrKill(10000)
             return proc.text.trim().readLines().first()
         } catch (Exception e) {
@@ -91,6 +110,8 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
 
         def tmpDir = createTempDir()
         long t0 = System.currentTimeMillis()
+        currentInputIds = proteins*.id as Set
+        uncoveredInputs = []
         try {
             // Write input FASTA
             def inputFasta = new File(tmpDir, 'input.faa')
@@ -100,8 +121,20 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
             def result = runOrFail(command, tmpDir, t0)
             if (result == null) return [:]
 
-            def parsed = parseGuarded(t0) { parseOutput(tmpDir) }
-            recordStatus(PredictorRunStatus.completed(name, countAnnotations(parsed), result.exitCode, successNote()), t0)
+            def parsed = parseGuarded(t0) {
+                def out = parseOutput(tmpDir)
+                requireKnownProteins(out)
+                out
+            }
+            int n = countAnnotations(parsed)
+            if (uncoveredInputs) {
+                recordStatus(PredictorRunStatus.partial(name, n,
+                    "${uncoveredInputs.size()} of ${proteins.size()} proteins were not analysed by the tool: " +
+                        uncoveredInputs.take(10).join(', ') + (uncoveredInputs.size() > 10 ? ', ...' : ''),
+                    new ArrayList<String>(uncoveredInputs), result.exitCode), t0)
+            } else {
+                recordStatus(PredictorRunStatus.completed(name, n, result.exitCode, successNote()), t0)
+            }
             return parsed
         } catch (Exception e) {
             if (lastRunStatus == null || lastRunStatus.outcome != PredictorOutcome.FAILED) {
@@ -114,6 +147,19 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
     }
 
     // ---- shared run/contract helpers (used by every adapter, incl. genome-level overrides) ----
+
+    /**
+     * A tool's output may only name proteins that were submitted. Anything else is a
+     * parsing or identity defect, and silently dropping it at assignment time would hide it.
+     */
+    protected void requireKnownProteins(Map<String, List<Annotation>> parsed) {
+        if (parsed == null || !currentInputIds) return   // no run context (direct parseOutput calls)
+        List<String> unknown = parsed.keySet().findAll { !currentInputIds.contains(it) } as List<String>
+        if (unknown) {
+            throw new ToolOutputContractException("${name}: output names ${unknown.size()} protein(s) absent from the " +
+                "submitted input: ${unknown.take(5).join(', ')}")
+        }
+    }
 
     /**
      * Interpretation caveat attached to SUCCESS / SUCCESS_ZERO statuses (e.g. what an
@@ -180,6 +226,19 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
         List<String> written = []
         /** Contigs with no sequence loaded: not analysed. */
         List<String> skipped = []
+        /**
+         * Proteins the pipeline could not place on any contig (ambiguous or conflicting CDS
+         * identity); they sit on a placeholder contig without sequence or features and can
+         * never be attributed to a genomic region.
+         */
+        List<String> unplacedProteins = []
+        /** Everything a nucleotide tool's result does not cover: skipped contigs and unplaced proteins. */
+        List<String> uncovered() { skipped + unplacedProteins }
+    }
+
+    /** The pipeline's placeholder for proteins without a CDS placement: no sequence, no features, only proteins. */
+    protected static boolean isPlaceholderContig(gspa.model.Contig contig) {
+        !contig.sequence && contig.features.isEmpty() && contig.proteins
     }
 
     /** Write contigs that carry sequence as FASTA; contigs without are reported, not silently dropped. */
@@ -190,6 +249,8 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
                 if (contig.sequence) {
                     gspa.io.FastaWriter.writeEntry(w, contig.id, contig.sequence)
                     export.written << contig.id
+                } else if (isPlaceholderContig(contig)) {
+                    export.unplacedProteins.addAll(contig.proteins*.id)
                 } else {
                     export.skipped << contig.id
                 }
@@ -224,9 +285,9 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
             if (result == null) return [:]
             def parsed = parseGuarded(t0) { parseOutput(outDir) }
             int n = countAnnotations(parsed)
-            if (export.skipped) {
+            if (export.skipped || export.unplacedProteins) {
                 recordStatus(PredictorRunStatus.partial(name, n, describeSkipped(export, genome.contigs.size()),
-                    export.skipped, result.exitCode), t0)
+                    export.uncovered(), result.exitCode), t0)
             } else {
                 recordStatus(PredictorRunStatus.completed(name, n, result.exitCode, successNote()), t0)
             }
@@ -242,8 +303,18 @@ abstract class AbstractToolPredictor implements Predictor, StatusReportingPredic
     }
 
     protected static String describeSkipped(ContigExport export, int total) {
-        "${export.skipped.size()} of ${total} contigs have no nucleotide sequence and were not analysed: " +
-            export.skipped.take(10).join(', ') + (export.skipped.size() > 10 ? ', ...' : '')
+        List<String> parts = []
+        if (export.skipped) {
+            int real = total - (export.unplacedProteins ? 1 : 0)
+            parts << "${export.skipped.size()} of ${real} contigs have no nucleotide sequence and were not analysed: " +
+                export.skipped.take(10).join(', ') + (export.skipped.size() > 10 ? ', ...' : '')
+        }
+        if (export.unplacedProteins) {
+            parts << "${export.unplacedProteins.size()} proteins have no CDS placement (ambiguous or conflicting CDS " +
+                "identity) and cannot be attributed to genomic regions: " +
+                export.unplacedProteins.take(10).join(', ') + (export.unplacedProteins.size() > 10 ? ', ...' : '')
+        }
+        parts.join(' | ')
     }
 
     protected static int countAnnotations(Map<String, List<Annotation>> results) {

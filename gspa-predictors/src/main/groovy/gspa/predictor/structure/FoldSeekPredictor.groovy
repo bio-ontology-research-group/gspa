@@ -4,6 +4,7 @@ import gspa.integration.EvidenceType
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 import java.util.regex.Pattern
 
@@ -83,6 +84,10 @@ class FoldSeekPredictor extends AbstractToolPredictor {
     @Override
     String getExecutable() { 'foldseek' }
 
+    /** FoldSeek has no --version flag; `foldseek version` prints the commit hash. */
+    @Override
+    protected List<String> versionArguments() { ['version'] }
+
     @Override
     List<String> buildCommand(File inputFasta, File outputDir) {
         def queryInput = structureDir ?: inputFasta.absolutePath
@@ -127,26 +132,36 @@ class FoldSeekPredictor extends AbstractToolPredictor {
         boolean prostMode = useProstT5 || prostt5Model
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
+        int lineNo = 0
         resultFile.eachLine { line ->
-            def fields = line.split('\t')
+            lineNo++
+            if (!line.trim()) return
+            def fields = line.split('\t', -1)
 
             String queryId, targetId, header
             double pident, eval, bitscore, tmScore
-
-            if (prostMode) {
-                // ProstT5 format: query,target,pident,evalue,bits,theader (no TM-score)
-                if (fields.length < 6) return
-                queryId = fields[0]; targetId = fields[1]
-                pident = fields[2] as double; eval = fields[3] as double
-                bitscore = fields[4] as double; tmScore = -1.0
-                header = fields[5]
-            } else {
-                // Structure format: query,target,pident,evalue,bits,alntmscore,theader
-                if (fields.length < 7) return
-                queryId = fields[0]; targetId = fields[1]
-                pident = fields[2] as double; eval = fields[3] as double
-                bitscore = fields[4] as double; tmScore = fields[5] as double
-                header = fields[6]
+            int expected = prostMode ? 6 : 7
+            // easy-search writes exactly the requested --format-output columns; a shorter row
+            // is a corrupt or foreign file, never "no hit" (which is a zero-byte file).
+            if (fields.length < expected) {
+                throw new ToolOutputContractException("${name}: line ${lineNo} has ${fields.length} columns, ${expected} were requested")
+            }
+            try {
+                if (prostMode) {
+                    // ProstT5 format: query,target,pident,evalue,bits,theader (no TM-score)
+                    queryId = fields[0]; targetId = fields[1]
+                    pident = fields[2] as double; eval = fields[3] as double
+                    bitscore = fields[4] as double; tmScore = -1.0
+                    header = fields[5]
+                } else {
+                    // Structure format: query,target,pident,evalue,bits,alntmscore,theader
+                    queryId = fields[0]; targetId = fields[1]
+                    pident = fields[2] as double; eval = fields[3] as double
+                    bitscore = fields[4] as double; tmScore = fields[5] as double
+                    header = fields[6]
+                }
+            } catch (NumberFormatException e) {
+                throw new ToolOutputContractException("${name}: line ${lineNo} has a non-numeric statistic for ${fields[0]}")
             }
 
             // Score: TM-score if available, otherwise normalized pident

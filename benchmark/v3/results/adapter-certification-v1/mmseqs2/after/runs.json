@@ -1,0 +1,238 @@
+[
+  {
+    "name": "annotate",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-after.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/annotate.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/annotate",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/annotate/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa-cert/tools/mmseqs2/mmseqs/bin:/usr/bin",
+    "stub": {}
+  },
+  {
+    "name": "annotate_integrated",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-after.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/annotate_integrated.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/annotate_integrated",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/annotate_integrated/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics",
+      "--integration-config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/workflow.json"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa-cert/tools/mmseqs2/mmseqs/bin:/usr/bin",
+    "stub": {}
+  },
+  {
+    "name": "direct_integrate",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-after.jar",
+      "integrate",
+      "--claims",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/annotate/raw.jsonl",
+      "--workflow-config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/workflow.json",
+      "--out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/direct.tsv"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa-cert/tools/mmseqs2/mmseqs/bin:/usr/bin",
+    "stub": {}
+  },
+  {
+    "name": "header_only",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-after.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/header_only.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/header_only",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/header_only/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "mmseqs",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/payload/header_only"
+    }
+  },
+  {
+    "name": "malformed",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-after.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/malformed.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/malformed",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/malformed/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "mmseqs",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/payload/malformed"
+    }
+  },
+  {
+    "name": "truncated_row",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-after.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/truncated_row.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/truncated_row",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/truncated_row/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "mmseqs",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/payload/truncated_row"
+    }
+  },
+  {
+    "name": "dropped_protein",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-after.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/dropped_protein.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/dropped_protein",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/dropped_protein/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "mmseqs",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/payload/dropped_protein"
+    }
+  },
+  {
+    "name": "unknown_protein",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-after.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/unknown_protein.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/unknown_protein",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/unknown_protein/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "mmseqs",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/payload/unknown_protein"
+    }
+  },
+  {
+    "name": "unavailable",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-after.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/unavailable.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/unavailable",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/unavailable/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/mmseqs2/after/emptybin",
+    "stub": {}
+  }
+]

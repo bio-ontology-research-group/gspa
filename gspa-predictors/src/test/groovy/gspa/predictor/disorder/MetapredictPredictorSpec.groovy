@@ -2,6 +2,7 @@ package gspa.predictor.disorder
 
 import gspa.integration.EvidenceType
 import gspa.model.AnnotationType
+import gspa.predictor.ToolOutputContractException
 import spock.lang.Specification
 import spock.lang.TempDir
 
@@ -12,12 +13,11 @@ class MetapredictPredictorSpec extends Specification {
     @TempDir
     Path tmp
 
-    private File tsvWith(String contents) {
+    /** Writes idrs.tsv plus the driver's coverage.tsv marking every named protein as scored. */
+    private File tsvWith(String contents, List<String> covered = ['prot_a', 'prot_b', 'prot_c']) {
         def dir = tmp.toFile()
-        new File(dir, 'idrs.tsv').with {
-            it.text = contents
-            it
-        }
+        new File(dir, 'idrs.tsv').text = contents
+        new File(dir, 'coverage.tsv').text = 'protein_id\tstatus\tmessage\n' + covered.collect { it + '\tok\t\n' }.join('')
         dir
     }
 
@@ -82,24 +82,50 @@ prot_b\t1\t100\t0.85
         results['prot_b']?.size() == 1
     }
 
-    def "malformed rows are skipped without crashing"() {
+    def "malformed rows are rejected as an output-contract failure, never skipped"() {
         given:
         def predictor = new MetapredictPredictor()
-        def outDir = tsvWith('''\
-protein_id\tregion_start\tregion_end\tmean_score
-prot_a\t1\t50\t0.8
-garbage line
-prot_b\tNaN\t60\t0.9
-prot_c\t10\t30\t0.75
-'''.stripIndent())
+        def outDir = tsvWith(contents)
 
         when:
-        def results = predictor.parseOutput(outDir)
+        predictor.parseOutput(outDir)
 
         then:
-        results['prot_a']?.size() == 1
-        results['prot_c']?.size() == 1
-        results['prot_b'] == null || results['prot_b'].isEmpty()
+        def e = thrown(ToolOutputContractException)
+        e.message.contains(reason)
+
+        where:
+        contents                                                                           | reason
+        'protein_id\tregion_start\tregion_end\tmean_score\nprot_a\t1\t50\t0.8\ngarbage line\n'   | 'columns'
+        'protein_id\tregion_start\tregion_end\tmean_score\nprot_b\tNaN\t60\t0.9\n'                | 'non-numeric'
+        'protein_id\tregion_start\tregion_end\tmean_score\nprot_a\t50\t10\t0.9\n'                 | 'impossible region'
+    }
+
+    def "a region for a protein the driver did not mark as scored is rejected"() {
+        given:
+        def predictor = new MetapredictPredictor()
+        def outDir = tsvWith('protein_id\tregion_start\tregion_end\tmean_score\nprot_z\t1\t50\t0.8\n')
+
+        when:
+        predictor.parseOutput(outDir)
+
+        then:
+        def e = thrown(ToolOutputContractException)
+        e.message.contains('prot_z')
+    }
+
+    def "missing coverage.tsv is a failed run"() {
+        given:
+        def predictor = new MetapredictPredictor()
+        def dir = tsvWith('protein_id\tregion_start\tregion_end\tmean_score\n')
+        new File(dir, 'coverage.tsv').delete()
+
+        when:
+        predictor.parseOutput(dir)
+
+        then:
+        def e = thrown(ToolOutputContractException)
+        e.message.contains('coverage.tsv')
     }
 
     def "output types advertise DISORDER"() {

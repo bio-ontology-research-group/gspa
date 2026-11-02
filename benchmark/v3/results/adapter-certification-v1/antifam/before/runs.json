@@ -1,0 +1,238 @@
+[
+  {
+    "name": "annotate",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-before.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/observed/antifam/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/annotate.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/annotate",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/annotate/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa-cert/tools/hmmer/install/bin:/usr/bin",
+    "stub": {}
+  },
+  {
+    "name": "annotate_integrated",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-before.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/observed/antifam/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/annotate_integrated.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/annotate_integrated",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/annotate_integrated/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics",
+      "--integration-config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/workflow.json"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa-cert/tools/hmmer/install/bin:/usr/bin",
+    "stub": {}
+  },
+  {
+    "name": "direct_integrate",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-before.jar",
+      "integrate",
+      "--claims",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/annotate/raw.jsonl",
+      "--workflow-config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/workflow.json",
+      "--out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/direct.tsv"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa-cert/tools/hmmer/install/bin:/usr/bin",
+    "stub": {}
+  },
+  {
+    "name": "header_only",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-before.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/observed/antifam/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/header_only.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/header_only",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/header_only/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "hmmsearch",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/payload/header_only"
+    }
+  },
+  {
+    "name": "malformed",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-before.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/observed/antifam/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/malformed.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/malformed",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/malformed/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "hmmsearch",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/payload/malformed"
+    }
+  },
+  {
+    "name": "truncated_row",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-before.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/observed/antifam/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/truncated_row.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/truncated_row",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/truncated_row/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "hmmsearch",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/payload/truncated_row"
+    }
+  },
+  {
+    "name": "dropped_protein",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-before.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/observed/antifam/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/dropped_protein.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/dropped_protein",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/dropped_protein/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "hmmsearch",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/payload/dropped_protein"
+    }
+  },
+  {
+    "name": "unknown_protein",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-before.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/observed/antifam/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/unknown_protein.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/unknown_protein",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/unknown_protein/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/stubbin",
+    "stub": {
+      "GSPA_STUB_KIND": "hmmsearch",
+      "GSPA_STUB_PAYLOAD": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/payload/unknown_protein"
+    }
+  },
+  {
+    "name": "unavailable",
+    "command": [
+      "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.io.tmpdir=/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/tmp",
+      "-jar",
+      "/mnt/data2/leechuck/gspa-cert/gspa-before.jar",
+      "annotate",
+      "--proteins",
+      "/mnt/data2/leechuck/gspa-cert/observed/antifam/input.faa",
+      "--config",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/unavailable.config.json",
+      "--output",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/unavailable",
+      "--claims-out",
+      "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/unavailable/raw.jsonl",
+      "--threads",
+      "1",
+      "--no-metrics"
+    ],
+    "exit_code": 0,
+    "path": "/mnt/data2/leechuck/gspa/benchmark/v3/results/adapter-certification-v1/antifam/before/emptybin",
+    "stub": {}
+  }
+]

@@ -303,6 +303,22 @@ class AnnotationPipeline {
                 strictness: bgc.strictness, threads: bgc.threads)
         }
 
+        if (config.predictors.enable.contains('vfdb')) {
+            def vf = config.predictors.vfdb
+            predictors << new gspa.predictor.specialized.VfdbPredictor(
+                database: vf.database, executablePath: vf.executablePath,
+                evalue: vf.evalue, minIdentity: vf.minIdentity, threads: vf.threads)
+        }
+
+        // CRISPR arrays (genome-level, nucleotide input): regions projected onto overlapping CDS
+        if (config.predictors.enable.contains('crispr')) {
+            def cr = config.predictors.crispr
+            def crispr = new gspa.predictor.specialized.CrisprPredictor(
+                executablePath: cr.executablePath, minRepeats: cr.minRepeats)
+            predictors << crispr
+            genomePredictors << crispr
+        }
+
         // Disorder (Metapredict)
         if (config.predictors.disorder.enabled) {
             predictors << new gspa.predictor.disorder.MetapredictPredictor(

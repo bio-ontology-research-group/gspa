@@ -241,8 +241,10 @@ class AllPredictorParsingSpec extends Specification {
         // Two CRISPR arrays on two different contigs
         results['contig_1']?.any { it.type == AnnotationType.CRISPR }
         results['contig_2']?.any { it.type == AnnotationType.CRISPR }
-        results['contig_1'][0].metadata.start == 10245
-        results['contig_1'][0].metadata.end == 11456
+        results['contig_1'][0].genomicStart == 10245
+        results['contig_1'][0].genomicEnd == 11456
+        results['contig_1'][0].contigId == 'contig_1'
+        results['contig_1'][0].metadata.score_available == false
     }
 
     // --- buildCommand tests ---

@@ -1,0 +1,175 @@
+Create directory /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp
+easy-search /mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa /mnt/data2/leechuck/gspa-cert/fixtures/db/foldseek_ref /mnt/data2/leechuck/gspa-cert/observed/foldseek/foldseek_results.tsv /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp --format-output query,target,pident,evalue,bits,theader -e 0.001 --threads 4 --prostt5-model /mnt/data2/leechuck/gspa-cert/tools/foldseek/prostt5/weights 
+
+MMseqs Version:                    	941cd33ff0771cd2e3f144e3293e22a2b87e9fda
+Seq. id. threshold                 	0
+Coverage threshold                 	0
+Coverage mode                      	0
+Max reject                         	2147483647
+Max accept                         	2147483647
+Add backtrace                      	false
+TMscore threshold                  	0
+TMscore threshold mode             	0
+TMalign hit order                  	0
+TMalign fast                       	1
+Preload mode                       	0
+Threads                            	4
+Verbosity                          	3
+LDDT threshold                     	0
+Sort by structure bit score        	1
+Alignment type                     	2
+Exact TMscore                      	0
+Substitution matrix                	aa:3di.out,nucl:3di.out
+Alignment mode                     	3
+Alignment mode                     	0
+E-value threshold                  	0.001
+Min alignment length               	0
+Seq. id. mode                      	0
+Alternative alignments             	0
+Max sequence length                	65535
+Compositional bias                 	1
+Compositional bias                 	1
+Gap open cost                      	aa:10,nucl:10
+Gap extension cost                 	aa:1,nucl:1
+Compressed                         	0
+Seed substitution matrix           	aa:3di.out,nucl:3di.out
+Sensitivity                        	9.5
+k-mer length                       	6
+Target search mode                 	0
+k-score                            	seq:2147483647,prof:2147483647
+Max results per query              	1000
+Split database                     	0
+Split mode                         	2
+Split memory limit                 	0
+Diagonal scoring                   	true
+Exact k-mer matching               	0
+Mask residues                      	0
+Mask residues probability          	0.999995
+Mask lower case residues           	1
+Mask lower letter repeating N times	6
+Minimum diagonal score             	30
+Selected taxa                      	
+Spaced k-mers                      	1
+Spaced k-mer pattern               	
+Local temporary path               	
+Use GPU                            	0
+Use GPU server                     	0
+Wait for GPU server                	600
+Prefilter mode                     	0
+Exhaustive search mode             	false
+Search iterations                  	1
+Remove temporary files             	true
+MPI runner                         	
+Force restart with latest tmp      	false
+Cluster search                     	0
+Path to ProstT5                    	/mnt/data2/leechuck/gspa-cert/tools/foldseek/prostt5/weights
+Chain name mode                    	0
+Createdb extraction mode           	0
+Interface distance threshold       	8
+Write mapping file                 	0
+Mask b-factor threshold            	0
+Coord store mode                   	2
+Write lookup file                  	1
+Input format                       	0
+File Inclusion Regex               	.*
+File Exclusion Regex               	^$
+Alignment format                   	0
+Format alignment output            	query,target,pident,evalue,bits,theader
+Database output                    	false
+Report mode                        	2
+Greedy best hits                   	false
+
+createdb /mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/query --gpu 0 --prostt5-model /mnt/data2/leechuck/gspa-cert/tools/foldseek/prostt5/weights --chain-name-mode 0 --db-extraction-mode 0 --distance-threshold 8 --write-mapping 0 --mask-bfactor-threshold 0 --coord-store-mode 2 --write-lookup 1 --input-format 0 --file-include '.*' --file-exclude '^$' --threads 4 -v 3 
+
+Converting sequences
+[
+Time for merging to query_h: 0h 0m 0s 1ms
+Time for merging to query: 0h 0m 0s 1ms
+Database type: Aminoacid
+CPU
+[=================================================================] 3 13s 48ms
+CPU
+Time for merging to query_ss: 0h 0m 0s 0ms
+Time for merging to query_ss_tmp: 0h 0m 0s 0ms
+Time for processing: 0h 0m 21s 178ms
+Create directory /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/search_tmp
+search /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/query /mnt/data2/leechuck/gspa-cert/fixtures/db/foldseek_ref /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/result /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/search_tmp --threads 4 --alignment-mode 3 -e 0.001 -s 9.5 -k 6 --remove-tmp-files 1 
+
+prefilter /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/query_ss /mnt/data2/leechuck/gspa-cert/fixtures/db/foldseek_ref_ss /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/search_tmp/4303117424670830769/pref --sub-mat 'aa:3di.out,nucl:3di.out' --seed-sub-mat 'aa:3di.out,nucl:3di.out' -s 9.5 -k 6 --target-search-mode 0 --k-score seq:2147483647,prof:2147483647 --alph-size aa:21,nucl:5 --max-seq-len 65535 --max-seqs 1000 --split 0 --split-mode 2 --split-memory-limit 0 -c 0 --cov-mode 0 --comp-bias-corr 1 --comp-bias-corr-scale 0.15 --diag-score 1 --exact-kmer-matching 0 --mask 0 --mask-prob 0.999995 --mask-lower-case 1 --mask-n-repeat 6 --min-ungapped-score 30 --add-self-matches 0 --spaced-kmer-mode 1 --db-load-mode 0 --pca substitution:1.100,context:1.400 --pcb substitution:4.100,context:5.800 --threads 4 --compressed 0 -v 3 
+
+Query database size: 3 type: Aminoacid
+Estimated memory consumption: 978M
+Target database size: 285 type: Aminoacid
+Index table k-mer threshold: 78 at k-mer size 6 
+Index table: counting k-mers
+[=================================================================] 285 0s 4ms
+Index table: Masked residues: 2994
+Index table: fill
+[=================================================================] 285 0s 5ms
+Index statistics
+Entries:          70517
+DB size:          488 MB
+Avg k-mer size:   0.001102
+Top 10 k-mers
+    VVLVVV	276
+    LVRVVV	271
+    LVVVVV	261
+    DDLVVV	226
+    LLVVVV	219
+    EDPDVV	206
+    LDDVLV	203
+    LVQVVV	201
+    LSLVVV	198
+    LVSVVV	180
+Time for index table init: 0h 0m 0s 941ms
+Process prefiltering step 1 of 1
+
+k-mer similarity threshold: 78
+Starting prefiltering scores calculation (step 1 of 1)
+Query db start 1 to 3
+Target db start 1 to 285
+[=================================================================] 3 0s 34ms
+
+734.792727 k-mers per position
+26068 DB matches per sequence
+0 overflows
+92 sequences passed prefiltering per query sequence
+0 median result list length
+2 sequences with 0 size result lists
+Time for merging to pref: 0h 0m 0s 0ms
+Time for processing: 0h 0m 2s 131ms
+structurealign /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/query /mnt/data2/leechuck/gspa-cert/fixtures/db/foldseek_ref /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/search_tmp/4303117424670830769/pref /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/search_tmp/4303117424670830769/strualn --tmscore-threshold 0 --tmscore-threshold-mode 0 --lddt-threshold 0 --sort-by-structure-bits 1 --alignment-type 2 --exact-tmscore 0 --sub-mat 'aa:3di.out,nucl:3di.out' -a 0 --alignment-mode 3 --alignment-output-mode 0 --wrapped-scoring 0 -e 0.001 --min-seq-id 0 --min-aln-len 0 --seq-id-mode 0 --alt-ali 0 -c 0 --cov-mode 0 --max-seq-len 65535 --comp-bias-corr 1 --comp-bias-corr-scale 0.5 --max-rejected 2147483647 --max-accept 2147483647 --add-self-matches 0 --db-load-mode 0 --pca substitution:1.100,context:1.400 --pcb substitution:4.100,context:5.800 --score-bias 0 --realign 0 --realign-score-bias -0.2 --realign-max-seqs 2147483647 --corr-score-weight 0 --gap-open aa:10,nucl:10 --gap-extend aa:1,nucl:1 --zdrop 40 --threads 4 --compressed 0 -v 3 
+
+Cannot find query C-alpha or foldseek_ref C-alpha database
+Disabling --sort-by-structure-bits
+This impacts the final score and ranking of hits, but not E-values themselves. Ranking alterations primarily occur for E-values < 10^-1.
+[=================================================================] 3 0s 108ms
+Time for merging to strualn: 0h 0m 0s 0ms
+Time for processing: 0h 0m 0s 368ms
+mvdb /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/search_tmp/4303117424670830769/strualn /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/search_tmp/4303117424670830769/aln -v 3 
+
+Time for processing: 0h 0m 0s 17ms
+mvdb /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/search_tmp/4303117424670830769/aln /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/result -v 3 
+
+Time for processing: 0h 0m 0s 0ms
+Removing temporary files
+rmdb /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/search_tmp/4303117424670830769/pref -v 3 
+
+Time for processing: 0h 0m 0s 0ms
+convertalis /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/query /mnt/data2/leechuck/gspa-cert/fixtures/db/foldseek_ref /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/result /mnt/data2/leechuck/gspa-cert/observed/foldseek/foldseek_results.tsv --sub-mat 'aa:3di.out,nucl:3di.out' --format-mode 0 --format-output query,target,pident,evalue,bits,theader --translation-table 1 --gap-open aa:10,nucl:10 --gap-extend aa:1,nucl:1 --db-output 0 --db-load-mode 0 --search-type 0 --threads 4 --compressed 0 -v 3 --exact-tmscore 0 
+
+[=================================================================] 3 0s 0ms
+Time for merging to foldseek_results.tsv: 0h 0m 0s 0ms
+Time for processing: 0h 0m 0s 41ms
+rmdb /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/result -v 3 
+
+Time for processing: 0h 0m 0s 0ms
+rmdb /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/query -v 3 
+
+Time for processing: 0h 0m 0s 0ms
+rmdb /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/query_h -v 3 
+
+Time for processing: 0h 0m 0s 0ms
+rmdb /mnt/data2/leechuck/gspa-cert/observed/foldseek/tmp/5036941668588059494/query_ss -v 3 
+
+Time for processing: 0h 0m 0s 0ms

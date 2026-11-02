@@ -1,0 +1,81 @@
+{
+ "adapter": "gapseq",
+ "mode": "genome",
+ "input": {
+  "genome": "/scratch/hohndor/gspa-cert/bw25113/GCF_000750555.1.fna",
+  "gff3": "/scratch/hohndor/gspa-cert/bw25113/GCF_000750555.1.gff"
+ },
+ "config": {
+  "input": {
+   "kingdom": "bacteria"
+  },
+  "predictors": {
+   "similarity": {
+    "enabled": false
+   },
+   "domains": {
+    "enabled": false
+   },
+   "operons": {
+    "enabled": false
+   },
+   "localization": {
+    "enabled": false
+   },
+   "antifam": {
+    "enabled": false
+   },
+   "pathway": {
+    "enabled": true,
+    "tool": "gapseq",
+    "target": "genome",
+    "executablePath": "/project/k10018/sw/envs/gapseq/bin/gapseq",
+    "threads": 32,
+    "taxonomy": "Bacteria"
+   }
+  },
+  "quality": {
+   "enabled": false
+  }
+ },
+ "path_dirs": [
+  "/project/k10018/sw/envs/gapseq/bin"
+ ],
+ "tool": "gapseq",
+ "stub_kind": "gapseq",
+ "executable_config_key": [
+  "predictors",
+  "pathway",
+  "executablePath"
+ ],
+ "native_output": "/scratch/hohndor/gspa-cert/results/gapseq/observed/out/GCF_000750555.1-all-Reactions.tbl",
+ "oracle_reader": "none",
+ "genuine_outcome": "FAILED",
+ "genuine_detail_contains": [
+  "nucleotide pathway hits require coordinate-to-protein attribution"
+ ],
+ "genuine_claims": "none",
+ "nondeterministic": true,
+ "malformed_column": 2,
+ "dropped_protein": "none",
+ "cli_threads": 32,
+ "timeout_seconds": 7200,
+ "cases": {
+  "header_only": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "none"
+  },
+  "truncated_row": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "unavailable": {
+   "expected": "UNAVAILABLE",
+   "claims": "none"
+  }
+ },
+ "bound": [
+  "/project/k10018/sw/envs/gapseq/bin/gapseq"
+ ],
+ "note": "Shaheen: gapseq 2.1.0 (conda env /project/k10018/sw/envs/gapseq) find -M nucl on BW25113; the genome route is a documented typed failure when hits exist"
+}

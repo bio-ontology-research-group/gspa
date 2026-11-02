@@ -191,16 +191,19 @@ class CdsTranslator {
                 }
                 return
             }
-            // Group CDS segments per protein, preserving first-seen order.
-            Map<String, List<Feature>> byProtein = new LinkedHashMap<>()
+            // Group CDS segments per locus, preserving first-seen order. Segments of one split
+            // CDS (programmed frameshift, ribosomal slippage) share their gene (Parent) and
+            // feature ID; identical proteins encoded at several loci (IS transposases) share
+            // only the protein_id and must stay separate proteins, each with its own
+            // coordinates, or region attribution and operon context silently lose the copies.
+            Map<String, List<Feature>> byLocus = new LinkedHashMap<>()
             contig.cdsFeatures().findAll { isTranslatedCds(it) }.each { Feature f ->
-                String key = proteinKey(f)
-                byProtein.computeIfAbsent(key) { [] } << f
+                byLocus.computeIfAbsent(locusKey(f)) { [] } << f
             }
-            byProtein.each { String key, List<Feature> segments ->
+            byLocus.each { String locus, List<Feature> segments ->
                 String aa = translateCds(segments, contig.sequence, translateStartAsMet)
                 if (!aa) return
-                String pid = uniqueId(key, contig.id, usedIds)
+                String pid = uniqueId(proteinKey(segments.first()), contig.id, usedIds)
                 Feature primary = segments.min { it.start }
                 def protein = new Protein(id: pid, sequence: aa, sourceFeature: primary)
                 contig.addProtein(protein)
@@ -214,7 +217,20 @@ class CdsTranslator {
         feature.attributes['pseudo']?.first()?.toLowerCase() != 'true' && !feature.attributes['pseudogene']
     }
 
-    /** Grouping/identity key for a CDS feature: protein_id, ID, locus_tag, or synthesized. */
+    /**
+     * Locus key: the protein key qualified by the gene the CDS belongs to ({@code Parent}),
+     * falling back to the feature {@code ID}. Two CDS rows with the same key are segments of
+     * one coding sequence; the same protein_id under different genes is several loci.
+     */
+    static String locusKey(Feature f) {
+        String key = proteinKey(f)
+        String parent = f.attributes['Parent']?.first()
+        if (parent) return "${key}@${parent}"
+        if (f.id) return "${key}@${f.id}"
+        key
+    }
+
+    /** Naming/identity key for a CDS feature: protein_id, ID, locus_tag, or synthesized. */
     static String proteinKey(Feature f) {
         f.attributes['protein_id']?.first() ?:
             f.id ?:

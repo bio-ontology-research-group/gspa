@@ -10,7 +10,7 @@ import uuid
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
-from service import jobs, ledger_summary
+from service import cohort, jobs, ledger_summary
 
 STATIC = Path(__file__).parent / 'web'
 PRESETS = {'bacteria', 'archaea', 'prokaryote', 'eukaryote', 'mag', 'metagenome', 'virus'}
@@ -58,7 +58,9 @@ def health():
 @app.post('/api/jobs', status_code=202)
 def submit(file: UploadFile = File(...), kind: str = Form('gff3'), preset: str = Form('bacteria'),
            genome: UploadFile | None = File(None), disabled: str = Form(''), gram: str = Form('neg')):
-    if kind not in ('gff3', 'genome', 'proteins') or preset not in PRESETS or gram not in ('neg', 'pos'):
+    if kind == 'cohort' and not cohort.offered():
+        raise HTTPException(400, 'Multi-genome cohort jobs are not offered by this deployment.')
+    if kind not in ('gff3', 'genome', 'proteins', 'cohort') or preset not in PRESETS or gram not in ('neg', 'pos'):
         raise HTTPException(400, 'Select a valid input type and biological context.')
     if kind == 'genome' and preset == 'eukaryote':
         raise HTTPException(400, 'For eukaryotes, upload translated proteins; a splice-aware gene caller is required upstream.')
@@ -85,12 +87,19 @@ def submit(file: UploadFile = File(...), kind: str = Form('gff3'), preset: str =
                         if size > jobs.MAX_BYTES:
                             raise HTTPException(413, 'Each uncompressed input file must be at most 20 MB.')
                         out.write(chunk)
-            name = {'genome': 'sample.fna', 'proteins': 'sample.faa', 'gff3': 'sample.gff3'}[kind]
+            name = {'genome': 'sample.fna', 'proteins': 'sample.faa', 'gff3': 'sample.gff3', 'cohort': 'cohort.zip'}[kind]
             save(file, name)
             if genome is not None and genome.filename:
                 if kind != 'gff3':
                     raise ValueError('A companion genome FASTA is only used with GFF3 input.')
                 save(genome, 'sample.fna')
+            if kind == 'cohort':
+                accepted = cohort.accept(folder)
+                data = jobs.state(folder, id=job_id, status='queued', stage='Waiting for a worker',
+                    created=time.time(), kind=kind, preset=preset, genomes=accepted['genomes'],
+                    sequences=accepted['proteins'], residues=0, analyses={}, gram=gram,
+                    filename=Path(file.filename or 'cohort.zip').name[:180])
+                return data
             if kind == 'gff3':
                 from service.inputs import gff3
                 count, length = gff3(folder)
@@ -122,8 +131,31 @@ def status(job_id: str):
     folder = folder_for(job_id)
     data = dict(jobs.state(folder))
     if data.get('status') == 'complete':
-        data['ledger'] = ledger_summary.summarize(folder / 'gspa_out')
+        if data.get('kind') == 'cohort':
+            # One ledger per genome: the batch route writes no job-level ledger, and none is invented.
+            data['genome_ledgers'] = {g: ledger_summary.summarize(folder / 'gspa_out' / 'cohort' / g) for g in data.get('genomes', [])}
+        else:
+            data['ledger'] = ledger_summary.summarize(folder / 'gspa_out')
     return data
+
+
+@app.get('/api/jobs/{job_id}/genomes/{genome_id}/{artifact}')
+def genome_artifact(job_id: str, genome_id: str, artifact: str):
+    """Per-genome results of a multi-genome cohort job."""
+    folder = folder_for(job_id)
+    info = jobs.state(folder)
+    if info.get('kind') != 'cohort' or genome_id not in info.get('genomes', []) or not cohort.ID_RE.fullmatch(genome_id):
+        raise HTTPException(404, 'This result is not available.')
+    run = folder / 'gspa_out' / 'cohort' / genome_id
+    paths = {'browser': run / 'browser.html', 'table': run / 'integrated.tsv',
+             'ledger': run / ledger_summary.LEDGER_NAME, 'learned': run / ledger_summary.LEARNED_NAME,
+             'provenance': run / 'integrated.tsv.provenance.json', 'cohort': run / 'integrated.tsv.cohort.json'}
+    if artifact not in paths or not paths[artifact].is_file():
+        raise HTTPException(404, 'This result is not available yet.')
+    if info['status'] != 'complete':
+        raise HTTPException(409, 'The job has not completed.')
+    return FileResponse(paths[artifact], filename=None if artifact == 'browser' else f'{genome_id}.{paths[artifact].name}',
+                        media_type='text/html' if artifact == 'browser' else None)
 
 
 @app.get('/api/jobs/{job_id}/{artifact}')

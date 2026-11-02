@@ -94,8 +94,11 @@ class AmrFinderObservedSpec extends Specification {
     def 'successful execution retains the tool version'() {
         given:
         def p = new ProcessStub(body: fixture())
+        def lines = fixture().readLines()
+        int idColumn = lines[0].split('\t', -1).toList().indexOf('Protein id')
+        def submitted = lines.drop(1).collect { it.split('\t', -1)[idColumn] }.unique().collect { new Protein(id: it, sequence: 'MKKLL') }
         when:
-        def r = p.predictBatch([new Protein(id: 'p', sequence: 'MKKLL')])
+        def r = p.predictBatch(submitted)
         then:
         r['blaPDC-114_blast'][0].metadata.tool_version == '4.2.7'
         p.lastRunStatus.outcome == PredictorOutcome.SUCCESS

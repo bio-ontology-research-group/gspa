@@ -99,6 +99,47 @@ class CdsTranslatorSpec extends Specification {
         contig.proteins[0].sequence == 'MA'
     }
 
+    def 'identical proteins at several loci stay separate proteins with their own coordinates'() {
+        given: 'two IS-element copies share protein_id but belong to different genes (RefSeq GFF3 style)'
+        def genome = new Genome(id: 'g')
+        def contig = new Contig(id: 'c1', sequence: 'ATGGCCTGA' + 'TTTTTT' + 'ATGGCCTGA')
+        [[1, 9, 'gene-A', 'cds-WP_1.1'], [16, 24, 'gene-B', 'cds-WP_1.1-2']].each { s, e, gene, id ->
+            contig.addFeature(new Feature(seqId: 'c1', type: FeatureType.CDS, start: s, end: e,
+                strand: Strand.PLUS, phase: 0, attributes: ['ID': [id], 'Parent': [gene], 'protein_id': ['WP_1.1']]))
+        }
+        genome.addContig(contig)
+
+        when:
+        int n = CdsTranslator.populateProteins(genome)
+
+        then: 'before the repair both rows collapsed into one protein at the first locus'
+        n == 2
+        contig.proteins*.id == ['WP_1.1', 'c1:WP_1.1']
+        contig.proteins*.sequence == ['MA', 'MA']
+        contig.proteins*.start == [1, 16]
+        contig.proteins*.end == [9, 24]
+    }
+
+    def 'segments of one split CDS (same gene) still translate as one protein'() {
+        given: 'a programmed frameshift: two CDS rows with one ID and one Parent'
+        def genome = new Genome(id: 'g')
+        def contig = new Contig(id: 'c1', sequence: 'ATGGCC' + 'TTTAAA')
+        [[1, 6], [7, 12]].each { s, e ->
+            contig.addFeature(new Feature(seqId: 'c1', type: FeatureType.CDS, start: s, end: e,
+                strand: Strand.PLUS, phase: 0, attributes: ['ID': ['cds-WP_2.1'], 'Parent': ['gene-C'], 'protein_id': ['WP_2.1']]))
+        }
+        genome.addContig(contig)
+
+        when:
+        int n = CdsTranslator.populateProteins(genome)
+
+        then:
+        n == 1
+        contig.proteins[0].id == 'WP_2.1'
+        contig.proteins[0].sequence == 'MAFK'
+        contig.proteins[0].start == 1
+    }
+
     def 'maps each protein to its own contig in a multi-contig (metagenome) input'() {
         given:
         def genome = new Genome(id: 'meta')

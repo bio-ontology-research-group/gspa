@@ -1,0 +1,82 @@
+{
+ "adapter": "metapredict",
+ "mode": "proteins",
+ "input": {
+  "proteins": "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa"
+ },
+ "config": {
+  "input": {
+   "kingdom": "bacteria"
+  },
+  "predictors": {
+   "similarity": {
+    "enabled": false
+   },
+   "domains": {
+    "enabled": false
+   },
+   "pathway": {
+    "enabled": false
+   },
+   "operons": {
+    "enabled": false
+   },
+   "localization": {
+    "enabled": false
+   },
+   "antifam": {
+    "enabled": false
+   },
+   "disorder": {
+    "enabled": true,
+    "minRegionLen": 10,
+    "minScore": 0.5
+   }
+  },
+  "quality": {
+   "enabled": false
+  }
+ },
+ "path_dirs": [
+  "/mnt/data2/leechuck/gspa-cert/venv/metapredict/bin"
+ ],
+ "tool": "python3",
+ "stub_kind": "python-driver",
+ "executable_config_key": null,
+ "native_output": "observed/idrs.tsv",
+ "oracle_reader": "metapredict",
+ "genuine_outcome": "SUCCESS",
+ "malformed_column": 3,
+ "dropped_protein": "P0ADB7",
+ "cases": {
+  "header_only": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "none"
+  },
+  "malformed": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "truncated_row": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "dropped_protein": {
+   "expected": "PARTIAL",
+   "claims": "without_dropped",
+   "skipped_contains": "P0ADB7"
+  },
+  "unknown_protein": {
+   "expected": "FAILED",
+   "claims": "none",
+   "detail_contains": [
+    "ghost_protein_not_in_input"
+   ]
+  },
+  "unavailable": {
+   "expected": "UNAVAILABLE",
+   "claims": "none"
+  }
+ },
+ "bound": []
+}

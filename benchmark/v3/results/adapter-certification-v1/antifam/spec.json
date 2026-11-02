@@ -1,0 +1,83 @@
+{
+ "adapter": "antifam",
+ "mode": "proteins",
+ "input": {
+  "proteins": "/mnt/data2/leechuck/gspa-cert/observed/antifam/input.faa"
+ },
+ "config": {
+  "input": {
+   "kingdom": "bacteria"
+  },
+  "predictors": {
+   "similarity": {
+    "enabled": false
+   },
+   "domains": {
+    "enabled": false
+   },
+   "pathway": {
+    "enabled": false
+   },
+   "operons": {
+    "enabled": false
+   },
+   "localization": {
+    "enabled": false
+   },
+   "antifam": {
+    "enabled": true,
+    "database": "/mnt/data2/leechuck/gspa-cert/tools/antifam/AntiFam.hmm",
+    "threads": 2,
+    "useCutGa": true
+   }
+  },
+  "quality": {
+   "enabled": false
+  }
+ },
+ "path_dirs": [
+  "/mnt/data2/leechuck/gspa-cert/tools/hmmer/install/bin"
+ ],
+ "tool": "hmmsearch",
+ "stub_kind": "hmmsearch",
+ "executable_config_key": null,
+ "native_output": "observed/antifam_domtbl.tsv",
+ "oracle_reader": "antifam",
+ "genuine_outcome": "SUCCESS",
+ "malformed_column": 6,
+ "dropped_protein": "Q8EZL8_38-87",
+ "cases": {
+  "header_only": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "none"
+  },
+  "malformed": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "truncated_row": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "dropped_protein": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "without_dropped",
+   "note": "the dropped protein carries the only hit row; an empty domtbl body is the genuine no-hit result"
+  },
+  "unknown_protein": {
+   "expected": "FAILED",
+   "claims": "none",
+   "detail_contains": [
+    "ghost_protein_not_in_input"
+   ]
+  },
+  "unavailable": {
+   "expected": "UNAVAILABLE",
+   "claims": "none"
+  }
+ },
+ "bound": [
+  "/mnt/data2/leechuck/gspa-cert/tools/antifam/AntiFam.hmm",
+  "/mnt/data2/leechuck/gspa-cert/tools/antifam/version"
+ ]
+}

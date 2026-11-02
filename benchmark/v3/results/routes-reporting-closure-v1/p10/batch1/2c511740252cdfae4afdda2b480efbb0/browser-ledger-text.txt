@@ -1,0 +1,524 @@
+Scoring mode: Legacy heuristic. Legacy heuristic: evidence combiner and hand-set priors; no trained model produced these scores. Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores. Scores are not a measurement of accuracy.
+
+Prediction changes are not measurements of accuracy. Changed predictions are not shown to be more correct; that needs independent benchmark truth.
+
+Baseline: Posterior after evidence integration with the heuristic combiner and priors (not a sequence-only baseline). Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The baseline_candidates and final_changes of this ledger are measured from it. 3,469 (protein, function) candidates at baseline; 3,469 in the final export.
+
+Reconciled: the ledger final count equals the 3,469 exported rows, and every net final probability matches the export.
+
+Counts are unique (protein, function) pairs with unique proteins in parentheses. A protein with several GO terms counts once per protein. Enzyme-related means an explicit EC number or a GO term below catalytic activity (GO:0003824) in the ontology, not a name match.
+
+Stage	Status	Added	Removed	Increased	Decreased	Enzyme-related changes
+Reference preparation	Executed	This stage does not edit predictions; see its notes
+Cohort context (two-pass)	Skipped
+disabled
+	No changes recorded: stage did not complete
+Evidence integration	Executed
+suggestions=0
+	3,469 candidates created; this stage defines the baseline
+Dark-matter suggestions	Skipped
+disabled
+	No changes recorded: stage did not complete
+Reaction-local context	Skipped
+disabled
+	No changes recorded: stage did not complete
+Cross-genome rescoring	Skipped
+disabled
+	No changes recorded: stage did not complete
+Symbolic constraint enforcement	Skipped
+disabled
+	No changes recorded: stage did not complete
+Metabolic (FBA) refinement	Skipped
+disabled
+	No changes recorded: stage did not complete
+Agent completion	Skipped
+disabled
+	No changes recorded: stage did not complete
+Metabolic experiments	Skipped
+disabled
+	No changes recorded: stage did not complete
+Community metabolism	Skipped
+disabled
+	No changes recorded: stage did not complete
+Learned integration (frozen model)	Skipped
+no candidates supported by the model input-coverage manifest; baseline scores retained
+model_id=context-logistic-b1143a71f9b5-d9537b61; model_sha256=939f1576d144a78f2dda082f379892e73470042558a98f47565aff1e33a7c33d; model_kind=logistic; contract_id=gspa.context-features/3; contract_fingerprint=d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803; candidates_scored=0; candidates_unsupported=3469; unchanged_unsupported=3469; rescored=0; added=0; retracted=0; removed_no_projection=0; scored_only=0; pinned_floors_cleared=0; retract_below=null; add_unretained_claims=false; structurally_forbidden_go_terms=0; context_supplied=false; replaced_baseline=legacy_prior_baseline; note=Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.; suggestions=0; requested=true
+	No changes recorded: stage did not complete
+Feature export	Skipped
+disabled
+	No changes recorded: stage did not complete
+Changed predictions
+View
+Evidence-integrated baseline → final
+Reference preparation only
+Change
+All
+added
+removed
+increased
+decreased
+Function class
+All
+Enzyme-related (EC or catalytic GO)
+Complete EC
+Partial EC
+GO catalytic activity
+GO complex (not enzyme)
+Other GO
+Unknown class
+Find
+Download filtered rows (TSV)
+Download ledger (JSON)
+
+0 unique (protein, function) pairs across 0 proteins; 0 enzyme-related (0 proteins).
+
+Protein	Function	Class	Change	Probability	Evidence
+No matching changes.
+Previous
+Page 1 of 1
+Next
+Function alternatives
+
+No suggestion table was written for this run, so candidate alternatives are unavailable.
+
+Learned stage: model and per-candidate scores
+
+Model context-logistic-b1143a71f9b5-d9537b61 (logistic), sha256 939f1576d144a78f. Model hash in the learned-stage report equals the one in the stage ledger. Feature contract gspa.context-features/3. Intended use: production.
+
+candidates 3,469 · rescored 0 · added 0 · retracted 0 · removed no projection 0 · scored only 0. Scores replace the heuristic posterior; they are calibrated marginals of a frozen model, not a measurement of accuracy. Each role probability is a separate marginal; a locus probability is conditional on its function/role group; "no candidate correct" is its own outcome. None of them is a sum of the others.
+
+Role
+All
+Catalytic
+Accessory
+Transporter
+Regulator
+Complex subunit
+Unspecified
+Projection
+All
+Projected into the final table
+Scored only (not projected)
+Find
+
+3,469 of 3,469 (protein, function, role) candidates; 3469 unsupported inputs.
+
+Protein	Function	Role	Marginal	Locus (conditional)	No candidate correct	Outcome	Sources
+ABB56035.1	reaction-subunit:PWY-6121:FGAMSYN-RXN
+reaction-subunit:PWY-6121:FGAMSYN-RXN	Complex subunit
+not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56035.1	reaction-subunit:PWY-6122:FGAMSYN-RXN
+reaction-subunit:PWY-6122:FGAMSYN-RXN	Complex subunit
+not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56036.1	amidophosphoribosyltransferase activity
+EC:2.4.2.14	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56041.1	argininosuccinate synthase activity
+EC:6.3.4.5	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56049.1	EC:4.1.2.55
+EC:4.1.2.55	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56049.1	2-dehydro-3-deoxy-phosphogluconate aldolase activity
+EC:4.1.2.14	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56049.1	2-dehydro-3-deoxy-6-phosphogalactonate aldolase activity
+EC:4.1.2.21	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56049.1	oxaloacetate decarboxylase activity
+EC:4.1.1.112	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56050.1	reaction-subunit:TRNA-CHARGING-PWY:GLYCINE--TRNA-LIGASE-RXN
+reaction-subunit:TRNA-CHARGING-PWY:GLYCINE--TRNA-LIGASE-RXN	Complex subunit
+not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56051.1	reaction-subunit:SO4ASSIM-PWY2:SULFITE-REDUCT-RXN
+reaction-subunit:SO4ASSIM-PWY2:SULFITE-REDUCT-RXN	Complex subunit
+not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56051.1	reaction-subunit:PWY-6683:SULFITE-REDUCT-RXN
+reaction-subunit:PWY-6683:SULFITE-REDUCT-RXN	Complex subunit
+not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56051.1	sulfite reductase (ferredoxin) activity
+EC:1.8.7.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56051.1	ferredoxin-nitrite reductase activity
+EC:1.7.7.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56053.1	precorrin-6A reductase activity
+EC:1.3.1.54	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56053.1	EC:1.3.1.106
+EC:1.3.1.106	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56058.1	L-rhamnose 1-dehydrogenase activity
+EC:1.1.1.173	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56058.1	EC:1.1.1.21
+EC:1.1.1.21	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56058.1	reaction-subunit:PWY-6050:RXN-9739
+reaction-subunit:PWY-6050:RXN-9739	Complex subunit
+not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56058.1	2,5-didehydrogluconate reductase activity
+EC:1.1.1.274	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56058.1	EC:1.1.1.346
+EC:1.1.1.346	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56058.1	EC:1.1.1.391
+EC:1.1.1.391	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56059.1	5-aminolevulinate synthase activity
+EC:2.3.1.37	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56059.1	8-amino-7-oxononanoate synthase activity
+EC:2.3.1.47	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56059.1	reaction:PWY-7536:RXN-15716
+reaction:PWY-7536:RXN-15716	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56059.1	EC:2.3.1
+EC:2.3.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56059.1	glycine C-acetyltransferase activity
+EC:2.3.1.29	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56062.1	dethiobiotin synthase activity
+EC:6.3.3.3	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	succinylornithine:2-oxoglutarate transaminase activity
+EC:2.6.1.81	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	N2-acetyl-L-ornithine:2-oxoglutarate 5-transaminase activity
+EC:2.6.1.11	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	L-2,4-diaminobutyrate:2-oxoglutarate transaminase activity
+EC:2.6.1.76	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	4-aminobutyrate:2-oxoglutarate transaminase activity
+EC:2.6.1.19	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	putrescine:2-oxoglutarate transaminase activity
+EC:2.6.1.82	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	taurine:pyruvate transaminase activity
+EC:2.6.1.77	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	beta-alanine:pyruvate transaminase activity
+EC:2.6.1.18	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	L-2-aminoadipate:2-oxoglutarate transaminase activity
+EC:2.6.1.39	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	EC:2.6.1.118
+EC:2.6.1.118	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	EC:2.6.1.113
+EC:2.6.1.113	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	5-aminovalerate:2-oxoglutarate transaminase activity
+EC:2.6.1.48	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	acetoacetyl-CoA reductase activity
+EC:1.1.1.36	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	reaction:PWY-5818:RXN-17378
+reaction:PWY-5818:RXN-17378	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	EC:2.6.1
+EC:2.6.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	EC:2.6.1.93
+EC:2.6.1.93	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	EC:2.6.1.105
+EC:2.6.1.105	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	EC:2.6.1.120
+EC:2.6.1.120	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	S-adenosyl-L-methionine:8-amino-7-oxononanoate transaminase activity
+EC:2.6.1.62	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	taurine:2-oxoglutarate transaminase activity
+EC:2.6.1.55	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56063.1	(S)-3-amino-2-methylpropionate:2-oxoglutarate transaminase activity
+EC:2.6.1.22	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56071.1	phosphogluconate dehydrogenase (decarboxylating) activity
+EC:1.1.1.44	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56071.1	EC:1.1.1.343
+EC:1.1.1.343	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56073.1	L-fuculose-phosphate aldolase activity
+EC:4.1.2.17	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56076.1	ribose 1,5-bisphosphate isomerase activity
+EC:5.3.1.29	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56078.1	2-polyprenyl-6-hydroxyphenol methylase activity
+EC:2.1.1.222	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56078.1	3-demethylubiquinol 3-O-methyltransferase activity
+EC:2.1.1.64	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	GDP-perosamine synthase activity
+EC:2.6.1.102	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	EC:4.2.1.168
+EC:4.2.1.168	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	reaction:PWY-5978:RXN-9579
+reaction:PWY-5978:RXN-9579	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	EC:4.2.1.144
+EC:4.2.1.144	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	EC:2.6.1.92
+EC:2.6.1.92	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	EC:2.6.1
+EC:2.6.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	dTDP-4-amino-4,6-dideoxy-D-glucose:2-oxoglutarate transaminase activity
+EC:2.6.1.33	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	EC:2.6.1.106
+EC:2.6.1.106	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	UDP-N-acetylbacillosamine:2-oxoglutarate transaminase activity
+EC:2.6.1.34	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	EC:2.6.1.98
+EC:2.6.1.98	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	dTDP-4-amino-4,6-dideoxygalactose:2-oxoglutarate transaminase activity
+EC:2.6.1.59	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	EC:2.6.1.89
+EC:2.6.1.89	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	EC:2.6.1.109
+EC:2.6.1.109	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	EC:2.6.1.122
+EC:2.6.1.122	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56088.1	UDP-4-amino-4-deoxy-L-arabinose:2-oxoglutarate transaminase activity
+EC:2.6.1.87	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56089.1	EC:1.1.1
+EC:1.1.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56089.1	EC:2.1.1
+EC:2.1.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56090.1	dTDP-4-dehydrorhamnose 3,5-epimerase activity
+EC:5.1.3.13	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56090.1	reaction:PWY-5830:RXN-9188
+reaction:PWY-5830:RXN-9188	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56090.1	EC:5.1.3
+EC:5.1.3	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56090.1	EC:5.1.3.27
+EC:5.1.3.27	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56090.1	reaction:PWY-8139:RXN-21378
+reaction:PWY-8139:RXN-21378	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56093.1	dTDP-glucose 4,6-dehydratase activity
+EC:4.2.1.46	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56093.1	GDP-mannose 4,6-dehydratase activity
+EC:4.2.1.47	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56093.1	UDP-N-acetylglucosamine 4-epimerase activity
+EC:5.1.3.7	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56093.1	CDP-glucose 4,6-dehydratase activity
+EC:4.2.1.45	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56093.1	UDP-glucose 4-epimerase activity
+EC:5.1.3.2	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56093.1	EC:5.1.3
+EC:5.1.3	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56093.1	EC:4.2.1
+EC:4.2.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56093.1	EC:1.1.1
+EC:1.1.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56094.1	UTP-monosaccharide-1-phosphate uridylyltransferase activity
+EC:2.7.7.64	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56094.1	UTP:glucose-1-phosphate uridylyltransferase activity
+EC:2.7.7.9	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56094.1	glucose-1-phosphate cytidylyltransferase activity
+EC:2.7.7.33	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56094.1	EC:2.7.7.71
+EC:2.7.7.71	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56094.1	EC:2.7.7
+EC:2.7.7	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56094.1	EC:2.7.7.99
+EC:2.7.7.99	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	ABC-type maltose transporter activity
+EC:7.5.2.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	EC:3.6.3.18
+EC:3.6.3.18	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	ATPase-coupled phosphate ion transmembrane transporter activity
+EC:7.3.2.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	prunasin beta-glucosidase activity
+EC:3.2.1.118	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	reaction-subunit:PWY-7399:RXN0-6732
+reaction-subunit:PWY-7399:RXN0-6732	Complex subunit
+not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	reaction-subunit:PWY-7805:RXN-17954
+reaction-subunit:PWY-7805:RXN-17954	Complex subunit
+not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	reaction:PWY-8147:RXN-21408
+reaction:PWY-8147:RXN-21408	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	ABC-type tungstate transporter activity
+EC:7.3.2.6	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	ABC-type molybdate transporter activity
+EC:7.3.2.5	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	EC:3.2.1
+EC:3.2.1	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+ABB56100.1	reaction-subunit:PWY0-1533:RXN0-6732
+reaction-subunit:PWY0-1533:RXN0-6732	Complex subunit
+not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: unseen_source_function_role_or_availability_profile; preceding score retained
+unsupported model input; preceding score retained	gapsmith
+Previous
+Page 1 of 35
+Next

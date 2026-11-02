@@ -16,6 +16,13 @@ from urllib.parse import unquote
 from service import integration_options
 from service import jobs as j
 
+# Image layout (overridable for running the same worker outside the container; see integration_options).
+APP = integration_options.APP_ROOT
+NEURAL_SIDECAR = os.environ.get('NEURAL_SIDECAR', f'{APP}/benchmark/neural/run_neural_predictors.py')
+LIGHT_MODEL = Path(os.environ.get('GSPA_LIGHT_MODEL', f'{APP}/deepgo-plusplus/models/deepgo_plusplus_light_fast.json'))
+CONDITIONS_SCRIPT = f'{APP}/service/metabolic_conditions.py'
+VERSIONED_TOOLS = ('diamond', 'amrfinder', 'antismash')
+
 
 def table(path):
     with path.open() as f:
@@ -32,7 +39,8 @@ def resource_provenance():
         if path.is_file():
             with path.open('rb') as f: hashes[str(path.relative_to(root))] = hashlib.file_digest(f,'sha256').hexdigest()
     return {'sha256': hashes,
-        'versions': {tool:subprocess.check_output([tool,'--version'],stderr=subprocess.STDOUT,text=True).strip() for tool in ('diamond','amrfinder','antismash')},
+        # A tool that is not installed is recorded as such; its analysis is disabled or not applicable in that deployment.
+        'versions': {tool:(subprocess.check_output([tool,'--version'],stderr=subprocess.STDOUT,text=True).strip() if shutil.which(tool) else 'not installed') for tool in VERSIONED_TOOLS},
         'amrfinder_database': (root/'tool-data/amrfinder/latest').resolve().name,
         'antismash_database_directories': sorted(str(p.relative_to(root/'tool-data/antismash')) for p in (root/'tool-data/antismash').glob('*/*') if p.is_dir()),
         'fba_numerics': {'numpy':'2.2.6','scipy':'1.15.3','libsbml':'5.21.1'},
@@ -71,7 +79,7 @@ def run_full(folder):
     (folder / 'config.json').write_text(json.dumps(config, indent=2))
     ann = [j.BIN, 'annotate', '--proteins' if supplied else '--genome', str(input_path),
            '-o', str(out), '-t', j.THREADS, '-c', str(folder / 'config.json'),
-           '--base-predictor', 'light', '--neural-sidecar', '/app/benchmark/neural/run_neural_predictors.py',
+           '--base-predictor', 'light', '--neural-sidecar', NEURAL_SIDECAR,
            '--deepgo-plusplus-light-assets', str(j.ASSETS), '--min-score', '0.5',
            '--claims-out', str(folder / 'claims.raw.jsonl')]
     if kind == 'gff3': ann += ['--gff3', str(folder / 'sample.gff3')]
@@ -204,11 +212,13 @@ def run_full(folder):
         want_fba = False
         record('metabolism', 'insufficient_evidence', 'No enzyme evidence was available to reconstruct a model.')
     # The portal only describes the job; stages, priors and enforcement come from the shared workflow.
+    # Deployment-wide optional stages (learned model, feature export, experiments) come from the environment.
     workflow = integration_options.workflow_config(
         preset=preset, resources=resources, claims=folder/'claims.jsonl', browser=browser,
         pathways=enabled['pathways'],
         operons=out/'operons_for_integrate.tsv' if want_operons and (out/'operons_for_integrate.tsv').exists() else None,
-        fba_gram=info.get('gram', 'neg') if want_fba else None)
+        fba_gram=info.get('gram', 'neg') if want_fba else None,
+        **integration_options.deployment_options())
     integrate = integration_options.integrate_command(
         j.BIN, preset, integration_options.write_workflow_config(folder, workflow))
     if seen:
@@ -221,7 +231,7 @@ def run_full(folder):
         if fba.exists():
             result = json.loads(fba.read_text())
             if not (browser/'metabolism/metabolic_model.xml').exists(): raise RuntimeError('FBA did not export its model.')
-            j.command(folder, 'Testing metabolic nutrient dependencies', ['/opt/fba/bin/python', '/app/service/metabolic_conditions.py', '--model', str(browser/'metabolism/metabolic_model.xml'), '--out', str(browser/'metabolism/conditions.json')])
+            j.command(folder, 'Testing metabolic nutrient dependencies', [integration_options.FBA_PYTHON, CONDITIONS_SCRIPT, '--model', str(browser/'metabolism/metabolic_model.xml'), '--out', str(browser/'metabolism/conditions.json')])
             done('metabolism', 'Stoichiometric reconstruction and flux-certified repair from EC evidence. Biomass flux is conditional on the selected template and supplemented medium, not an observed growth rate.', **result.get('model', {}))
         else: record('metabolism','insufficient_evidence','No enzyme evidence was available to reconstruct a model.')
     integrated = table(browser/'integrated.tsv')
@@ -246,6 +256,10 @@ def run_full(folder):
         evaluate = [j.BIN, 'evaluate', '-i', str(gff), '-a', str(gaf), '--go-owl', str(resources/'go/go.owl'),
             '-k', preset, '-o', str(browser/'quality_gspa.json')]
         if supplied: evaluate += ['--proteins', str(faa)]
+        # The same KEGG references the integration workflow used (pathways, modules and, when shipped, the
+        # module definitions with step logic), so the quality report assesses the modules the browser shows.
+        pathway_args = ['--pathways', str(resources/'kegg_pathways.tsv'), '--modules', str(resources/'kegg_modules.tsv')]
+        if (resources/'kegg_module_defs.json').exists(): pathway_args += ['--module-defs', str(resources/'kegg_module_defs.json')]
         if enabled['pathways']: evaluate += pathway_args + ['--ec2go', str(resources/'ec2go/ec2go')]
         if not enabled['quality']: evaluate += ['--lite']
         else: evaluate += ['--reasoner-cache', str(resources/'reasoner-cache')]
@@ -266,7 +280,8 @@ def run_full(folder):
     receipts = {str(p.relative_to(resources)): json.loads(p.read_text()) for p in resources.glob('*/.gspa-resource.json')}
     (folder/'manifest.json').write_text(json.dumps({'profile':'full-v1','kind':kind,'preset':preset,'input_name':info.get('filename','sample'),'gram':info.get('gram','neg'),
         'analyses':records,'options':enabled,'asset_sha256':hashes,'reference_receipts':receipts,'resources':resource_provenance(),
-        'model_sha256':hashlib.sha256(Path('/app/deepgo-plusplus/models/deepgo_plusplus_light_fast.json').read_bytes()).hexdigest(),
+        'model_sha256':hashlib.sha256(LIGHT_MODEL.read_bytes()).hexdigest() if LIGHT_MODEL.is_file() else None,
+        'integration_options':{k:(str(v) if not isinstance(v,dict) else {a:str(b) for a,b in v.items()}) for k,v in integration_options.deployment_options().items()},
         'input_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.glob('sample.*')},
         'created':info['created'], 'translation_note':'Existing CDS models are reused for GFF3. Standard code 1/11 translation with genomic-coordinate Sec/Pyl/TERM exceptions; pseudogene CDS excluded.'},indent=2))
     viz=[j.BIN,'visualize','-w',str(folder),'-g','sample','--go-obo',str(j.ASSETS/'go.obo'),'--ec2go',str(resources/'ec2go/ec2go')]

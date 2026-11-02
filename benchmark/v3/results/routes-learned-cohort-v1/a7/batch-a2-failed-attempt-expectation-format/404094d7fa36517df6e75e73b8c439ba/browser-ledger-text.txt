@@ -1,0 +1,906 @@
+Scoring mode: Mixed. Mixed: learned scores for supported inputs; legacy scores for unsupported inputs. Supported candidates use the frozen model; unsupported candidates retain legacy scores (see learned_integration). Scores are not a measurement of accuracy.
+
+Prediction changes are not measurements of accuracy. Changed predictions are not shown to be more correct; that needs independent benchmark truth.
+
+Baseline: Posterior after evidence integration with the heuristic combiner and priors (not a sequence-only baseline). Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The baseline_candidates and final_changes of this ledger are measured from it. 41,448 (protein, function) candidates at baseline; 34,896 in the final export.
+
+Reconciled: the ledger final count equals the 34,896 exported rows, and every net final probability matches the export.
+
+Counts are unique (protein, function) pairs with unique proteins in parentheses. A protein with several GO terms counts once per protein. Enzyme-related means an explicit EC number or a GO term below catalytic activity (GO:0003824) in the ontology, not a name match.
+
+Stage	Status	Added	Removed	Increased	Decreased	Enzyme-related changes
+Reference preparation	Executed
+metabolic_gap_records=0; metabolic_gap_context_available=false; ec_to_go_mapping_available=true; mapped_ec_count=4822; organism_taxon=NCBITaxon_221822; taxon_in_hierarchy=true; taxon_consistency_state=applied; taxon_not_in_hierarchy_count=0; ec_claims_checkable=2411; ec_claims_not_checkable=679
+	This stage does not edit predictions; see its notes
+Cohort context (two-pass)	Skipped
+disabled
+	No changes recorded: stage did not complete
+Evidence integration	Executed
+suggestions=0
+	41,448 candidates created; this stage defines the baseline
+Dark-matter suggestions	Skipped
+disabled
+	No changes recorded: stage did not complete
+Reaction-local context	Skipped
+disabled
+	No changes recorded: stage did not complete
+Cross-genome rescoring	Skipped
+disabled
+	No changes recorded: stage did not complete
+Symbolic constraint enforcement	Executed
+taxon_consistency_state=applied; taxon_in_hierarchy=true; constraints_applied=true; taxon_not_in_hierarchy_count=0; violations=1179; ec_violations=4; ec_claims_checked=2411; ec_claims_not_checkable=679; annotations_affected=6552; annotations_relaxed=6443; suggestions=0
+	0 (0 proteins)	6,552 (1,179 proteins)	0 (0 proteins)	0 (0 proteins)	9 (5 proteins)
+146 GO complex term(s), not enzymes
+7 unclassified (ontology unavailable)
+
+Metabolic (FBA) refinement	Skipped
+disabled
+	No changes recorded: stage did not complete
+Agent completion	Skipped
+disabled
+	No changes recorded: stage did not complete
+Metabolic experiments	Skipped
+disabled
+	No changes recorded: stage did not complete
+Community metabolism	Skipped
+disabled
+	No changes recorded: stage did not complete
+Learned integration (frozen model)	Executed
+model_id=context-logistic-06c05a618c57-d9537b61; model_sha256=c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c; model_kind=logistic; contract_id=gspa.context-features/3; contract_fingerprint=d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803; candidates_scored=30585; candidates_unsupported=10863; unchanged_unsupported=10863; rescored=28201; added=0; retracted=0; removed_no_projection=0; scored_only=2384; pinned_floors_cleared=22; retract_below=null; add_unretained_claims=false; structurally_forbidden_go_terms=13111; context_supplied=false; replaced_baseline=legacy_prior_baseline; note=Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.; suggestions=0
+	0 (0 proteins)	0 (0 proteins)	1,463 (656 proteins)	26,738 (2,246 proteins)	7,143 (1,563 proteins)
+159 unclassified (ontology unavailable)
+
+Feature export	Executed
+rows=41448; functions=41448; rows_with_sequence_evidence=41448; rows_sha256=3b8093b9a7896819008b514124adb012022532bd9c02fb71a1f6f9f897be90a2; contract_id=gspa.context-features/3; contract_fingerprint=d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803; model_sha256=c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c; labels_included=false; directory=/home/leechuck/tmp/routes-learned/single/a2/GCA_003443575.1/features; note=Rows carry no label, split or group; join independently curated truth and declared splits by candidate_key.
+	This stage does not edit predictions; see its notes
+Changed predictions
+View
+Evidence-integrated baseline → final
+Reference preparation only
+Symbolic constraint enforcement only
+Learned integration (frozen model) only
+Feature export only
+Change
+All
+added
+removed
+increased
+decreased
+Function class
+All
+Enzyme-related (EC or catalytic GO)
+Complete EC
+Partial EC
+GO catalytic activity
+GO complex (not enzyme)
+Other GO
+Unknown class
+Find
+Download filtered rows (TSV)
+Download ledger (JSON)
+
+34,753 unique (protein, function) pairs across 2,280 proteins; 7,152 enzyme-related (1,563 proteins).
+
+Protein	Function	Class	Change	Probability	Evidence
+AXT21316.1	DNA binding
+GO:0003677	Other GO term (not catalytic)	decreased	0.283 → 0.085	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	DNA replication origin binding
+GO:0003688	Other GO term (not catalytic)	decreased	0.283 → 0.161	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	ATP binding
+GO:0005524	Other GO term (not catalytic)	decreased	0.244 → 0.074	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	DNA replication
+GO:0006260	Other GO term (not catalytic)	decreased	0.283 → 0.029	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	DNA replication initiation
+GO:0006270	Other GO term (not catalytic)	decreased	0.283 → 0.029	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	regulation of DNA replication
+GO:0006275	Other GO term (not catalytic)	decreased	0.283 → 0.029	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	ATP hydrolysis activity
+GO:0016887	GO catalytic activity (by ontology ancestry)	decreased	0.244 → 0.120	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	negative regulation of DNA-templated DNA replication initiation
+GO:0032297	Other GO term (not catalytic)	decreased	0.283 → 0.029	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	positive regulation of DNA-templated DNA replication initiation
+GO:0032298	Other GO term (not catalytic)	decreased	0.283 → 0.029	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	identical protein binding
+GO:0042802	Other GO term (not catalytic)	decreased	0.283 → 0.112	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	ADP binding
+GO:0043531	Other GO term (not catalytic)	decreased	0.116 → 0.032	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21316.1	sequence-specific DNA binding
+GO:0043565	Other GO term (not catalytic)	decreased	0.283 → 0.161	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21317.1	DNA binding
+GO:0003677	Other GO term (not catalytic)	decreased	0.262 → 0.074	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21317.1	DNA strand elongation involved in DNA replication
+GO:0006271	Other GO term (not catalytic)	decreased	0.262 → 0.025	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21317.1	DNA damage response
+GO:0006974	Other GO term (not catalytic)	decreased	0.262 → 0.025	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21317.1	error-prone translesion synthesis
+GO:0042276	Other GO term (not catalytic)	decreased	0.262 → 0.025	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21317.1	identical protein binding
+GO:0042802	Other GO term (not catalytic)	decreased	0.262 → 0.096	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21317.1	protein homodimerization activity
+GO:0042803	Other GO term (not catalytic)	decreased	0.262 → 0.108	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21317.1	bacterial-type DNA replication
+GO:0044787	Other GO term (not catalytic)	decreased	0.262 → 0.025	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21318.1	recombinational repair
+GO:0000725	Other GO term (not catalytic)	decreased	0.197 → 0.014	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21318.1	DNA synthesis involved in DNA repair
+GO:0000731	Other GO term (not catalytic)	decreased	0.197 → 0.014	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21318.1	double-strand break repair
+GO:0006302	Other GO term (not catalytic)	decreased	0.210 → 0.016	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21318.1	response to UV
+GO:0009411	Other GO term (not catalytic)	decreased	0.197 → 0.014	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21319.1	L-leucine transmembrane transporter activity
+GO:0015190	Other GO term (not catalytic)	decreased	0.159 → 0.056	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21319.1	threonine efflux transmembrane transporter activity
+GO:0015565	Other GO term (not catalytic)	decreased	0.152 → 0.052	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21319.1	L-leucine transport
+GO:0015820	Other GO term (not catalytic)	decreased	0.159 → 0.009	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21319.1	threonine transport
+GO:0015826	Other GO term (not catalytic)	decreased	0.152 → 0.008	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	dihydronicotinamide riboside quinone reductase activity
+EC:1.10.5.1	Complete EC number	decreased	0.160 → 0.093	swissprot_diamond_baseline
+Priors: learned.probability.CATALYTIC, learned.margin.CATALYTIC
+AXT21321.1	NAD(P)H dehydrogenase (quinone) activity
+EC:1.6.5.2	Complete EC number	decreased	0.176 → 0.110	swissprot_diamond_baseline
+Priors: learned.probability.CATALYTIC, learned.margin.CATALYTIC
+AXT21321.1	protein polyubiquitination
+GO:0000209	Other GO term (not catalytic)	decreased	0.171 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	dihydronicotinamide riboside quinone reductase activity
+GO:0001512	GO catalytic activity (by ontology ancestry)	decreased	0.160 → 0.057	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to ischemia
+GO:0002931	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	NAD(P)H dehydrogenase (quinone) activity
+GO:0003955	GO catalytic activity (by ontology ancestry)	decreased	0.176 → 0.067	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	superoxide dismutase activity
+GO:0004784	GO catalytic activity (by ontology ancestry)	decreased	0.176 → 0.067	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	nucleus
+GO:0005634	Other GO term (not catalytic)	removed	0.098 → —	—
+AXT21321.1	nucleoplasm
+GO:0005654	Other GO term (not catalytic)	removed	0.092 → —	—
+AXT21321.1	superoxide metabolic process
+GO:0006801	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to oxidative stress
+GO:0006979	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to nutrient
+GO:0007584	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	memory
+GO:0007613	Other GO term (not catalytic)	removed	0.045 → —	—
+AXT21321.1	zinc ion binding
+GO:0008270	Other GO term (not catalytic)	decreased	0.160 → 0.057	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	electron transfer activity
+GO:0009055	Other GO term (not catalytic)	decreased	0.160 → 0.057	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to xenobiotic stimulus
+GO:0009410	Other GO term (not catalytic)	decreased	0.176 → 0.007	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to hormone
+GO:0009725	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to carbohydrate
+GO:0009743	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to amine
+GO:0014075	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	oxidoreductase activity
+GO:0016491	GO catalytic activity (by ontology ancestry)	decreased	0.160 → 0.057	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	oxidoreductase activity, acting on other nitrogenous compounds as donors
+GO:0016661	GO catalytic activity (by ontology ancestry)	decreased	0.160 → 0.057	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	protein catabolic process
+GO:0030163	Other GO term (not catalytic)	decreased	0.171 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	dendrite
+GO:0030425	Other GO term (not catalytic)	removed	0.056 → —	—
+AXT21321.1	chloride ion binding
+GO:0031404	Other GO term (not catalytic)	decreased	0.160 → 0.057	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to estradiol
+GO:0032355	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to lipopolysaccharide
+GO:0032496	Other GO term (not catalytic)	decreased	0.171 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to testosterone
+GO:0033574	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	vitamin K metabolic process
+GO:0042373	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	protein homodimerization activity
+GO:0042803	Other GO term (not catalytic)	decreased	0.160 → 0.038	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	neuronal cell body
+GO:0043025	Other GO term (not catalytic)	removed	0.056 → —	—
+AXT21321.1	negative regulation of apoptotic process
+GO:0043066	Other GO term (not catalytic)	removed	0.102 → —	—
+AXT21321.1	response to alkaloid
+GO:0043279	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	positive regulation of neuron apoptotic process
+GO:0043525	Other GO term (not catalytic)	removed	0.102 → —	—
+AXT21321.1	innate immune response
+GO:0045087	Other GO term (not catalytic)	removed	0.098 → —	—
+AXT21321.1	response to ethanol
+GO:0045471	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	NADH dehydrogenase (quinone) (non-electrogenic) activity
+GO:0050136	GO catalytic activity (by ontology ancestry)	decreased	0.176 → 0.067	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to electrical stimulus
+GO:0051602	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to caloric restriction
+GO:0061771	Other GO term (not catalytic)	decreased	0.171 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	cellular response to hydrogen peroxide
+GO:0070301	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	positive regulation of ERK1 and ERK2 cascade
+GO:0070374	Other GO term (not catalytic)	removed	0.081 → —	—
+AXT21321.1	cellular response to metal ion
+GO:0071248	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	FAD binding
+GO:0071949	Other GO term (not catalytic)	decreased	0.160 → 0.057	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	quinone catabolic process
+GO:1901662	Other GO term (not catalytic)	decreased	0.160 → 0.009	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	melatonin binding
+GO:1904408	Other GO term (not catalytic)	decreased	0.160 → 0.057	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	positive regulation of vascular associated smooth muscle cell proliferation
+GO:1904707	Other GO term (not catalytic)	decreased	0.143 → 0.008	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to tetrachloromethane
+GO:1904772	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to L-glutamine
+GO:1904844	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to hydrogen sulfide
+GO:1904880	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	response to flavonoid
+GO:1905395	Other GO term (not catalytic)	decreased	0.176 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	GO:1905594
+GO:1905594	Unknown (ontology hierarchy unavailable)	decreased	0.160 → 0.057	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21321.1	positive regulation of reactive oxygen species metabolic process
+GO:2000379	Other GO term (not catalytic)	decreased	0.143 → 0.008	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21322.1	DNA topoisomerase type II (double strand cut, ATP-hydrolyzing) activity
+EC:5.6.2.2	Complete EC number	increased	0.395 → 0.457	swissprot_diamond_baseline
+Priors: learned.probability.CATALYTIC, learned.margin.CATALYTIC
+AXT21322.1	magnesium ion binding
+GO:0000287	Other GO term (not catalytic)	decreased	0.288 → 0.170	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21322.1	DNA binding
+GO:0003677	Other GO term (not catalytic)	decreased	0.395 → 0.209	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21322.1	DNA topoisomerase type II (double strand cut, ATP-hydrolyzing) activity
+GO:0003918	GO catalytic activity (by ontology ancestry)	decreased	0.395 → 0.331	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21322.1	ATP binding
+GO:0005524	Other GO term (not catalytic)	decreased	0.395 → 0.248	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21322.1	DNA topological change
+GO:0006265	Other GO term (not catalytic)	decreased	0.600 → 0.072	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21322.1	DNA-templated transcription
+GO:0006351	Other GO term (not catalytic)	decreased	0.395 → 0.072	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21322.1	ATP-dependent activity, acting on DNA
+GO:0008094	GO catalytic activity (by ontology ancestry)	decreased	0.395 → 0.331	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21322.1	response to xenobiotic stimulus
+GO:0009410	Other GO term (not catalytic)	decreased	0.395 → 0.053	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21322.1	DNA negative supercoiling activity
+GO:0034335	GO catalytic activity (by ontology ancestry)	decreased	0.395 → 0.331	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21326.1	threonine efflux transmembrane transporter activity
+GO:0015565	Other GO term (not catalytic)	decreased	0.188 → 0.066	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21326.1	threonine transport
+GO:0015826	Other GO term (not catalytic)	decreased	0.188 → 0.011	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	DNA binding
+GO:0003677	Other GO term (not catalytic)	decreased	0.133 → 0.052	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	plasmid maintenance
+GO:0006276	Other GO term (not catalytic)	decreased	0.133 → 0.009	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	chromosome segregation
+GO:0007059	Other GO term (not catalytic)	decreased	0.133 → 0.009	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	site-specific recombinase activity
+GO:0009009	GO catalytic activity (by ontology ancestry)	decreased	0.133 → 0.052	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	tyrosine-based site-specific recombinase activity
+GO:0009037	GO catalytic activity (by ontology ancestry)	decreased	0.133 → 0.052	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	response to radiation
+GO:0009314	Other GO term (not catalytic)	decreased	0.133 → 0.009	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	provirus excision
+GO:0032359	Other GO term (not catalytic)	decreased	0.125 → 0.008	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	identical protein binding
+GO:0042802	Other GO term (not catalytic)	decreased	0.125 → 0.027	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	sequence-specific DNA binding
+GO:0043565	Other GO term (not catalytic)	decreased	0.125 → 0.047	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+AXT21332.1	resolution of DNA recombination intermediates
+GO:0071139	Other GO term (not catalytic)	decreased	0.133 → 0.009	swissprot_diamond_baseline
+Priors: learned.probability.UNSPECIFIED, learned.margin.UNSPECIFIED
+Previous
+Page 1 of 348
+Next
+Function alternatives
+
+No suggestion table was written for this run, so candidate alternatives are unavailable.
+
+Learned stage: model and per-candidate scores
+
+Model context-logistic-06c05a618c57-d9537b61 (logistic), sha256 c9df93d60e7b290b. Model hash in the learned-stage report equals the one in the stage ledger. Feature contract gspa.context-features/3. Intended use: production.
+
+candidates 41,448 · rescored 28,201 · added 0 · retracted 0 · removed no projection 0 · scored only 2,384. Scores replace the heuristic posterior; they are calibrated marginals of a frozen model, not a measurement of accuracy. Each role probability is a separate marginal; a locus probability is conditional on its function/role group; "no candidate correct" is its own outcome. None of them is a sum of the others.
+
+Role
+All
+Catalytic
+Accessory
+Transporter
+Regulator
+Complex subunit
+Unspecified
+Projection
+All
+Projected into the final table
+Scored only (not projected)
+Find
+
+41,448 of 41,448 (protein, function, role) candidates; 10863 unsupported inputs.
+
+Protein	Function	Role	Marginal	Locus (conditional)	No candidate correct	Outcome	Sources
+AXT21316.1	DNA binding
+GO:0003677	Unspecified
+role not specified; not an enzyme assignment
+	0.085	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	DNA replication origin binding
+GO:0003688	Unspecified
+role not specified; not an enzyme assignment
+	0.161	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	ATP binding
+GO:0005524	Unspecified
+role not specified; not an enzyme assignment
+	0.074	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	cytosol
+GO:0005829	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	plasma membrane
+GO:0005886	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	DNA replication
+GO:0006260	Unspecified
+role not specified; not an enzyme assignment
+	0.029	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	DNA replication initiation
+GO:0006270	Unspecified
+role not specified; not an enzyme assignment
+	0.029	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	regulation of DNA replication
+GO:0006275	Unspecified
+role not specified; not an enzyme assignment
+	0.029	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	peptidoglycan-based cell wall
+GO:0009274	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	cytoplasmic side of plasma membrane
+GO:0009898	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	membrane
+GO:0016020	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	ATP hydrolysis activity
+GO:0016887	Unspecified
+role not specified; not an enzyme assignment
+	0.120	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	negative regulation of DNA-templated DNA replication initiation
+GO:0032297	Unspecified
+role not specified; not an enzyme assignment
+	0.029	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	positive regulation of DNA-templated DNA replication initiation
+GO:0032298	Unspecified
+role not specified; not an enzyme assignment
+	0.029	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	identical protein binding
+GO:0042802	Unspecified
+role not specified; not an enzyme assignment
+	0.112	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	ADP binding
+GO:0043531	Unspecified
+role not specified; not an enzyme assignment
+	0.032	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	sequence-specific DNA binding
+GO:0043565	Unspecified
+role not specified; not an enzyme assignment
+	0.161	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21316.1	replication inhibiting complex
+GO:1990078	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	DnaA-L2 complex
+GO:1990082	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	DnaA-Dps complex
+GO:1990084	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	Hda-beta clamp complex
+GO:1990085	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	DnaA-oriC complex
+GO:1990101	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	DnaA-DiaA complex
+GO:1990102	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21316.1	DnaA-HU complex
+GO:1990103	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21317.1	DNA binding
+GO:0003677	Unspecified
+role not specified; not an enzyme assignment
+	0.074	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21317.1	cytosol
+GO:0005829	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21317.1	DNA strand elongation involved in DNA replication
+GO:0006271	Unspecified
+role not specified; not an enzyme assignment
+	0.025	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21317.1	DNA damage response
+GO:0006974	Unspecified
+role not specified; not an enzyme assignment
+	0.025	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21317.1	DNA polymerase III complex
+GO:0009360	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21317.1	error-prone translesion synthesis
+GO:0042276	Unspecified
+role not specified; not an enzyme assignment
+	0.025	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21317.1	identical protein binding
+GO:0042802	Unspecified
+role not specified; not an enzyme assignment
+	0.096	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21317.1	protein homodimerization activity
+GO:0042803	Unspecified
+role not specified; not an enzyme assignment
+	0.108	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21317.1	bacterial-type DNA replication
+GO:0044787	Unspecified
+role not specified; not an enzyme assignment
+	0.025	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21317.1	replication inhibiting complex
+GO:1990078	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21317.1	Hda-beta clamp complex
+GO:1990085	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21318.1	recombinational repair
+GO:0000725	Unspecified
+role not specified; not an enzyme assignment
+	0.014	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21318.1	DNA synthesis involved in DNA repair
+GO:0000731	Unspecified
+role not specified; not an enzyme assignment
+	0.014	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21318.1	cytosol
+GO:0005829	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21318.1	plasma membrane
+GO:0005886	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21318.1	double-strand break repair
+GO:0006302	Unspecified
+role not specified; not an enzyme assignment
+	0.016	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21318.1	response to UV
+GO:0009411	Unspecified
+role not specified; not an enzyme assignment
+	0.014	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21318.1	bacterial nucleoid
+GO:0043590	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21319.1	plasma membrane
+GO:0005886	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21319.1	L-leucine transmembrane transporter activity
+GO:0015190	Unspecified
+role not specified; not an enzyme assignment
+	0.056	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21319.1	threonine efflux transmembrane transporter activity
+GO:0015565	Unspecified
+role not specified; not an enzyme assignment
+	0.052	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21319.1	L-leucine transport
+GO:0015820	Unspecified
+role not specified; not an enzyme assignment
+	0.009	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21319.1	threonine transport
+GO:0015826	Unspecified
+role not specified; not an enzyme assignment
+	0.008	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	dihydronicotinamide riboside quinone reductase activity
+EC:1.10.5.1	Catalytic
+	0.093	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	NAD(P)H dehydrogenase (quinone) activity
+EC:1.6.5.2	Catalytic
+	0.110	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	protein polyubiquitination
+GO:0000209	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	dihydronicotinamide riboside quinone reductase activity
+GO:0001512	Unspecified
+role not specified; not an enzyme assignment
+	0.057	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to ischemia
+GO:0002931	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	NAD(P)H dehydrogenase (quinone) activity
+GO:0003955	Unspecified
+role not specified; not an enzyme assignment
+	0.067	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	superoxide dismutase activity
+GO:0004784	Unspecified
+role not specified; not an enzyme assignment
+	0.067	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	nucleus
+GO:0005634	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21321.1	nucleoplasm
+GO:0005654	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21321.1	cytoplasm
+GO:0005737	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21321.1	cytosol
+GO:0005829	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21321.1	superoxide metabolic process
+GO:0006801	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to oxidative stress
+GO:0006979	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to nutrient
+GO:0007584	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	memory
+GO:0007613	Unspecified
+role not specified; not an enzyme assignment
+	0.008	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+scored only; not written to the final table	swissprot_diamond_baseline
+AXT21321.1	zinc ion binding
+GO:0008270	Unspecified
+role not specified; not an enzyme assignment
+	0.057	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	electron transfer activity
+GO:0009055	Unspecified
+role not specified; not an enzyme assignment
+	0.057	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to xenobiotic stimulus
+GO:0009410	Unspecified
+role not specified; not an enzyme assignment
+	0.007	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to hormone
+GO:0009725	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to carbohydrate
+GO:0009743	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to amine
+GO:0014075	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	oxidoreductase activity
+GO:0016491	Unspecified
+role not specified; not an enzyme assignment
+	0.057	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	oxidoreductase activity, acting on other nitrogenous compounds as donors
+GO:0016661	Unspecified
+role not specified; not an enzyme assignment
+	0.057	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	protein catabolic process
+GO:0030163	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	dendrite
+GO:0030425	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21321.1	chloride ion binding
+GO:0031404	Unspecified
+role not specified; not an enzyme assignment
+	0.057	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to estradiol
+GO:0032355	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to lipopolysaccharide
+GO:0032496	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to testosterone
+GO:0033574	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	vitamin K metabolic process
+GO:0042373	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	protein homodimerization activity
+GO:0042803	Unspecified
+role not specified; not an enzyme assignment
+	0.038	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	neuronal cell body
+GO:0043025	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21321.1	negative regulation of apoptotic process
+GO:0043066	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+scored only; not written to the final table	swissprot_diamond_baseline
+AXT21321.1	response to alkaloid
+GO:0043279	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	positive regulation of neuron apoptotic process
+GO:0043525	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+scored only; not written to the final table	swissprot_diamond_baseline
+AXT21321.1	innate immune response
+GO:0045087	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+scored only; not written to the final table	swissprot_diamond_baseline
+AXT21321.1	response to ethanol
+GO:0045471	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	NADH dehydrogenase (quinone) (non-electrogenic) activity
+GO:0050136	Unspecified
+role not specified; not an enzyme assignment
+	0.067	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to electrical stimulus
+GO:0051602	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to caloric restriction
+GO:0061771	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	extracellular exosome
+GO:0070062	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: profile_lacks_both_classes_in_train_and_calibration; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AXT21321.1	cellular response to hydrogen peroxide
+GO:0070301	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	positive regulation of ERK1 and ERK2 cascade
+GO:0070374	Unspecified
+role not specified; not an enzyme assignment
+	0.008	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+scored only; not written to the final table	swissprot_diamond_baseline
+AXT21321.1	cellular response to metal ion
+GO:0071248	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	FAD binding
+GO:0071949	Unspecified
+role not specified; not an enzyme assignment
+	0.057	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	quinone catabolic process
+GO:1901662	Unspecified
+role not specified; not an enzyme assignment
+	0.009	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	melatonin binding
+GO:1904408	Unspecified
+role not specified; not an enzyme assignment
+	0.057	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	positive regulation of vascular associated smooth muscle cell proliferation
+GO:1904707	Unspecified
+role not specified; not an enzyme assignment
+	0.008	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to tetrachloromethane
+GO:1904772	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to L-glutamine
+GO:1904844	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to hydrogen sulfide
+GO:1904880	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	response to flavonoid
+GO:1905395	Unspecified
+role not specified; not an enzyme assignment
+	0.011	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+AXT21321.1	GO:1905594
+GO:1905594	Unspecified
+role not specified; not an enzyme assignment
+	0.057	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	projected into the final table's role-free annotation
+score replaced by the learned stage	swissprot_diamond_baseline
+Previous
+Page 1 of 415
+Next

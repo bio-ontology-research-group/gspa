@@ -1,0 +1,85 @@
+{
+ "adapter": "foldseek",
+ "mode": "proteins",
+ "input": {
+  "proteins": "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa"
+ },
+ "config": {
+  "input": {
+   "kingdom": "bacteria"
+  },
+  "predictors": {
+   "similarity": {
+    "enabled": false
+   },
+   "domains": {
+    "enabled": false
+   },
+   "pathway": {
+    "enabled": false
+   },
+   "operons": {
+    "enabled": false
+   },
+   "localization": {
+    "enabled": false
+   },
+   "antifam": {
+    "enabled": false
+   },
+   "structure": {
+    "enabled": true,
+    "tool": "foldseek",
+    "database": "/mnt/data2/leechuck/gspa-cert/fixtures/db/foldseek_ref",
+    "prostt5Model": "/mnt/data2/leechuck/gspa-cert/tools/foldseek/prostt5/weights"
+   }
+  },
+  "quality": {
+   "enabled": false
+  }
+ },
+ "path_dirs": [
+  "/mnt/data2/leechuck/gspa-cert/tools/foldseek/foldseek/bin"
+ ],
+ "tool": "foldseek",
+ "stub_kind": "foldseek",
+ "executable_config_key": null,
+ "native_output": "observed/foldseek_results.tsv",
+ "oracle_reader": "foldseek",
+ "genuine_outcome": "SUCCESS",
+ "malformed_column": 2,
+ "dropped_protein": "P18843",
+ "cases": {
+  "header_only": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "none"
+  },
+  "malformed": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "truncated_row": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "dropped_protein": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "without_dropped",
+   "note": "every genuine hit row belongs to the dropped protein; an empty table is the genuine no-hit result"
+  },
+  "unknown_protein": {
+   "expected": "FAILED",
+   "claims": "none",
+   "detail_contains": [
+    "ghost_protein_not_in_input"
+   ]
+  },
+  "unavailable": {
+   "expected": "UNAVAILABLE",
+   "claims": "none"
+  }
+ },
+ "bound": [
+  "/mnt/data2/leechuck/gspa-cert/fixtures/reference"
+ ]
+}

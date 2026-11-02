@@ -132,6 +132,10 @@ def reference_metadata():
 
 
 def run(folder):
+    if state(folder).get('kind') == 'cohort':
+        # Multi-genome joint cohort: the CLI batch route, offered only when the deployment sets GSPA_COHORT_RESOURCES.
+        from service.cohort import run_cohort
+        return run_cohort(folder)
     from service.analysis import run_full
     run_full(folder)
 

@@ -339,6 +339,49 @@ open(os.path.join(os.path.dirname(ns.output_json), 'args.txt'), 'w').write(ns.gr
         !plain.resolveConfiguration().integration.enabled
     }
 
+    def 'annotate --preset applies the same integration defaults as integrate --preset'() {
+        given: 'the web route\'s configuration: references only, no priors/enforcement/lite keys'
+        File workflowFile = file('web-like.json', '{"fbaMedium": "LB"}')
+        def viaAnnotate = new AnnotateCommand()
+        new CommandLine(viaAnnotate).parseArgs('--preset', 'archaea', '--integration-config', workflowFile.path, '--proteins', claims.path)
+        def viaIntegrate = new IntegrateCommand()
+        new CommandLine(viaIntegrate).parseArgs('--preset', 'archaea', '--workflow-config', workflowFile.path, '--claims', claims.path,
+            '--out', new File(dir, 'q.tsv').path)
+        viaIntegrate.applyPreset()
+
+        when:
+        def annotateConfig = IntegrationWorkflowConfig.fromGspa(viaAnnotate.resolveConfiguration())
+        def integrateConfig = viaIntegrate.toWorkflowConfig()
+
+        then: 'the settings the preset decides agree between the two routes'
+        ['enabledPriors', 'enforceStage2', 'enforceConsistencyMode', 'lite', 'essentialProfile', 'organismTaxon', 'fbaMedium'].every {
+            annotateConfig[it] == integrateConfig[it]
+        }
+        annotateConfig.lite
+        annotateConfig.enforceStage2
+        annotateConfig.enabledPriors == 'essentiality,coherence,consistency,anatomical,gap_filling,genomic_context'
+        annotateConfig.essentialProfile == 'archaea'
+        annotateConfig.organismTaxon == 'archaea'
+
+        and: 'the file still ranks above the preset, and an explicit annotate --taxon keeps its own organism'
+        File explicit = file('explicit.json', '{"enabledPriors": "consistency", "lite": false}')
+        def withFile = new AnnotateCommand()
+        new CommandLine(withFile).parseArgs('--preset', 'bacteria', '--integration-config', explicit.path, '--proteins', claims.path,
+            '--taxon', 'NCBITaxon_562')
+        def resolved = IntegrationWorkflowConfig.fromGspa(withFile.resolveConfiguration())
+        resolved.enabledPriors == 'consistency'
+        !resolved.lite
+        resolved.enforceStage2
+        resolved.organismTaxon == 'NCBITaxon_562'
+
+        and: 'without a preset nothing changes'
+        def plain = new AnnotateCommand()
+        new CommandLine(plain).parseArgs('--integration-config', workflowFile.path, '--proteins', claims.path)
+        def plainConfig = IntegrationWorkflowConfig.fromGspa(plain.resolveConfiguration())
+        !plainConfig.lite
+        !plainConfig.enforceStage2
+    }
+
     def 'preset defaults rank below the workflow file, which ranks below explicit options'() {
         given:
         File workflowFile = file('precedence.json', '{"enabledPriors": "consistency"}')

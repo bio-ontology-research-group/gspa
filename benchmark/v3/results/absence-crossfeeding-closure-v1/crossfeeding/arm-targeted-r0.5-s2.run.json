@@ -1,0 +1,777 @@
+{
+  "cases_with_changed_knockouts": 5544,
+  "implementation": {
+    "benchmark/v3/absence_crossfeeding/false_assignments.py": "e0dd41d13e6fc4036da6bfca7e11e93752f34a84535a6f6c15b7af2070006315",
+    "benchmark/v3/run_nutrient_community.py": "b612ad362a1bc562d4ca0e5cc30b0afad90da23e23762ff236fd88af38843259",
+    "scripts/community_metabolism.py": "f057eb8db7eddf695f71ddb3d39ad0948bbfdc682e2aec6e37826d4d163e0e71",
+    "scripts/metabolic_experiments.py": "0bbc01ee4f35aea545a9cc26277fa846337bc644844ba84ac0070c9ce4d38774"
+  },
+  "injection": {
+    "Bs": {
+      "changes": [
+        {
+          "new_gene": "G_BSU28300",
+          "old_rule": [
+            [
+              "G_BSU29440"
+            ]
+          ],
+          "reaction": "R_ARGSL"
+        },
+        {
+          "new_gene": "G_BSU15590",
+          "old_rule": [
+            [
+              "G_BSU21910"
+            ]
+          ],
+          "reaction": "R_HSST"
+        },
+        {
+          "new_gene": "G_BSU06150",
+          "old_rule": [
+            [
+              "G_BSU00930"
+            ]
+          ],
+          "reaction": "R_SERAT"
+        }
+      ],
+      "draw": "SHA-256 counter stream keyed by (model sha256, mode, rate, seed, focal genes); Fisher-Yates over the eligible reactions, then one replacement gene per reaction; replacement genes exclude the focal genes so the wrong assignment is not self-cancelling",
+      "eligible_reactions": 6,
+      "focal_genes": [
+        "G_BSU00930",
+        "G_BSU21910",
+        "G_BSU23070",
+        "G_BSU27900",
+        "G_BSU28270",
+        "G_BSU29440"
+      ],
+      "focal_genes_absent_from_rules": [],
+      "gene_products_in_rules": 844,
+      "mode": "targeted",
+      "model_sha256": "28e4ca32d412102481ac29f84b0267b1449108bbf1fa6efc604794b4a93b9740",
+      "rate": 0.5,
+      "reactions_perturbed": 3,
+      "reactions_with_gpr": 904,
+      "rule_semantics": "the drawn reaction's whole rule is replaced by a single wrong gene",
+      "schema": "gspa.false_assignment_sensitivity/1:injection",
+      "seed": 2
+    },
+    "Ec": {
+      "changes": [
+        {
+          "new_gene": "G_b1317",
+          "old_rule": [
+            [
+              "G_b2818"
+            ]
+          ],
+          "reaction": "R_ACGS"
+        },
+        {
+          "new_gene": "G_b3812",
+          "old_rule": [
+            [
+              "G_b2913"
+            ]
+          ],
+          "reaction": "R_AHGDx"
+        },
+        {
+          "new_gene": "G_b2483",
+          "old_rule": [
+            [
+              "G_b2913"
+            ]
+          ],
+          "reaction": "R_ARHGDx"
+        },
+        {
+          "new_gene": "G_b0084",
+          "old_rule": [
+            [
+              "G_b2913"
+            ]
+          ],
+          "reaction": "R_PGCD"
+        }
+      ],
+      "draw": "SHA-256 counter stream keyed by (model sha256, mode, rate, seed, focal genes); Fisher-Yates over the eligible reactions, then one replacement gene per reaction; replacement genes exclude the focal genes so the wrong assignment is not self-cancelling",
+      "eligible_reactions": 9,
+      "focal_genes": [
+        "G_b0073",
+        "G_b2599",
+        "G_b2818",
+        "G_b2913",
+        "G_b3607",
+        "G_b4013"
+      ],
+      "focal_genes_absent_from_rules": [],
+      "gene_products_in_rules": 1516,
+      "mode": "targeted",
+      "model_sha256": "9c772d44ca43350e40dc7ee86c7aa148796856be1eea45e5406c6df8f7dcde28",
+      "rate": 0.5,
+      "reactions_perturbed": 4,
+      "reactions_with_gpr": 2266,
+      "rule_semantics": "the drawn reaction's whole rule is replaced by a single wrong gene",
+      "schema": "gspa.false_assignment_sensitivity/1:injection",
+      "seed": 2
+    }
+  },
+  "merged_shards": {
+    "0": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s0",
+      "run_sha256": "4f1a9ece68ea4e818b8e991c4626604a65585050e8acf8014f6ff2e28e6b8f49"
+    },
+    "1": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s1",
+      "run_sha256": "2d40fb0a7762cd7ed0185e988b031f0aed1e7415793ea0503f41274a22f8f603"
+    },
+    "2": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s2",
+      "run_sha256": "37076d7b67a422844c3a82e3347fc2d1ddf4c6aaeb041d1e2697a594227e676e"
+    },
+    "3": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s3",
+      "run_sha256": "4cb219a72a5f1c40743ea32b96f8ab7d80994f7c99e3f2e32514fc8d616f787c"
+    },
+    "4": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s4",
+      "run_sha256": "8457e0843163a6b8e16fadd7141f5a30b187f259b78ee14346ff40868e6239a9"
+    },
+    "5": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s5",
+      "run_sha256": "5ecd8de1f5c33c448db97aed88b8d3c08069fc5a2cdde5fa799f8739a2a9c838"
+    },
+    "6": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s6",
+      "run_sha256": "f1c53158cde1f4b0af70f3b8533a205682a65d055733e77f010d1fd680fb6a94"
+    },
+    "7": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s7",
+      "run_sha256": "bd5fac28dfb9e869375389302e55e882cdbf77f753c561c3c7358a914cb3f6cb"
+    },
+    "8": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s8",
+      "run_sha256": "4487d721afa72f3dcfa24f511140470a74412146344a65f1e10d462668d1ce9c"
+    },
+    "9": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s9",
+      "run_sha256": "5297409b6f573c6732f2261606e843584b1d1c0b159b7733299b6088f2063429"
+    },
+    "10": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s10",
+      "run_sha256": "d98584c124bff30ddfa2b30a453cc98bab61697852e20f1fcab31c4799e2bdbf"
+    },
+    "11": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s11",
+      "run_sha256": "9326c561c1ada5dfb1146b642d719969015b9ec20cf1445719429bb4bdaa6368"
+    },
+    "12": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s12",
+      "run_sha256": "2948d99b27122df7b14bfe2d108c87e044e22f61bd99c7c80326ad22ba383953"
+    },
+    "13": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s13",
+      "run_sha256": "9bb1de6eb946cdafdbfc8c42ba3416570812baeb810848d8160b1e1e6463778d"
+    },
+    "14": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s14",
+      "run_sha256": "71b274e46d44dcbcfbe3c4cafde7ec049101255c2082d7d8bf3a62aed81e62a1"
+    },
+    "15": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s15",
+      "run_sha256": "0be9244d929bff809015b66d864e89b0e4c0119c68c8f3fa11a978600bde26fd"
+    },
+    "16": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s16",
+      "run_sha256": "04a067a59bac84a58f4be90113dc8e43bf26b44db1291e7d82fa13ab8e57f83b"
+    },
+    "17": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s17",
+      "run_sha256": "590d2bfa2fa0d2c5a3fcdc5b18b633b0eebf8aa4edefa3d70080b6546db0498b"
+    },
+    "18": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s18",
+      "run_sha256": "12170a58c8a8d162c3e17cc660f7b99ce838b2c32ff6cf27189d796e749a9f04"
+    },
+    "19": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s19",
+      "run_sha256": "40207daeb152cb448f1a13c87dd4a7f41930cba7cf86d2703c1a4b3b31d44ded"
+    },
+    "20": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s20",
+      "run_sha256": "b0f81ffc30bc01a481e043e0e5c70fe1a7ed00bb6cd705cc7a6078826bb8d27b"
+    },
+    "21": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s21",
+      "run_sha256": "fbb697d808bb4fed56fcbe2e745101226b646160213855f6a0b0add39b69085e"
+    },
+    "22": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s22",
+      "run_sha256": "9885fee52d54b2e9f7b7e8841f67a2b5a16bf2aa9e97811686686485ceaead1e"
+    },
+    "23": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s23",
+      "run_sha256": "198604b32ee1b469a71505b6820d76ddb3215c75ab0645f80eb1bf88b83f387a"
+    },
+    "24": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s24",
+      "run_sha256": "d31370a2639c5059f97699a0f0d743e1b565c23394e1c4641cddf94451865d52"
+    },
+    "25": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s25",
+      "run_sha256": "72977fb46e98684118c9916c7f34f5cbd3b3cc7bdd6baa36c7bff7bd71b52f14"
+    },
+    "26": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s26",
+      "run_sha256": "70624f0ee62415d174f65fae819be833fce7945757d00a715d6f4716ec965162"
+    },
+    "27": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s27",
+      "run_sha256": "10102c1aa03c71dc4fd6a990ac8f2698a68dd12792b05a6684e118617e81c129"
+    },
+    "28": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s28",
+      "run_sha256": "befa30dcb130350758c55221bc5bfa08640b87b4bc52501f5df93dc12225306e"
+    },
+    "29": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s29",
+      "run_sha256": "9afbc4457779901dbd59cf34b774c216b3e9758f56fa4ec6e585e88ffd590e2f"
+    },
+    "30": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s30",
+      "run_sha256": "a5cba6d5f4de6b7ada3a1e56b45d0c3e3bf202da517615e88830ee462b983618"
+    },
+    "31": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s31",
+      "run_sha256": "ae0ddc487488372778d959c355fe0a4ff3e712a4de325d658b9d25e568394ce3"
+    },
+    "32": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s32",
+      "run_sha256": "a51326e98c7d58cc2eeac477fe3a5db76f126afd0bce89c63329c2efe52c71b1"
+    },
+    "33": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s33",
+      "run_sha256": "b3b921edb4f1e648ecf6bcd48c38e39bdec3503bee4d4519a5951b09659b8b33"
+    },
+    "34": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s34",
+      "run_sha256": "f5418451bc5a80a946b0c1dadfe9638e01d84cb177778a46f184049b8be18f7e"
+    },
+    "35": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s35",
+      "run_sha256": "71c1d51945eb598ce3fcc8531e08c9b0995c021ea3052d2e2bea9cd34ec52123"
+    },
+    "36": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s36",
+      "run_sha256": "4d15c88a476caca3f573fa6226c25017876eb17519fedbaf301b4c89f1abe4ad"
+    },
+    "37": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s37",
+      "run_sha256": "87c004601d3e7b442af9254a414a810c00c22c905a0bd1f59bc725bedb65d440"
+    },
+    "38": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s38",
+      "run_sha256": "675c1d67cdbed1fc40a6d3eda540882fd00278a478cfc95ae9443b9bda53cce3"
+    },
+    "39": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s39",
+      "run_sha256": "bb8894cc3ae4115557c8116d64fea93d0f2e81cf5bbb4761d8fb8cb2ee330d0a"
+    },
+    "40": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s40",
+      "run_sha256": "a26cf72a97e6226e4e688075a6d24e4b391fd6faa4dadc7a2a1e0fceece1e75c"
+    },
+    "41": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s41",
+      "run_sha256": "66c9d1644df82d73a69ca4aad1715564f3493ca2f8c1135bff60204969593806"
+    },
+    "42": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s42",
+      "run_sha256": "bf256fb0bd42ae3f830a0ce236cc90f70a8e8d7b7d5a6a952872c93f976da997"
+    },
+    "43": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s43",
+      "run_sha256": "6e89b83bada28ae19fe1835a6a7767953b144cce46950a534cece8b7149b0375"
+    },
+    "44": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s44",
+      "run_sha256": "196e4704ed553e8acfffd95527809adfc7c093d65d24c9135e4356caa1f78f5a"
+    },
+    "45": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s45",
+      "run_sha256": "00960eaf526e5e55514c69380da1e115b6a006f74e340abb3c0b9b54f09ed88d"
+    },
+    "46": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s46",
+      "run_sha256": "b72a35bfde8e96cd7e8f24d5c86fd715335279927d65c17d1d64f4822e0d8973"
+    },
+    "47": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s47",
+      "run_sha256": "3c41f78c6675848e111c5038bedc0c5063c5eceb323ead9e565837b11f91eeb4"
+    },
+    "48": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s48",
+      "run_sha256": "ac64b2a7ce80d202593622189c7ac9b4ba61ebb651d3033ef8a6f94bb00729af"
+    },
+    "49": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s49",
+      "run_sha256": "7dfb3a9f1c75ec8feb49295b3a95d76a41b8f74beac28b501e24ed48a14ae73f"
+    },
+    "50": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s50",
+      "run_sha256": "836b7420ad48cfb773eed3c29881d47afa79b51c398d7df24de0d5abb3835611"
+    },
+    "51": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s51",
+      "run_sha256": "da29a64a07ecb1134dc70e41558a4f89b87df068772730993c74797d7515513d"
+    },
+    "52": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s52",
+      "run_sha256": "5cd92093f65389f020f8d8b062b2892d8b4e3261bae6bf0cef2c4a45f8952e5a"
+    },
+    "53": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s53",
+      "run_sha256": "f1623789f30314f4c4fcd61acb44233c4526394b56f925f34d867e3d8f6fb540"
+    },
+    "54": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s54",
+      "run_sha256": "ef0cd1c9d7d76d0d35ec5589e186411fe3dc148826894cc1a2f4029fa0e1da6c"
+    },
+    "55": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s55",
+      "run_sha256": "60e2e61d31bad9b6f7b007aeae58205314bcea9585e4a2caeeafaca0f55feb27"
+    },
+    "56": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s56",
+      "run_sha256": "bdc1d49b89f3a992a516a9f45b2755eca5719d51fbb88e3bf7a6d17c7f7362f7"
+    },
+    "57": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s57",
+      "run_sha256": "d4a1787e3cf3fe7f8d0a14599244c56c02ac997d6f5699cb960601a456681f8c"
+    },
+    "58": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s58",
+      "run_sha256": "2945ac3855939011a0092ac8b80ca351706f70f1babc1932c26d4e0d4ea54543"
+    },
+    "59": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s59",
+      "run_sha256": "bfef0e138a43342c1705452ec29f0b4c5fcc2a31355f8efb21fabca7449081d1"
+    },
+    "60": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s60",
+      "run_sha256": "6d3a90d79dabd468bad6b54b3acfe95ac92fa7df20ed082ac6d8faed601c615e"
+    },
+    "61": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s61",
+      "run_sha256": "23cdd27226a6d25e6d5884d8206ca808536ce73d0eeb1242f3c418902d69a8dd"
+    },
+    "62": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s62",
+      "run_sha256": "b17f5c2b7490c6786eb45502835f0ce132757b4cead4a39e0f4992783199174f"
+    },
+    "63": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s63",
+      "run_sha256": "df7ec079db70e44aa61717907f9db4f69636737cb54aaacaaa3c485810d0f121"
+    },
+    "64": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s64",
+      "run_sha256": "3dc1804b35dd6ff0c140306f167a8089b0cce529b56369bae64d5cb23bd98791"
+    },
+    "65": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s65",
+      "run_sha256": "380f7fec5c8c66d88afd6f882d4ec8c0f27e4cb45d7ff88c9de07d9e3f8dc19a"
+    },
+    "66": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s66",
+      "run_sha256": "6f608f43711a4fda03e465a03e05fc6a17a58e22f039dcacecd1e06a40cb3a2b"
+    },
+    "67": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s67",
+      "run_sha256": "4118d669abc9f196815743a1d274178411d2542c9f0dc2da49ae59641a163971"
+    },
+    "68": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s68",
+      "run_sha256": "64fa83afa84c214ec8843e1615a6dd1bbc0450a9f7e5635cb936cae2c6b5925d"
+    },
+    "69": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s69",
+      "run_sha256": "ac35857966342d9b34509b7ff7b57ef375224f4e413c7b844ca876aa7b39226f"
+    },
+    "70": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s70",
+      "run_sha256": "a8d02968a03ab3a79455e3bac6a5cfaccfeea8025ab50b62b8cf103f6e116281"
+    },
+    "71": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s71",
+      "run_sha256": "921bdb40f7cfa53567ece22b59c7ad22bda71dad36823927eb8ee272462f3126"
+    },
+    "72": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s72",
+      "run_sha256": "4718d3f8e5a1fcaae1092ac43826cb30782a7a9425d1c17e059daa3322eeb19a"
+    },
+    "73": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s73",
+      "run_sha256": "5dd4cf195e1b045c222d3e9f61aebab52960ab0f186eca36d2568cb79f503c1a"
+    },
+    "74": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s74",
+      "run_sha256": "5ffdb11ff12bf1ad9e0fe9ea75ffa10998e00463a6f005e7be46e8da9ed9cb6c"
+    },
+    "75": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s75",
+      "run_sha256": "1aba89cf19cb9ca784f0603e76bdcf85c8da4571f25bf230f1d4bd6ecb52cafc"
+    },
+    "76": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s76",
+      "run_sha256": "b6934a4ed2b8241bdb8fe33b24051db58fcafeab33b9dd83e9bcb560f26f1ef5"
+    },
+    "77": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s77",
+      "run_sha256": "c292d2c3167cc276f7366288cfffedcdd843ac49afebec53613356d53b7777fe"
+    },
+    "78": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s78",
+      "run_sha256": "c7179e85243e3b2148e518c933a184b218a3719c54fc360aa2e47ea3c969554e"
+    },
+    "79": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s79",
+      "run_sha256": "1d107d96fb212d4acf7e06c8c39d8281fe132daa8292ccdfd0655ee8eea74244"
+    },
+    "80": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s80",
+      "run_sha256": "c76e32eabef358ad77612b0a9cde441c01570ff2498c3df667e04d05860723c4"
+    },
+    "81": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s81",
+      "run_sha256": "183bfe5d16d8e608feaea1b767c9ce0ddc4a515e086bf3bc162ae930c0227dae"
+    },
+    "82": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s82",
+      "run_sha256": "8e4bf2c0c9d63cf9d26025fd93543d3facf718b7a352e2ea545e2b4e1e5e6168"
+    },
+    "83": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s83",
+      "run_sha256": "14f012d0cb68176f5e3efbe31d652cc4fa0333b67f663c3238e792b5cabd0fa9"
+    },
+    "84": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s84",
+      "run_sha256": "eb80ee40e11a92424c2f0b3e32f5786a75d2c81cc048a13f1e3040c32a05557a"
+    },
+    "85": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s85",
+      "run_sha256": "7570a5d51f8d531d5a4baff32b443de3268a0c2e1d901820890034f50ab9afb9"
+    },
+    "86": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s86",
+      "run_sha256": "7f1057dfb001c16942903f4bf550f38eda74674c8e4922460c3a6a526a2aac12"
+    },
+    "87": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s87",
+      "run_sha256": "850e7976f94085b710d3373fd8bfc0bc1197dd3d7bdf3d9eec4f0416218d52ef"
+    },
+    "88": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s88",
+      "run_sha256": "33338965f577dc7fd29e1abc6c147f26612058c60da55d192cb23aa41b43351f"
+    },
+    "89": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s89",
+      "run_sha256": "89651bbbdbd38d8b8266f1129b134edd149eb3a808ba10ff4a4a7b70339d3dcf"
+    },
+    "90": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s90",
+      "run_sha256": "0c32ab50c3fd751740515f3e0f262604cc4e589fc3db9834d2ace821a4ed8c5e"
+    },
+    "91": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s91",
+      "run_sha256": "1150b91b3de8f1256942804e0521802e2d7c6c9191b022f959ab42acde45f9e0"
+    },
+    "92": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s92",
+      "run_sha256": "f12cb89bbbbe7a3d8fa319310b4cdc7bc62945cd74c0ea9427da1352c48d0bc8"
+    },
+    "93": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s93",
+      "run_sha256": "3c705bf234d8dabcd27100b102298567b7facb15b3ec5ec5595171a40c3a59a5"
+    },
+    "94": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s94",
+      "run_sha256": "5bcedf8a7a18e9ee46bc6eec396a0817bcb225079bb51f7ccedadf9e17325c21"
+    },
+    "95": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s95",
+      "run_sha256": "22a4dc574aab1e14636425ffc5ab8bf53ba3198170795bfab2b4447240a8034d"
+    },
+    "96": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s96",
+      "run_sha256": "2f4fe1432af3049f293078b7f39f5479ec20d6f19cefd9768cda405438f396e5"
+    },
+    "97": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s97",
+      "run_sha256": "f8ccd2e817cea1049362d1a9ef6b8739b09c867a8f2c64fc20b570db3ae8036c"
+    },
+    "98": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s98",
+      "run_sha256": "28c53456f7c5ba2c7f3a61849c9cf1ee78299f5b33e2e9a42f2b875514bed453"
+    },
+    "99": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s99",
+      "run_sha256": "f685802a9d441dbfa9d9f2760235502aa1eced8f4a0c27ac00278a028620238a"
+    },
+    "100": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s100",
+      "run_sha256": "47a552fdbde4ecc3f1e5e74788695e3145b83f9e20ed719c0fa421c29794b96a"
+    },
+    "101": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s101",
+      "run_sha256": "00f77b212e602dd42913ca5cda5f71829c4b0e302a20645e4bc0671c97a2a24d"
+    },
+    "102": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s102",
+      "run_sha256": "4b4a1b18ba5e4cedad5df58dc4379a101d7a4e87264c7fe263905f07fc7d1987"
+    },
+    "103": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s103",
+      "run_sha256": "6d09c15be54d0f1889d6e32cdecb6d9273ca646c52f3be23e22f16b147c2170a"
+    },
+    "104": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s104",
+      "run_sha256": "74d2a55016510acfa7fac9827281cddef50bbe84e3c8956bfd88095cd6086ea7"
+    },
+    "105": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s105",
+      "run_sha256": "825eb794a9b8161ff7718dd2bd414d4e483aa392dbea8720429f9f45164f9fb4"
+    },
+    "106": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s106",
+      "run_sha256": "aad4bf64a263a93722bcd61a049358a1c7e2ca2fa92b6e692fbeb9b4f5acc495"
+    },
+    "107": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s107",
+      "run_sha256": "d53401c7bfc0b65d3afd32ceae3dfa5d3a462ec0a84c53e32af71eec1811fae8"
+    },
+    "108": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s108",
+      "run_sha256": "59e1057fb8e5de8637ad50197907908aa70c69503f69f490c1fa34d69a11b420"
+    },
+    "109": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s109",
+      "run_sha256": "a04414c2bdf1dbff22aea570676fd4ec746b8a3c0728a6c018d45e90c6e0f9fe"
+    },
+    "110": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s110",
+      "run_sha256": "f59f51d2519865be8385ecbc6433d1f1b6c6c6be3018e8658301fe03dd227959"
+    },
+    "111": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s111",
+      "run_sha256": "7103f417a241103f72f71a4beec62b5d81c4c8c05fcd566742a90ee9c9b80ca1"
+    },
+    "112": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s112",
+      "run_sha256": "ec84404238e4b213971ab0fb6bcdda2ce661d6c8ac4c927389be24445ab69246"
+    },
+    "113": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s113",
+      "run_sha256": "fa564de5e7df36cc614f557f009005e6c029a8997131d9a14652beafcd1bba23"
+    },
+    "114": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s114",
+      "run_sha256": "6b822840dc886815539b2ec24a0188dc9ed100666d91d74ff5d31bbbec6baf0f"
+    },
+    "115": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s115",
+      "run_sha256": "bc3b042fcb0efd32ecca78c472b791e430d667a8e8863ac15fd8c3a0099ba0a7"
+    },
+    "116": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s116",
+      "run_sha256": "9afc8221c778eb8dede1c371d7709fb15876ad959b10f6a558ec508e2bfcfd73"
+    },
+    "117": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s117",
+      "run_sha256": "5a246bb3547ed126861fe7975f2d616a20f26c8cc8f73c9ea30f14503a6300b7"
+    },
+    "118": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s118",
+      "run_sha256": "82545e8ff3c608df8c16590ad49c67e0c14cc51cad6b8b381fe0cd2b9cad0586"
+    },
+    "119": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s119",
+      "run_sha256": "4669ae39001394eacdd8b6b71c389ed261e977fd94b8d3b3df7d3b132142f6a9"
+    },
+    "120": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s120",
+      "run_sha256": "3ac2d2667124eeda01f34bec9cf1b25119f87942198999adb895b9139b05563f"
+    },
+    "121": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s121",
+      "run_sha256": "e692f035d8cf0e9a782f1a405d8787cc3d4d73f98cce868b1a8cfe03cec504b5"
+    },
+    "122": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s122",
+      "run_sha256": "ea134314caf009cad8ac2e76e90854ed16ff0cc4e9ea1e1a1253f9385c7c4151"
+    },
+    "123": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s123",
+      "run_sha256": "e60dd50fd956126626359fb4bc24ed14dd78ce84186dc6da85bb955dd5d88cd7"
+    },
+    "124": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s124",
+      "run_sha256": "9ab6fcec45bfa5dbf43dd57ab4a713a454ea7802b645518bbacd2c5836aec01d"
+    },
+    "125": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s125",
+      "run_sha256": "e6003f73e783246cbfca085aeb09ea5fc677a286f81674edea04f2a80bb67432"
+    },
+    "126": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s126",
+      "run_sha256": "3a97d73140c06b168aa0ea4cab67d4943cd82ca30fc9799ef74e6ef26f1c733f"
+    },
+    "127": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s127",
+      "run_sha256": "f41d773dc4310a2b00b05ae55e6ef06d11f382be2f9ba5c335d09a5fc2390751"
+    },
+    "128": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s128",
+      "run_sha256": "8f10d3bf328f006c2354ef0ab7aa26acdfc0269968c67c81d1f7242b307f1e7f"
+    },
+    "129": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s129",
+      "run_sha256": "8cf184f88ac92da0771d1b6af159b8ab7aed564f55ab2029e73d15441c063e69"
+    },
+    "130": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s130",
+      "run_sha256": "ca6706fecaa4887a4ed078191725e28a49b2b3f84b1311a75d634726c6e0d1e2"
+    },
+    "131": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s131",
+      "run_sha256": "4408038cbd7985a2969ed84faac5d03d8b9953a96eb60643113fb6881ccd2eef"
+    },
+    "132": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s132",
+      "run_sha256": "eaf56769b37f3c12dae307ecdc06992683bcf039d385b48dd32306203772f92b"
+    },
+    "133": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s133",
+      "run_sha256": "17b3e68ac06bcf5a1456155a4a8899cda0651e1cbf12ef97635699d5648cf812"
+    },
+    "134": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s134",
+      "run_sha256": "bd24621cbc77b985e9abfffc8a6ad71d0d77facc760b214671f3f3f2f407feff"
+    },
+    "135": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s135",
+      "run_sha256": "826f56c9e03f0e74bf19d0a35b1e4e191370b9333da727d8c118f511a3cc41bc"
+    },
+    "136": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s136",
+      "run_sha256": "c203935acfdf8ceaeb17ecabaa5f7ed028777bc8d3488504ba01ad227ebb4d26"
+    },
+    "137": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s137",
+      "run_sha256": "bc3e63659e206c3add612da82cc090ba5290fc2544ee499399c4de6080f2136e"
+    },
+    "138": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s138",
+      "run_sha256": "1c1febc45a08773c1cfbb26b4279306911b7d18115350fb865dc13849ab7b3ba"
+    },
+    "139": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s139",
+      "run_sha256": "a486c20dd10c58b4a5bf4993b78f52532ed9df8aa35161446150d0600bd8fa8a"
+    },
+    "140": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s140",
+      "run_sha256": "43865012fea6ef2531f67a4b9822934d8f1d42ef466320f30f0dbf36e262a86a"
+    },
+    "141": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s141",
+      "run_sha256": "40cc99f1f6533ac48e063718d275d932e3f1336564bd6f528a77f10798e61699"
+    },
+    "142": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s142",
+      "run_sha256": "4cdb53aeaaedc2cfef1d2fe71ae209dd49f77e960a1d4cfa3db1a0ab3975338e"
+    },
+    "143": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s143",
+      "run_sha256": "2b2fbbcb6d1d1a77543ef5b1f7aa66bd27cb468094a011ba1072df484fd5f6f7"
+    },
+    "144": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s144",
+      "run_sha256": "66ee91c79b314d185a7236d018611d57115a57c0f024e98cf0635af2fb20076d"
+    },
+    "145": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s145",
+      "run_sha256": "3103eb8a71a568d7088d7304d8ce472aa4b7c821c69798bf700ef31b65e042a3"
+    },
+    "146": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s146",
+      "run_sha256": "aaec5ab6a42899c4eaa3b2c6870708ca8fd25e27bc1881801349cfa2e2ee1393"
+    },
+    "147": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s147",
+      "run_sha256": "87d5aaef89a87bd68d24ffb6bbbb3d46b557fdcde92e4bfccf56b43fc23e6556"
+    },
+    "148": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s148",
+      "run_sha256": "69e838781950069be74aa0edbd116cae19979bade2ba04415a540d5accf37383"
+    },
+    "149": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s149",
+      "run_sha256": "9afc6bd6e62bc643f0dd6f01c9e91bf9fb90eaa9f4e3d35d9556aff49a427ab2"
+    },
+    "150": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s150",
+      "run_sha256": "26d189c81c13b333454dfcf4e5dc8ae587e0eca4e9869fd3e18e14f9e26df455"
+    },
+    "151": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s151",
+      "run_sha256": "8e92a2315bfa267244c4b86a58031e28b34b5e267a5cdec04601eb34189d1bc7"
+    },
+    "152": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s152",
+      "run_sha256": "1c7df656495b9aed1a8c844c5fcaee5d757f3e6ffa180ca28f612ac74acc881b"
+    },
+    "153": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s153",
+      "run_sha256": "c7cfa9c7c9722f9ab0bfca724b9aa9ab8dba66e2c66e1685776cb2da7f335f45"
+    },
+    "154": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s154",
+      "run_sha256": "2aabfc0b598dc0e6b7e1b5b074991d74d17242786162651fe93ced89993bc509"
+    },
+    "155": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s155",
+      "run_sha256": "4f16d12e0b348e1009c813e6f06194085fa4aa780b106356101c39d5f5664b29"
+    },
+    "156": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s156",
+      "run_sha256": "e1ae20eb9b7c8dda02ae3351d69c9e9058c480dcf4c2c60eda785eed83f424cd"
+    },
+    "157": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s157",
+      "run_sha256": "c5a74ae16b300a914f860ec2b1acfd24057fa85806a6a08b1217e34c7ebc1aab"
+    },
+    "158": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s158",
+      "run_sha256": "a56c551ce49de2bdef871e80d56df07c5f82ba177397b981959a7a0edba0239e"
+    },
+    "159": {
+      "dir": "/scratch/project/k10018/gspa-v3/out/absence-crossfeeding-v1/targeted-r0.5-s2/s159",
+      "run_sha256": "c8852e970988bbc80ad666cf7fb879210246354388aa44393ed289c7d26f3727"
+    }
+  },
+  "mode": "targeted",
+  "permissive_counts": {
+    "False": 4935,
+    "True": 2985
+  },
+  "plans": 7920,
+  "plans_sha256": "eaa665f93ea9a2c9b4bbd943b28b441711222c8cc77d5c770ebea59c4a438b46",
+  "predictions_sha256": "3d36c50aff5660bf3104a6401cf4915cd3946cd9e0384faa2e50da474905f747",
+  "protocol_sha256": "cf5bbda3d3dbb34e51ea1cb0cb1c093636cd9bca56a99880b439d85e2329b326",
+  "rate": 0.5,
+  "reads_measurements": false,
+  "schema": "gspa.false_assignment_sensitivity/1:run",
+  "seed": 2
+}

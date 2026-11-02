@@ -1,0 +1,199 @@
+[
+ {
+  "name": "T1-taxon-removals",
+  "origin": "Shaheen price-taxon-rc2 cell 0 (TopEC, GCF_000236665.1), arm stage1_taxon, job 15721368",
+  "states": [
+   "enforcement removals",
+   "taxon applied with lineage",
+   "priors executed",
+   "learned not requested"
+  ],
+  "tsv": "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage1_taxon/GCF_000236665.1.integrated.tsv",
+  "genome_id": "GCF_000236665.1",
+  "layout": "/home/leechuck/.cache/gspa-v3-data/price-layout-v4/GCF_000236665.1.layout.tsv",
+  "before_tsv": "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage0/GCF_000236665.1.integrated.tsv",
+  "expect": {
+   "removals": 37,
+   "taxon_state": "applied",
+   "scoring_mode": "legacy_heuristic",
+   "stage_status": {
+    "symbolic_enforcement": "executed",
+    "learned_integration": "skipped"
+   },
+   "browser_text": [
+    "Symbolic constraint enforcement",
+    "taxon_consistency_state",
+    "removed"
+   ],
+   "portal_text": [
+    "removed"
+   ]
+  }
+ },
+ {
+  "name": "T2-stage0-not-applied",
+  "origin": "Shaheen price-taxon-rc2 cell 0, arm stage0, job 15721368",
+  "states": [
+   "taxon not in hierarchy: constraints not applied",
+   "priors and enforcement skipped",
+   "no net change"
+  ],
+  "tsv": "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage0/GCF_000236665.1.integrated.tsv",
+  "genome_id": "GCF_000236665.1",
+  "layout": "/home/leechuck/.cache/gspa-v3-data/price-layout-v4/GCF_000236665.1.layout.tsv",
+  "expect": {
+   "taxon_state": "taxon not in hierarchy: constraints not applied",
+   "scoring_mode": "legacy_heuristic",
+   "stage_status": {
+    "symbolic_enforcement": "skipped"
+   },
+   "browser_text": [
+    "constraints not applied"
+   ],
+   "portal_text": [
+    "Stages:"
+   ]
+  }
+ },
+ {
+  "name": "T4-stage2b-repairs",
+  "origin": "Shaheen price-stage2b-rc1 cell 0 (TopEC, GCF_000236665.1), arm stage2b, job 15712377; stage 0 arm of price-taxon-rc2 cell 0 as the before table",
+  "states": [
+   "Stage 2B metabolic refinement executed with repairs",
+   "FBA model and fluxes"
+  ],
+  "tsv": "/home/leechuck/tmp/routes-closure/shaheen/stage2b-cell0/stage2b/GCF_000236665.1.integrated.tsv",
+  "genome_id": "GCF_000236665.1",
+  "layout": "/home/leechuck/.cache/gspa-v3-data/price-layout-v4/GCF_000236665.1.layout.tsv",
+  "before_tsv": "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage0/GCF_000236665.1.integrated.tsv",
+  "metabolism": "/home/leechuck/tmp/routes-closure/shaheen/stage2b-cell0/stage2b/GCF_000236665.1.integrated.tsv.metabolism",
+  "expect": {
+   "stage2b_changes": 6,
+   "scoring_mode": "legacy_heuristic",
+   "stage_status": {
+    "metabolic_refinement": "executed"
+   },
+   "browser_text": [
+    "Metabolic (FBA) refinement",
+    "repaired_reactions"
+   ],
+   "portal_text": [
+    "increased"
+   ]
+  }
+ },
+ {
+  "name": "T6-null-abstained",
+  "origin": "stored 2026-10-27 benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/logistic.tsv (protein-only input)",
+  "states": [
+   "learned model abstained on every candidate (null probabilities)",
+   "protein-only input without coordinates"
+  ],
+  "tsv": "/mnt/data2/leechuck/gspa/benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/logistic.tsv",
+  "genome_id": "report",
+  "proteins_tsv": "/mnt/data2/leechuck/gspa/benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/integrated/protein_proteins.tsv",
+  "expect": {
+   "scoring_mode": "legacy_heuristic",
+   "null_candidates": 3469,
+   "partial_data": true,
+   "browser_text": [
+    "3469 unsupported"
+   ],
+   "portal_text": [
+    "model abstained",
+    "3,469 unsupported"
+   ]
+  }
+ },
+ {
+  "name": "T7-roles",
+  "origin": "stored 2026-10-27 benchmark/v3/results/claim-role-bridge-v1/after-cli/logistic.tsv",
+  "states": [
+   "candidate roles in the learned report",
+   "learned stage abstained"
+  ],
+  "tsv": "/mnt/data2/leechuck/gspa/benchmark/v3/results/claim-role-bridge-v1/after-cli/logistic.tsv",
+  "genome_id": "report",
+  "proteins_tsv": "/mnt/data2/leechuck/gspa/benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/integrated/protein_proteins.tsv",
+  "expect": {
+   "roles": [
+    "CATALYTIC",
+    "COMPLEX_SUBUNIT",
+    "UNSPECIFIED"
+   ],
+   "null_candidates": 3469,
+   "partial_data": true,
+   "browser_text": [
+    "3469 unsupported"
+   ],
+   "portal_text": [
+    "model abstained"
+   ]
+  }
+ },
+ {
+  "name": "T5s-mixed-stored",
+  "origin": "stored 2026-10-27 model-input-support-browser-v2-final (GCA_000007005.1, mixed scoring, logistic model)",
+  "states": [
+   "learned (mixed) scoring",
+   "unsupported candidates with null probability"
+  ],
+  "tsv": "/home/leechuck/.cache/gspa-v3-data/model-input-support-browser-v2-final/gspa_out/integrated.tsv",
+  "genome_id": "GCA_000007005.1",
+  "proteins_faa": "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000007005.1/protein.faa",
+  "layout": "/home/leechuck/.cache/gspa-v3-data/training-cohort/layout/GCA_000007005.1.layout.tsv",
+  "expect": {
+   "scoring_mode": "mixed",
+   "null_candidates": 7630,
+   "browser_text": [
+    "7630 unsupported"
+   ],
+   "portal_text": [
+    "Scoring: mixed",
+    "7,630 unsupported"
+   ]
+  }
+ },
+ {
+  "name": "T9a-controlled-ledger-missing",
+  "origin": "CONTROLLED: T1 output with the stage ledger removed",
+  "states": [
+   "stage ledger missing"
+  ],
+  "tsv": "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage1_taxon/GCF_000236665.1.integrated.tsv",
+  "genome_id": "GCF_000236665.1",
+  "layout": "/home/leechuck/.cache/gspa-v3-data/price-layout-v4/GCF_000236665.1.layout.tsv",
+  "drop_stages": true,
+  "expect": {
+   "browser_text": [
+    "unavailable",
+    "not zero"
+   ],
+   "portal_text": [
+    "unavailable"
+   ]
+  }
+ },
+ {
+  "name": "T9b-controlled-learned-missing",
+  "origin": "CONTROLLED: mixed-scoring output with the learned report removed",
+  "states": [
+   "learned report missing while the ledger says the learned stage ran"
+  ],
+  "tsv": "/home/leechuck/.cache/gspa-v3-data/model-input-support-browser-v2-final/gspa_out/integrated.tsv",
+  "genome_id": "GCA_000007005.1",
+  "proteins_faa": "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000007005.1/protein.faa",
+  "layout": "/home/leechuck/.cache/gspa-v3-data/training-cohort/layout/GCA_000007005.1.layout.tsv",
+  "drop_learned": true,
+  "expect": {
+   "scoring_mode": "mixed",
+   "learned_missing": true,
+   "browser_text": [
+    "unavailable"
+   ],
+   "portal_text": [
+    "unavailable"
+   ]
+  }
+ }
+]

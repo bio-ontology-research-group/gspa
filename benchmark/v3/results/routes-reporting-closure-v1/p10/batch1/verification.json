@@ -1,0 +1,886 @@
+{
+  "schema": "gspa.routes-closure-reporting-replay/1",
+  "all_passed": true,
+  "cases": [
+    {
+      "name": "T1-taxon-removals",
+      "id": "2b52697546da1c4dd4910c35d4b13b09",
+      "origin": "Shaheen price-taxon-rc2 cell 0 (TopEC, GCF_000236665.1), arm stage1_taxon, job 15721368",
+      "states": [
+        "enforcement removals",
+        "taxon applied with lineage",
+        "priors executed",
+        "learned not requested"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 2.2
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 3444,
+          "exported_rows": 3444,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 3493,
+          "tsv_rows": 3444,
+          "annotated_proteins": 3444
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 3493,
+          "browser_proteins": 3493
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 3,
+            "skipped": 10,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C3_changes_symbolic_enforcement",
+          "pass": true,
+          "raw_changes": 37,
+          "shown": 37
+        },
+        {
+          "check": "C3_expected_symbolic_enforcement",
+          "pass": true,
+          "expected": "executed",
+          "observed": "executed",
+          "reason": null
+        },
+        {
+          "check": "C3_expected_learned_integration",
+          "pass": true,
+          "expected": "skipped",
+          "observed": "skipped",
+          "reason": "learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them"
+        },
+        {
+          "check": "C4_removals",
+          "pass": true,
+          "removed": 37,
+          "expected": 37,
+          "shown": {
+            "actions": 37,
+            "functions": 37,
+            "proteins": 37
+          },
+          "rows_before_minus_after": 37,
+          "violations_note": 37,
+          "actions_file": false
+        },
+        {
+          "check": "C6_scoring_mode",
+          "pass": true,
+          "observed": "legacy_heuristic",
+          "expected": "legacy_heuristic"
+        },
+        {
+          "check": "C7_taxon_state",
+          "pass": true,
+          "raw": "applied",
+          "shown": "applied",
+          "organism": "NCBITaxon_640081"
+        },
+        {
+          "check": "C8_enzyme_classes",
+          "pass": true,
+          "recomputed": {
+            "ec_complete": 37,
+            "ec_partial": 0,
+            "go_catalytic": 0
+          },
+          "shown": {
+            "ec_complete": 37,
+            "ec_partial": 0,
+            "go_catalytic": 0
+          }
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "not_applicable"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: legacy heuristic (no trained model). Stages: 3 executed, 10 skipped. Between the baseline (after evidence integration with the heuristic combiner and priors (not a sequence-only baseline)) and the final export, 37 (protein, function) pairs changed across 37 proteins (0 added, 37 removed, 0 "
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage1_taxon/GCF_000236665.1.integrated.tsv": "1bb06055e5bc525f790893458b22a0510b84c11a5f2f3095737e014db434bf17",
+        "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage1_taxon/GCF_000236665.1.integrated.tsv.stages.json": "15b583a51cadaf880e547840f52ffe8477ff82b498609687f252f5c8cf8e661e",
+        "/home/leechuck/.cache/gspa-v3-data/price-layout-v4/GCF_000236665.1.layout.tsv": "08703ce9e5a732c8cfedc8051808bd48b756453c7c7bdab28273b9074ef03461",
+        "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage0/GCF_000236665.1.integrated.tsv": "9c3a1c7952e11782bd5a5f24b8ddd0d16339d41d5b158805c3ee6b850fd9b50b"
+      }
+    },
+    {
+      "name": "T2-stage0-not-applied",
+      "id": "1c1cd8fdd6927faba8370f5da7029cc4",
+      "origin": "Shaheen price-taxon-rc2 cell 0, arm stage0, job 15721368",
+      "states": [
+        "taxon not in hierarchy: constraints not applied",
+        "priors and enforcement skipped",
+        "no net change"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 2.4
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 3481,
+          "exported_rows": 3481,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 3493,
+          "tsv_rows": 3481,
+          "annotated_proteins": 3481
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 3493,
+          "browser_proteins": 3493
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 2,
+            "skipped": 11,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C3_expected_symbolic_enforcement",
+          "pass": true,
+          "expected": "skipped",
+          "observed": "skipped",
+          "reason": "disabled"
+        },
+        {
+          "check": "C6_scoring_mode",
+          "pass": true,
+          "observed": "legacy_heuristic",
+          "expected": "legacy_heuristic"
+        },
+        {
+          "check": "C7_taxon_state",
+          "pass": true,
+          "raw": "taxon not in hierarchy: constraints not applied",
+          "shown": "taxon not in hierarchy: constraints not applied",
+          "organism": "NCBITaxon_640081"
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "not_applicable"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: legacy heuristic (no trained model). Stages: 2 executed, 11 skipped. Between the baseline (after evidence integration with the heuristic combiner and priors (not a sequence-only baseline)) and the final export, 0 (protein, function) pairs changed across 0 proteins (0 added, 0 removed, 0 inc"
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage0/GCF_000236665.1.integrated.tsv": "9c3a1c7952e11782bd5a5f24b8ddd0d16339d41d5b158805c3ee6b850fd9b50b",
+        "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage0/GCF_000236665.1.integrated.tsv.stages.json": "8c8a262809989cd0d871ca8345f51cb3ce07cdf1c524f134db1f9f9f45db628d",
+        "/home/leechuck/.cache/gspa-v3-data/price-layout-v4/GCF_000236665.1.layout.tsv": "08703ce9e5a732c8cfedc8051808bd48b756453c7c7bdab28273b9074ef03461"
+      }
+    },
+    {
+      "name": "T4-stage2b-repairs",
+      "id": "ad5214cce0befc8b7043c747b453588d",
+      "origin": "Shaheen price-stage2b-rc1 cell 0 (TopEC, GCF_000236665.1), arm stage2b, job 15712377; stage 0 arm of price-taxon-rc2 cell 0 as the before table",
+      "states": [
+        "Stage 2B metabolic refinement executed with repairs",
+        "FBA model and fluxes"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 2.4
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 3481,
+          "exported_rows": 3481,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 3493,
+          "tsv_rows": 3481,
+          "annotated_proteins": 3481
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 3493,
+          "browser_proteins": 3493
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 3,
+            "skipped": 10,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C3_changes_metabolic_refinement",
+          "pass": true,
+          "raw_changes": 6,
+          "shown": 6
+        },
+        {
+          "check": "C3_expected_metabolic_refinement",
+          "pass": true,
+          "expected": "executed",
+          "observed": "executed",
+          "reason": null
+        },
+        {
+          "check": "C5_stage2b",
+          "pass": true,
+          "ledger_changes": 6,
+          "tsv_diff": 6,
+          "diff_equals_ledger": true,
+          "repaired_reactions_note": 123,
+          "repaired_in_fba_output": "key absent",
+          "fba_keys": [
+            "active_ecs",
+            "active_rxns",
+            "core_bio",
+            "ensemble_support",
+            "fva_essential_rxns",
+            "ko_essential_rxns",
+            "max_univ_bio",
+            "model",
+            "n_core_rxns",
+            "n_deadend_repaired",
+            "n_flux_certified_repaired",
+            "n_imbalanced_repaired",
+            "n_repaired_rxns",
+            "n_uncertified_additions",
+            "pfba_flux_by_rxn",
+            "pi_fba",
+            "repaired_ecs",
+            "repaired_rxns",
+            "solve_time_sec",
+            "target_bio"
+          ],
+          "browser_metabolism": true
+        },
+        {
+          "check": "C6_scoring_mode",
+          "pass": true,
+          "observed": "legacy_heuristic",
+          "expected": "legacy_heuristic"
+        },
+        {
+          "check": "C8_enzyme_classes",
+          "pass": true,
+          "recomputed": {
+            "ec_complete": 6,
+            "ec_partial": 0,
+            "go_catalytic": 0
+          },
+          "shown": {
+            "ec_complete": 6,
+            "ec_partial": 0,
+            "go_catalytic": 0
+          }
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "not_applicable"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: legacy heuristic (no trained model). Stages: 3 executed, 10 skipped. Between the baseline (after evidence integration with the heuristic combiner and priors (not a sequence-only baseline)) and the final export, 6 (protein, function) pairs changed across 6 proteins (0 added, 0 removed, 6 inc"
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/home/leechuck/tmp/routes-closure/shaheen/stage2b-cell0/stage2b/GCF_000236665.1.integrated.tsv": "e78cc73a19aea668ca75270de6fdc0142fb5136fb33f9fca3be54790c0787e57",
+        "/home/leechuck/tmp/routes-closure/shaheen/stage2b-cell0/stage2b/GCF_000236665.1.integrated.tsv.stages.json": "b83339db6a988aad1a16f335d14c577555b42894a3a22e13aa3aca730c6b330c",
+        "/home/leechuck/tmp/routes-closure/shaheen/stage2b-cell0/stage2b/GCF_000236665.1.integrated.tsv.metabolism/fba_output.json": "8619758fd70c574f32750d9fb75215e6d14032e5e22b5ae7969a731016776bde",
+        "/home/leechuck/tmp/routes-closure/shaheen/stage2b-cell0/stage2b/GCF_000236665.1.integrated.tsv.metabolism/fba_input.json": "bb2fa0d0fe3c439c55cc4e63e7c6cf9393e53c48f37e3e221dc697bf3581dd7e",
+        "/home/leechuck/tmp/routes-closure/shaheen/stage2b-cell0/stage2b/GCF_000236665.1.integrated.tsv.metabolism/fba.log": "3f99f92d55843a8c3d6eed7557f646ba1707f8dd4cbf4f8b061c05826ecc0ff0",
+        "/home/leechuck/tmp/routes-closure/shaheen/stage2b-cell0/stage2b/GCF_000236665.1.integrated.tsv.metabolism/reactions.tsv": "a035ea3b34c9724637ff1d1082b3866b4fba181d67f49ae640ed6c367ffa61c5",
+        "/home/leechuck/tmp/routes-closure/shaheen/stage2b-cell0/stage2b/GCF_000236665.1.integrated.tsv.metabolism/metabolic_model.xml": "3f01fd3f0f2605e315989bcc393ebb17070738dee5ee46c18bf0596fdd6242e5",
+        "/home/leechuck/.cache/gspa-v3-data/price-layout-v4/GCF_000236665.1.layout.tsv": "08703ce9e5a732c8cfedc8051808bd48b756453c7c7bdab28273b9074ef03461",
+        "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage0/GCF_000236665.1.integrated.tsv": "9c3a1c7952e11782bd5a5f24b8ddd0d16339d41d5b158805c3ee6b850fd9b50b"
+      }
+    },
+    {
+      "name": "T6-null-abstained",
+      "id": "f49c0c6a65e2414bcfcac42db895b50f",
+      "origin": "stored 2026-10-27 benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/logistic.tsv (protein-only input)",
+      "states": [
+        "learned model abstained on every candidate (null probabilities)",
+        "protein-only input without coordinates"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 2.3
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 3469,
+          "exported_rows": 3469,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 2661,
+          "tsv_rows": 3469,
+          "annotated_proteins": 802
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 2661,
+          "browser_proteins": 2661
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 2,
+            "skipped": 11,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C6_learned_identities",
+          "pass": true,
+          "candidates": 3469,
+          "shown": 3469,
+          "null_probabilities": 3469,
+          "roles": [
+            "CATALYTIC",
+            "UNSPECIFIED"
+          ],
+          "scoring_mode": "legacy_heuristic",
+          "unjoined": 0
+        },
+        {
+          "check": "C6_null",
+          "pass": true,
+          "nulls": 3469,
+          "expected": 3469
+        },
+        {
+          "check": "C6_scoring_mode",
+          "pass": true,
+          "observed": "legacy_heuristic",
+          "expected": "legacy_heuristic"
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "available"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C12_partial_data",
+          "pass": true,
+          "size_bp": null,
+          "n_contigs": null,
+          "not_measured": true,
+          "analyses": {}
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: legacy heuristic (model abstained; frozen model context-logistic-b1143a71f9b5-d9537b61, sha256 939f1576d144). The model supplied no learned scores; baseline scores retained. 3,469 unsupported candidates received no learned score. Stages: 2 executed, 11 skipped. Between the baseline (after e"
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/mnt/data2/leechuck/gspa/benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/logistic.tsv": "44888df1d2fbbdad721ca25acc14053c4b8c7b766128c78a8811e25bed875bb1",
+        "/mnt/data2/leechuck/gspa/benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/logistic.tsv.stages.json": "eae0712599f4711fa022c9bd6c99c37e0db9d9c15f7434562580e7c640558633",
+        "/mnt/data2/leechuck/gspa/benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/logistic.tsv.learned.json": "f6b0a1f6dd6e15c6ffb682cb494eafcd2665611ac5c8077e6d533fbcb2bc0be6",
+        "/mnt/data2/leechuck/gspa/benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/integrated/protein_proteins.tsv": "554fabf18eda110cc933326f92e52ab0e5b951e62a456847c7cc698dde5194d4"
+      }
+    },
+    {
+      "name": "T7-roles",
+      "id": "2c511740252cdfae4afdda2b480efbb0",
+      "origin": "stored 2026-10-27 benchmark/v3/results/claim-role-bridge-v1/after-cli/logistic.tsv",
+      "states": [
+        "candidate roles in the learned report",
+        "learned stage abstained"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 2.4
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 3469,
+          "exported_rows": 3469,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 2661,
+          "tsv_rows": 3469,
+          "annotated_proteins": 802
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 2661,
+          "browser_proteins": 2661
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 2,
+            "skipped": 11,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C6_learned_identities",
+          "pass": true,
+          "candidates": 3469,
+          "shown": 3469,
+          "null_probabilities": 3469,
+          "roles": [
+            "CATALYTIC",
+            "COMPLEX_SUBUNIT",
+            "UNSPECIFIED"
+          ],
+          "scoring_mode": "legacy_heuristic",
+          "unjoined": 0
+        },
+        {
+          "check": "C6_null",
+          "pass": true,
+          "nulls": 3469,
+          "expected": 3469
+        },
+        {
+          "check": "C6_roles",
+          "pass": true,
+          "roles": [
+            "CATALYTIC",
+            "COMPLEX_SUBUNIT",
+            "UNSPECIFIED"
+          ]
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "available"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C12_partial_data",
+          "pass": true,
+          "size_bp": null,
+          "n_contigs": null,
+          "not_measured": true,
+          "analyses": {}
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: legacy heuristic (model abstained; frozen model context-logistic-b1143a71f9b5-d9537b61, sha256 939f1576d144). The model supplied no learned scores; baseline scores retained. 3,469 unsupported candidates received no learned score. Stages: 2 executed, 11 skipped. Between the baseline (after e"
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/mnt/data2/leechuck/gspa/benchmark/v3/results/claim-role-bridge-v1/after-cli/logistic.tsv": "44888df1d2fbbdad721ca25acc14053c4b8c7b766128c78a8811e25bed875bb1",
+        "/mnt/data2/leechuck/gspa/benchmark/v3/results/claim-role-bridge-v1/after-cli/logistic.tsv.stages.json": "bfa88994ce7a78f2a402676596d9a6e89b36214fd36316091016406232a2dc97",
+        "/mnt/data2/leechuck/gspa/benchmark/v3/results/claim-role-bridge-v1/after-cli/logistic.tsv.learned.json": "b54d12456e72d62186b8bf3b5aa0b0f016cac27120475bb0b97ef16ab30867b6",
+        "/mnt/data2/leechuck/gspa/benchmark/v3/results/gapsmith-observed-v2/final-cli-replay/integrated/protein_proteins.tsv": "554fabf18eda110cc933326f92e52ab0e5b951e62a456847c7cc698dde5194d4"
+      }
+    },
+    {
+      "name": "T9a-controlled-ledger-missing",
+      "id": "984f4d5d31ffb7e2562443391bf5f39f",
+      "origin": "CONTROLLED: T1 output with the stage ledger removed",
+      "states": [
+        "stage ledger missing"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 2.4
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 3493,
+          "tsv_rows": 3444,
+          "annotated_proteins": 3444
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 3493,
+          "browser_proteins": 3493
+        },
+        {
+          "check": "C9_ledger_missing_is_unavailable",
+          "pass": true,
+          "status": "unavailable",
+          "reason": "No stage ledger was written for this run (for example, a legacy run). Prediction changes are unavailable, not zero."
+        },
+        {
+          "check": "C10_api_summary_missing",
+          "pass": true,
+          "status": 200,
+          "reason": "No stage ledger was written for this job; prediction changes are unavailable, not zero."
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Prediction ledger unavailable: No stage ledger was written for this job; prediction changes are unavailable, not zero.."
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/home/leechuck/tmp/routes-closure/shaheen/taxon-cell0/stage1_taxon/GCF_000236665.1.integrated.tsv": "1bb06055e5bc525f790893458b22a0510b84c11a5f2f3095737e014db434bf17",
+        "/home/leechuck/.cache/gspa-v3-data/price-layout-v4/GCF_000236665.1.layout.tsv": "08703ce9e5a732c8cfedc8051808bd48b756453c7c7bdab28273b9074ef03461"
+      }
+    }
+  ],
+  "harness_sources": {
+    "/mnt/data2/leechuck/gspa/gspa-cli/build/libs/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "/mnt/data2/leechuck/gspa/service/ledger_summary.py": "9fd91c845d5afb461250ebb102aa8d002dac99d1219fd77ee292a6626921de1d",
+    "/mnt/data2/leechuck/gspa/service/web/index.html": "1d9b5c059b1422f716635d9eb0a919eddeb7b42c5f309768dc15759d2e7ccf77",
+    "/mnt/data2/leechuck/gspa/gspa-cli/src/main/resources/visualize/make_viz.py": "895b9f2838fcdfbb98243aa74d92e22fb3e31525f0f2f84f39b882dc5a5a03d3",
+    "/home/leechuck/.cache/gspa-v3-data/training-cohort/go-basic.obo": "b08d45b268b8c24ccb2513dbbbc7d4df9f6521c099b413f79eb31e06e0fa3bcc",
+    "/mnt/data2/leechuck/gspa/benchmark/whole_genome_cafa/data/reference/ec2go.txt": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "/mnt/data2/leechuck/gspa/benchmark/v3/routes_closure/replay_reporting.py": "2238ce385b6a85c02c674bcbb13f0894b6103bde3d35841324ec63478160c509"
+  }
+}

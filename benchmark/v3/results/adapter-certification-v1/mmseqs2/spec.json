@@ -1,0 +1,89 @@
+{
+ "adapter": "mmseqs2",
+ "mode": "proteins",
+ "input": {
+  "proteins": "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa"
+ },
+ "config": {
+  "input": {
+   "kingdom": "bacteria"
+  },
+  "predictors": {
+   "similarity": {
+    "enabled": true,
+    "tool": "mmseqs2",
+    "database": "/mnt/data2/leechuck/gspa-cert/fixtures/db/mmseqs_ref",
+    "evalue": 1e-05
+   },
+   "domains": {
+    "enabled": false
+   },
+   "pathway": {
+    "enabled": false
+   },
+   "operons": {
+    "enabled": false
+   },
+   "localization": {
+    "enabled": false
+   },
+   "antifam": {
+    "enabled": false
+   }
+  },
+  "quality": {
+   "enabled": false
+  }
+ },
+ "path_dirs": [
+  "/mnt/data2/leechuck/gspa-cert/tools/mmseqs2/mmseqs/bin"
+ ],
+ "tool": "mmseqs",
+ "stub_kind": "mmseqs",
+ "executable_config_key": null,
+ "native_output": "observed/mmseqs_results.tsv",
+ "oracle_reader": "mmseqs2",
+ "genuine_outcome": "SUCCESS",
+ "malformed_column": 2,
+ "dropped_protein": "P18843",
+ "cases": {
+  "header_only": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "none"
+  },
+  "malformed": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "truncated_row": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "dropped_protein": {
+   "expected": "SUCCESS",
+   "claims": "without_dropped"
+  },
+  "unknown_protein": {
+   "expected": "FAILED",
+   "claims": "none",
+   "detail_contains": [
+    "ghost_protein_not_in_input"
+   ]
+  },
+  "unavailable": {
+   "expected": "UNAVAILABLE",
+   "claims": "none"
+  }
+ },
+ "bound": [
+  "/mnt/data2/leechuck/gspa-cert/fixtures/reference",
+  "/mnt/data2/leechuck/gspa-cert/fixtures/db/mmseqs_ref_h.dbtype",
+  "/mnt/data2/leechuck/gspa-cert/fixtures/db/mmseqs_ref",
+  "/mnt/data2/leechuck/gspa-cert/fixtures/db/mmseqs_ref_h.index",
+  "/mnt/data2/leechuck/gspa-cert/fixtures/db/mmseqs_ref.source",
+  "/mnt/data2/leechuck/gspa-cert/fixtures/db/mmseqs_ref_h",
+  "/mnt/data2/leechuck/gspa-cert/fixtures/db/mmseqs_ref.lookup",
+  "/mnt/data2/leechuck/gspa-cert/fixtures/db/mmseqs_ref.index",
+  "/mnt/data2/leechuck/gspa-cert/fixtures/db/mmseqs_ref.dbtype"
+ ]
+}

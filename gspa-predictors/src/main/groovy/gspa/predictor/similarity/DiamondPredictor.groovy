@@ -3,6 +3,7 @@ package gspa.predictor.similarity
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 /**
  * DIAMOND sequence similarity predictor.
@@ -102,15 +103,27 @@ class DiamondPredictor extends AbstractToolPredictor {
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
+        int lineNo = 0
         outputFile.eachLine { line ->
-            def fields = line.split('\t')
-            if (fields.length < 9) return
+            lineNo++
+            if (!line.trim()) return
+            def fields = line.split('\t', -1)
+            // --outfmt 6 with nine named columns writes exactly nine; a shorter row is a
+            // corrupt or foreign file, never "no alignment" (which is a zero-byte file).
+            if (fields.length < 9) {
+                throw new ToolOutputContractException("${name}: line ${lineNo} has ${fields.length} columns, 9 were requested")
+            }
 
             String queryId = fields[0]
             String subjectId = fields[1]
-            double pident = fields[2] as double
-            double eval = fields[6] as double
-            double bitscore = fields[7] as double
+            double pident, eval, bitscore
+            try {
+                pident = fields[2] as double
+                eval = fields[6] as double
+                bitscore = fields[7] as double
+            } catch (NumberFormatException e) {
+                throw new ToolOutputContractException("${name}: line ${lineNo} has a non-numeric identity, E-value or bit score for ${queryId}")
+            }
             String title = fields[8]
 
             // Confidence score: normalize by identity

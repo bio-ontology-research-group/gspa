@@ -606,6 +606,7 @@ class AnnotateCommand implements Runnable {
             config.integration.workflow = gspa.integration.workflow.IntegrationWorkflowConfig.fromJson(integrationConfig)
         }
         if (integrate || integrationConfig != null) config.integration.enabled = true
+        if (config.integration.enabled && preset.name) applyIntegrationPreset(config)
         if (intragenomeCluster != null && intragenomeCluster != 'off') {
             if (!(intragenomeCluster in ['0.9', '0.95', '1.0'])) {
                 throw new IllegalArgumentException("--intragenome-cluster must be one of: off, 0.9, 0.95, 1.0 (got '${intragenomeCluster}')")
@@ -617,6 +618,30 @@ class AnnotateCommand implements Runnable {
         applyPredictorFlags(config)
 
         config
+    }
+
+    /**
+     * The integration defaults {@code gspa integrate --preset} applies (priors, stage-2 enforcement and its mode,
+     * essential profile, organism taxon, lite ontology handling), so that {@code annotate --preset X --integrate}
+     * and {@code integrate --preset X} run the shared workflow with the same settings on the same claims.
+     * Precedence as in the integrate command: preset defaults < integration-config file; an explicit
+     * {@code --taxon} or {@code --infer-taxon} on this command keeps its own organism taxon.
+     */
+    private void applyIntegrationPreset(GspaConfig config) {
+        def workflow = config.integration.workflow ?: new gspa.integration.workflow.IntegrationWorkflowConfig()
+        Set<String> fileKeys = integrationConfig != null ?
+            (new com.fasterxml.jackson.databind.ObjectMapper().readValue(integrationConfig, Map).keySet() as Set<String>) : ([] as Set<String>)
+        Map<String, Object> defaults = gspa.config.WorkflowPresets.integrationDefaults(preset.name)
+        def apply = { String key, String option, Closure set ->
+            if (!(key in fileKeys) && defaults[option] != null) set(defaults[option])
+        }
+        apply('essentialProfile', '--essential-profile') { workflow.essentialProfile = it as String }
+        apply('organismTaxon', '--taxon') { if (!organismTaxon && !inferTaxon) workflow.organismTaxon = it as String }
+        apply('enabledPriors', '--enable-priors') { workflow.enabledPriors = it as String }
+        apply('enforceStage2', '--enforce-stage2') { workflow.enforceStage2 = it as boolean }
+        apply('enforceConsistencyMode', '--enforce-consistency-mode') { workflow.enforceConsistencyMode = it as String }
+        apply('lite', '--lite') { workflow.lite = it as boolean }
+        config.integration.workflow = workflow
     }
 
     private void applyPredictorFlags(GspaConfig config) {

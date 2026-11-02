@@ -55,6 +55,8 @@ class GspaConfig {
         AmrFinderConfig amrfinder = new AmrFinderConfig()
         DbCanConfig dbcan = new DbCanConfig()
         AntiSmashConfig antismash = new AntiSmashConfig()
+        VfdbConfig vfdb = new VfdbConfig()
+        CrisprConfig crispr = new CrisprConfig()
         OperonConfig operons = new OperonConfig()
         PathwayConfig pathway = new PathwayConfig()
         LocalizationConfig localization = new LocalizationConfig()
@@ -90,6 +92,25 @@ class GspaConfig {
         String executablePath
         String interfaceVersion = '4'
         int threads = Runtime.runtime.availableProcessors()
+    }
+
+    /** Enable with predictors.enable: [vfdb]. DIAMOND blastp against a VFDB protein database. */
+    static class VfdbConfig {
+        /** Path to the VFDB DIAMOND database (.dmnd), built from VFDB_setA_pro.fas. */
+        String database
+        /** DIAMOND executable; defaults to `diamond` on PATH. */
+        String executablePath
+        double evalue = 1e-10
+        double minIdentity = 40.0
+        int threads = Runtime.runtime.availableProcessors()
+    }
+
+    /** Enable with predictors.enable: [crispr]. MinCED on contig nucleotide sequence; array membership is unscored. */
+    static class CrisprConfig {
+        /** MinCED executable; defaults to `minced` on PATH. */
+        String executablePath
+        /** Minimum number of repeats to call an array (MinCED -minNR). */
+        int minRepeats = 3
     }
 
     /** Enable with predictors.enable: [antismash]. Region membership is unscored. */

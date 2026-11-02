@@ -1,7 +1,9 @@
 process MERGE_ANNOTATIONS {
     tag "$sample_id"
     publishDir "${params.outdir}/${sample_id}", mode: 'copy'
-    container 'python:3.12-slim'
+    // Full python image: Nextflow's task-metric collection (-with-trace / -with-report) needs `ps`,
+    // which python:3.12-slim does not ship (the task fails with exit 1 before the script runs).
+    container 'python:3.12'
 
     input:
     tuple val(sample_id), path(gff), path(proteins), path(diamond_tsv), path(pfam_domtbl), path(interproscan_tsv), path(rrna_gff), path(crispr_gff)

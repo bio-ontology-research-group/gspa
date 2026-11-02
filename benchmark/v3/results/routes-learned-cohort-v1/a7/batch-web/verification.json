@@ -1,0 +1,243 @@
+{
+  "schema": "gspa.routes-closure-reporting-replay/1",
+  "all_passed": true,
+  "cases": [
+    {
+      "name": "A7-web-cohort-GCF_000236665.1",
+      "id": "abbf5a0a1919eaeca63fc687fb2801b9",
+      "origin": "web cohort job 3df19e55743646d4a9007fc3084496aa of plan 2026-11-01 (A6 iii, ws run through the real submission endpoint), genome GCF_000236665.1",
+      "states": [
+        "cohort context executed (three-genome joint pass)",
+        "learned stage executed, mixed scoring",
+        "taxon not in hierarchy (no lineage on the cohort routes)",
+        "feature export"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 6.3
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 38173,
+          "exported_rows": 38173,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 3498,
+          "tsv_rows": 38173,
+          "annotated_proteins": 2225
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 3498,
+          "browser_proteins": 3498
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 5,
+            "skipped": 8,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C3_changes_learned_integration",
+          "pass": true,
+          "raw_changes": 27870,
+          "shown": 27870
+        },
+        {
+          "check": "C3_expected_cohort_context",
+          "pass": true,
+          "expected": "executed",
+          "observed": "executed",
+          "reason": null
+        },
+        {
+          "check": "C3_expected_learned_integration",
+          "pass": true,
+          "expected": "executed",
+          "observed": "executed",
+          "reason": null
+        },
+        {
+          "check": "C3_expected_feature_export",
+          "pass": true,
+          "expected": "executed",
+          "observed": "executed",
+          "reason": null
+        },
+        {
+          "check": "C6_learned_identities",
+          "pass": true,
+          "candidates": 38173,
+          "shown": 38173,
+          "null_probabilities": 10303,
+          "roles": [
+            "CATALYTIC",
+            "COMPLEX_SUBUNIT",
+            "UNSPECIFIED"
+          ],
+          "scoring_mode": "mixed",
+          "unjoined": 0
+        },
+        {
+          "check": "C6_null",
+          "pass": true,
+          "nulls": 10303,
+          "expected": 10303
+        },
+        {
+          "check": "C6b_learned_scored",
+          "pass": true,
+          "scored_in_report": 27870,
+          "scored_in_browser": 27870,
+          "expected": 27870,
+          "probabilities_equal": true,
+          "rescored": 27870,
+          "added": 0,
+          "scored_only": 0,
+          "unsupported": 10303
+        },
+        {
+          "check": "C6_scoring_mode",
+          "pass": true,
+          "observed": "mixed",
+          "expected": "mixed"
+        },
+        {
+          "check": "C7_taxon_state",
+          "pass": true,
+          "raw": "taxon not in hierarchy: constraints not applied",
+          "shown": "taxon not in hierarchy: constraints not applied",
+          "organism": "NCBITaxon_640081"
+        },
+        {
+          "check": "C8_enzyme_classes",
+          "pass": true,
+          "recomputed": {
+            "ec_complete": 1988,
+            "ec_partial": 0,
+            "go_catalytic": 3442
+          },
+          "shown": {
+            "ec_complete": 1988,
+            "ec_partial": 0,
+            "go_catalytic": 3442
+          }
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "available"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C6b_api_learned_counts",
+          "pass": true,
+          "status": "available",
+          "counts": {
+            "candidates": 38173,
+            "rescored": 27870,
+            "added": 0,
+            "unsupported": 10303,
+            "unchanged_unsupported": 10303,
+            "retracted": 0,
+            "removed_no_projection": 0,
+            "scored_only": 0
+          },
+          "report_counts": {
+            "candidates": 38173,
+            "rescored": 27870,
+            "added": 0,
+            "unsupported": 10303,
+            "unchanged_unsupported": 10303,
+            "retracted": 0,
+            "removed_no_projection": 0,
+            "scored_only": 0
+          },
+          "scoring_mode": "mixed",
+          "hash_verified": true
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: mixed (learned scores for supported inputs; legacy scores for unsupported inputs; frozen model context-logistic-06c05a618c57-d9537b61, sha256 c9df93d60e7b). 10,303 unsupported candidates received no learned score. Stages: 5 executed, 8 skipped. Between the baseline (after evidence integrati"
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/home/leechuck/tmp/routes-learned/cohort3-ws/web/jobs/3df19e55743646d4a9007fc3084496aa/gspa_out/cohort/GCF_000236665.1/integrated.tsv": "670db88b7b95cf94560fe54e64df4e25980fee107abedc8bc8c2dca8ccd3b174",
+        "/home/leechuck/tmp/routes-learned/cohort3-ws/web/jobs/3df19e55743646d4a9007fc3084496aa/gspa_out/cohort/GCF_000236665.1/integrated.tsv.stages.json": "797b546dd389525c029286bfc1f0ae916f1837d48e400593a4b38f98e4d36c62",
+        "/home/leechuck/tmp/routes-learned/cohort3-ws/web/jobs/3df19e55743646d4a9007fc3084496aa/gspa_out/cohort/GCF_000236665.1/integrated.tsv.learned.json": "4dae7980d299937db13d350e93bfd8137831db36e6f84477ae2a995e7ab47ca8",
+        "/home/leechuck/tmp/routes-learned/cohort3-ws/web/jobs/3df19e55743646d4a9007fc3084496aa/gspa_out/cohort/GCF_000236665.1/integrated.tsv.provenance.json": "a857d15cf770a5ae25fd4979d3e6949fb0108432154510bafc2d47e41890ae65",
+        "/home/leechuck/tmp/routes-learned/a1/GCF_000236665.1/proteins.faa": "435c9619b3ea6c43e0a925b1993c7c0379a4a6b05b0423313f241c2d6280e93a",
+        "/home/leechuck/.cache/gspa-v3-data/price-layout-v4/GCF_000236665.1.layout.tsv": "08703ce9e5a732c8cfedc8051808bd48b756453c7c7bdab28273b9074ef03461"
+      }
+    }
+  ],
+  "harness_sources": {
+    "/home/leechuck/tmp/routes-learned/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "/mnt/data2/leechuck/gspa/service/ledger_summary.py": "9fd91c845d5afb461250ebb102aa8d002dac99d1219fd77ee292a6626921de1d",
+    "/mnt/data2/leechuck/gspa/service/web/index.html": "1d9b5c059b1422f716635d9eb0a919eddeb7b42c5f309768dc15759d2e7ccf77",
+    "/mnt/data2/leechuck/gspa/gspa-cli/src/main/resources/visualize/make_viz.py": "895b9f2838fcdfbb98243aa74d92e22fb3e31525f0f2f84f39b882dc5a5a03d3",
+    "/home/leechuck/.cache/gspa-v3-data/training-cohort/go-basic.obo": "b08d45b268b8c24ccb2513dbbbc7d4df9f6521c099b413f79eb31e06e0fa3bcc",
+    "/mnt/data2/leechuck/gspa/benchmark/whole_genome_cafa/data/reference/ec2go.txt": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "/mnt/data2/leechuck/gspa/benchmark/v3/routes_closure/replay_reporting.py": "14fcec2a93eaf089c4396fc97505ea244145885fd7d1696c4c120bd8830ab8bf"
+  }
+}

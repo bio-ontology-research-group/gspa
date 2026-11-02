@@ -101,7 +101,14 @@ class AdapterRunContractSpec extends Specification {
     }
     static class FMeta extends MetapredictPredictor {
         Hook hook
-        @Override protected ProcessResult execute(List<String> c, File w) { hook.run(c, w) }
+        @Override protected ProcessResult execute(List<String> c, File w) {
+            def r = hook.run(c, w)
+            // The real driver writes coverage.tsv (one ok/failed row per input protein) next to idrs.tsv.
+            if (new File(w, 'idrs.tsv').isFile()) {
+                new File(w, 'coverage.tsv').text = 'protein_id\tstatus\tmessage\n' + 'p1\tok\t\n'
+            }
+            r
+        }
     }
     static class FFoldSeek extends FoldSeekPredictor {
         Hook hook
@@ -141,6 +148,9 @@ class AdapterRunContractSpec extends Specification {
     }
 
     private static List<Protein> proteins() { [new Protein(id: 'p1', sequence: 'MKVLGAAK')] }
+
+    /** The format fixtures under mock-output name protein_001..protein_004; a tool may only report submitted proteins. */
+    private static List<Protein> fixtureProteins() { (1..4).collect { new Protein(id: String.format('protein_%03d', it), sequence: 'MKVLGAAK') } }
 
     private static String resource(String path) {
         AdapterRunContractSpec.getResourceAsStream(path).getText('UTF-8')
@@ -249,7 +259,7 @@ class AdapterRunContractSpec extends Specification {
         def p = new FEggnog(hook: hook)
 
         when:
-        def res = p.predictBatch(proteins())
+        def res = p.predictBatch(fixtureProteins())
 
         then:
         p.lastRunStatus.outcome == PredictorOutcome.SUCCESS
@@ -262,7 +272,7 @@ class AdapterRunContractSpec extends Specification {
     def "format fixtures yield SUCCESS through predictBatch with stubbed executables"() {
         expect:
         def p = make(factory, new Hook(files: [(file): resource("/mock-output/${dir}/${file}")]))
-        p.predictBatch(proteins())
+        p.predictBatch(fixtureProteins())
         p.lastRunStatus.outcome == PredictorOutcome.SUCCESS
         p.lastRunStatus.annotationCount > 0
 
@@ -301,7 +311,8 @@ class AdapterRunContractSpec extends Specification {
 
     def "MinCED (crispr): failed vs zero vs success vs partial, through predictGenome"() {
         given:
-        def full = genome(c1: 'ACGT' * 100)
+        // the MinCED fixture names contig_1/contig_2 with arrays up to ~12 kb; unknown contigs make a run PARTIAL
+        def full = genome(contig_1: 'ACGT' * 4000, contig_2: 'ACGT' * 4000)
         def p = new FCrispr(hook: new Hook(exit: 0))
 
         when: "clean exit, no GFF written"
@@ -337,12 +348,12 @@ class AdapterRunContractSpec extends Specification {
 
         when: "one contig has no sequence loaded: the run is PARTIAL, not a full success"
         p = new FCrispr(hook: new Hook(files: ['minced_results.gff': resource('/mock-output/minced/minced_results.gff')]))
-        p.predictGenome(genome(c1: 'ACGT' * 100, c2: null))
+        p.predictGenome(genome(contig_1: 'ACGT' * 4000, contig_2: null))
 
         then:
         p.lastRunStatus.outcome == PredictorOutcome.PARTIAL
         !p.lastRunStatus.outcome.successful
-        p.lastRunStatus.skippedInputs == ['c2']
+        p.lastRunStatus.skippedInputs == ['contig_2']
         p.lastRunStatus.detail.contains('1 of 2 contigs')
 
         when: "no contig has sequence"

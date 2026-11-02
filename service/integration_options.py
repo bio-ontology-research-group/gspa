@@ -6,23 +6,71 @@ The portal does not choose integration stages or scoring itself: it writes the s
 ``gspa-core/src/main/resources/workflow/integration-workflow-config.keys.json``; unknown keys
 are rejected by the CLI). Stage order, priors and enforcement are decided by the shared
 workflow, never here.
+
+Optional stages (learned model, feature export, metabolic experiments) are switched on per
+deployment through environment variables read by :func:`deployment_options`; with none set, the
+configuration written for a job is identical to the one written before these options existed.
 """
 from __future__ import annotations
 import json
+import os
 from pathlib import Path
 
-FBA_SIDECAR = '/app/scripts/stoichiometric_locus_refiner.py'
-FBA_PYTHON = '/opt/fba/bin/python'
+# Image layout. ``GSPA_APP_ROOT`` lets the same worker run outside the container (tests, route
+# comparisons) without changing the paths the container uses.
+APP_ROOT = os.environ.get('GSPA_APP_ROOT', '/app')
+FBA_SIDECAR = f'{APP_ROOT}/scripts/stoichiometric_locus_refiner.py'
+FBA_PYTHON = os.environ.get('GSPA_FBA_PYTHON', '/opt/fba/bin/python')
 FBA_MEDIUM = 'minimal'
+EXPERIMENT_SIDECAR = f'{APP_ROOT}/scripts/metabolic_experiments.py'
+EXPERIMENT_MODES = ('manifest', 'evidence_guided')
+EXPERIMENT_STRATEGIES = ('fixed', 'random', 'evidence')   # qwen (language-model choice) is not offered on the web route
+
+
+def _truthy(value) -> bool:
+    return str(value).strip().lower() in ('1', 'true', 'yes', 'on') if value is not None else False
+
+
+def deployment_options(environ=None) -> dict:
+    """Optional stages a deployment switches on for every web job.
+
+    ``GSPA_LEARNED_MODEL``: path of a frozen learned model (``learnedModelFile``); the shared workflow
+    validates its contract and abstains explicitly when the inputs are unsupported.
+    ``GSPA_FEATURE_EXPORT``: truthy to export the learned-stage feature table next to the browser.
+    ``GSPA_EXPERIMENT_MANIFEST``: path of a frozen metabolic-experiment manifest; optional
+    ``GSPA_EXPERIMENT_MODE`` (manifest | evidence_guided), ``GSPA_EXPERIMENT_STRATEGY``
+    (fixed | random | evidence), ``GSPA_EXPERIMENT_SIDECAR`` and ``GSPA_EXPERIMENT_PYTHON``.
+    Unset variables add nothing. Invalid values raise so a misconfigured deployment fails at
+    start-up rather than silently running jobs without the requested stage.
+    """
+    environ = os.environ if environ is None else environ
+    options: dict = {}
+    if environ.get('GSPA_LEARNED_MODEL'):
+        options['learned_model'] = Path(environ['GSPA_LEARNED_MODEL'])
+    if _truthy(environ.get('GSPA_FEATURE_EXPORT')):
+        options['feature_export'] = True
+    if environ.get('GSPA_EXPERIMENT_MANIFEST'):
+        mode = environ.get('GSPA_EXPERIMENT_MODE', 'manifest')
+        strategy = environ.get('GSPA_EXPERIMENT_STRATEGY', 'evidence')
+        if mode not in EXPERIMENT_MODES or strategy not in EXPERIMENT_STRATEGIES:
+            raise ValueError(f'GSPA_EXPERIMENT_MODE must be one of {EXPERIMENT_MODES} and '
+                             f'GSPA_EXPERIMENT_STRATEGY one of {EXPERIMENT_STRATEGIES}')
+        options['experiments'] = {'manifest': Path(environ['GSPA_EXPERIMENT_MANIFEST']), 'mode': mode, 'strategy': strategy,
+                                  'sidecar': environ.get('GSPA_EXPERIMENT_SIDECAR', EXPERIMENT_SIDECAR),
+                                  'python': environ.get('GSPA_EXPERIMENT_PYTHON', FBA_PYTHON)}
+    return options
 
 
 def workflow_config(*, preset: str, resources: Path, claims: Path, browser: Path,
-                    pathways: bool, operons: Path | None = None, fba_gram: str | None = None) -> dict:
+                    pathways: bool, operons: Path | None = None, fba_gram: str | None = None,
+                    learned_model: Path | None = None, feature_export: bool = False,
+                    experiments: dict | None = None) -> dict:
     """Settings of one web job.
 
     ``virus`` has no workflow preset: it integrates sequence evidence without priors or
     enforcement. Every other preset supplies its priors/taxon/enforcement defaults through
     ``--preset`` on the command line (precedence: preset < this file < explicit flags).
+    The three optional stages are off unless the deployment enables them (``deployment_options``).
     """
     config: dict = {
         'claimsFile': str(claims),
@@ -46,6 +94,14 @@ def workflow_config(*, preset: str, resources: Path, claims: Path, browser: Path
     if fba_gram is not None:
         config.update(enableFbaRefiner=True, fbaDataDir=str(resources / 'fba_data'),
                       fbaSidecar=FBA_SIDECAR, fbaPythonBin=FBA_PYTHON, fbaGram=fba_gram, fbaMedium=FBA_MEDIUM)
+    if learned_model is not None:
+        config['learnedModelFile'] = str(learned_model)
+    if feature_export:
+        config['featureExportDir'] = str(browser / 'features')
+    if experiments:
+        config.update(experimentManifestFile=str(experiments['manifest']), experimentMode=experiments['mode'],
+                      experimentStrategy=experiments['strategy'], experimentSidecar=str(experiments['sidecar']),
+                      experimentPythonBin=str(experiments['python']))
     return config
 
 

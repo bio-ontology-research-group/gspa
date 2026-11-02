@@ -1,0 +1,186 @@
+{
+  "schema": "gspa.routes-closure-reporting-replay/1",
+  "all_passed": false,
+  "cases": [
+    {
+      "name": "T3-failed-stage",
+      "id": "915fead3b7b8d2ba13eeb8d70489cadc",
+      "origin": "real run on this workstation: single CLI route on the web job's claims (GCA_000011125.1) with a learned model whose feature contract (version 2) the engine (version 3) rejects; plan R4 'failed'",
+      "states": [
+        "failed stage with its reason",
+        "downstream stages not run",
+        "exit status non-zero"
+      ],
+      "passed": false,
+      "checks": [
+        {
+          "check": "harness_error",
+          "pass": false,
+          "error": "FileNotFoundError(2, 'No such file or directory')",
+          "traceback": "Traceback (most recent call last):\n  File \"/mnt/data2/leechuck/gspa/benchmark/v3/routes_closure/replay_reporting.py\", line 401, in main\n    case.stage()\n  File \"/mnt/data2/leechuck/gspa/benchmark/v3/routes_closure/replay_reporting.py\", line 111, in stage\n    self.copy(s['tsv'], self.run / 'integrated.tsv')\n  File \"/mnt/data2/leechuck/gspa/benchmark/v3/routes_closure/replay_reporting.py\", line 105, in copy\n    shutil.copyfile(src, dst); self.sources[str(src)] = sha(src)\n  File \"/home/leechuck/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/shutil.py\", line 254, in copyfile\n    with open(src, 'rb') as fsrc:\nFileNotFoundError: [Errno 2] No such file or directory: '/home/leechuck/tmp/routes-closure/r4/failed/cli/integrated.tsv'\n"
+        }
+      ],
+      "sources": {}
+    },
+    {
+      "name": "T10-no-work",
+      "id": "ff37a262728fd8e4c8741c12555986d1",
+      "origin": "real run on this workstation: single CLI route with reaction-local context requested on the web job's claims (plan R4 'no-work')",
+      "states": [
+        "requested stage with nothing to do"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 6.1
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 52873,
+          "exported_rows": 52873,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 1700,
+          "tsv_rows": 52873,
+          "annotated_proteins": 847
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 1700,
+          "browser_proteins": 1700
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 3,
+            "skipped": 10,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C3_changes_symbolic_enforcement",
+          "pass": true,
+          "raw_changes": 4699,
+          "shown": 4699
+        },
+        {
+          "check": "C6_learned_identities",
+          "pass": true,
+          "candidates": 57570,
+          "shown": 57570,
+          "null_probabilities": 57570,
+          "roles": [
+            "COMPLEX_SUBUNIT",
+            "UNSPECIFIED"
+          ],
+          "scoring_mode": "legacy_heuristic",
+          "unjoined": 0
+        },
+        {
+          "check": "C6_scoring_mode",
+          "pass": true,
+          "observed": "legacy_heuristic",
+          "expected": "legacy_heuristic"
+        },
+        {
+          "check": "C8_enzyme_classes",
+          "pass": true,
+          "recomputed": {
+            "ec_complete": 0,
+            "ec_partial": 0,
+            "go_catalytic": 2
+          },
+          "shown": {
+            "ec_complete": 0,
+            "ec_partial": 0,
+            "go_catalytic": 2
+          }
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "available"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: legacy heuristic (model abstained; frozen model context-logistic-06c05a618c57-d9537b61, sha256 c9df93d60e7b). The model supplied no learned scores; baseline scores retained. 57,570 unsupported candidates received no learned score. Stages: 3 executed, 10 skipped. Between the baseline (after "
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/home/leechuck/tmp/routes-closure/r4/no-work/cli/integrated.tsv": "7a8f8fd67576382413ffac866724fe41e83c470dd2cb7c5e47edb8442182d043",
+        "/home/leechuck/tmp/routes-closure/r4/no-work/cli/integrated.tsv.stages.json": "879ec60c1fdbdb90248fd2b3cf9a0363900fb50f6bff92dfdc158f90040b96b8",
+        "/home/leechuck/tmp/routes-closure/r4/no-work/cli/integrated.tsv.learned.json": "0efb32d6bb7cc2e6dd2f98d48a2bfac518afe57a18d38324b2d287774e0eca78",
+        "/home/leechuck/tmp/routes-closure/r4/no-work/cli/provenance.json": "a32681e8f033b25bbbe7ebe7ca9e0de4c6ffffc3339903e817f935b6624638fa",
+        "/home/leechuck/tmp/routes-closure/r2/protein.faa": "1f484ba2e4ea3a068f7f2868d9465c45c89b864293959f214404e76843cf87e2",
+        "/home/leechuck/.cache/gspa-v3-data/training-cohort/layout/GCA_000011125.1.layout.tsv": "1ceb9dd361a5fdd53bb8a2bfe842d374fc28ab64b31f28929ae9bb0d6893b290"
+      }
+    }
+  ],
+  "harness_sources": {
+    "/mnt/data2/leechuck/gspa/gspa-cli/build/libs/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "/mnt/data2/leechuck/gspa/service/ledger_summary.py": "9fd91c845d5afb461250ebb102aa8d002dac99d1219fd77ee292a6626921de1d",
+    "/mnt/data2/leechuck/gspa/service/web/index.html": "1d9b5c059b1422f716635d9eb0a919eddeb7b42c5f309768dc15759d2e7ccf77",
+    "/mnt/data2/leechuck/gspa/gspa-cli/src/main/resources/visualize/make_viz.py": "895b9f2838fcdfbb98243aa74d92e22fb3e31525f0f2f84f39b882dc5a5a03d3",
+    "/home/leechuck/.cache/gspa-v3-data/training-cohort/go-basic.obo": "b08d45b268b8c24ccb2513dbbbc7d4df9f6521c099b413f79eb31e06e0fa3bcc",
+    "/mnt/data2/leechuck/gspa/benchmark/whole_genome_cafa/data/reference/ec2go.txt": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "/mnt/data2/leechuck/gspa/benchmark/v3/routes_closure/replay_reporting.py": "a027740564ac3985a94446b942ef205f584b784026a164635dcf64dcd9affba1"
+  }
+}

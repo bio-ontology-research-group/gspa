@@ -123,8 +123,11 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
         lastRunStatus = null
         genome.metadata.remove("genomic_regions:${name}".toString())
         long t0 = System.currentTimeMillis()
-        List<String> noSequence = genome.contigs.findAll { !it.sequence }*.id
-        if (noSequence.size() == genome.contigs.size()) {
+        // The pipeline's placeholder contig holds proteins without a CDS placement; it is not
+        // an unscanned sequence, but its proteins can never be attributed to a region.
+        List<String> unplaced = genome.contigs.findAll { isPlaceholderContig(it) }.collectMany { it.proteins*.id } as List<String>
+        List<String> noSequence = genome.contigs.findAll { !it.sequence && !isPlaceholderContig(it) }*.id
+        if (noSequence.size() == genome.contigs.count { !isPlaceholderContig(it) }) {
             recordStatus(PredictorRunStatus.failed(name,
                 'no contig carries nucleotide sequence (protein-only input cannot be scanned for genomic regions)'), t0)
             return [:]
@@ -148,9 +151,15 @@ abstract class AbstractGenomicRegionSidecarPredictor extends AbstractToolPredict
             List<String> problems = []
             List<String> uncovered = []
             if (noSequence) {
-                problems << "${noSequence.size()} of ${genome.contigs.size()} contigs have no nucleotide sequence and were not " +
+                int real = genome.contigs.count { !isPlaceholderContig(it) }
+                problems << "${noSequence.size()} of ${real} contigs have no nucleotide sequence and were not " +
                     "analysed: ${noSequence.take(10).join(', ')}${noSequence.size() > 10 ? ', ...' : ''}"
                 uncovered.addAll(noSequence)
+            }
+            if (unplaced) {
+                problems << "${unplaced.size()} proteins have no CDS placement (ambiguous or conflicting CDS identity) and " +
+                    "cannot be attributed to genomic regions: ${unplaced.take(10).join(', ')}${unplaced.size() > 10 ? ', ...' : ''}"
+                uncovered.addAll(unplaced)
             }
             if (projection.invalidRegions) {
                 problems << "${projection.invalidRegions.size()} region row(s) rejected for invalid coordinates " +

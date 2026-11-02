@@ -53,9 +53,67 @@ class WebWorkflowConfigTest(unittest.TestCase):
 
     def test_portal_has_no_private_integration_flag_list(self):
         source = (ROOT / 'service/analysis.py').read_text()
-        for flag in ("'--enable-priors'", "'--pathways'", "'--enable-fba-refiner'", "'--fba-medium'", "'--operons'"):
+        for flag in ("'--enable-priors'", "'--enable-fba-refiner'", "'--fba-medium'", "'--operons'", "'--learned-model'"):
             self.assertNotIn(flag, source)
         self.assertIn('integration_options.workflow_config', source)
+        # The pathway flags may only be used by the quality evaluation, never to assemble the integrate command.
+        integrate_block = source[source.index('integrate = integration_options.integrate_command'):source.index('if seen:')]
+        self.assertNotIn('--pathways', integrate_block)
+
+    def test_every_name_used_in_the_worker_is_defined(self):
+        # Regression: the quality evaluation once referenced an undefined ``pathway_args`` and every
+        # default job (pathways enabled) failed at that step.
+        import ast, builtins
+        tree = ast.parse((ROOT / 'service/analysis.py').read_text())
+        defined = set(dir(builtins)) | {n.name.split('.')[0] for node in ast.walk(tree) if isinstance(node, (ast.Import, ast.ImportFrom)) for n in node.names}
+        defined |= {n.asname for node in ast.walk(tree) if isinstance(node, (ast.Import, ast.ImportFrom)) for n in node.names if n.asname}
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)): defined.add(node.name)
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)): defined.add(node.id)
+            elif isinstance(node, ast.arg): defined.add(node.arg)
+            elif isinstance(node, ast.ExceptHandler) and node.name: defined.add(node.name)
+        used = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)}
+        self.assertEqual(used - defined, set())
+
+    # Today's web job must not change when no deployment option is set: this literal is the
+    # configuration written before the learned/feature/experiment options existed.
+    BASELINE_BACTERIA = {
+        'claimsFile': '/job/claims.jsonl', 'outFile': '/job/gspa_out/integrated.tsv',
+        'provenanceFile': '/job/gspa_out/provenance.json', 'enforcementActionsOut': '/job/gspa_out/actions.tsv',
+        'goOwlFile': '/resources/go/go.owl', 'ec2goFile': '/resources/ec2go/ec2go',
+        'pathwaysFile': '/resources/kegg_pathways.tsv', 'moduleFiles': ['/resources/kegg_modules.tsv'],
+        'operonsFile': '/job/annot/operons_for_integrate.tsv', 'enableFbaRefiner': True,
+        'fbaDataDir': '/resources/fba_data', 'fbaSidecar': integration_options.FBA_SIDECAR,
+        'fbaPythonBin': integration_options.FBA_PYTHON, 'fbaGram': 'neg', 'fbaMedium': 'minimal'}
+
+    def test_defaults_are_unchanged_without_deployment_options(self):
+        self.assertEqual(integration_options.deployment_options({}), {})
+        cfg = self.build('bacteria', operons=Path('/job/annot/operons_for_integrate.tsv'), fba_gram='neg',
+                         **integration_options.deployment_options({}))
+        self.assertEqual(cfg, self.BASELINE_BACTERIA)
+        self.assertEqual(json.dumps(cfg, indent=2), json.dumps(self.BASELINE_BACTERIA, indent=2))
+
+    def test_deployment_options_add_only_their_typed_keys(self):
+        env = {'GSPA_LEARNED_MODEL': '/models/model_logistic.json', 'GSPA_FEATURE_EXPORT': '1',
+               'GSPA_EXPERIMENT_MANIFEST': '/manifests/exp.json', 'GSPA_EXPERIMENT_MODE': 'evidence_guided',
+               'GSPA_EXPERIMENT_STRATEGY': 'evidence', 'GSPA_EXPERIMENT_PYTHON': '/opt/fba/bin/python'}
+        options = integration_options.deployment_options(env)
+        cfg = self.build('bacteria', operons=Path('/job/annot/operons_for_integrate.tsv'), fba_gram='neg', **options)
+        self.assertLessEqual(set(cfg), SCHEMA)
+        self.assertEqual(cfg['learnedModelFile'], '/models/model_logistic.json')
+        self.assertEqual(cfg['featureExportDir'], '/job/gspa_out/features')
+        self.assertEqual((cfg['experimentManifestFile'], cfg['experimentMode'], cfg['experimentStrategy']),
+                         ('/manifests/exp.json', 'evidence_guided', 'evidence'))
+        self.assertEqual(cfg['experimentSidecar'], integration_options.EXPERIMENT_SIDECAR)
+        self.assertEqual(cfg['experimentPythonBin'], '/opt/fba/bin/python')
+        self.assertEqual({k: v for k, v in cfg.items() if k not in
+                          ('learnedModelFile', 'featureExportDir', 'experimentManifestFile', 'experimentMode',
+                           'experimentStrategy', 'experimentSidecar', 'experimentPythonBin')}, self.BASELINE_BACTERIA)
+        # Each option is independent.
+        self.assertEqual(set(integration_options.deployment_options({'GSPA_LEARNED_MODEL': '/m.json'})), {'learned_model'})
+        self.assertEqual(integration_options.deployment_options({'GSPA_FEATURE_EXPORT': 'no'}), {})
+        with self.assertRaises(ValueError):
+            integration_options.deployment_options({'GSPA_EXPERIMENT_MANIFEST': '/m.json', 'GSPA_EXPERIMENT_STRATEGY': 'qwen'})
 
 
 class WebClaimsTest(unittest.TestCase):

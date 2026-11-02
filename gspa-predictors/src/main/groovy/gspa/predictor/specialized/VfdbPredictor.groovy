@@ -3,6 +3,7 @@ package gspa.predictor.specialized
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 /**
  * VFDB (Virulence Factor Database) predictor.
@@ -51,14 +52,26 @@ class VfdbPredictor extends AbstractToolPredictor {
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
+        int lineNo = 0
         outputFile.eachLine { line ->
-            def fields = line.split('\t')
-            if (fields.length < 7) return
+            lineNo++
+            if (!line.trim()) return
+            def fields = line.split('\t', -1)
+            // --outfmt 6 with seven named columns writes exactly seven; a shorter row is a
+            // corrupt or foreign file, never "no alignment" (which is a zero-byte file).
+            if (fields.length < 7) {
+                throw new ToolOutputContractException("${name}: line ${lineNo} has ${fields.length} columns, 7 were requested")
+            }
 
             String proteinId = fields[0]
             String vfId = fields[1]
-            double pident = fields[2] as double
-            double eval = fields[4] as double
+            double pident, eval
+            try {
+                pident = fields[2] as double
+                eval = fields[4] as double
+            } catch (NumberFormatException e) {
+                throw new ToolOutputContractException("${name}: line ${lineNo} has a non-numeric identity or E-value for ${proteinId}")
+            }
             String title = fields[6]
 
             // Extract VF name from title

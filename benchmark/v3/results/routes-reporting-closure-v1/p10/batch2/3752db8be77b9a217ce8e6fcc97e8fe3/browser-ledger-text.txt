@@ -1,0 +1,618 @@
+Scoring mode: Legacy heuristic. Legacy heuristic: evidence combiner and hand-set priors; no trained model produced these scores. Legacy heuristic scoring (evidence combiner and hand-set priors). No trained model produced these scores. Scores are not a measurement of accuracy.
+
+Prediction changes are not measurements of accuracy. Changed predictions are not shown to be more correct; that needs independent benchmark truth.
+
+Baseline: Posterior after evidence integration with the heuristic combiner and priors (not a sequence-only baseline). Posterior after the evidence_integration stage (heuristic evidence combiner and priors). The baseline_candidates and final_changes of this ledger are measured from it. 26,328 (protein, function) candidates at baseline; 26,328 in the final export.
+
+Reconciled: the ledger final count equals the 26,328 exported rows, and every net final probability matches the export.
+
+Counts are unique (protein, function) pairs with unique proteins in parentheses. A protein with several GO terms counts once per protein. Enzyme-related means an explicit EC number or a GO term below catalytic activity (GO:0003824) in the ontology, not a name match.
+
+Stage	Status	Added	Removed	Increased	Decreased	Enzyme-related changes
+Reference preparation	Executed
+metabolic_gap_records=0; metabolic_gap_context_available=false; ec_to_go_mapping_available=true; mapped_ec_count=4822; organism_taxon=NCBITaxon_273057; taxon_in_hierarchy=true; taxon_consistency_state=applied; taxon_not_in_hierarchy_count=0; ec_claims_checkable=1509; ec_claims_not_checkable=412
+	This stage does not edit predictions; see its notes
+Cohort context (two-pass)	Executed
+route=batch; baseline=stage0_raw_max_score; baseline_snapshot_id=stage0_raw_max_score:91ed93b1b41f7281ace78cb8; cohort_genomes=18; n_peer_genomes=17; keys_with_cohort_features=1320; keys_with_local_features=984; no_peers=false
+Recorded assumptions and outcomes
+consumed_by
+[
+  "learned_integration",
+  "feature_export"
+]
+	This stage does not edit predictions; see its notes
+Evidence integration	Executed
+suggestions=0
+	26,328 candidates created; this stage defines the baseline
+Dark-matter suggestions	Skipped
+disabled
+	No changes recorded: stage did not complete
+Reaction-local context	Skipped
+disabled
+	No changes recorded: stage did not complete
+Cross-genome rescoring	Skipped
+disabled
+	No changes recorded: stage did not complete
+Symbolic constraint enforcement	Skipped
+disabled
+	No changes recorded: stage did not complete
+Metabolic (FBA) refinement	Skipped
+disabled
+	No changes recorded: stage did not complete
+Agent completion	Skipped
+disabled
+	No changes recorded: stage did not complete
+Metabolic experiments	Skipped
+disabled
+	No changes recorded: stage did not complete
+Community metabolism	Skipped
+disabled
+	No changes recorded: stage did not complete
+Learned integration (frozen model)	Skipped
+no candidates supported by the model input-coverage manifest; baseline scores retained
+model_id=context-logistic-06c05a618c57-d9537b61; model_sha256=c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c; model_kind=logistic; contract_id=gspa.context-features/3; contract_fingerprint=d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803; candidates_scored=0; candidates_unsupported=26328; unchanged_unsupported=26328; rescored=0; added=0; retracted=0; removed_no_projection=0; scored_only=0; pinned_floors_cleared=0; retract_below=null; add_unretained_claims=false; structurally_forbidden_go_terms=13317; context_supplied=true; replaced_baseline=legacy_prior_baseline; note=Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.; suggestions=0; requested=true
+	No changes recorded: stage did not complete
+Feature export	Executed
+rows=26328; functions=26328; rows_with_sequence_evidence=26328; rows_sha256=912d15e254fc9dbbf0fa6c9810e7356d7db4dc9a42b762aab0e8112142ee0dae; contract_id=gspa.context-features/3; contract_fingerprint=d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803; model_sha256=c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c; labels_included=false; directory=/scratch/project/k10018/gspa-v3/out/routes-closure-v1/cohort18/direct/features/GCA_000007005.1; note=Rows carry no label, split or group; join independently curated truth and declared splits by candidate_key.
+	This stage does not edit predictions; see its notes
+Changed predictions
+View
+Evidence-integrated baseline → final
+Reference preparation only
+Cohort context (two-pass) only
+Feature export only
+Change
+All
+added
+removed
+increased
+decreased
+Function class
+All
+Enzyme-related (EC or catalytic GO)
+Complete EC
+Partial EC
+GO catalytic activity
+GO complex (not enzyme)
+Other GO
+Unknown class
+Find
+Download filtered rows (TSV)
+Download ledger (JSON)
+
+0 unique (protein, function) pairs across 0 proteins; 0 enzyme-related (0 proteins).
+
+Protein	Function	Class	Change	Probability	Evidence
+No matching changes.
+Previous
+Page 1 of 1
+Next
+Function alternatives
+
+No suggestion table was written for this run, so candidate alternatives are unavailable.
+
+Learned stage: model and per-candidate scores
+
+Model context-logistic-06c05a618c57-d9537b61 (logistic), sha256 c9df93d60e7b290b. Model hash in the learned-stage report equals the one in the stage ledger. Feature contract gspa.context-features/3. Intended use: production.
+
+candidates 26,328 · rescored 0 · added 0 · retracted 0 · removed no projection 0 · scored only 0. Scores replace the heuristic posterior; they are calibrated marginals of a frozen model, not a measurement of accuracy. Each role probability is a separate marginal; a locus probability is conditional on its function/role group; "no candidate correct" is its own outcome. None of them is a sum of the others.
+
+Role
+All
+Catalytic
+Accessory
+Transporter
+Regulator
+Complex subunit
+Unspecified
+Projection
+All
+Projected into the final table
+Scored only (not projected)
+Find
+
+26,328 of 26,328 (protein, function, role) candidates; 26328 unsupported inputs.
+
+Protein	Function	Role	Marginal	Locus (conditional)	No candidate correct	Outcome	Sources
+AAK42098.1	plant-type vacuole
+GO:0000325	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	cytosol
+GO:0005829	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	plasma membrane
+GO:0005886	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	amino acid transport
+GO:0006865	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	basal plasma membrane
+GO:0009925	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	negative regulation of gene expression
+GO:0010629	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	GO:0015101
+GO:0015101	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	amino acid transmembrane transporter activity
+GO:0015171	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	aromatic amino acid transmembrane transporter activity
+GO:0015173	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	neutral L-amino acid transmembrane transporter activity
+GO:0015175	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-amino acid transmembrane transporter activity
+GO:0015179	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-alanine transmembrane transporter activity
+GO:0015180	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	glycine transmembrane transporter activity
+GO:0015187	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-leucine transmembrane transporter activity
+GO:0015190	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-tryptophan transmembrane transporter activity
+GO:0015196	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	antiporter activity
+GO:0015297	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	thyroid hormone transmembrane transporter activity
+GO:0015349	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	neutral amino acid transport
+GO:0015804	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-amino acid transport
+GO:0015807	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	glycine transport
+GO:0015816	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	isoleucine transport
+GO:0015818	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-leucine transport
+GO:0015820	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	methionine transport
+GO:0015821	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	phenylalanine transport
+GO:0015823	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	proline transport
+GO:0015824	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	tryptophan transport
+GO:0015827	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	tyrosine transport
+GO:0015828	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	valine transport
+GO:0015829	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	membrane
+GO:0016020	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	basolateral plasma membrane
+GO:0016323	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	apical plasma membrane
+GO:0016324	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	toxin transmembrane transporter activity
+GO:0019534	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	microvillus membrane
+GO:0031528	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	alanine transport
+GO:0032328	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	positive regulation of type II interferon production
+GO:0032729	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	positive regulation of interleukin-17 production
+GO:0032740	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	positive regulation of interleukin-4 production
+GO:0032753	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	proline transmembrane transport
+GO:0035524	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	peptide antigen binding
+GO:0042605	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	xenobiotic transport
+GO:0042908	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	D-alanine transmembrane transport
+GO:0042941	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	D-serine transmembrane transport
+GO:0042942	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	neuronal cell body
+GO:0043025	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	intracellular membrane-bounded organelle
+GO:0043231	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	protein heterodimerization activity
+GO:0046982	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	positive regulation of synaptic transmission, glycinergic
+GO:0060094	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	extracellular exosome
+GO:0070062	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	thyroid hormone transport
+GO:0070327	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	amino acid import across plasma membrane
+GO:0089718	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	apical dendrite
+GO:0097440	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-histidine transport
+GO:1902024	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	negative regulation of brown fat cell differentiation
+GO:1903444	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-leucine import across plasma membrane
+GO:1903801	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-alanine import across plasma membrane
+GO:1904273	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	L-tryptophan transmembrane transport
+GO:1904556	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK42098.1	amino acid transport complex
+GO:1990184	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	fungal-type vacuole
+GO:0000324	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	plant-type vacuole
+GO:0000325	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	fungal-type vacuole membrane
+GO:0000329	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	ATP binding
+GO:0005524	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	mitochondrion
+GO:0005739	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	mitochondrial inner membrane
+GO:0005743	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	vacuole
+GO:0005773	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	vacuolar membrane
+GO:0005774	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	plasma membrane
+GO:0005886	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	heme biosynthetic process
+GO:0006783	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	chemotaxis
+GO:0006935	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	hyperosmotic response
+GO:0006972	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	plastid
+GO:0009536	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	plant-type vacuole membrane
+GO:0009705	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	response to aluminum ion
+GO:0010044	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	detoxification of zinc ion
+GO:0010312	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	aluminum ion transmembrane transporter activity
+GO:0015083	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	iron-sulfur cluster assembly
+GO:0016226	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	ATP hydrolysis activity
+GO:0016887	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	culmination involved in sorocarp development
+GO:0031154	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	sorocarp morphogenesis
+GO:0031288	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	phytochelatin 2 import into vacuole
+GO:0036246	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	cadmium ion import into vacuole
+GO:0036249	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	ATPase-coupled transmembrane transporter activity
+GO:0042626	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	identical protein binding
+GO:0042802	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	ABC-type phytochelatin transporter activity
+GO:0044604	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	regulation of cell differentiation
+GO:0045595	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	positive regulation of erythrocyte differentiation
+GO:0045648	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	phytochelatin import into vacuole
+GO:0071995	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	glutathione transmembrane import into vacuole
+GO:0071996	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	cellular detoxification of cadmium ion
+GO:0098849	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	iron-sulfur cluster export from the mitochondrion
+GO:0140466	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	detoxification of aluminum ion
+GO:0140982	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	iron-sulfur cluster transmembrane transport
+GO:1902497	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	aluminum ion transmembrane transport
+GO:1902602	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	mitochondrial transmembrane transport
+GO:1990542	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK43114.1	cellular detoxification
+GO:1990748	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK41419.1	maltodextrin transmembrane transport
+GO:0042956	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK41419.1	maltoheptaose binding
+GO:2001071	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK40729.1	6,7-dimethyl-8-ribityllumazine synthase activity
+EC:2.5.1.78	Catalytic
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK40729.1	6,7-dimethyl-8-ribityllumazine synthase activity
+GO:0000906	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK40729.1	riboflavin synthase activity
+GO:0004746	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK40729.1	nucleus
+GO:0005634	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+AAK40729.1	cytoplasm
+GO:0005737	Unspecified
+role not specified; not an enzyme assignment
+	—	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unavailable: train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome	unsupported model input: candidate_predictor_contract_unavailable; preceding score retained
+unsupported model input; preceding score retained	swissprot_diamond_baseline
+Previous
+Page 1 of 264
+Next

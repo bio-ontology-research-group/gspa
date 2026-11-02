@@ -1,0 +1,33 @@
+{
+  "schema": "gspa.observed-output/1",
+  "captured": "2026-11-02 on Shaheen III (k10018), Slurm job 15745762, node nid00349",
+  "tool": "checkv",
+  "description": "CheckV 1.0.3 (quay.io biocontainer pulled to a Singularity image, database v1.5 with the DIAMOND index built in-job) on E. coli BW25113 GCF_000750555.1 through run_genomic_predictors.py. Tool-domain observation: the whole bacterial chromosome is reported as one High-quality viral contig; the adapter passes it through as designed",
+  "tool_version": "CheckV v1.0.3",
+  "command": "/project/k10018/sw/miniforge3/bin/python3 /scratch/hohndor/gspa-cert/run_genomic_predictors.py --predictor checkv --manifest /scratch/hohndor/gspa-cert/results/checkv/observed/manifest.tsv --min-score 0.5 --db-path /scratch/hohndor/gspa-cert/db/checkv-db-v1.5 --checkv-sif /scratch/hohndor/gspa-cert/images/checkv.sif --threads 32",
+  "run": {
+    "exit_code": 0,
+    "seconds": 68.003972521,
+    "date": "2026-11-02T03:10:55+03:00",
+    "node": "nid00349"
+  },
+  "inputs": {
+    "fixtures": {
+      "bw25113/GCF_000750555.1.fna": "68717167e3332c8a57faac6fe79d24aadd623a186f822f223f67bb9fd5600c5b",
+      "bw25113/GCF_000750555.1.gff": "f078a6ea86150221332909846e513f472d0ce3f0c27e0a29ff67810efaba9e2e"
+    },
+    "sidecar_sha256": {
+      "run_genomic_predictors.py": "6c46c6fd8bde8cdf0a4964d2aab5fe741d6f33e884aaab0dd95f93598cb95c53"
+    },
+    "image_sha256": {
+      "images/checkv.sif (docker://quay.io/biocontainers/checkv:1.0.3--pyhdfd78af_0)": "d062d349fb31f7e87c0fe8eddcabffa16ece94024f9cdd7c317e4d9b9e27e96c"
+    },
+    "database_sha256": {
+      "checkv-db-v1.5.tar.gz": "10e20b58873dac7862bd7e4379434e93f23968eb1fdd8db5ddcd8e9815f2bc19"
+    }
+  },
+  "certification": "benchmark/v3/results/adapter-certification-v1/checkv",
+  "files": {
+    "query.checkv.genomic.tsv": "335286b4e3d773d4057745a6bc281e79c195d63a836a4ab5e925d5a92cbc1889"
+  }
+}

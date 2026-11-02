@@ -1,0 +1,83 @@
+{
+ "adapter": "diamond",
+ "mode": "proteins",
+ "input": {
+  "proteins": "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input.faa"
+ },
+ "config": {
+  "input": {
+   "kingdom": "bacteria"
+  },
+  "predictors": {
+   "similarity": {
+    "enabled": true,
+    "tool": "diamond",
+    "database": "/mnt/data2/leechuck/gspa-cert/fixtures/db/swissprot_nade_ecn.dmnd",
+    "evalue": 1e-05,
+    "maxTargetSeqs": 10
+   },
+   "domains": {
+    "enabled": false
+   },
+   "pathway": {
+    "enabled": false
+   },
+   "operons": {
+    "enabled": false
+   },
+   "localization": {
+    "enabled": false
+   },
+   "antifam": {
+    "enabled": false
+   }
+  },
+  "quality": {
+   "enabled": false
+  }
+ },
+ "path_dirs": [
+  "/usr/bin"
+ ],
+ "tool": "diamond",
+ "stub_kind": "diamond",
+ "executable_config_key": null,
+ "native_output": "observed/diamond_results.tsv",
+ "oracle_reader": "diamond",
+ "genuine_outcome": "SUCCESS",
+ "malformed_column": 2,
+ "dropped_protein": "P18843",
+ "cases": {
+  "header_only": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "none"
+  },
+  "malformed": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "truncated_row": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "dropped_protein": {
+   "expected": "SUCCESS",
+   "claims": "without_dropped"
+  },
+  "unknown_protein": {
+   "expected": "FAILED",
+   "claims": "none",
+   "detail_contains": [
+    "ghost_protein_not_in_input"
+   ]
+  },
+  "unavailable": {
+   "expected": "UNAVAILABLE",
+   "claims": "none"
+  }
+ },
+ "bound": [
+  "/mnt/data2/leechuck/gspa-cert/fixtures/db/swissprot_nade_ecn.dmnd",
+  "/mnt/data2/leechuck/gspa-cert/fixtures/reference"
+ ]
+}

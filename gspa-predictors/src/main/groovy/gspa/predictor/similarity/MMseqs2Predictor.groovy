@@ -3,6 +3,7 @@ package gspa.predictor.similarity
 import gspa.model.Annotation
 import gspa.model.AnnotationType
 import gspa.predictor.AbstractToolPredictor
+import gspa.predictor.ToolOutputContractException
 
 /**
  * MMseqs2 sequence similarity predictor.
@@ -27,21 +28,28 @@ class MMseqs2Predictor extends AbstractToolPredictor {
     @Override
     String getExecutable() { 'mmseqs' }
 
+    /** MMseqs2 has no --version flag; `mmseqs version` prints the commit hash. */
+    @Override
+    protected List<String> versionArguments() { ['version'] }
+
     @Override
     List<String> buildCommand(File inputFasta, File outputDir) {
+        if (!database) throw new IllegalStateException('mmseqs2: database (an MMseqs2 target DB prefix) is unset')
         def queryDb = new File(outputDir, 'queryDB')
         def resultDb = new File(outputDir, 'resultDB')
         def outputFile = new File(outputDir, 'mmseqs_results.tsv')
+        String mmseqs = executablePath ?: executable
 
-        // MMseqs2 requires a multi-step pipeline; wrap in a shell script
+        // MMseqs2 requires a multi-step pipeline; wrap in a shell script. The configured
+        // executable is used for every step (the script formerly hard-coded `mmseqs`).
         def script = new File(outputDir, 'run_mmseqs.sh')
         script.text = """\
 #!/bin/bash
 set -e
-mmseqs createdb ${inputFasta.absolutePath} ${queryDb.absolutePath}
-mmseqs search ${queryDb.absolutePath} ${database} ${resultDb.absolutePath} ${outputDir.absolutePath}/tmp \\
+'${mmseqs}' createdb '${inputFasta.absolutePath}' '${queryDb.absolutePath}'
+'${mmseqs}' search '${queryDb.absolutePath}' '${database}' '${resultDb.absolutePath}' '${outputDir.absolutePath}/tmp' \\
     -e ${evalue} --max-seqs ${maxTargetSeqs} --min-seq-id ${minSeqId} --threads ${threads}
-mmseqs convertalis ${queryDb.absolutePath} ${database} ${resultDb.absolutePath} ${outputFile.absolutePath} \\
+'${mmseqs}' convertalis '${queryDb.absolutePath}' '${database}' '${resultDb.absolutePath}' '${outputFile.absolutePath}' \\
     --format-output "query,target,pident,alnlen,qlen,tlen,evalue,bits,theader"
 """
         script.setExecutable(true)
@@ -58,14 +66,26 @@ mmseqs convertalis ${queryDb.absolutePath} ${database} ${resultDb.absolutePath} 
 
         Map<String, List<Annotation>> results = [:].withDefault { [] }
 
+        int lineNo = 0
         outputFile.eachLine { line ->
-            def fields = line.split('\t')
-            if (fields.length < 9) return
+            lineNo++
+            if (!line.trim()) return
+            def fields = line.split('\t', -1)
+            // convertalis writes exactly the requested columns; anything else is a corrupt or
+            // foreign file, never "no alignment" (which is a zero-byte file).
+            if (fields.length < 9) {
+                throw new ToolOutputContractException("${name}: line ${lineNo} has ${fields.length} columns, 9 were requested")
+            }
 
             String queryId = fields[0]
             String targetId = fields[1]
-            double pident = fields[2] as double
-            double eval = fields[6] as double
+            double pident, eval
+            try {
+                pident = fields[2] as double
+                eval = fields[6] as double
+            } catch (NumberFormatException e) {
+                throw new ToolOutputContractException("${name}: line ${lineNo} has a non-numeric identity or E-value for ${queryId}")
+            }
             String header = fields[8]
 
             double score = Math.min(1.0, pident / 100.0)

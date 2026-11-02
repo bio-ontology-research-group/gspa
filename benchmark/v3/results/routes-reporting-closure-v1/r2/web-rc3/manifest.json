@@ -1,0 +1,104 @@
+{
+  "profile": "full-v1",
+  "kind": "proteins",
+  "preset": "archaea",
+  "input_name": "GCA_000011125.1.protein.faa",
+  "gram": "neg",
+  "analyses": {
+    "homology": {
+      "status": "complete",
+      "detail": "DIAMOND against reviewed UniProtKB/Swiss-Prot; GO and EC transfer.",
+      "ec_annotations": 0
+    },
+    "names": {
+      "status": "complete",
+      "detail": "Input products retained; otherwise a putative Swiss-Prot product requires \u226540% identity and \u226580% query and subject coverage.",
+      "assigned": 0
+    },
+    "operons": {
+      "status": "skipped",
+      "detail": "Disabled at submission"
+    },
+    "pathways": {
+      "status": "complete",
+      "detail": "KEGG module completeness is assessed per step from the module definitions (alternative enzymes, complexes, steps without a GO mapping) and counted only for modules the evidence activates; map coverage counts distinct EC-mapped functions as a breadth measure."
+    },
+    "amr": {
+      "status": "skipped",
+      "detail": "Disabled at submission"
+    },
+    "bgc": {
+      "status": "skipped",
+      "detail": "Disabled at submission"
+    },
+    "localization": {
+      "status": "skipped",
+      "detail": "Disabled at submission"
+    },
+    "quality": {
+      "status": "complete",
+      "detail": "GSPA annotation completeness, ontology/taxon consistency and functional coherence using integrated scores \u22650.5. These assess annotations, not assembly contamination or experimental accuracy."
+    },
+    "metabolism": {
+      "status": "skipped",
+      "detail": "Disabled at submission"
+    }
+  },
+  "options": {
+    "homology": true,
+    "names": true,
+    "operons": false,
+    "pathways": true,
+    "amr": false,
+    "bgc": false,
+    "localization": false,
+    "quality": true,
+    "metabolism": false
+  },
+  "asset_sha256": {
+    "train_db.dmnd": "73761936bdce47db295483dbab524de3fdfda0e5447375e9a4600665996d7e22",
+    "train_net_index.tsv": "3ea382b60c0f3246fdf0c3b90059587023ff96fb43639a047619d6ce1a2a5493",
+    "train_terms.tsv": "f0b2854460fcc7c17e1dc50e165fce322dcbfe1d8aa665c3c55bee87af1d4ffc",
+    "go-dag.tsv": "e7ad631a0d4306fd0179a75bd350beda358816782db6b343b2282d844a3cace7",
+    "go.obo": "be1e8bb014140738729bf555f638bb605e1a48c149671d41a6bcd074db6b851a"
+  },
+  "reference_receipts": {},
+  "resources": {
+    "sha256": {
+      "diamond/swissprot.dmnd": "f232e49106306a54d325e5565e3f2e16afc7c8226974d52d744df3a73f974d30",
+      "go/go.owl": "5ba93c63deb800c4c23d2e3917e44df6de9cce45d2de75d1549701ddbdfe4420",
+      "ec2go/ec2go": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+      "kegg_pathways.tsv": "f112964cd19c0f8cb47db54926550961cf28d5f88a6c2de15ed48ccad3aed82d",
+      "kegg_modules.tsv": "27184381b2625a5c6a0a7a9677e88d76417bd94db2454d09522f78943fdd38ea",
+      "reasoner-cache/has_part_pairs.tsv": "310d3ae790c6f25efc2ffdc0d8a398a401141d319200476695e9de3323dd26a6",
+      "fba_data/fba_matrices_v6RE.pkl": "f0a74617d0501f69b8ebc80abfb2e18ffa5600e4723d00ce90de3059c01a0925"
+    },
+    "versions": {
+      "diamond": "diamond version 2.1.11",
+      "amrfinder": "not installed",
+      "antismash": "not installed"
+    },
+    "amrfinder_database": "latest",
+    "antismash_database_directories": [],
+    "fba_numerics": {
+      "numpy": "2.2.6",
+      "scipy": "1.15.3",
+      "libsbml": "5.21.1"
+    },
+    "psortb_image": "brinkmanlab/psortb_commandline:1.0.2",
+    "pathway_sources": [
+      "https://rest.kegg.jp/link/pathway/ec",
+      "https://rest.kegg.jp/link/enzyme/module"
+    ],
+    "metabolic_reference": "GSPA PSB revision reference_data: ModelSEED v6RE universal matrix, tight Gram-specific bounds and medium.pkl"
+  },
+  "model_sha256": "e5108ffdb86f8815db14f3fa985ff805ff332795ca1f7a4f8996a7275689a717",
+  "integration_options": {
+    "learned_model": "/mnt/data2/leechuck/gspa/benchmark/v3/results/predictor-support-v1/models/default/model_logistic.json"
+  },
+  "input_sha256": {
+    "sample.faa": "1f484ba2e4ea3a068f7f2868d9465c45c89b864293959f214404e76843cf87e2"
+  },
+  "created": 1793475842.5446444,
+  "translation_note": "Existing CDS models are reused for GFF3. Standard code 1/11 translation with genomic-coordinate Sec/Pyl/TERM exceptions; pseudogene CDS excluded."
+}

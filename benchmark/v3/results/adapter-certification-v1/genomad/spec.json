@@ -1,0 +1,114 @@
+{
+ "adapter": "genomad",
+ "mode": "genome",
+ "input": {
+  "genome": "/scratch/hohndor/gspa-cert/bw25113/GCF_000750555.1.fna",
+  "gff3": "/scratch/hohndor/gspa-cert/bw25113/GCF_000750555.1.gff"
+ },
+ "config": {
+  "input": {
+   "kingdom": "bacteria"
+  },
+  "predictors": {
+   "similarity": {
+    "enabled": false
+   },
+   "domains": {
+    "enabled": false
+   },
+   "pathway": {
+    "enabled": false
+   },
+   "operons": {
+    "enabled": false
+   },
+   "localization": {
+    "enabled": false
+   },
+   "antifam": {
+    "enabled": false
+   },
+   "viral": {
+    "genomicSidecar": "/scratch/hohndor/gspa-cert/run_genomic_predictors.py",
+    "pythonExecutable": "/project/k10018/sw/miniforge3/bin/python3",
+    "genomad": {
+     "enabled": true,
+     "dbPath": "/scratch/hohndor/gspa-cert/db/genomad_db",
+     "sif": "/project/k10018/sw/images/eq-annot/genomad.sif",
+     "minScore": 0.7
+    }
+   }
+  },
+  "quality": {
+   "enabled": false
+  }
+ },
+ "path_dirs": [
+  "/sw/ex113genoa/singularity/ce/4.3.2/bin",
+  "/project/k10018/sw/miniforge3/bin"
+ ],
+ "tool": "run_genomic_predictors.py",
+ "stub_kind": "genomic-sidecar",
+ "executable_config_key": [
+  "predictors",
+  "viral",
+  "genomicSidecar"
+ ],
+ "native_output": "/scratch/hohndor/gspa-cert/results/genomad/observed/query.genomad.genomic.tsv",
+ "oracle_reader": "sidecar_regions",
+ "genome_oracle": {
+  "gff3": "/scratch/hohndor/gspa-cert/bw25113/GCF_000750555.1.gff"
+ },
+ "genuine_outcome": "SUCCESS",
+ "malformed_column": 4,
+ "dropped_protein": "none",
+ "cases": {
+  "header_only": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "none"
+  },
+  "unavailable": {
+   "expected": "UNAVAILABLE",
+   "claims": "none"
+  },
+  "region_over_cds": {
+   "expected": "SUCCESS",
+   "output": "contig_id\tregion_start\tregion_end\tregion_type\tscore\tattributes\nNZ_CP009273.1\t2700\t2900\tprophage\t1.0000\tk=v0\n",
+   "expected_proteins": [
+    "WP_001264707.1",
+    "WP_000241662.1"
+   ]
+  },
+  "region_outside_contig": {
+   "expected": "PARTIAL",
+   "output": "contig_id\tregion_start\tregion_end\tregion_type\tscore\tattributes\nNZ_CP009273.1\t2700\t2900\tprophage\t1.0000\tk=v0\nNZ_CP009273.1\t9000000\t9000500\tprophage\t1.0000\tk=v1\n",
+   "expected_proteins": [
+    "WP_001264707.1",
+    "WP_000241662.1"
+   ]
+  },
+  "region_unknown_contig": {
+   "expected": "PARTIAL",
+   "output": "contig_id\tregion_start\tregion_end\tregion_type\tscore\tattributes\ncontig_not_in_genome\t2700\t2900\tprophage\t1.0000\tk=v0\n",
+   "expected_proteins": []
+  },
+  "malformed": {
+   "expected": "FAILED",
+   "claims": "none"
+  },
+  "truncated_row": {
+   "expected": "FAILED",
+   "claims": "none"
+  }
+ },
+ "bound": [
+  "/project/k10018/sw/images/eq-annot/genomad.sif",
+  "/scratch/hohndor/gspa-cert/run_genomic_predictors.py",
+  "/scratch/hohndor/gspa-cert/db/genomad_db.sha256"
+ ],
+ "attribution_known_gaps": {
+  "WP_000019403.1": "gspa.io.CdsTranslator groups every CDS sharing a protein_id as segments of one protein, so the 9 identical copies of this transposase collapse to the first locus; copies inside the region are not attributed (engine finding, not repaired in this round)",
+  "WP_085947771.1": "gspa.io.CdsTranslator groups every CDS sharing a protein_id as segments of one protein, so the 5 identical copies of this transposase collapse to the first locus; copies inside the region are not attributed (engine finding, not repaired in this round)"
+ },
+ "note": "Shaheen: genomad via singularity through the GSPA genomic sidecar; proteins translated from the GFF CDS"
+}

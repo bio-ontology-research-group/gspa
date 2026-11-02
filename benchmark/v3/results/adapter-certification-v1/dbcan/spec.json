@@ -1,0 +1,96 @@
+{
+ "adapter": "dbcan",
+ "mode": "proteins",
+ "input": {
+  "proteins": "/mnt/data2/leechuck/gspa-cert/fixtures/proteins/input_dbcan.faa"
+ },
+ "config": {
+  "input": {
+   "kingdom": "bacteria"
+  },
+  "predictors": {
+   "similarity": {
+    "enabled": false
+   },
+   "domains": {
+    "enabled": false
+   },
+   "pathway": {
+    "enabled": false
+   },
+   "operons": {
+    "enabled": false
+   },
+   "localization": {
+    "enabled": false
+   },
+   "antifam": {
+    "enabled": false
+   },
+   "enable": [
+    "dbcan"
+   ],
+   "dbcan": {
+    "database": "/mnt/data2/leechuck/gspa-cert/db/dbcan-s3/db",
+    "interfaceVersion": "5",
+    "threads": 8
+   }
+  },
+  "quality": {
+   "enabled": false
+  }
+ },
+ "path_dirs": [
+  "/mnt/data2/leechuck/gspa-cert/venv/dbcan/bin"
+ ],
+ "tool": "run_dbcan",
+ "stub_kind": "run_dbcan",
+ "executable_config_key": [
+  "predictors",
+  "dbcan",
+  "executablePath"
+ ],
+ "native_output": "observed/overview.tsv",
+ "oracle_reader": "dbcan",
+ "genuine_outcome": "SUCCESS",
+ "malformed_column": 5,
+ "dropped_protein": "WP_000761225.1",
+ "cases": {
+  "header_only": {
+   "expected": "SUCCESS_ZERO",
+   "claims": "none"
+  },
+  "malformed": {
+   "expected": "FAILED",
+   "claims": "none",
+   "detail_contains": [
+    "number of tools"
+   ]
+  },
+  "truncated_row": {
+   "expected": "FAILED",
+   "claims": "none",
+   "detail_contains": [
+    "row width"
+   ]
+  },
+  "dropped_protein": {
+   "expected": "SUCCESS",
+   "claims": "without_dropped"
+  },
+  "unknown_protein": {
+   "expected": "FAILED",
+   "claims": "none",
+   "detail_contains": [
+    "ghost_protein_not_in_input"
+   ]
+  },
+  "unavailable": {
+   "expected": "UNAVAILABLE",
+   "claims": "none"
+  }
+ },
+ "bound": [
+  "/mnt/data2/leechuck/gspa-cert/db/dbcan-s3/SHA256SUMS"
+ ]
+}

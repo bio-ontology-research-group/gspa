@@ -1,0 +1,71 @@
+{
+  "name": "T3-failed-web-job",
+  "origin": "real web-route job on this workstation whose integration failed (contract-2 model, plan R4 failed state)",
+  "id": "5cfa4068857d4d5bbe003ef21f618823",
+  "passed": true,
+  "checks": [
+    {
+      "check": "C10_failed_status",
+      "pass": true,
+      "status": "failed",
+      "error": "Integrating functional evidence failed. Download the run log for details.",
+      "stage": "Job stopped"
+    },
+    {
+      "check": "C10_log_served",
+      "pass": true,
+      "status": 200,
+      "has_reason": true
+    },
+    {
+      "check": "C10_browser_not_served",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "check": "C10_download_not_served",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "check": "C10_ledger_not_served",
+      "pass": true,
+      "status": 409
+    },
+    {
+      "check": "C10_learned_not_served",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "check": "C3_failed_ledger_retained",
+      "pass": true,
+      "status": "failed",
+      "reason": "ModelUnavailableException: artifact feature contract gspa.context-features/2/7106d884d3225a04724ef589ca15a99c4ced7ea7864e3677f0c7c82be0f1a7e2 does not match gsp",
+      "downstream": [
+        [
+          "cohort_context",
+          "not_run"
+        ],
+        [
+          "evidence_integration",
+          "not_run"
+        ],
+        [
+          "dark_matter",
+          "not_run"
+        ]
+      ]
+    },
+    {
+      "check": "C11_portal_shows_failure",
+      "pass": true,
+      "text": "failed\nGCA_000011125.1.protein.faa\n\nJob stopped\n\nIntegrating functional evidence failed. Download the run log for details.\n\nBookmark this page to return to this job. Anyone with its link can access the results. Results expire seven days after completion.\n\nRun log"
+    },
+    {
+      "check": "C11_no_page_errors",
+      "pass": true,
+      "errors": []
+    }
+  ]
+}

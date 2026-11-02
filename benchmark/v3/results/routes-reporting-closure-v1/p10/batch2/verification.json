@@ -1,0 +1,511 @@
+{
+  "schema": "gspa.routes-closure-reporting-replay/1",
+  "all_passed": true,
+  "cases": [
+    {
+      "name": "T5-cohort-learned-abstained",
+      "id": "3752db8be77b9a217ce8e6fcc97e8fe3",
+      "origin": "new 18-genome cohort run on Shaheen (routes-closure-v1/cohort18, CLI batch arm, job 15733547), genome GCA_000007005.1",
+      "states": [
+        "cohort context executed",
+        "learned stage requested, model abstained (all 26,328 candidates unsupported: predictor contract unavailable)",
+        "feature export executed",
+        "taxon applied"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 4.8
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 26328,
+          "exported_rows": 26328,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 2994,
+          "tsv_rows": 26328,
+          "annotated_proteins": 1244
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 2994,
+          "browser_proteins": 2994
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 4,
+            "skipped": 9,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C3_expected_cohort_context",
+          "pass": true,
+          "expected": "executed",
+          "observed": "executed",
+          "reason": null
+        },
+        {
+          "check": "C3_expected_learned_integration",
+          "pass": true,
+          "expected": "skipped",
+          "observed": "skipped",
+          "reason": "no candidates supported by the model input-coverage manifest; baseline scores retained"
+        },
+        {
+          "check": "C3_expected_feature_export",
+          "pass": true,
+          "expected": "executed",
+          "observed": "executed",
+          "reason": null
+        },
+        {
+          "check": "C6_learned_identities",
+          "pass": true,
+          "candidates": 26328,
+          "shown": 26328,
+          "null_probabilities": 26328,
+          "roles": [
+            "CATALYTIC",
+            "COMPLEX_SUBUNIT",
+            "UNSPECIFIED"
+          ],
+          "scoring_mode": "legacy_heuristic",
+          "unjoined": 0
+        },
+        {
+          "check": "C6_null",
+          "pass": true,
+          "nulls": 26328,
+          "expected": 26328
+        },
+        {
+          "check": "C6_scoring_mode",
+          "pass": true,
+          "observed": "legacy_heuristic",
+          "expected": "legacy_heuristic"
+        },
+        {
+          "check": "C7_taxon_state",
+          "pass": true,
+          "raw": "applied",
+          "shown": "applied",
+          "organism": "NCBITaxon_273057"
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "available"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: legacy heuristic (model abstained; frozen model context-logistic-06c05a618c57-d9537b61, sha256 c9df93d60e7b). The model supplied no learned scores; baseline scores retained. 26,328 unsupported candidates received no learned score. Stages: 4 executed, 9 skipped. Between the baseline (after e"
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/home/leechuck/tmp/routes-closure/cohort18/direct/GCA_000007005.1.integrated.tsv": "edd08f8032ad865d75d1271a032275393fca4f7542159c1f42f1223acd0baf60",
+        "/home/leechuck/tmp/routes-closure/cohort18/direct/GCA_000007005.1.integrated.tsv.stages.json": "4deb4db2db81add0adf46444ebd76eae25780ae706556988c2ce560c3c05d3f5",
+        "/home/leechuck/tmp/routes-closure/cohort18/direct/GCA_000007005.1.integrated.tsv.learned.json": "6d97e16ffb0893404afc9f03fdf56d778e9e498c839b056abc8da40ea3954d0f",
+        "/home/leechuck/tmp/routes-closure/cohort18/direct/GCA_000007005.1.integrated.tsv.provenance.json": "aff861c80505072fa946509383268a9759cdc17d1ed2e9a3e33a6154e741f31e",
+        "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000007005.1/protein.faa": "a63e34c369cedd34634c8029ffd0ae1770d5f1a06c91ef5ddd906ba11de51164",
+        "/home/leechuck/.cache/gspa-v3-data/training-cohort/layout/GCA_000007005.1.layout.tsv": "77e46ccce87e0051201e1478887b180409b8fb501ff1f600bb1accd9816e3d76"
+      }
+    },
+    {
+      "name": "T9b-controlled-learned-report-missing",
+      "id": "672f5295414089d5da76f631141d80f9",
+      "origin": "CONTROLLED: T5 output with the learned report removed (no real output has an executed learned stage without its report)",
+      "states": [
+        "learned report missing"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 2.8
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 26328,
+          "exported_rows": 26328,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 2994,
+          "tsv_rows": 26328,
+          "annotated_proteins": 1244
+        },
+        {
+          "check": "C2_denominator",
+          "pass": true,
+          "input_proteins": 2994,
+          "browser_proteins": 2994
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 4,
+            "skipped": 9,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C9_learned_missing",
+          "pass": true,
+          "scoring_mode": "legacy_heuristic",
+          "learned_status": "not_applicable",
+          "learned_keys": [
+            "artifact",
+            "reason",
+            "status"
+          ]
+        },
+        {
+          "check": "C6_scoring_mode",
+          "pass": true,
+          "observed": "legacy_heuristic",
+          "expected": "legacy_heuristic"
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "not_applicable"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C9_api_learned_unavailable",
+          "pass": true,
+          "learned": {
+            "status": "not_applicable",
+            "reason": "No learned-stage report was written."
+          }
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: legacy heuristic (no trained model). Stages: 4 executed, 9 skipped. Between the baseline (after evidence integration with the heuristic combiner and priors (not a sequence-only baseline)) and the final export, 0 (protein, function) pairs changed across 0 proteins (0 added, 0 removed, 0 incr"
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/home/leechuck/tmp/routes-closure/cohort18/direct/GCA_000007005.1.integrated.tsv": "edd08f8032ad865d75d1271a032275393fca4f7542159c1f42f1223acd0baf60",
+        "/home/leechuck/tmp/routes-closure/cohort18/direct/GCA_000007005.1.integrated.tsv.stages.json": "4deb4db2db81add0adf46444ebd76eae25780ae706556988c2ce560c3c05d3f5",
+        "/home/leechuck/.cache/gspa-v3-data/training-cohort/genomes/GCA_000007005.1/protein.faa": "a63e34c369cedd34634c8029ffd0ae1770d5f1a06c91ef5ddd906ba11de51164",
+        "/home/leechuck/.cache/gspa-v3-data/training-cohort/layout/GCA_000007005.1.layout.tsv": "77e46ccce87e0051201e1478887b180409b8fb501ff1f600bb1accd9816e3d76"
+      }
+    },
+    {
+      "name": "T8-web-job-protein-only",
+      "id": "a947a7c8140d024ea0c8b8b108be7140",
+      "origin": "real web-route job on this workstation (portal worker, rebuilt JAR, GCA_000011125.1 proteins, archaea preset; amr/bgc/localization/metabolism/operons disabled)",
+      "states": [
+        "protein-only input without coordinates",
+        "analyses skipped / not applicable",
+        "symbolic enforcement executed (relax)",
+        "learned model abstained (deployment option)"
+      ],
+      "passed": true,
+      "checks": [
+        {
+          "check": "C1_cli_render",
+          "pass": true,
+          "returncode": 0,
+          "seconds": 6.4
+        },
+        {
+          "check": "C2_reconciliation",
+          "pass": true,
+          "ledger_final": 52873,
+          "exported_rows": 52873,
+          "probability_mismatches": 0,
+          "net_without_action": 0
+        },
+        {
+          "check": "C2_rows",
+          "pass": true,
+          "browser_proteins": 1700,
+          "tsv_rows": 52873,
+          "annotated_proteins": 847
+        },
+        {
+          "check": "C3_stage_list",
+          "pass": true,
+          "shown": 13,
+          "notes_preserved": true,
+          "statuses": {
+            "executed": 3,
+            "skipped": 10,
+            "failed": 0,
+            "not_run": 0
+          }
+        },
+        {
+          "check": "C3_changes_symbolic_enforcement",
+          "pass": true,
+          "raw_changes": 4699,
+          "shown": 4699
+        },
+        {
+          "check": "C3_expected_symbolic_enforcement",
+          "pass": true,
+          "expected": "executed",
+          "observed": "executed",
+          "reason": null
+        },
+        {
+          "check": "C3_expected_learned_integration",
+          "pass": true,
+          "expected": "skipped",
+          "observed": "skipped",
+          "reason": "no candidates supported by the model input-coverage manifest; baseline scores retained"
+        },
+        {
+          "check": "C6_learned_identities",
+          "pass": true,
+          "candidates": 57570,
+          "shown": 57570,
+          "null_probabilities": 57570,
+          "roles": [
+            "COMPLEX_SUBUNIT",
+            "UNSPECIFIED"
+          ],
+          "scoring_mode": "legacy_heuristic",
+          "unjoined": 0
+        },
+        {
+          "check": "C6_null",
+          "pass": true,
+          "nulls": 57570,
+          "expected": 57570
+        },
+        {
+          "check": "C6_scoring_mode",
+          "pass": true,
+          "observed": "legacy_heuristic",
+          "expected": "legacy_heuristic"
+        },
+        {
+          "check": "C8_enzyme_classes",
+          "pass": true,
+          "recomputed": {
+            "ec_complete": 0,
+            "ec_partial": 0,
+            "go_catalytic": 2
+          },
+          "shown": {
+            "ec_complete": 0,
+            "ec_partial": 0,
+            "go_catalytic": 2
+          }
+        },
+        {
+          "check": "C10_api_summary",
+          "pass": true,
+          "status": 200,
+          "available": true,
+          "learned_status": "available"
+        },
+        {
+          "check": "C10_artifact_learned",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C10_artifact_analyses",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C10_artifact_fluxes",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_model",
+          "pass": true,
+          "status": 404,
+          "present": false
+        },
+        {
+          "check": "C10_artifact_ledger",
+          "pass": true,
+          "status": 200,
+          "present": true
+        },
+        {
+          "check": "C11_browser_text",
+          "pass": true,
+          "missing": [],
+          "object_object": false
+        },
+        {
+          "check": "C12_partial_data",
+          "pass": true,
+          "size_bp": null,
+          "n_contigs": null,
+          "not_measured": true,
+          "analyses": {
+            "homology": "complete",
+            "names": "complete",
+            "operons": "skipped",
+            "pathways": "complete",
+            "amr": "skipped",
+            "bgc": "skipped",
+            "localization": "skipped",
+            "quality": "complete",
+            "metabolism": "skipped"
+          }
+        },
+        {
+          "check": "C11_portal_text",
+          "pass": true,
+          "missing": [],
+          "text": "Scoring: legacy heuristic (model abstained; frozen model context-logistic-06c05a618c57-d9537b61, sha256 c9df93d60e7b). The model supplied no learned scores; baseline scores retained. 57,570 unsupported candidates received no learned score. Stages: 3 executed, 10 skipped. Between the baseline (after "
+        },
+        {
+          "check": "C11_no_page_errors",
+          "pass": true,
+          "errors": []
+        }
+      ],
+      "sources": {
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/integrated.tsv": "fe0f44f9fac1fcc183e23325fd60749cc694058a6e2be17931d783f9ddcdb704",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/integrated.tsv.stages.json": "1b22885e1224b2cb567bfb95639f10007cd96db96dc703db407e0c22fd83c5c5",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/integrated.tsv.learned.json": "ccb17c29ca9c66c3981210ae781eb613b71581f6c71df697690745ca48fb4362",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/provenance.json": "4a6ab9c668d6c0db3805dd54166272fd460cef1b14cc17e206428d5bfbed866f",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/actions.tsv": "0abe1b91428d51f0874840267c98aaf4b5c919269f5d1b47dc1e799a9ef5ee98",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/analyses.json": "80e5edc9e0666db9070dda67b5a14ad1d304bcb87caaf4c74f84e5d4cb6c0eaf",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/quality_gspa.json": "f29440cf8a6342e75f08821d7b32dde5cbcef9a9f7a66ea4e344b0bee356b777",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/integrated.tsv.modules.json": "c01879223c13d746597c6e1c12a616608bd6662063259c709da6584010ac6519",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/gspa_out/integrated.tsv.quality.json": "35c3a3d64c373b55a30ea5c2d78dcbf93f1e8f4ac10453a1b9fc5df2de03a6ec",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/prokka_out/sample.tsv": "9a6c11cfeb3d90e7860a962f91b975e87c7687ed80330a6007bef943e518bb6f",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/prokka_out/sample.gff": "897007ceaf55680e4fa9d1d9e6ebac641ede633c0a9f2426db36ecbc66177df9",
+        "/home/leechuck/tmp/routes-closure/r2/jobs-rc4/ba724fd58f2f4dabbecacacbbaa2e180/manifest.json": "ca3062f8f184f34801ce10e71581f8552d64127ec647c398cad85794575c1525"
+      }
+    }
+  ],
+  "harness_sources": {
+    "/mnt/data2/leechuck/gspa/gspa-cli/build/libs/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "/mnt/data2/leechuck/gspa/service/ledger_summary.py": "9fd91c845d5afb461250ebb102aa8d002dac99d1219fd77ee292a6626921de1d",
+    "/mnt/data2/leechuck/gspa/service/web/index.html": "1d9b5c059b1422f716635d9eb0a919eddeb7b42c5f309768dc15759d2e7ccf77",
+    "/mnt/data2/leechuck/gspa/gspa-cli/src/main/resources/visualize/make_viz.py": "895b9f2838fcdfbb98243aa74d92e22fb3e31525f0f2f84f39b882dc5a5a03d3",
+    "/home/leechuck/.cache/gspa-v3-data/training-cohort/go-basic.obo": "b08d45b268b8c24ccb2513dbbbc7d4df9f6521c099b413f79eb31e06e0fa3bcc",
+    "/mnt/data2/leechuck/gspa/benchmark/whole_genome_cafa/data/reference/ec2go.txt": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "/mnt/data2/leechuck/gspa/benchmark/v3/routes_closure/replay_reporting.py": "a027740564ac3985a94446b942ef205f584b784026a164635dcf64dcd9affba1"
+  }
+}
