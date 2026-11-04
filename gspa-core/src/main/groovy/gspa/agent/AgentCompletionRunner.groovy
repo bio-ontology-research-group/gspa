@@ -34,6 +34,10 @@ class AgentCompletionRunner {
     String apiBaseUrl = null
     boolean guardrail = true
     int maxConcurrency = 8
+    boolean anomalyEcAware = false
+    double anomalyFloor = 0.05d
+    int anomalyMaxCandidates = 8
+    int anomalyMaxLocus = 150
 
     static class Summary {
         int anomaliesExtracted = 0
@@ -51,10 +55,14 @@ class AgentCompletionRunner {
         long t0 = System.nanoTime()
         Summary summary = new Summary()
 
-        def extractor = new AnomalyExtractor()
-        def anomalies = extractor.extract(state, integrated)
+        def extractor = new AnomalyExtractor(
+            ecAware: anomalyEcAware,
+            subThresholdFloor: anomalyFloor,
+            maxCandidatesPerAnomaly: anomalyMaxCandidates,
+            maxLocusAnomalies: anomalyMaxLocus
+        )
+        def anomalies = extractor.writeAnomalies(state, integrated, anomaliesFile)
         summary.anomaliesExtracted = anomalies.size()
-        AnomalyExtractor.writeJsonl(anomalies, anomaliesFile)
         if (anomalies.isEmpty()) {
             summary.elapsedSeconds = (System.nanoTime() - t0) / 1_000_000_000.0d
             return summary

@@ -113,6 +113,10 @@ class IntegrationWorkflowConfig {
     File agentSidecar = new File('benchmark/agent/run_gspa_agent.py')
     String agentApiBase
     boolean agentNoGuardrail = false
+    boolean anomalyEcAware = false
+    double anomalyFloor = 0.05d
+    int anomalyMaxCandidates = 8
+    int anomalyMaxLocus = 150
 
     // --- Learned stage, feature export and typed context ---
     /** Frozen production artifact of the learned context model. Naming it requests the learned stage. */

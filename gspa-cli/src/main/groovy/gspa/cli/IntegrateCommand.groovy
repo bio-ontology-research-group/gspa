@@ -342,6 +342,22 @@ class IntegrateCommand implements Runnable {
             description = 'Output JSONL path for extracted genome-scale anomalies.')
     File anomaliesOut
 
+    @Option(names = ['--anomaly-ec-aware'],
+            description = 'Include EC claims in Stage 3 anomaly extraction via ec2go and emit locus-level EC anomaly cases (<anomalies>.locus.jsonl).')
+    boolean anomalyEcAware = false
+
+    @Option(names = ['--anomaly-floor'],
+            description = 'Minimum candidate posterior probability for Stage 3 anomaly extraction (default: 0.05).')
+    double anomalyFloor = 0.05d
+
+    @Option(names = ['--anomaly-max-candidates'],
+            description = 'Maximum candidate proteins or functions retained per extracted anomaly (default: 8).')
+    int anomalyMaxCandidates = 8
+
+    @Option(names = ['--anomaly-max-locus'],
+            description = 'Maximum locus-level EC anomaly cases kept per genome when --anomaly-ec-aware is set (default: 150).')
+    int anomalyMaxLocus = 150
+
     @Option(names = ['--agent-resolutions-out'],
             description = 'Output JSONL path for Stage 3 agent resolutions.')
     File agentResolutionsOut

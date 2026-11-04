@@ -296,7 +296,9 @@ class IntegrationWorkflow {
     /** Outputs of an earlier run at the configured paths must not survive a run that fails. */
     private static void clearStaleArtifacts(IntegrationWorkflowConfig c) {
         List<File> files = [c.provenanceFile, c.suggestionsOut, c.featuresOut, c.enforcementActionsOut,
-                            c.anomaliesOut, c.agentResolutionsOut]
+                            c.anomaliesOut,
+                            c.anomaliesOut != null ? gspa.agent.AnomalyExtractor.locusFileFor(c.anomaliesOut) : null,
+                            c.agentResolutionsOut]
         if (c.outFile != null) {
             files << c.outFile
             ['.stages.json', '.rescues.tsv', '.modules.json', '.learned.json', '.cohort.json', '.quality.json',
@@ -554,10 +556,22 @@ class IntegrationWorkflow {
 
         // --- Optional Stage 3: Neuro-Symbolic Agentic Completion (gspa-agent) ---
         if (c.anomaliesOut != null && !c.enableAgent) {
-            def extractorAnom = new gspa.agent.AnomalyExtractor()
+            def extractorAnom = new gspa.agent.AnomalyExtractor(
+                ecAware: c.anomalyEcAware,
+                subThresholdFloor: c.anomalyFloor,
+                maxCandidatesPerAnomaly: c.anomalyMaxCandidates,
+                maxLocusAnomalies: c.anomalyMaxLocus
+            )
             def anomalies = extractorAnom.extract(state, integrated)
             gspa.agent.AnomalyExtractor.writeJsonl(anomalies, c.anomaliesOut)
-            println "  Extracted ${anomalies.size()} anomalies to ${c.anomaliesOut}"
+            if (c.anomalyEcAware) {
+                def locusCases = extractorAnom.extractLocusCases(state, integrated)
+                File locusOut = gspa.agent.AnomalyExtractor.locusFileFor(c.anomaliesOut)
+                gspa.agent.AnomalyExtractor.writeLocusJsonl(locusCases, locusOut)
+                println "  Extracted ${anomalies.size()} anomalies to ${c.anomaliesOut} and ${locusCases.size()} locus anomalies to ${locusOut}"
+            } else {
+                println "  Extracted ${anomalies.size()} anomalies to ${c.anomaliesOut}"
+            }
         }
         integrated = audit.runStage('agent_completion', c.enableAgent,
             c.outFile == null && (c.anomaliesOut == null || c.agentResolutionsOut == null) ?
@@ -569,7 +583,11 @@ class IntegrationWorkflow {
                 agentModel: c.agentModel,
                 pythonBin: c.agentPythonBin,
                 apiBaseUrl: c.agentApiBase,
-                guardrail: !c.agentNoGuardrail
+                guardrail: !c.agentNoGuardrail,
+                anomalyEcAware: c.anomalyEcAware,
+                anomalyFloor: c.anomalyFloor,
+                anomalyMaxCandidates: c.anomalyMaxCandidates,
+                anomalyMaxLocus: c.anomalyMaxLocus
             )
             def sum = runner.run(state, integrated, anomFile, resFile)
             println "  Stage 3 Agent (${c.agentModel}, guardrail=${!c.agentNoGuardrail}): anomalies=${sum.anomaliesExtracted}, proposed=${sum.resolutionsProposed}, promoted=${sum.promoted}, relaxed=${sum.relaxed}, demoted=${sum.demoted}, abstained=${sum.abstained}, rejected_by_guardrail=${sum.rejectedByGuardrail} (${String.format(Locale.ROOT, '%.2f', sum.elapsedSeconds)}s)"
