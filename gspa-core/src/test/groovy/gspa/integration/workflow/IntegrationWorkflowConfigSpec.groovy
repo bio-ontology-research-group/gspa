@@ -53,6 +53,41 @@ class IntegrationWorkflowConfigSpec extends Specification {
         'dark matter mode'       | [darkMatterMode: 'everywhere']                  | 'dark-matter mode'
         'outer loop w/o suggester' | [iterateGapseq: true]                         | '--iterate-gapseq requires --dark-matter'
         'beam width'             | [beamWidth: 0]                                  | '--beam-width'
+        'unknown gap prior mode' | [gapPriorContextMode: 'invalid']                | 'gap-prior-context-mode'
+        'gap prior window <= 0'  | [gapPriorContextWindowBp: 0]                    | '--gap-prior-context-window-bp'
+    }
+
+    def 'gap prior context mode validation checks required files and allows none without extra files'() {
+        given:
+        File rxnGraph = new File(dir, 'rxns.tsv')
+        rxnGraph.text = 'id\tstoichiometry\tec_numbers\nr1\t-1:a:0:0;1:b:0:0\t1.1.1.1\n'
+
+        when: 'mode none with no extra files passes'
+        new IntegrationWorkflowConfig(gapPriorContextMode: 'none').validate()
+
+        then:
+        noExceptionThrown()
+
+        when: 'mode pathway without groups file fails with a plain message'
+        new IntegrationWorkflowConfig(gapPriorContextMode: 'pathway', reactionGraphFile: rxnGraph).validate()
+
+        then:
+        def ep = thrown(IllegalArgumentException)
+        ep.message.contains('gapPriorPathwayGroupsFile')
+
+        when: 'mode organism without organism reactions file fails with a plain message'
+        new IntegrationWorkflowConfig(gapPriorContextMode: 'organism', reactionGraphFile: rxnGraph).validate()
+
+        then:
+        def eo = thrown(IllegalArgumentException)
+        eo.message.contains('gapPriorOrganismReactionsFile')
+
+        when: 'non-none mode without reactionGraphFile fails'
+        new IntegrationWorkflowConfig(gapPriorContextMode: 'universal').validate()
+
+        then:
+        def eg = thrown(IllegalArgumentException)
+        eg.message.contains('reactionGraphFile')
     }
 
     def 'a named reference file that does not exist is an error, not an absent prior'() {

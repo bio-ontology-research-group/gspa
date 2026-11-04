@@ -23,6 +23,7 @@ class IntegrationWorkflowConfig {
         'gap_filling', 'genomic_context', 'homology_transfer'].asImmutable()
     static final Set<String> ENFORCE_MODES = ['relax', 'remove', 'downrank', 'flag', 'minimal-flip'].asImmutable()
     static final Set<String> DARK_MATTER_MODES = ['separate', 'top-q', 'distributed'].asImmutable()
+    static final Set<String> GAP_PRIOR_CONTEXT_MODES = ['none', 'universal', 'pathway', 'organism'].asImmutable()
     static final String DEFAULT_PRIORS = 'essentiality,coherence,consistency,anatomical,gap_filling,genomic_context'
     private static final ObjectMapper MAPPER = new ObjectMapper()
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
@@ -93,6 +94,11 @@ class IntegrationWorkflowConfig {
     int rlcRadiusK = 2
     double rlcAlpha = 0.5d
     double rlcAnchorThreshold = 0.3d
+    String gapPriorContextMode = 'none'
+    File gapPriorPathwayGroupsFile
+    File gapPriorOrganismReactionsFile
+    Integer gapPriorContextWindowBp = 10000
+    boolean gapPriorEcNamespaceFix = false
     double cgLambda = 1.0d
     int cgMinSupport = 3
     boolean cgRequireCredible = true
@@ -237,6 +243,13 @@ class IntegrationWorkflowConfig {
         if (!DARK_MATTER_MODES.contains((darkMatterMode ?: '').toLowerCase(Locale.ROOT))) {
             throw new IllegalArgumentException("Unknown dark-matter mode '${darkMatterMode}'. Choose: ${DARK_MATTER_MODES.join(', ')}")
         }
+        String gapPriorMode = (gapPriorContextMode ?: '').trim().toLowerCase(Locale.ROOT)
+        if (!GAP_PRIOR_CONTEXT_MODES.contains(gapPriorMode)) {
+            throw new IllegalArgumentException("Unknown gap-prior-context-mode '${gapPriorContextMode}'. Choose: ${GAP_PRIOR_CONTEXT_MODES.join(', ')}")
+        }
+        if (gapPriorContextWindowBp == null || gapPriorContextWindowBp < 1) {
+            throw new IllegalArgumentException("--gap-prior-context-window-bp must be >= 1")
+        }
         // An explicitly named reference must exist: a missing file is an error, not an absent prior.
         Map<String, File> named = [goOwlFile: goOwlFile, essentialFunctionsFile: essentialFunctionsFile,
             ec2goFile: ec2goFile, pathwaysFile: pathwaysFile, moduleDefsFile: moduleDefsFile,
@@ -245,6 +258,7 @@ class IntegrationWorkflowConfig {
             diffusionMetsFile: diffusionMetsFile, reactionEcAliasesFile: reactionEcAliasesFile,
             operonsFile: operonsFile, gapsFile: gapsFile, pathwayObservationsFile: pathwayObservationsFile, orthogroupsFile: orthogroupsFile,
             clusterConsensusFile: clusterConsensusFile, genomeLayoutFile: genomeLayoutFile,
+            gapPriorPathwayGroupsFile: gapPriorPathwayGroupsFile, gapPriorOrganismReactionsFile: gapPriorOrganismReactionsFile,
             thetaFile: thetaFile, learnedModelFile: learnedModelFile, externalContextFile: externalContextFile,
             cohortManifestFile: cohortManifestFile, cohortMetadataFile: cohortMetadataFile,
             cohortOrthogroupsFile: cohortOrthogroupsFile, cohortRoleEvidenceFile: cohortRoleEvidenceFile,
@@ -254,6 +268,17 @@ class IntegrationWorkflowConfig {
             communityManifestFile: communityManifestFile]
         named.each { String name, File f ->
             if (f != null && !f.isFile()) throw new IllegalArgumentException("${name} does not exist: ${f}")
+        }
+        if (gapPriorMode != 'none') {
+            if (reactionGraphFile == null) {
+                throw new IllegalArgumentException("gap-prior-context-mode '${gapPriorContextMode}' requires reactionGraphFile (--reaction-graph)")
+            }
+            if (gapPriorMode == 'pathway' && gapPriorPathwayGroupsFile == null) {
+                throw new IllegalArgumentException("gap-prior-context-mode 'pathway' requires gapPriorPathwayGroupsFile (--gap-prior-pathway-groups)")
+            }
+            if (gapPriorMode == 'organism' && gapPriorOrganismReactionsFile == null) {
+                throw new IllegalArgumentException("gap-prior-context-mode 'organism' requires gapPriorOrganismReactionsFile (--gap-prior-organism-reactions)")
+            }
         }
         (moduleFiles ?: []).each { File f ->
             if (f != null && !f.isFile()) throw new IllegalArgumentException("moduleFiles entry does not exist: ${f}")

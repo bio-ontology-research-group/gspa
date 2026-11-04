@@ -31,6 +31,21 @@ class GapFillingPrior implements Prior {
     /** Discount for gapseq's own gap-fill guesses. */
     double gapseqGuessedFactor = 0.7d
 
+    /** Optional reaction-local context support for gap candidate selection and scaling. */
+    GapContextSupport contextSupport = null
+
+    /**
+     * Repair of the EC namespace mismatch (3.1.0-dev, off by default): integrated EC candidates are keyed
+     * {@code protein|EC|EC:x.x.x.x} while gap records carry bare {@code x.x.x.x}, so with the default the
+     * targeted rescue never reaches an EC candidate. When true, EC ids are compared without the {@code EC:} prefix
+     * on both sides; GO ids are unchanged.
+     */
+    boolean ecNamespaceFix = false
+
+    private String matchId(String type, String functionId) {
+        (ecNamespaceFix && type == AnnotationType.EC.name()) ? functionId.replaceFirst(/^EC:/, '') : functionId
+    }
+
     private static final Set<String> GENERIC_CATALYTIC_ROOTS = [
         'GO:0003824', 'GO:0016491', 'GO:0016740', 'GO:0016787',
         'GO:0016829', 'GO:0016853', 'GO:0016874'
@@ -52,6 +67,7 @@ class GapFillingPrior implements Prior {
     void beginIteration(IntegrationState state) {
         boostByFunctionId = new LinkedHashMap<>()
         targetedKeyBoosts = Collections.emptyMap()
+        if (contextSupport != null) contextSupport.resetReport()
         if (state.metabolicGaps == null || state.metabolicGaps.isEmpty()) return
 
         Set<String> allGapGoTerms = new LinkedHashSet<>()
@@ -64,7 +80,7 @@ class GapFillingPrior implements Prior {
                 if (parts[1] != AnnotationType.EC.name() && parts[1] != AnnotationType.GO.name()) continue
                 double likeProb = state.getLikelihoodProbability(fkey)
                 if (likeProb >= 0.18d && likeProb <= IntegrationState.MAP_THRESHOLD) {
-                    candsByFunc[parts[2]] << new AbstractMap.SimpleImmutableEntry<>(fkey, likeProb)
+                    candsByFunc[matchId(parts[1], parts[2])] << new AbstractMap.SimpleImmutableEntry<>(fkey, likeProb)
                 }
             }
         }
@@ -76,7 +92,7 @@ class GapFillingPrior implements Prior {
             Set<String> gapMatchFuncs = new LinkedHashSet<>()
             if (gap.ecNumber) {
                 for (String rawEc : gap.ecNumber.split('[/,;\\s]+')) {
-                    String ec = rawEc.trim()
+                    String ec = matchId(AnnotationType.EC.name(), rawEc.trim())
                     if (!ec) continue
                     updateMax(ec, mag)
                     gapMatchFuncs << ec
@@ -109,12 +125,51 @@ class GapFillingPrior implements Prior {
                     if (list != null) cands.addAll(list)
                 }
                 if (!cands.isEmpty()) {
-                    state.sortCandidatesForRescue(cands)
-                    String fk = cands[0].key
-                    double pVal = cands[0].value as double
-                    if (state.candidateRescueTier(fk, pVal) >= 1) {
-                        double bVal = Math.max(1.15d * mag, 0.14d - state.getLikelihoodLogOdds(fk))
-                        topBoosts[fk] = Math.max(topBoosts.getOrDefault(fk, 0.0d), bVal)
+                    if (contextSupport == null) {
+                        state.sortCandidatesForRescue(cands)
+                        String fk = cands[0].key
+                        double pVal = cands[0].value as double
+                        if (state.candidateRescueTier(fk, pVal) >= 1) {
+                            double bVal = Math.max(1.15d * mag, 0.14d - state.getLikelihoodLogOdds(fk))
+                            topBoosts[fk] = Math.max(topBoosts.getOrDefault(fk, 0.0d), bVal)
+                        }
+                    } else {
+                        Set<String> candidateProteinIds = new LinkedHashSet<>()
+                        for (Map.Entry<String, Double> entry : cands) {
+                            String[] parts = IntegrationState.splitFunctionKey(entry.key)
+                            if (parts != null) candidateProteinIds << parts[0]
+                        }
+                        Map<String, Double> c = contextSupport.contextSupport(gap, candidateProteinIds, state)
+                        if (c.isEmpty()) {
+                            state.sortCandidatesForRescue(cands)
+                            String fk = cands[0].key
+                            double pVal = cands[0].value as double
+                            if (state.candidateRescueTier(fk, pVal) >= 1) {
+                                double bVal = Math.max(1.15d * mag, 0.14d - state.getLikelihoodLogOdds(fk))
+                                topBoosts[fk] = Math.max(topBoosts.getOrDefault(fk, 0.0d), bVal)
+                            }
+                        } else {
+                            cands.sort { a, b ->
+                                int ta = state.candidateRescueTier(a.key, a.value as double)
+                                int tb = state.candidateRescueTier(b.key, b.value as double)
+                                int cmp = Integer.compare(tb, ta)
+                                if (cmp != 0) return cmp
+                                String pa = IntegrationState.splitFunctionKey(a.key)[0]
+                                String pb = IntegrationState.splitFunctionKey(b.key)[0]
+                                cmp = Double.compare(c.getOrDefault(pb, 0.0d) as double, c.getOrDefault(pa, 0.0d) as double)
+                                if (cmp != 0) return cmp
+                                cmp = Double.compare(b.value as double, a.value as double)
+                                cmp != 0 ? cmp : (a.key <=> b.key)
+                            }
+                            String fk = cands[0].key
+                            double pVal = cands[0].value as double
+                            if (state.candidateRescueTier(fk, pVal) >= 1) {
+                                String protein = IntegrationState.splitFunctionKey(fk)[0]
+                                double bVal = Math.max(1.15d * mag, 0.14d - state.getLikelihoodLogOdds(fk)) *
+                                    (0.5d + (c.getOrDefault(protein, 0.0d) as double))
+                                topBoosts[fk] = Math.max(topBoosts.getOrDefault(fk, 0.0d), bVal)
+                            }
+                        }
                     }
                 }
             }
@@ -140,7 +195,7 @@ class GapFillingPrior implements Prior {
         String type = parts[1]
         String funcId = parts[2]
         if (type != AnnotationType.EC.name() && type != AnnotationType.GO.name()) return 0.0d
-        return boostByFunctionId.getOrDefault(funcId, 0.0d)
+        return boostByFunctionId.getOrDefault(matchId(type, funcId), 0.0d)
     }
 
     private void updateMax(String key, double value) {

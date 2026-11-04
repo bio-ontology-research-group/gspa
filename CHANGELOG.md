@@ -8,6 +8,11 @@ Per-version benchmark numbers, ablation tables, and the F-max protocol
 notes live in `benchmark/RESULTS.md`. This file summarises the
 user-visible deltas; for measured impact, follow the cross-references.
 
+## 3.1.0-dev (unreleased)
+
+- Context-weighted gap prior (`--gap-prior-context-mode`), off by default; `none` is byte-identical to 3.0.1.
+- `--gap-prior-ec-namespace-fix` (off by default): the gap-filling prior compares EC ids of gap records (bare) and integrated candidates (`EC:` prefixed) in one namespace; without it the targeted rescue never reaches an EC candidate (found 2026-11-02 on the masked-locus benchmark).
+
 ## Unreleased audit repairs
 
 - Supplied Prodigal/Pyrodigal GFF3 and protein FASTA now use native header identity

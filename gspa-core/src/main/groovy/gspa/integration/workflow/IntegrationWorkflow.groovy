@@ -30,8 +30,10 @@ import gspa.integration.prior.AnatomicalPrior
 import gspa.integration.prior.CoherencePrior
 import gspa.integration.prior.ConsistencyPrior
 import gspa.integration.prior.EssentialityPrior
+import gspa.integration.prior.GapContextSupport
 import gspa.integration.prior.GapFillingPrior
 import gspa.integration.prior.GenomicContextPrior
+import gspa.integration.cohort.ContextMode
 import gspa.integration.promotion.AllAboveThresholdStrategy
 import gspa.integration.promotion.BeamSearchStrategy
 import gspa.integration.promotion.GreedyStrategy
@@ -107,6 +109,7 @@ class IntegrationWorkflow {
 
     private ExternalContext explicitContext
     private LearnedContextModel learnedModel
+    private GapContextSupport gapContextSupport
     /** Actual AntiFam outcome supplied by the annotation route, never inferred from absent hits. */
     String antiFamScanStatus
     /** Current annotation-run observations only; standalone integration must supply its own inputs. */
@@ -187,6 +190,9 @@ class IntegrationWorkflow {
                 loader.wire(state, claims, sharedReferences)
                 wirePathwayGaps(state, genomeId)
                 if (state.genomeLayout == null && genome != null) state.genomeLayout = layoutFromGenome(genome)
+                if ((c.gapPriorContextMode ?: 'none').trim().toLowerCase(Locale.ROOT) != 'none' && state.genomeLayout == null) {
+                    throw new IllegalStateException("gap-prior-context-mode '${c.gapPriorContextMode}' requires a genome layout (--genome-layout)")
+                }
                 def satChecker = state.satConsistencyChecker
                 boolean taxonInHierarchy = satChecker == null || satChecker.organismTaxon == null || satChecker.isOrganismTaxonInHierarchy()
                 String taxonState = satChecker?.organismTaxon == null ? 'no_organism_taxon_asserted' :
@@ -300,7 +306,7 @@ class IntegrationWorkflow {
         if (c.outFile != null) {
             files << c.outFile
             ['.stages.json', '.rescues.tsv', '.modules.json', '.learned.json', '.cohort.json', '.quality.json',
-             '.gaps.jsonl', '.gap-context.json'].each { files << new File(c.outFile.absolutePath + it) }
+             '.gaps.jsonl', '.gap-context.json', '.gap-prior-context.json'].each { files << new File(c.outFile.absolutePath + it) }
             // Only files a stage writes are removed (and the directory if that leaves it empty): a directory
             // that happens to carry the name but holds anything else is left alone.
             ['.experiments', '.community'].each { String suffix ->
@@ -342,6 +348,10 @@ class IntegrationWorkflow {
         if (result.state.metabolicGapReport != null) {
             new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(
                 new File(c.outFile.absolutePath + '.gap-context.json'), result.state.metabolicGapReport)
+        }
+        if (gapContextSupport?.lastReport != null) {
+            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(
+                new File(c.outFile.absolutePath + '.gap-prior-context.json'), gapContextSupport.lastReport)
         }
         if (result.state.metabolicGapsAvailable) {
             new File(c.outFile.absolutePath + '.gaps.jsonl').withWriter('UTF-8') { writer ->
@@ -440,6 +450,13 @@ class IntegrationWorkflow {
         // --- Refine ---
         integrated = audit.runStage('evidence_integration', true, null, null, state) {
             refiner.refine(claims, state)
+        }
+        if (gapContextSupport != null || c.gapPriorEcNamespaceFix) {
+            audit.note('evidence_integration', [
+                gap_prior_context_mode: (c.gapPriorContextMode ?: 'none').trim().toLowerCase(Locale.ROOT),
+                gap_prior_context_window_bp: c.gapPriorContextWindowBp ?: 10000,
+                gap_prior_ec_namespace_fix: c.gapPriorEcNamespaceFix
+            ])
         }
         println "  Produced ${integrated.annotations.size()} integrated annotations"
 
@@ -755,9 +772,30 @@ class IntegrationWorkflow {
             if (theta.anatomical_hard_filter != null) p.hardFilter = theta.anatomical_hard_filter as boolean
             engine.register(p, (priorWeights.anatomical ?: 1.0) as double)
         }
+        gapContextSupport = null
+        String gapPriorMode = (c.gapPriorContextMode ?: 'none').trim().toLowerCase(Locale.ROOT)
+        if (gapPriorMode != 'none') {
+            ContextMode ctxMode = ContextMode.valueOf(gapPriorMode.toUpperCase(Locale.ROOT))
+            def groups = ctxMode == ContextMode.PATHWAY ?
+                gspa.integration.contextbridge.CohortSideInputs.readPathwayGroups(c.gapPriorPathwayGroupsFile) : []
+            def orgRxns = ctxMode == ContextMode.ORGANISM ?
+                GapContextSupport.readOrganismReactions(c.gapPriorOrganismReactionsFile) : ([] as Set<String>)
+            gapContextSupport = new GapContextSupport(
+                mode: ctxMode,
+                windowBp: c.gapPriorContextWindowBp != null ? c.gapPriorContextWindowBp : 10000,
+                anchorThreshold: c.rlcAnchorThreshold,
+                alpha: c.rlcAlpha,
+                maxHops: c.rlcRadiusK,
+                pathwayGroups: groups,
+                organismReactions: orgRxns
+            )
+            gapContextSupport.resetReport()
+        }
         if ('gap_filling' in enabled) {
             def p = new GapFillingPrior()
             if (theta.alpha_gap != null) p.alphaGap = (theta.alpha_gap as Number).doubleValue()
+            if (gapContextSupport != null) p.contextSupport = gapContextSupport
+            p.ecNamespaceFix = c.gapPriorEcNamespaceFix
             engine.register(p, (priorWeights.gap_filling ?: 1.0) as double)
         }
         if ('genomic_context' in enabled) {

@@ -295,6 +295,26 @@ class IntegrateCommand implements Runnable {
             description = 'Optional TSV output: per-candidate feature vector from the RLGC suggester (M3 training data).')
     File featuresOut
 
+    @Option(names = ['--gap-prior-context-mode'],
+            description = 'Reaction-context mode for the gap-filling prior (none|universal|pathway|organism); default is none, which is today\'s behaviour.')
+    String gapPriorContextMode = 'none'
+
+    @Option(names = ['--gap-prior-pathway-groups'],
+            description = 'Named pathway reaction groups TSV for --gap-prior-context-mode pathway (default mode is none, which is today\'s behaviour).')
+    File gapPriorPathwayGroupsFile
+
+    @Option(names = ['--gap-prior-organism-reactions'],
+            description = 'Organism reaction IDs file (one per line) for --gap-prior-context-mode organism (default mode is none, which is today\'s behaviour).')
+    File gapPriorOrganismReactionsFile
+
+    @Option(names = ['--gap-prior-context-window-bp'],
+            description = 'Genomic window half-width in bp around candidates for the context-weighted gap prior (default 10000; default mode is none, which is today\'s behaviour).')
+    Integer gapPriorContextWindowBp = 10000
+
+    @Option(names = ['--gap-prior-ec-namespace-fix'],
+            description = 'Compare EC ids of gap records and candidates without the EC: prefix in the gap-filling prior (3.1.0-dev repair; default off, which is today\'s behaviour).')
+    boolean gapPriorEcNamespaceFix = false
+
     // --- Phase 12 M2 cross-genome LR flags ---
 
     @Option(names = ['--rxn-locus-catalog'],
