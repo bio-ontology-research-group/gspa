@@ -33,7 +33,7 @@ Every invalid run is kept in an `invalid-run*/` folder and is not counted.
 2. Point 5: run the full pipeline on Price and the cohort with the gap-prior fix on, before making it the default.
 3. Point 4: review the queued and model-genome negatives, then choose the prior on one negative set and count harm on another.
 4. Point 12: sparsify the candidate table before metabolic reasoning, since that is where most precision comes from.
-5. Reframe acceptance around stacking small, reliable improvements (Robert, 2026-11-04). See the ledger, once written.
+5. Done 2026-11-04: acceptance is now an improvement ledger (`tasks/v3-acceptance.md`, top section). Every change is judged against the GSPA it modifies, on paired held-out cases, and is marked default on, switch, not kept, or verified. The fixed pass marks of the frozen plans are kept in those plans as history; they no longer decide what is kept.
 
 ## Code locations
 

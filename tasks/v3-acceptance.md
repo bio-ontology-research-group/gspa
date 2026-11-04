@@ -1,6 +1,48 @@
 # GSPA: implementation and acceptance of all twelve audit requirements
 
-## Verdicts after the release-candidate benchmarks (2026-10-31)
+## Improvement ledger: the rule from 2026-11-04 (current)
+
+Robert set this rule on 2026-11-04. It replaces the fixed pass marks below, such as "precision ≥ 0.75" or "≥ 20 loci".
+
+- GSPA improves by stacking small changes that are measured to be reliable. Each change is compared with the GSPA
+  it would modify, on the same held-out cases, before it is accepted. Earlier pass marks are not used to judge it.
+- **Reliable** means a paired comparison on held-out data that is consistent. It holds across label sets,
+  predictors and organism groups, it is significant where the sample allows a test (sign test, p ≤ 0.05), and it
+  causes no measured harm elsewhere. Controls must pass.
+- **Default on**: the change improves the main measure with no reliable harm. It is switched on by default after a
+  full regression run.
+- **Switch**: the change trades one measure for another, for example precision against recall. It ships off by
+  default as a documented option, with both sides of the trade in numbers.
+- **Not kept**: the change gives no measured gain, or reliable harm. It is recorded here and stays out of the
+  default.
+- **Verified**: the point is about correctness, not accuracy. Routes, adapters and reports either agree with
+  independent checks or they do not.
+- Unconfirmed labels never count as wrong. Plans are frozen before results are read, and later changes are dated.
+
+| Point | Change measured against current GSPA | Decision | Measured effect (held-out, paired) | Evidence | Next step |
+|---|---|---|---|---|---|
+| 1. Actual application | Integration (stage 1) over raw predictor scores, six predictors, 22 Price genomes | Default on (already) | Top-1 unchanged for every predictor. Calibration error lower for all six (CLEAN 0.392 → 0.198). Fewer unconfirmed calls at 0.5 | [Price rc](../docs/benchmarks/v3-price-rc-evaluation.md), [calibration](../docs/benchmarks/v3-price-calibration-context.md) | None |
+| 1. Actual application | Taxon/EC consistency fix | Default on (already) | Calls forbidden in bacteria 465 → 0 across six predictors. No Price top call changed | [taxon fix](../docs/benchmarks/v3-price-taxon-fix.md) | None |
+| 1. Actual application | Stage 2B on Price-148 | Not kept | Improves no predictor. The README's +0.10 F-max is not reproduced | [Stage 2B](../docs/benchmarks/v3-price-stage2b.md) | None |
+| 2. Routes and state | CLI, batch, Nextflow and web routes | Verified | Byte-identical outputs across routes on real genomes (484,202 rows); requested, missing, failed and no-work states agree | [routes](../docs/benchmarks/v3-routes-reporting-closure.md), [learned/cohort](../docs/benchmarks/v3-routes-learned-cohort.md) | Run the Nextflow predictor containers |
+| 3. Predictors | Eleven more tool adapters and failure handling | Verified | Raw claims equal an independent oracle; every injected failure gives its typed outcome | [adapters](../docs/benchmarks/v3-adapter-certification.md) | SignalP 6 / DeepTMHMM need offline builds |
+| 4. Learned inference | Learned stage (contract-v3 models) on Price with contract-bearing claims | Switch | Gains 6 reference pairs at 0.5 with no harm, but loses 2 top-1 answers. Supported precision 0.34–0.37 | [Price contract](../docs/benchmarks/v3-price-contract-learned.md) | A larger paired test |
+| 4. Learned inference | Positive-unlabelled training (after PU-GO), at the planned prior | Not kept | Calibration error lower (0.081 vs 0.094). But precision lower (0.179 vs 0.250) and it calls 4 of 6 experimental negatives against 0 | [PU round](../docs/benchmarks/v3-row4-pu-learning.md) | More reviewed negatives (22 queued plus model-genome GOA NOT), then choose the prior on one set and test it on another; the low prior (0.20) looked better but cannot be chosen fairly yet |
+| 5. Reaction context | Gap prior with the EC-namespace repair (3.1.0-dev flag) | **Default on, after the full regression run** | 47 improved, 2 harmed of 253 held-out cases (p = 2.2e-12). 0 harm to other labelled genes. Consistent across label sets, predictors, domains and gap kinds. Sham control 0 of 195 | [masked context](../docs/benchmarks/v3-row5-masked-context.md) | Full Price and cohort run with the flag on, then switch it on by default |
+| 5. Reaction context | Context weighting of the gap prior (universal, pathway-only, organism-specific) | Not kept | Held-out improved/harmed 1/6, 1/2, 1/5. Harm on development loci | same | None |
+| 6. Joint recurrence | Cohort recurrence context | Not kept | No gain from close relatives; all invariance controls pass | [cohort](../docs/benchmarks/v3-wp4-cohort-recurrence.md) | Retest when more labelled cases exist |
+| 7. Retention and roles | Role-fenced DIAMOND claims compared with legacy claims | Default on, small sample | Strict top-1 1.000 vs 0.667. Experimental negatives called 0 of 18 vs 4 of 18. Only 6 scored cases | [roles](../docs/benchmarks/v3-roles-agent-closure.md) | Confirm on a larger role-truth set |
+| 8. Absence/environment | Scoring of four competing explanations for a missing function | Kept (new output) | Pathway-loss recall 0.861, precision 0.637 on 2,640 auxotroph comparisons; independent COBRApy check agrees in 1,208 cells | [absence](../docs/benchmarks/v3-absence-crossfeeding-closure.md) | Separate external supply from pathway loss |
+| 9. Cross-feeding | Community growth and rescue predictions | Not kept as an accuracy claim | Printed-medium predictions are below constant baselines; coculture endpoints barely detect misassignment | [community](../docs/benchmarks/v3-nutrient-community-results.md) | Needs measured exchange data |
+| 10. Reporting | Reports, ledgers and states | Verified | 192 + 103 checks reconcile reports with raw files | [reporting](../docs/benchmarks/v3-routes-reporting-closure.md) | None |
+| 11. Agent comparison | EC- and GO-aware agent on gene-anchored Price cases with decoys | Pending | No simple method earns a call under its calibration rule (best 0.615). The leak check passes. The agent is being rerun after harness fixes | report pending | Finish the agent run |
+| 12. Experiments | Targeted growth tests compared with biomass gap-filling | Switch (discovery mode) | 34 of 466 off-growth enzymes recovered vs 2 (p = 2.3e-10), but about 0.8 of calls on labelled genes are wrong | [full panel](../docs/benchmarks/v3-offgrowth-full-panel.md) | None |
+| 12. Experiments | Stable-fill gate and abstention, on top of targeted tests | Switch (precision mode) | Precision 0.543 vs 0.317 and harm 0.46 vs 0.68, but 91 vs 241 recoveries (six-predictor table). On 25 unseen genomes 17 of 22 calls are correct and 45 enzymes are recovered; 13–24 enzymes not named by sequence evidence; 20 pathways | [improvement](../docs/benchmarks/v3-offgrowth-improvement.md) | Thin the candidate table before metabolic reasoning, which is where most precision comes from |
+
+The 2026-10-31 verdict table below is kept as history. Its "Met" and "Not met" labels refer to the old fixed pass
+marks.
+
+## Verdicts under the old pass marks (2026-10-31, superseded 2026-11-04)
 
 Each requirement is either met with empirical evidence or was tested fairly and is reported as not met, with the
 reason. "Met" means the bar is reached with empirical evidence; remaining limits are stated. "Not met (mechanism verified)" means the implementation is verified on real data but the empirical
