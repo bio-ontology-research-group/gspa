@@ -1,0 +1,409 @@
+{
+ "arms": {
+  "learned": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15768034/cell-21/tmp/learned",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned/batch_stats.tsv",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCF_002797435.1.layout.tsv": "8470db436d554f1a0d3eb440607d121f9ecffc380795851a6501a7aa08f63481",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCF_002797435.1/claims.jsonl": "dff08a14713245fbd52dbc2c9e068ae6f12ec42b19b51f69415e88e96eadb97c",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/models/model_logistic.json": "deaa57c65e6d25d4968f5128fbf015be99400f792bb3d0c33571882dacfe661e",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 40003,
+     "removed_no_projection": 0,
+     "rescored": 29187,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 10816,
+     "unsupported": 10816
+    },
+    "locus_layer_unavailable_reason": "calibration split has 75 no-label and 3 single-positive groups (< 5 and < 5 each): cannot validate the null layer",
+    "model": {
+     "id": "context-logistic-pu-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "deaa57c65e6d25d4968f5128fbf015be99400f792bb3d0c33571882dacfe661e"
+    },
+    "sha256": "f80301a2c4b4831252248a714b18beabf06b1677963464fe5c3c9f5c337e3955",
+    "status_by_type": {
+     "EC/scored": 2743,
+     "EC/unsupported": 28,
+     "GO/scored": 26444,
+     "GO/unsupported": 10788
+    },
+    "unsupported_reasons": {
+     "EC/sequence_score_outside_training_calibration_range": 25,
+     "EC/unseen_source_function_role_or_availability_profile": 3,
+     "GO/profile_lacks_both_classes_in_train_and_calibration": 10250,
+     "GO/sequence_score_outside_training_calibration_range": 21,
+     "GO/unseen_source_function_role_or_availability_profile": 517
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned/GCF_002797435.1.integrated.tsv",
+   "output_sha256": "94d0d2e0e0b25fd133f1a2a24e13e00501fc3b3b406ef6ede05def691b21e242",
+   "prediction_rows": 40003,
+   "published_claims": 40003,
+   "reference_proteins_with_ec_candidates": 4,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15768034/cell-21/tmp/learned -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned/batch_stats.tsv --learned-model /scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/models/model_logistic.json\"\n\tUser time (seconds): 573.95\n\tSystem time (seconds): 24.67\n\tPercent of CPU this job got: 726%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 1:22.37\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 8018704\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 13\n\tMinor (reclaiming a frame) page faults: 2362476\n\tVoluntary context switches: 553526\n\tInvoluntary context switches: 27073\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 217952\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 2771,
+    "GO": 37232
+   },
+   "rows_equal_claims": true,
+   "seconds": 82.4,
+   "stages": [
+    {
+     "ec_claims_checkable": 2150,
+     "ec_claims_not_checkable": 621,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 0.772540396,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_93064",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 19.740381443,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 40003,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 29187,
+     "candidates_unsupported": 10816,
+     "context_supplied": false,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 43.809411929,
+     "input_candidates": 40003,
+     "model_id": "context-logistic-pu-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "deaa57c65e6d25d4968f5128fbf015be99400f792bb3d0c33571882dacfe661e",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 40003,
+     "pinned_floors_cleared": 24,
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "rescored": 29187,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "executed",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 0,
+     "unchanged_unsupported": 10816
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "learned_gbdt": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned_gbdt/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15768034/cell-21/tmp/learned_gbdt",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned_gbdt/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned_gbdt/batch_stats.tsv",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/models/model_gbdt.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCF_002797435.1.layout.tsv": "8470db436d554f1a0d3eb440607d121f9ecffc380795851a6501a7aa08f63481",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCF_002797435.1/claims.jsonl": "dff08a14713245fbd52dbc2c9e068ae6f12ec42b19b51f69415e88e96eadb97c",
+    "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/models/model_gbdt.json": "b8e669c111e3b15690ee304af064dce772d2bd7986e774a8e3f9c6aeb9eccc24",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 40003,
+     "removed_no_projection": 0,
+     "rescored": 29187,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 10816,
+     "unsupported": 10816
+    },
+    "locus_layer_unavailable_reason": "calibration split has 75 no-label and 3 single-positive groups (< 5 and < 5 each): cannot validate the null layer",
+    "model": {
+     "id": "context-gbdt-pu-06c05a618c57-d9537b61",
+     "kind": "gbdt",
+     "sha256": "b8e669c111e3b15690ee304af064dce772d2bd7986e774a8e3f9c6aeb9eccc24"
+    },
+    "sha256": "abf448308430d2f1a00f00278c524c907d3c302b848ceb391a2ef008966fd25b",
+    "status_by_type": {
+     "EC/scored": 2743,
+     "EC/unsupported": 28,
+     "GO/scored": 26444,
+     "GO/unsupported": 10788
+    },
+    "unsupported_reasons": {
+     "EC/sequence_score_outside_training_calibration_range": 25,
+     "EC/unseen_source_function_role_or_availability_profile": 3,
+     "GO/profile_lacks_both_classes_in_train_and_calibration": 10250,
+     "GO/sequence_score_outside_training_calibration_range": 21,
+     "GO/unseen_source_function_role_or_availability_profile": 517
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned_gbdt/GCF_002797435.1.integrated.tsv",
+   "output_sha256": "9f55fab069d317af96d489271be73bfb7714e09eae3a71e9b5ddd6ecf7c7a765",
+   "prediction_rows": 40003,
+   "published_claims": 40003,
+   "reference_proteins_with_ec_candidates": 4,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15768034/cell-21/tmp/learned_gbdt -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned_gbdt/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/cells/21/learned_gbdt/batch_stats.tsv --learned-model /scratch/project/k10018/gspa-v3/out/pu-learning-v1/price/pu/models/model_gbdt.json\"\n\tUser time (seconds): 784.38\n\tSystem time (seconds): 25.19\n\tPercent of CPU this job got: 940%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 1:26.07\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 6294820\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 16\n\tMinor (reclaiming a frame) page faults: 1973737\n\tVoluntary context switches: 632963\n\tInvoluntary context switches: 23428\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 217960\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 2771,
+    "GO": 37232
+   },
+   "rows_equal_claims": true,
+   "seconds": 86.1,
+   "stages": [
+    {
+     "ec_claims_checkable": 2150,
+     "ec_claims_not_checkable": 621,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 0.822056438,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_93064",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 18.953086413,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 40003,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 29187,
+     "candidates_unsupported": 10816,
+     "context_supplied": false,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 41.199781993,
+     "input_candidates": 40003,
+     "model_id": "context-gbdt-pu-06c05a618c57-d9537b61",
+     "model_kind": "gbdt",
+     "model_sha256": "b8e669c111e3b15690ee304af064dce772d2bd7986e774a8e3f9c6aeb9eccc24",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 40003,
+     "pinned_floors_cleared": 24,
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "rescored": 29187,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "executed",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 0,
+     "unchanged_unsupported": 10816
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  }
+ },
+ "cell": {
+  "assembly": "GCF_002797435.1",
+  "claims": 40003,
+  "claims_sha256": "dff08a14713245fbd52dbc2c9e068ae6f12ec42b19b51f69415e88e96eadb97c",
+  "contract_identity_sha256": "ae823453d3efa4717fffb0942699b17d714d4298259686f2525cdac5c5388379",
+  "index": 21,
+  "part": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCF_002797435.1",
+  "predictor": "swissprot_diamond_baseline"
+ },
+ "differences": {
+  "learned_vs_learned_gbdt": {
+   "differing": 29187,
+   "rows": 40003
+  }
+ },
+ "finished": "2026-11-02T17:19:00+0300",
+ "heap": "16g",
+ "host": "nid00017",
+ "learned_executed": {
+  "learned": true,
+  "learned_gbdt": true
+ },
+ "plan": "tasks/v3-price-contract-learned-2026-11-02.md",
+ "retained_sha256": "d37082500653ffff0b1beb2c1697ecb5f7f4813e61b3be1ac0ef34d875e23666",
+ "schema": "gspa.price-contract-learned-cell/1",
+ "started": "2026-11-02T17:16:09+0300",
+ "status": "complete"
+}

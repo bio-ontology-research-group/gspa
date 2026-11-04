@@ -155,3 +155,9 @@ All recorded before the pilot results were read, except D6, which concerns repor
    reason each, one corrected by the supervisor (β-glycerol phosphate = glycerol 2-phosphate, cpd01908). 293 of 379
    substrate wells usable; the rest listed.
 6. **Reporting.** Recovery counts for "reaction re-added" are reported next to protein recovery, as a diagnostic.
+7. **(2026-11-02) Full benchmark panel, candidate source.** For the full-panel run (addendum
+   `tasks/v3-offgrowth-full-panel-2026-11-02.md`, frozen sha256 a7be7111… before any scored check) the six-predictor
+   union of §4 exists only for the 22 Price genomes and this design names no fallback; all 145 genomes therefore use
+   the genus-fenced Swiss-Prot DIAMOND baseline adapter (`homology_baseline.py`, training parameters) with a repaired
+   fence (taxid plus Swiss-Prot lineage instead of the first word of the organism name) and a leakage check. Hidden
+   cases add Swiss-Prot experimental ECs of all 145 genomes (D4 rule). Everything else in §3–§8 and D1–D6 is unchanged.

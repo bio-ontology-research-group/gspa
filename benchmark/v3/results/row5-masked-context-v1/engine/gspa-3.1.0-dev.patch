@@ -1,0 +1,1214 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 9b98acff..751e0d17 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -8,6 +8,11 @@ Per-version benchmark numbers, ablation tables, and the F-max protocol
+ notes live in `benchmark/RESULTS.md`. This file summarises the
+ user-visible deltas; for measured impact, follow the cross-references.
+ 
++## 3.1.0-dev (unreleased)
++
++- Context-weighted gap prior (`--gap-prior-context-mode`), off by default; `none` is byte-identical to 3.0.1.
++- `--gap-prior-ec-namespace-fix` (off by default): the gap-filling prior compares EC ids of gap records (bare) and integrated candidates (`EC:` prefixed) in one namespace; without it the targeted rescue never reaches an EC candidate (found 2026-11-02 on the masked-locus benchmark).
++
+ ## Unreleased audit repairs
+ 
+ - Supplied Prodigal/Pyrodigal GFF3 and protein FASTA now use native header identity
+diff --git a/build.gradle.kts b/build.gradle.kts
+index c5af7a26..17e894ce 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -4,7 +4,7 @@ plugins {
+ 
+ allprojects {
+     group = "org.gspa"
+-    version = "3.0.0"
++    version = "3.1.0-dev"
+ 
+     repositories {
+         mavenCentral()
+diff --git a/gspa-cli/src/main/groovy/gspa/cli/IntegrateCommand.groovy b/gspa-cli/src/main/groovy/gspa/cli/IntegrateCommand.groovy
+index 649f5a59..6e3e22c1 100644
+--- a/gspa-cli/src/main/groovy/gspa/cli/IntegrateCommand.groovy
++++ b/gspa-cli/src/main/groovy/gspa/cli/IntegrateCommand.groovy
+@@ -295,6 +295,26 @@ class IntegrateCommand implements Runnable {
+             description = 'Optional TSV output: per-candidate feature vector from the RLGC suggester (M3 training data).')
+     File featuresOut
+ 
++    @Option(names = ['--gap-prior-context-mode'],
++            description = 'Reaction-context mode for the gap-filling prior (none|universal|pathway|organism); default is none, which is today\'s behaviour.')
++    String gapPriorContextMode = 'none'
++
++    @Option(names = ['--gap-prior-pathway-groups'],
++            description = 'Named pathway reaction groups TSV for --gap-prior-context-mode pathway (default mode is none, which is today\'s behaviour).')
++    File gapPriorPathwayGroupsFile
++
++    @Option(names = ['--gap-prior-organism-reactions'],
++            description = 'Organism reaction IDs file (one per line) for --gap-prior-context-mode organism (default mode is none, which is today\'s behaviour).')
++    File gapPriorOrganismReactionsFile
++
++    @Option(names = ['--gap-prior-context-window-bp'],
++            description = 'Genomic window half-width in bp around candidates for the context-weighted gap prior (default 10000; default mode is none, which is today\'s behaviour).')
++    Integer gapPriorContextWindowBp = 10000
++
++    @Option(names = ['--gap-prior-ec-namespace-fix'],
++            description = 'Compare EC ids of gap records and candidates without the EC: prefix in the gap-filling prior (3.1.0-dev repair; default off, which is today\'s behaviour).')
++    boolean gapPriorEcNamespaceFix = false
++
+     // --- Phase 12 M2 cross-genome LR flags ---
+ 
+     @Option(names = ['--rxn-locus-catalog'],
+diff --git a/gspa-cli/src/test/groovy/gspa/cli/GapPriorContextIdentitySpec.groovy b/gspa-cli/src/test/groovy/gspa/cli/GapPriorContextIdentitySpec.groovy
+new file mode 100644
+index 00000000..d28ec653
+--- /dev/null
++++ b/gspa-cli/src/test/groovy/gspa/cli/GapPriorContextIdentitySpec.groovy
+@@ -0,0 +1,131 @@
++package gspa.cli
++
++import com.fasterxml.jackson.databind.ObjectMapper
++import picocli.CommandLine
++import spock.lang.Specification
++
++import java.nio.file.Files
++
++class GapPriorContextIdentitySpec extends Specification {
++    File dir
++    ContextFixtures fx
++    final ObjectMapper mapper = new ObjectMapper()
++
++    def setup() {
++        File baseTmp = new File(System.getenv('TMPDIR') ?: '/home/leechuck/tmp')
++        baseTmp.mkdirs()
++        dir = Files.createTempDirectory(baseTmp.toPath(), 'gspa-gap-prior-ctx-').toFile()
++        fx = new ContextFixtures(dir)
++    }
++
++    def cleanup() {
++        dir?.deleteDir()
++    }
++
++    private int execute(List<String> args, StringWriter err = new StringWriter()) {
++        new CommandLine(new IntegrateCommand()).setErr(new PrintWriter(err)).execute(args as String[])
++    }
++
++    private Map normalizedLedger(File outFile) {
++        Map ledger = mapper.readValue(new File(outFile.path + '.stages.json'), Map)
++        (ledger.stages as List<Map>).each { Map st -> st.remove('elapsed_seconds') }
++        ledger
++    }
++
++    def 'unchanged code path (no option) and --gap-prior-context-mode none are byte-for-byte identical'() {
++        given:
++        def files = fx.genome('g1')
++        File gaps = new File(dir, 'g1.gaps.jsonl')
++        gaps.text = '{"pathway_id":"P","reaction_id":"r2","ec_number":"EC:2.2.2.2","go_term":"GO:0002222"}\n'
++        File ec2go = new File(dir, 'ec2go.tsv')
++        ec2go.text = 'EC:1.1.1.1\tGO:0001111\nEC:2.2.2.2\tGO:0002222\nEC:3.3.3.3\tGO:0003333\nEC:4.4.4.4\tGO:0004444\n'
++
++        File outUnchanged = new File(dir, 'unchanged.integrated.tsv')
++        File outNone = new File(dir, 'none.integrated.tsv')
++
++        List<String> commonArgs = [
++            '--claims', files.claims.path,
++            '--genome-id', 'g1',
++            '--lite',
++            '--gaps', gaps.path,
++            '--ec2go', ec2go.path,
++            '--reaction-graph', fx.reactions.path,
++            '--reaction-ec-aliases', fx.aliases.path,
++            '--genome-layout', files.layout.path,
++        ]
++
++        when:
++        int codeUnchanged = execute(commonArgs + ['--out', outUnchanged.path])
++        int codeNone = execute(commonArgs + ['--out', outNone.path, '--gap-prior-context-mode', 'none'])
++
++        then:
++        codeUnchanged == 0
++        codeNone == 0
++        outUnchanged.isFile()
++        outNone.isFile()
++        outUnchanged.bytes == outNone.bytes
++        outUnchanged.text == outNone.text
++        outUnchanged.text.contains('gap_filling:')
++        normalizedLedger(outUnchanged) == normalizedLedger(outNone)
++        !new File(outUnchanged.path + '.gap-prior-context.json').exists()
++        !new File(outNone.path + '.gap-prior-context.json').exists()
++    }
++
++    def 'non-none gap-prior context modes run without starting cohort_context and write .gap-prior-context.json'() {
++        given:
++        def files = fx.genome('g1')
++        // Add GO claims for anchor proteins so r1 and r3 are anchored in GO space
++        files.claims << mapper.writeValueAsString([
++            protein_id: 'p2', function_type: 'GO', function_id: 'GO:0001111',
++            source: 'diamond', evidence_type: 'SEQUENCE_SIMILARITY', raw_score: 0.9d, calibrated_prob: 0.9d
++        ]) + '\n'
++        File gaps = new File(dir, 'g1.gaps.jsonl')
++        gaps.text = '{"pathway_id":"P","reaction_id":"r2","ec_number":"EC:2.2.2.2","go_term":"GO:0002222"}\n'
++        File ec2go = new File(dir, 'ec2go.tsv')
++        ec2go.text = 'EC:1.1.1.1\tGO:0001111\nEC:2.2.2.2\tGO:0002222\nEC:3.3.3.3\tGO:0003333\nEC:4.4.4.4\tGO:0004444\n'
++        File pathways = new File(dir, 'pathway-groups.tsv')
++        pathways.text = 'pathway_id\tgroup_id\treaction_id\tsource\nP\tG1\tr2\ttest\nP\tG2\tr1\ttest\n'
++        File orgRxns = new File(dir, 'organism-reactions.txt')
++        orgRxns.text = '# plausible reactions\nr1\nr3\n'
++
++        when:
++        ['universal', 'pathway', 'organism'].each { String mode ->
++            File out = new File(dir, "${mode}.integrated.tsv")
++            List<String> args = [
++                '--claims', files.claims.path,
++                '--out', out.path,
++                '--genome-id', 'g1',
++                '--lite',
++                '--gaps', gaps.path,
++                '--ec2go', ec2go.path,
++                '--reaction-graph', fx.reactions.path,
++                '--reaction-ec-aliases', fx.aliases.path,
++                '--genome-layout', files.layout.path,
++                '--rlc-currency-pct', '100',
++                '--gap-prior-context-mode', mode,
++                '--gap-prior-context-window-bp', '5000',
++            ]
++            if (mode == 'pathway') args += ['--gap-prior-pathway-groups', pathways.path]
++            if (mode == 'organism') args += ['--gap-prior-organism-reactions', orgRxns.path]
++            assert execute(args) == 0
++        }
++
++        then:
++        ['universal', 'pathway', 'organism'].every { String mode ->
++            File out = new File(dir, "${mode}.integrated.tsv")
++            File reportFile = new File(out.path + '.gap-prior-context.json')
++            assert reportFile.isFile()
++            Map report = mapper.readValue(reportFile, Map)
++            Map ledger = mapper.readValue(new File(out.path + '.stages.json'), Map)
++            Map cohortStage = (ledger.stages as List<Map>).find { it.name == 'cohort_context' }
++            Map evStage = (ledger.stages as List<Map>).find { it.name == 'evidence_integration' }
++            report.mode == mode &&
++                report.window_bp == 5000 &&
++                report.gaps_evaluated == 1 &&
++                report.gaps_with_context == 1 &&
++                cohortStage.status == 'skipped' &&
++                evStage.gap_prior_context_mode == mode &&
++                evStage.gap_prior_context_window_bp == 5000
++        }
++    }
++}
+diff --git a/gspa-core/src/main/groovy/gspa/integration/prior/GapContextSupport.groovy b/gspa-core/src/main/groovy/gspa/integration/prior/GapContextSupport.groovy
+new file mode 100644
+index 00000000..1f4522bf
+--- /dev/null
++++ b/gspa-core/src/main/groovy/gspa/integration/prior/GapContextSupport.groovy
+@@ -0,0 +1,334 @@
++package gspa.integration.prior
++
++import gspa.integration.IntegrationState
++import gspa.integration.MetabolicGap
++import gspa.integration.cohort.CohortInput
++import gspa.integration.cohort.ContextMode
++import gspa.model.GenomeLayout
++import gspa.model.ProteinLocus
++import gspa.ontology.ReactionGraph
++
++/**
++ * Computes reaction-local context support {@code c(P', gap) in [0, 1]} for
++ * candidate proteins of a metabolic gap under UNIVERSAL, PATHWAY, or ORGANISM
++ * reaction context modes.
++ */
++class GapContextSupport {
++
++    ContextMode mode = ContextMode.UNIVERSAL
++    int windowBp = 10000
++    double anchorThreshold = 0.3d
++    double alpha = 0.5d
++    int maxHops = 2
++    List<CohortInput.PathwayGroup> pathwayGroups = []
++    Set<String> organismReactions = [] as Set
++
++    Map<String, Object> lastReport = new LinkedHashMap<>()
++
++    GapContextSupport() {
++        resetReport()
++    }
++
++    GapContextSupport(ContextMode mode,
++                      int windowBp = 10000,
++                      double anchorThreshold = 0.3d,
++                      double alpha = 0.5d,
++                      int maxHops = 2,
++                      List<CohortInput.PathwayGroup> pathwayGroups = null,
++                      Set<String> organismReactions = null) {
++        this.mode = mode
++        this.windowBp = windowBp
++        this.anchorThreshold = anchorThreshold
++        this.alpha = alpha
++        this.maxHops = maxHops
++        this.pathwayGroups = pathwayGroups ?: []
++        this.organismReactions = organismReactions ?: ([] as Set<String>)
++        resetReport()
++    }
++
++    void resetReport() {
++        lastReport = new LinkedHashMap<String, Object>([
++            mode                             : mode?.name()?.toLowerCase(Locale.ROOT),
++            window_bp                        : windowBp,
++            anchor_threshold                 : anchorThreshold,
++            alpha                            : alpha,
++            max_hops                         : maxHops,
++            gaps_evaluated                   : 0,
++            gaps_with_context                : 0,
++            context_reactions_per_gap        : new ArrayList<Integer>(),
++            anchored_context_reactions_per_gap: new ArrayList<Integer>(),
++            candidates_with_c_gt_0           : 0,
++            gaps                             : new ArrayList<Map<String, Object>>(),
++        ])
++    }
++
++    static Set<String> readOrganismReactions(File file) {
++        if (file == null || !file.isFile()) {
++            throw new IllegalArgumentException("file does not exist: ${file}")
++        }
++        Set<String> rxns = new LinkedHashSet<>()
++        file.eachLine('UTF-8') { String raw ->
++            String line = raw.trim()
++            if (!line || line.startsWith('#')) return
++            int hash = line.indexOf('#')
++            if (hash >= 0) line = line.substring(0, hash).trim()
++            if (line) rxns << line
++        }
++        rxns
++    }
++
++    Map<String, Double> contextSupport(MetabolicGap gap,
++                                       Collection<String> candidateProteinIds,
++                                       IntegrationState state) {
++        if (state?.genomeLayout == null) {
++            throw new IllegalStateException("Gap prior context mode ${mode} requires a genome layout (--genome-layout)")
++        }
++        if (lastReport == null || lastReport.isEmpty()) {
++            resetReport()
++        }
++        ReactionGraph graph = state.reactionGraph
++        if (graph == null || gap == null) {
++            recordGap(gap, 0, 0, candidateProteinIds?.size() ?: 0, 0)
++            return Collections.emptyMap()
++        }
++
++        // 1. Focal graph reactions
++        Set<String> focalReactions = new LinkedHashSet<>()
++        if (gap.ecNumber) {
++            for (String rawEc : gap.ecNumber.split('[/,;\\s]+')) {
++                String ec = rawEc.trim().replaceFirst(/^EC:/, '')
++                if (!ec) continue
++                focalReactions.addAll(graph.reactionsForEc(ec))
++                if (rawEc.trim() != ec) {
++                    focalReactions.addAll(graph.reactionsForEc(rawEc.trim()))
++                }
++            }
++        }
++        if (gap.reactionId && graph.reactions.containsKey(gap.reactionId)) {
++            focalReactions << gap.reactionId
++        }
++        if (focalReactions.isEmpty()) {
++            recordGap(gap, 0, 0, candidateProteinIds?.size() ?: 0, 0)
++            return Collections.emptyMap()
++        }
++
++        // 2. Context reactions with weights, per mode, union over focal reactions r0, excluding focal reactions
++        Map<String, Double> contextWeights = new LinkedHashMap<>()
++        for (String r0 : focalReactions) {
++            Map<String, Double> reached = contextReactionsForFocal(r0, graph)
++            for (Map.Entry<String, Double> e : reached.entrySet()) {
++                if (focalReactions.contains(e.key)) continue
++                Double cur = contextWeights.get(e.key)
++                if (cur == null || e.value > cur) {
++                    contextWeights.put(e.key, e.value)
++                }
++            }
++        }
++        if (contextWeights.isEmpty()) {
++            recordGap(gap, 0, 0, candidateProteinIds?.size() ?: 0, 0)
++            return Collections.emptyMap()
++        }
++
++        // 3. Gap's own GO terms (gap.goTerm and GO terms of gap's ECs)
++        Set<String> gapOwnGoTerms = new LinkedHashSet<>()
++        if (gap.goTerm) {
++            for (String rawGo : gap.goTerm.split('[,;\\s]+')) {
++                String go = rawGo.trim()
++                if (go) gapOwnGoTerms << go
++            }
++        }
++        if (gap.ecNumber) {
++            for (String rawEc : gap.ecNumber.split('[/,;\\s]+')) {
++                String ec = rawEc.trim().replaceFirst(/^EC:/, '')
++                if (ec) gapOwnGoTerms.addAll(lookupGoTerms(ec, state))
++            }
++        }
++
++        // 4. Functions and anchors of each context reaction r
++        GenomeLayout layout = state.genomeLayout
++        Map<String, Map<String, Double>> posteriorsByGo = indexPosteriorsByGo(state)
++        Map<String, Double> anchoredWeights = new LinkedHashMap<>()
++        Map<String, List<ProteinLocus>> anchorsByReaction = new LinkedHashMap<>()
++
++        for (Map.Entry<String, Double> entry : contextWeights.entrySet()) {
++            String r = entry.key
++            Set<String> ecs = new LinkedHashSet<>(graph.ecsForReaction(r) ?: Collections.<String>emptySet())
++            if (ecs.isEmpty()) {
++                String fallbackEc = graph.reactions.get(r)?.ecNumber
++                if (fallbackEc) {
++                    for (String tok : fallbackEc.split('[/,;\\s]+')) {
++                        String trimmed = tok.trim()
++                        if (trimmed) ecs << trimmed
++                    }
++                }
++            }
++            Set<String> funcs = new LinkedHashSet<>()
++            for (String ec : ecs) {
++                String cleanEc = ec.trim().replaceFirst(/^EC:/, '')
++                if (cleanEc) funcs.addAll(lookupGoTerms(cleanEc, state))
++            }
++            funcs.removeAll(gapOwnGoTerms)
++            if (funcs.isEmpty()) continue
++
++            Set<String> anchorIds = new LinkedHashSet<>()
++            for (String term : funcs) {
++                Map<String, Double> byProt = posteriorsByGo.get(term)
++                if (byProt == null) continue
++                for (Map.Entry<String, Double> pe : byProt.entrySet()) {
++                    if (pe.value != null && sigmoid(pe.value) >= anchorThreshold && layout.get(pe.key) != null) {
++                        anchorIds << pe.key
++                    }
++                }
++            }
++            if (!anchorIds.isEmpty()) {
++                anchoredWeights.put(r, entry.value)
++                anchorsByReaction.put(r, anchorIds.collect { layout.get(it) })
++            }
++        }
++
++        if (anchoredWeights.isEmpty()) {
++            recordGap(gap, contextWeights.size(), 0, candidateProteinIds?.size() ?: 0, 0)
++            return Collections.emptyMap()
++        }
++
++        // 5. Compute c(P') for each candidate protein
++        double totalWeight = 0.0d
++        for (Double w : anchoredWeights.values()) {
++            totalWeight += w
++        }
++        Map<String, Double> support = new LinkedHashMap<>()
++        int positiveCandidates = 0
++        for (String candId : (candidateProteinIds ?: Collections.<String>emptyList())) {
++            ProteinLocus loc = layout.get(candId)
++            if (loc == null || totalWeight <= 0.0d) {
++                support.put(candId, 0.0d)
++                continue
++            }
++            int candMid = loc.midpoint()
++            double num = 0.0d
++            for (Map.Entry<String, Double> re : anchoredWeights.entrySet()) {
++                List<ProteinLocus> anchors = anchorsByReaction.get(re.key)
++                boolean present = false
++                for (ProteinLocus a : anchors) {
++                    if (a.proteinId != candId && a.contig == loc.contig && Math.abs(a.midpoint() - candMid) <= windowBp) {
++                        present = true
++                        break
++                    }
++                }
++                if (present) {
++                    num += re.value
++                }
++            }
++            double cVal = num / totalWeight
++            support.put(candId, cVal)
++            if (cVal > 0.0d) positiveCandidates++
++        }
++
++        recordGap(gap, contextWeights.size(), anchoredWeights.size(), support.size(), positiveCandidates)
++        support
++    }
++
++    private Map<String, Double> contextReactionsForFocal(String r0, ReactionGraph graph) {
++        if (mode == ContextMode.UNIVERSAL) {
++            return graph.bfs(r0, maxHops, alpha)
++        }
++        if (mode == ContextMode.ORGANISM) {
++            Map<String, Double> out = new LinkedHashMap<>()
++            if (maxHops <= 0 || !graph.reactions.containsKey(r0)) return out
++            Set<String> allowed = organismReactions ?: Collections.<String>emptySet()
++            Set<String> seen = new HashSet<>()
++            seen.add(r0)
++            List<String> frontier = [r0]
++            double weight = 1.0d
++            for (int d = 1; d <= maxHops && !frontier.isEmpty(); d++) {
++                weight *= alpha
++                List<String> next = new ArrayList<>()
++                for (String f : frontier) {
++                    for (String n : graph.neighbors(f)) {
++                        if (!allowed.contains(n)) continue
++                        if (!seen.add(n)) continue
++                        out.put(n, weight)
++                        next.add(n)
++                    }
++                }
++                frontier = next
++            }
++            return out
++        }
++        if (mode == ContextMode.PATHWAY) {
++            Map<String, Double> out = new LinkedHashMap<>()
++            List<CohortInput.PathwayGroup> groups = pathwayGroups ?: Collections.<CohortInput.PathwayGroup>emptyList()
++            List<CohortInput.PathwayGroup> ownGroups = groups.findAll { it.reactionIds != null && it.reactionIds.contains(r0) }
++            if (ownGroups.isEmpty()) return out
++            Set<String> ownReactions = new HashSet<>()
++            Set<String> ownPathways = new HashSet<>()
++            for (CohortInput.PathwayGroup g : ownGroups) {
++                ownPathways.add(g.pathwayId)
++                ownReactions.addAll(g.reactionIds)
++            }
++            for (CohortInput.PathwayGroup g : groups) {
++                if (!ownPathways.contains(g.pathwayId) || g.reactionIds == null) continue
++                for (String r : g.reactionIds) {
++                    if (!ownReactions.contains(r)) {
++                        out.put(r, alpha)
++                    }
++                }
++            }
++            return out
++        }
++        Collections.emptyMap()
++    }
++
++    private static List<String> lookupGoTerms(String cleanEc, IntegrationState state) {
++        if (!cleanEc) return Collections.emptyList()
++        if (state.ecToGoAlternatives != null) {
++            List<String> terms = state.ecToGoAlternatives.get(cleanEc)
++            if (terms == null) terms = state.ecToGoAlternatives.get('EC:' + cleanEc)
++            return terms != null ? terms.findAll { it } : Collections.emptyList()
++        }
++        String legacy = state.pathwayDatabase?.ec2go?.get(cleanEc) ?: state.pathwayDatabase?.ec2go?.get('EC:' + cleanEc)
++        legacy ? [legacy] : Collections.emptyList()
++    }
++
++    private static Map<String, Map<String, Double>> indexPosteriorsByGo(IntegrationState state) {
++        Map<String, Map<String, Double>> idx = new LinkedHashMap<>()
++        if (state?.posteriorLogOdds == null) return idx
++        for (Map.Entry<String, Double> e : state.posteriorLogOdds.entrySet()) {
++            String[] parts = IntegrationState.splitFunctionKey(e.key)
++            if (parts == null || parts[1] != 'GO' || e.value == null) continue
++            idx.computeIfAbsent(parts[2], { new LinkedHashMap<String, Double>() })[parts[0]] = e.value
++        }
++        idx
++    }
++
++    private void recordGap(MetabolicGap gap, int nContext, int nAnchored, int nCandidates, int nPositive) {
++        lastReport.mode = mode?.name()?.toLowerCase(Locale.ROOT)
++        lastReport.window_bp = windowBp
++        lastReport.anchor_threshold = anchorThreshold
++        lastReport.alpha = alpha
++        lastReport.max_hops = maxHops
++        lastReport.gaps_evaluated = ((lastReport.gaps_evaluated as Integer) ?: 0) + 1
++        if (nAnchored > 0) {
++            lastReport.gaps_with_context = ((lastReport.gaps_with_context as Integer) ?: 0) + 1
++        }
++        (lastReport.context_reactions_per_gap as List<Integer>) << nContext
++        (lastReport.anchored_context_reactions_per_gap as List<Integer>) << nAnchored
++        lastReport.candidates_with_c_gt_0 = ((lastReport.candidates_with_c_gt_0 as Integer) ?: 0) + nPositive
++        (lastReport.gaps as List<Map<String, Object>>) << [
++            pathway_id                : gap?.pathwayId,
++            reaction_id               : gap?.reactionId,
++            ec_number                 : gap?.ecNumber,
++            go_term                   : gap?.goTerm,
++            context_reactions         : nContext,
++            anchored_context_reactions: nAnchored,
++            candidates_evaluated      : nCandidates,
++            candidates_with_c_gt_0    : nPositive,
++        ]
++    }
++
++    private static double sigmoid(double x) {
++        if (x >= 500.0d) return 1.0d
++        if (x <= -500.0d) return 0.0d
++        1.0d / (1.0d + Math.exp(-x))
++    }
++}
+diff --git a/gspa-core/src/main/groovy/gspa/integration/prior/GapFillingPrior.groovy b/gspa-core/src/main/groovy/gspa/integration/prior/GapFillingPrior.groovy
+index 2755f7f0..5efa796f 100644
+--- a/gspa-core/src/main/groovy/gspa/integration/prior/GapFillingPrior.groovy
++++ b/gspa-core/src/main/groovy/gspa/integration/prior/GapFillingPrior.groovy
+@@ -31,6 +31,21 @@ class GapFillingPrior implements Prior {
+     /** Discount for gapseq's own gap-fill guesses. */
+     double gapseqGuessedFactor = 0.7d
+ 
++    /** Optional reaction-local context support for gap candidate selection and scaling. */
++    GapContextSupport contextSupport = null
++
++    /**
++     * Repair of the EC namespace mismatch (3.1.0-dev, off by default): integrated EC candidates are keyed
++     * {@code protein|EC|EC:x.x.x.x} while gap records carry bare {@code x.x.x.x}, so with the default the
++     * targeted rescue never reaches an EC candidate. When true, EC ids are compared without the {@code EC:} prefix
++     * on both sides; GO ids are unchanged.
++     */
++    boolean ecNamespaceFix = false
++
++    private String matchId(String type, String functionId) {
++        (ecNamespaceFix && type == AnnotationType.EC.name()) ? functionId.replaceFirst(/^EC:/, '') : functionId
++    }
++
+     private static final Set<String> GENERIC_CATALYTIC_ROOTS = [
+         'GO:0003824', 'GO:0016491', 'GO:0016740', 'GO:0016787',
+         'GO:0016829', 'GO:0016853', 'GO:0016874'
+@@ -52,6 +67,7 @@ class GapFillingPrior implements Prior {
+     void beginIteration(IntegrationState state) {
+         boostByFunctionId = new LinkedHashMap<>()
+         targetedKeyBoosts = Collections.emptyMap()
++        if (contextSupport != null) contextSupport.resetReport()
+         if (state.metabolicGaps == null || state.metabolicGaps.isEmpty()) return
+ 
+         Set<String> allGapGoTerms = new LinkedHashSet<>()
+@@ -64,7 +80,7 @@ class GapFillingPrior implements Prior {
+                 if (parts[1] != AnnotationType.EC.name() && parts[1] != AnnotationType.GO.name()) continue
+                 double likeProb = state.getLikelihoodProbability(fkey)
+                 if (likeProb >= 0.18d && likeProb <= IntegrationState.MAP_THRESHOLD) {
+-                    candsByFunc[parts[2]] << new AbstractMap.SimpleImmutableEntry<>(fkey, likeProb)
++                    candsByFunc[matchId(parts[1], parts[2])] << new AbstractMap.SimpleImmutableEntry<>(fkey, likeProb)
+                 }
+             }
+         }
+@@ -76,7 +92,7 @@ class GapFillingPrior implements Prior {
+             Set<String> gapMatchFuncs = new LinkedHashSet<>()
+             if (gap.ecNumber) {
+                 for (String rawEc : gap.ecNumber.split('[/,;\\s]+')) {
+-                    String ec = rawEc.trim()
++                    String ec = matchId(AnnotationType.EC.name(), rawEc.trim())
+                     if (!ec) continue
+                     updateMax(ec, mag)
+                     gapMatchFuncs << ec
+@@ -109,12 +125,51 @@ class GapFillingPrior implements Prior {
+                     if (list != null) cands.addAll(list)
+                 }
+                 if (!cands.isEmpty()) {
+-                    state.sortCandidatesForRescue(cands)
+-                    String fk = cands[0].key
+-                    double pVal = cands[0].value as double
+-                    if (state.candidateRescueTier(fk, pVal) >= 1) {
+-                        double bVal = Math.max(1.15d * mag, 0.14d - state.getLikelihoodLogOdds(fk))
+-                        topBoosts[fk] = Math.max(topBoosts.getOrDefault(fk, 0.0d), bVal)
++                    if (contextSupport == null) {
++                        state.sortCandidatesForRescue(cands)
++                        String fk = cands[0].key
++                        double pVal = cands[0].value as double
++                        if (state.candidateRescueTier(fk, pVal) >= 1) {
++                            double bVal = Math.max(1.15d * mag, 0.14d - state.getLikelihoodLogOdds(fk))
++                            topBoosts[fk] = Math.max(topBoosts.getOrDefault(fk, 0.0d), bVal)
++                        }
++                    } else {
++                        Set<String> candidateProteinIds = new LinkedHashSet<>()
++                        for (Map.Entry<String, Double> entry : cands) {
++                            String[] parts = IntegrationState.splitFunctionKey(entry.key)
++                            if (parts != null) candidateProteinIds << parts[0]
++                        }
++                        Map<String, Double> c = contextSupport.contextSupport(gap, candidateProteinIds, state)
++                        if (c.isEmpty()) {
++                            state.sortCandidatesForRescue(cands)
++                            String fk = cands[0].key
++                            double pVal = cands[0].value as double
++                            if (state.candidateRescueTier(fk, pVal) >= 1) {
++                                double bVal = Math.max(1.15d * mag, 0.14d - state.getLikelihoodLogOdds(fk))
++                                topBoosts[fk] = Math.max(topBoosts.getOrDefault(fk, 0.0d), bVal)
++                            }
++                        } else {
++                            cands.sort { a, b ->
++                                int ta = state.candidateRescueTier(a.key, a.value as double)
++                                int tb = state.candidateRescueTier(b.key, b.value as double)
++                                int cmp = Integer.compare(tb, ta)
++                                if (cmp != 0) return cmp
++                                String pa = IntegrationState.splitFunctionKey(a.key)[0]
++                                String pb = IntegrationState.splitFunctionKey(b.key)[0]
++                                cmp = Double.compare(c.getOrDefault(pb, 0.0d) as double, c.getOrDefault(pa, 0.0d) as double)
++                                if (cmp != 0) return cmp
++                                cmp = Double.compare(b.value as double, a.value as double)
++                                cmp != 0 ? cmp : (a.key <=> b.key)
++                            }
++                            String fk = cands[0].key
++                            double pVal = cands[0].value as double
++                            if (state.candidateRescueTier(fk, pVal) >= 1) {
++                                String protein = IntegrationState.splitFunctionKey(fk)[0]
++                                double bVal = Math.max(1.15d * mag, 0.14d - state.getLikelihoodLogOdds(fk)) *
++                                    (0.5d + (c.getOrDefault(protein, 0.0d) as double))
++                                topBoosts[fk] = Math.max(topBoosts.getOrDefault(fk, 0.0d), bVal)
++                            }
++                        }
+                     }
+                 }
+             }
+@@ -140,7 +195,7 @@ class GapFillingPrior implements Prior {
+         String type = parts[1]
+         String funcId = parts[2]
+         if (type != AnnotationType.EC.name() && type != AnnotationType.GO.name()) return 0.0d
+-        return boostByFunctionId.getOrDefault(funcId, 0.0d)
++        return boostByFunctionId.getOrDefault(matchId(type, funcId), 0.0d)
+     }
+ 
+     private void updateMax(String key, double value) {
+diff --git a/gspa-core/src/main/groovy/gspa/integration/workflow/IntegrationWorkflow.groovy b/gspa-core/src/main/groovy/gspa/integration/workflow/IntegrationWorkflow.groovy
+index 46eea068..13a6ae2f 100644
+--- a/gspa-core/src/main/groovy/gspa/integration/workflow/IntegrationWorkflow.groovy
++++ b/gspa-core/src/main/groovy/gspa/integration/workflow/IntegrationWorkflow.groovy
+@@ -30,8 +30,10 @@ import gspa.integration.prior.AnatomicalPrior
+ import gspa.integration.prior.CoherencePrior
+ import gspa.integration.prior.ConsistencyPrior
+ import gspa.integration.prior.EssentialityPrior
++import gspa.integration.prior.GapContextSupport
+ import gspa.integration.prior.GapFillingPrior
+ import gspa.integration.prior.GenomicContextPrior
++import gspa.integration.cohort.ContextMode
+ import gspa.integration.promotion.AllAboveThresholdStrategy
+ import gspa.integration.promotion.BeamSearchStrategy
+ import gspa.integration.promotion.GreedyStrategy
+@@ -107,6 +109,7 @@ class IntegrationWorkflow {
+ 
+     private ExternalContext explicitContext
+     private LearnedContextModel learnedModel
++    private GapContextSupport gapContextSupport
+     /** Actual AntiFam outcome supplied by the annotation route, never inferred from absent hits. */
+     String antiFamScanStatus
+     /** Current annotation-run observations only; standalone integration must supply its own inputs. */
+@@ -187,6 +190,9 @@ class IntegrationWorkflow {
+                 loader.wire(state, claims, sharedReferences)
+                 wirePathwayGaps(state, genomeId)
+                 if (state.genomeLayout == null && genome != null) state.genomeLayout = layoutFromGenome(genome)
++                if ((c.gapPriorContextMode ?: 'none').trim().toLowerCase(Locale.ROOT) != 'none' && state.genomeLayout == null) {
++                    throw new IllegalStateException("gap-prior-context-mode '${c.gapPriorContextMode}' requires a genome layout (--genome-layout)")
++                }
+                 def satChecker = state.satConsistencyChecker
+                 boolean taxonInHierarchy = satChecker == null || satChecker.organismTaxon == null || satChecker.isOrganismTaxonInHierarchy()
+                 String taxonState = satChecker?.organismTaxon == null ? 'no_organism_taxon_asserted' :
+@@ -300,7 +306,7 @@ class IntegrationWorkflow {
+         if (c.outFile != null) {
+             files << c.outFile
+             ['.stages.json', '.rescues.tsv', '.modules.json', '.learned.json', '.cohort.json', '.quality.json',
+-             '.gaps.jsonl', '.gap-context.json'].each { files << new File(c.outFile.absolutePath + it) }
++             '.gaps.jsonl', '.gap-context.json', '.gap-prior-context.json'].each { files << new File(c.outFile.absolutePath + it) }
+             // Only files a stage writes are removed (and the directory if that leaves it empty): a directory
+             // that happens to carry the name but holds anything else is left alone.
+             ['.experiments', '.community'].each { String suffix ->
+@@ -343,6 +349,10 @@ class IntegrationWorkflow {
+             new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(
+                 new File(c.outFile.absolutePath + '.gap-context.json'), result.state.metabolicGapReport)
+         }
++        if (gapContextSupport?.lastReport != null) {
++            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(
++                new File(c.outFile.absolutePath + '.gap-prior-context.json'), gapContextSupport.lastReport)
++        }
+         if (result.state.metabolicGapsAvailable) {
+             new File(c.outFile.absolutePath + '.gaps.jsonl').withWriter('UTF-8') { writer ->
+                 result.state.metabolicGaps.each { gap -> writer.write(groovy.json.JsonOutput.toJson(PathwayGapBuilder.record(gap)) + '\n') }
+@@ -441,6 +451,13 @@ class IntegrationWorkflow {
+         integrated = audit.runStage('evidence_integration', true, null, null, state) {
+             refiner.refine(claims, state)
+         }
++        if (gapContextSupport != null || c.gapPriorEcNamespaceFix) {
++            audit.note('evidence_integration', [
++                gap_prior_context_mode: (c.gapPriorContextMode ?: 'none').trim().toLowerCase(Locale.ROOT),
++                gap_prior_context_window_bp: c.gapPriorContextWindowBp ?: 10000,
++                gap_prior_ec_namespace_fix: c.gapPriorEcNamespaceFix
++            ])
++        }
+         println "  Produced ${integrated.annotations.size()} integrated annotations"
+ 
+         // --- Phase 8: optional dark-matter suggester ---
+@@ -755,9 +772,30 @@ class IntegrationWorkflow {
+             if (theta.anatomical_hard_filter != null) p.hardFilter = theta.anatomical_hard_filter as boolean
+             engine.register(p, (priorWeights.anatomical ?: 1.0) as double)
+         }
++        gapContextSupport = null
++        String gapPriorMode = (c.gapPriorContextMode ?: 'none').trim().toLowerCase(Locale.ROOT)
++        if (gapPriorMode != 'none') {
++            ContextMode ctxMode = ContextMode.valueOf(gapPriorMode.toUpperCase(Locale.ROOT))
++            def groups = ctxMode == ContextMode.PATHWAY ?
++                gspa.integration.contextbridge.CohortSideInputs.readPathwayGroups(c.gapPriorPathwayGroupsFile) : []
++            def orgRxns = ctxMode == ContextMode.ORGANISM ?
++                GapContextSupport.readOrganismReactions(c.gapPriorOrganismReactionsFile) : ([] as Set<String>)
++            gapContextSupport = new GapContextSupport(
++                mode: ctxMode,
++                windowBp: c.gapPriorContextWindowBp != null ? c.gapPriorContextWindowBp : 10000,
++                anchorThreshold: c.rlcAnchorThreshold,
++                alpha: c.rlcAlpha,
++                maxHops: c.rlcRadiusK,
++                pathwayGroups: groups,
++                organismReactions: orgRxns
++            )
++            gapContextSupport.resetReport()
++        }
+         if ('gap_filling' in enabled) {
+             def p = new GapFillingPrior()
+             if (theta.alpha_gap != null) p.alphaGap = (theta.alpha_gap as Number).doubleValue()
++            if (gapContextSupport != null) p.contextSupport = gapContextSupport
++            p.ecNamespaceFix = c.gapPriorEcNamespaceFix
+             engine.register(p, (priorWeights.gap_filling ?: 1.0) as double)
+         }
+         if ('genomic_context' in enabled) {
+diff --git a/gspa-core/src/main/groovy/gspa/integration/workflow/IntegrationWorkflowConfig.groovy b/gspa-core/src/main/groovy/gspa/integration/workflow/IntegrationWorkflowConfig.groovy
+index 537aec6a..ee9ad5b2 100644
+--- a/gspa-core/src/main/groovy/gspa/integration/workflow/IntegrationWorkflowConfig.groovy
++++ b/gspa-core/src/main/groovy/gspa/integration/workflow/IntegrationWorkflowConfig.groovy
+@@ -23,6 +23,7 @@ class IntegrationWorkflowConfig {
+         'gap_filling', 'genomic_context', 'homology_transfer'].asImmutable()
+     static final Set<String> ENFORCE_MODES = ['relax', 'remove', 'downrank', 'flag', 'minimal-flip'].asImmutable()
+     static final Set<String> DARK_MATTER_MODES = ['separate', 'top-q', 'distributed'].asImmutable()
++    static final Set<String> GAP_PRIOR_CONTEXT_MODES = ['none', 'universal', 'pathway', 'organism'].asImmutable()
+     static final String DEFAULT_PRIORS = 'essentiality,coherence,consistency,anatomical,gap_filling,genomic_context'
+     private static final ObjectMapper MAPPER = new ObjectMapper()
+         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
+@@ -93,6 +94,11 @@ class IntegrationWorkflowConfig {
+     int rlcRadiusK = 2
+     double rlcAlpha = 0.5d
+     double rlcAnchorThreshold = 0.3d
++    String gapPriorContextMode = 'none'
++    File gapPriorPathwayGroupsFile
++    File gapPriorOrganismReactionsFile
++    Integer gapPriorContextWindowBp = 10000
++    boolean gapPriorEcNamespaceFix = false
+     double cgLambda = 1.0d
+     int cgMinSupport = 3
+     boolean cgRequireCredible = true
+@@ -237,6 +243,13 @@ class IntegrationWorkflowConfig {
+         if (!DARK_MATTER_MODES.contains((darkMatterMode ?: '').toLowerCase(Locale.ROOT))) {
+             throw new IllegalArgumentException("Unknown dark-matter mode '${darkMatterMode}'. Choose: ${DARK_MATTER_MODES.join(', ')}")
+         }
++        String gapPriorMode = (gapPriorContextMode ?: '').trim().toLowerCase(Locale.ROOT)
++        if (!GAP_PRIOR_CONTEXT_MODES.contains(gapPriorMode)) {
++            throw new IllegalArgumentException("Unknown gap-prior-context-mode '${gapPriorContextMode}'. Choose: ${GAP_PRIOR_CONTEXT_MODES.join(', ')}")
++        }
++        if (gapPriorContextWindowBp == null || gapPriorContextWindowBp < 1) {
++            throw new IllegalArgumentException("--gap-prior-context-window-bp must be >= 1")
++        }
+         // An explicitly named reference must exist: a missing file is an error, not an absent prior.
+         Map<String, File> named = [goOwlFile: goOwlFile, essentialFunctionsFile: essentialFunctionsFile,
+             ec2goFile: ec2goFile, pathwaysFile: pathwaysFile, moduleDefsFile: moduleDefsFile,
+@@ -245,6 +258,7 @@ class IntegrationWorkflowConfig {
+             diffusionMetsFile: diffusionMetsFile, reactionEcAliasesFile: reactionEcAliasesFile,
+             operonsFile: operonsFile, gapsFile: gapsFile, pathwayObservationsFile: pathwayObservationsFile, orthogroupsFile: orthogroupsFile,
+             clusterConsensusFile: clusterConsensusFile, genomeLayoutFile: genomeLayoutFile,
++            gapPriorPathwayGroupsFile: gapPriorPathwayGroupsFile, gapPriorOrganismReactionsFile: gapPriorOrganismReactionsFile,
+             thetaFile: thetaFile, learnedModelFile: learnedModelFile, externalContextFile: externalContextFile,
+             cohortManifestFile: cohortManifestFile, cohortMetadataFile: cohortMetadataFile,
+             cohortOrthogroupsFile: cohortOrthogroupsFile, cohortRoleEvidenceFile: cohortRoleEvidenceFile,
+@@ -255,6 +269,17 @@ class IntegrationWorkflowConfig {
+         named.each { String name, File f ->
+             if (f != null && !f.isFile()) throw new IllegalArgumentException("${name} does not exist: ${f}")
+         }
++        if (gapPriorMode != 'none') {
++            if (reactionGraphFile == null) {
++                throw new IllegalArgumentException("gap-prior-context-mode '${gapPriorContextMode}' requires reactionGraphFile (--reaction-graph)")
++            }
++            if (gapPriorMode == 'pathway' && gapPriorPathwayGroupsFile == null) {
++                throw new IllegalArgumentException("gap-prior-context-mode 'pathway' requires gapPriorPathwayGroupsFile (--gap-prior-pathway-groups)")
++            }
++            if (gapPriorMode == 'organism' && gapPriorOrganismReactionsFile == null) {
++                throw new IllegalArgumentException("gap-prior-context-mode 'organism' requires gapPriorOrganismReactionsFile (--gap-prior-organism-reactions)")
++            }
++        }
+         (moduleFiles ?: []).each { File f ->
+             if (f != null && !f.isFile()) throw new IllegalArgumentException("moduleFiles entry does not exist: ${f}")
+         }
+diff --git a/gspa-core/src/main/resources/workflow/integration-workflow-config.keys.json b/gspa-core/src/main/resources/workflow/integration-workflow-config.keys.json
+index fa8644b1..585a3d3a 100644
+--- a/gspa-core/src/main/resources/workflow/integration-workflow-config.keys.json
++++ b/gspa-core/src/main/resources/workflow/integration-workflow-config.keys.json
+@@ -111,5 +111,10 @@
+   "fbaCandidateMinScore",
+   "fbaCandidateTopK",
+   "fbaKeggModules",
+-  "fbaSyntenyFromLayout"
++  "fbaSyntenyFromLayout",
++  "gapPriorContextMode",
++  "gapPriorContextWindowBp",
++  "gapPriorEcNamespaceFix",
++  "gapPriorOrganismReactionsFile",
++  "gapPriorPathwayGroupsFile"
+ ]
+diff --git a/gspa-core/src/test/groovy/gspa/integration/prior/GapContextSupportSpec.groovy b/gspa-core/src/test/groovy/gspa/integration/prior/GapContextSupportSpec.groovy
+new file mode 100644
+index 00000000..b67c1d5a
+--- /dev/null
++++ b/gspa-core/src/test/groovy/gspa/integration/prior/GapContextSupportSpec.groovy
+@@ -0,0 +1,173 @@
++package gspa.integration.prior
++
++import gspa.integration.IntegrationState
++import gspa.integration.MetabolicGap
++import gspa.integration.cohort.CohortInput
++import gspa.integration.cohort.ContextMode
++import gspa.model.Genome
++import gspa.model.GenomeLayout
++import gspa.model.ProteinLocus
++import gspa.model.Strand
++import gspa.ontology.ReactionGraph
++import spock.lang.Specification
++
++class GapContextSupportSpec extends Specification {
++
++    private static double logOdds(double p) {
++        Math.log(p / (1.0d - p))
++    }
++
++    /**
++     * Synthetic fixture:
++     *   Graph: r0 (1.1.1.1) -- r1 (2.2.2.2) -- r2 (3.3.3.3), plus isolated r9 (9.9.9.9)
++     *   Layout on chr1:
++     *     a1   at  1,000..1,900  (midpoint  1,450)
++     *     cNear at 2,500..3,400  (midpoint  2,950; 1,500 bp from a1)
++     *     cFar  at 52,000..52,900 (midpoint 52,450; >50 kb from a1, 1,500 bp from a2)
++     *     a2   at 53,500..54,400 (midpoint 53,950)
++     */
++    private IntegrationState buildState() {
++        def rg = new ReactionGraph()
++        rg.addReaction(new ReactionGraph.ReactionSpec(
++            rxnId: 'r0', ecNumber: '1.1.1.1',
++            substrates: ['m0'] as Set, products: ['m1'] as Set))
++        rg.addReaction(new ReactionGraph.ReactionSpec(
++            rxnId: 'r1', ecNumber: '2.2.2.2',
++            substrates: ['m1'] as Set, products: ['m2'] as Set))
++        rg.addReaction(new ReactionGraph.ReactionSpec(
++            rxnId: 'r2', ecNumber: '3.3.3.3',
++            substrates: ['m2'] as Set, products: ['m3'] as Set))
++        rg.addReaction(new ReactionGraph.ReactionSpec(
++            rxnId: 'r9', ecNumber: '9.9.9.9',
++            substrates: ['m8'] as Set, products: ['m9'] as Set))
++        rg.bindEc('r0', '1.1.1.1')
++        rg.bindEc('r1', '2.2.2.2')
++        rg.bindEc('r2', '3.3.3.3')
++        rg.bindEc('r9', '9.9.9.9')
++        rg.build()
++
++        def layout = new GenomeLayout('g1')
++        layout.add(new ProteinLocus(genomeId: 'g1', proteinId: 'a1', contig: 'chr1', start: 1000, end: 1900, strand: Strand.PLUS))
++        layout.add(new ProteinLocus(genomeId: 'g1', proteinId: 'cNear', contig: 'chr1', start: 2500, end: 3400, strand: Strand.PLUS))
++        layout.add(new ProteinLocus(genomeId: 'g1', proteinId: 'cFar', contig: 'chr1', start: 52000, end: 52900, strand: Strand.PLUS))
++        layout.add(new ProteinLocus(genomeId: 'g1', proteinId: 'a2', contig: 'chr1', start: 53500, end: 54400, strand: Strand.PLUS))
++        layout.finishLoading()
++
++        def state = new IntegrationState(new Genome(id: 'g1'))
++        state.reactionGraph = rg
++        state.genomeLayout = layout
++        state.ecToGoAlternatives = [
++            '1.1.1.1': ['GO:0001111'],
++            '2.2.2.2': ['GO:0002222'],
++            '3.3.3.3': ['GO:0003333'],
++            '9.9.9.9': ['GO:0009999'],
++        ]
++        state
++    }
++
++    def "(a) UNIVERSAL: candidate next to an anchor of r1 gets c = 1 when r1 is the only anchored context reaction; candidate 50 kb away gets 0"() {
++        given:
++        def state = buildState()
++        state.posteriorLogOdds['a1|GO|GO:0002222'] = logOdds(0.9d)
++        def gap = new MetabolicGap(pathwayId: 'P', reactionId: 'r0', ecNumber: 'EC:1.1.1.1', goTerm: 'GO:0001111')
++        def support = new GapContextSupport(mode: ContextMode.UNIVERSAL, windowBp: 10000)
++
++        when:
++        Map<String, Double> c = support.contextSupport(gap, ['cNear', 'cFar'], state)
++
++        then:
++        c['cNear'] == 1.0d
++        c['cFar'] == 0.0d
++        support.lastReport.gaps_evaluated == 1
++        support.lastReport.gaps_with_context == 1
++        support.lastReport.candidates_with_c_gt_0 == 1
++    }
++
++    def "(b) weights: with r1 (alpha) and r2 (alpha^2) both anchored and only r2's anchor near the candidate, c = alpha^2 / (alpha + alpha^2)"() {
++        given:
++        def state = buildState()
++        state.posteriorLogOdds['a1|GO|GO:0002222'] = logOdds(0.9d)
++        state.posteriorLogOdds['a2|GO|GO:0003333'] = logOdds(0.9d)
++        def gap = new MetabolicGap(pathwayId: 'P', reactionId: 'r0', ecNumber: 'EC:1.1.1.1', goTerm: 'GO:0001111')
++        double alpha = 0.5d
++        def support = new GapContextSupport(mode: ContextMode.UNIVERSAL, windowBp: 10000, alpha: alpha, maxHops: 2)
++
++        when:
++        Map<String, Double> c = support.contextSupport(gap, ['cFar'], state)
++        double expected = (alpha * alpha) / (alpha + alpha * alpha)
++
++        then:
++        Math.abs(c['cFar'] - expected) < 1e-12
++    }
++
++    def "(c) ORGANISM: with r1 excluded from the organism set, r2 is unreachable (no traversal through excluded intermediates) -> empty map when r2 was the only anchored one"() {
++        given:
++        def state = buildState()
++        state.posteriorLogOdds['a2|GO|GO:0003333'] = logOdds(0.9d)
++        def gap = new MetabolicGap(pathwayId: 'P', reactionId: 'r0', ecNumber: 'EC:1.1.1.1', goTerm: 'GO:0001111')
++        def supportExcluded = new GapContextSupport(
++            mode: ContextMode.ORGANISM,
++            windowBp: 10000,
++            organismReactions: ['r2'] as Set
++        )
++        def supportIncluded = new GapContextSupport(
++            mode: ContextMode.ORGANISM,
++            windowBp: 10000,
++            organismReactions: ['r1', 'r2'] as Set
++        )
++
++        expect:
++        supportExcluded.contextSupport(gap, ['cNear', 'cFar'], state).isEmpty()
++        supportIncluded.contextSupport(gap, ['cFar'], state)['cFar'] == 1.0d
++    }
++
++    def "(d) PATHWAY: reactions of the same pathway id in other groups count, own-group reactions do not"() {
++        given:
++        def state = buildState()
++        state.posteriorLogOdds['a1|GO|GO:0002222'] = logOdds(0.9d)
++        state.posteriorLogOdds['a2|GO|GO:0009999'] = logOdds(0.9d)
++        def gap = new MetabolicGap(pathwayId: 'P', reactionId: 'r0', ecNumber: 'EC:1.1.1.1', goTerm: 'GO:0001111')
++
++        and: 'r1 is in r0 own group G1; r9 is in another group G2 of the same pathway P'
++        List<CohortInput.PathwayGroup> groups = [
++            new CohortInput.PathwayGroup(pathwayId: 'P', groupId: 'G1', source: 'test', reactionIds: ['r0', 'r1'] as Set),
++            new CohortInput.PathwayGroup(pathwayId: 'P', groupId: 'G2', source: 'test', reactionIds: ['r9'] as Set),
++        ]
++        def support = new GapContextSupport(mode: ContextMode.PATHWAY, windowBp: 10000, pathwayGroups: groups)
++
++        when:
++        Map<String, Double> c = support.contextSupport(gap, ['cNear', 'cFar'], state)
++
++        then: 'only r9 (anchored by a2 near cFar) counts; own-group r1 (anchored by a1 near cNear) does not'
++        c['cNear'] == 0.0d
++        c['cFar'] == 1.0d
++
++        and: 'when only own-group reaction r1 is anchored, no anchored context reaction remains -> empty map'
++        state.posteriorLogOdds.remove('a2|GO|GO:0009999')
++        support.contextSupport(gap, ['cNear', 'cFar'], state).isEmpty()
++    }
++
++    def "(e) a gap whose EC maps to no graph reaction -> empty map"() {
++        given:
++        def state = buildState()
++        state.posteriorLogOdds['a1|GO|GO:0002222'] = logOdds(0.9d)
++        def gap = new MetabolicGap(pathwayId: 'P', reactionId: 'unknown_rxn', ecNumber: 'EC:5.5.5.5', goTerm: 'GO:0005555')
++        def support = new GapContextSupport(mode: ContextMode.UNIVERSAL, windowBp: 10000)
++
++        expect:
++        support.contextSupport(gap, ['cNear', 'cFar'], state).isEmpty()
++    }
++
++    def "(f) the gap's own GO term never anchors"() {
++        given:
++        def state = buildState()
++        // Map r1's EC (2.2.2.2) to the gap's own GO term (GO:0001111) only
++        state.ecToGoAlternatives['2.2.2.2'] = ['GO:0001111']
++        state.posteriorLogOdds['a1|GO|GO:0001111'] = logOdds(0.95d)
++        def gap = new MetabolicGap(pathwayId: 'P', reactionId: 'r0', ecNumber: 'EC:1.1.1.1', goTerm: 'GO:0001111')
++        def support = new GapContextSupport(mode: ContextMode.UNIVERSAL, windowBp: 10000)
++
++        expect:
++        support.contextSupport(gap, ['cNear', 'cFar'], state).isEmpty()
++    }
++}
+diff --git a/gspa-core/src/test/groovy/gspa/integration/prior/GapFillingPriorSpec.groovy b/gspa-core/src/test/groovy/gspa/integration/prior/GapFillingPriorSpec.groovy
+index 22cf406c..430f8e0f 100644
+--- a/gspa-core/src/test/groovy/gspa/integration/prior/GapFillingPriorSpec.groovy
++++ b/gspa-core/src/test/groovy/gspa/integration/prior/GapFillingPriorSpec.groovy
+@@ -2,8 +2,13 @@ package gspa.integration.prior
+ 
+ import gspa.integration.IntegrationState
+ import gspa.integration.MetabolicGap
++import gspa.integration.cohort.ContextMode
+ import gspa.model.AnnotationType
+ import gspa.model.Genome
++import gspa.model.GenomeLayout
++import gspa.model.ProteinLocus
++import gspa.model.Strand
++import gspa.ontology.ReactionGraph
+ import spock.lang.Specification
+ 
+ class GapFillingPriorSpec extends Specification {
+@@ -96,4 +101,136 @@ class GapFillingPriorSpec extends Specification {
+         then:
+         prior.logOddsBoost('p', 'p|PFAM|PF00001', state) == 0.0d
+     }
++
++    private static double logOdds(double p) {
++        Math.log(p / (1.0d - p))
++    }
++
++    private IntegrationState buildContextState(List<String> candProteins, Map<String, Double> candProbs, boolean withAnchor = true) {
++        def rg = new ReactionGraph()
++        rg.addReaction(new ReactionGraph.ReactionSpec(
++            rxnId: 'r0', ecNumber: '2.7.1.1',
++            substrates: ['m0'] as Set, products: ['m1'] as Set))
++        rg.addReaction(new ReactionGraph.ReactionSpec(
++            rxnId: 'r1', ecNumber: '2.7.1.2',
++            substrates: ['m1'] as Set, products: ['m2'] as Set))
++        rg.bindEc('r0', '2.7.1.1')
++        rg.bindEc('r1', '2.7.1.2')
++        rg.build()
++
++        def layout = new GenomeLayout('g')
++        layout.add(new ProteinLocus(genomeId: 'g', proteinId: 'anchor', contig: 'chr1', start: 1000, end: 1900, strand: Strand.PLUS))
++        layout.add(new ProteinLocus(genomeId: 'g', proteinId: 'pNear', contig: 'chr1', start: 2500, end: 3400, strand: Strand.PLUS))
++        layout.add(new ProteinLocus(genomeId: 'g', proteinId: 'pFar', contig: 'chr1', start: 60000, end: 60900, strand: Strand.PLUS))
++        layout.finishLoading()
++
++        def state = new IntegrationState(new Genome(id: 'g'))
++        state.reactionGraph = rg
++        state.genomeLayout = layout
++        state.ecToGoAlternatives = [
++            '2.7.1.1': ['GO:0004396'],
++            '2.7.1.2': ['GO:0004397'],
++        ]
++        state.metabolicGaps = [
++            new MetabolicGap(pathwayId: 'PWY-1', reactionId: 'r0', ecNumber: 'EC:2.7.1.1', goTerm: 'GO:0004396')
++        ]
++        Map<String, Double> likes = new LinkedHashMap<>()
++        Map<String, Integer> counts = new LinkedHashMap<>()
++        if (withAnchor) {
++            likes['anchor|GO|GO:0004397'] = logOdds(0.9d)
++            counts['anchor|GO|GO:0004397'] = 2
++        }
++        for (String p : candProteins) {
++            String key = "${p}|EC|EC:2.7.1.1".toString()
++            likes[key] = logOdds(candProbs[p])
++            counts[key] = 2
++        }
++        state.likelihoodLogOdds = new LinkedHashMap<>(likes)
++        state.posteriorLogOdds = new LinkedHashMap<>(likes)
++        state.claimCounts = counts
++        state
++    }
++
++    def "(g) with contextSupport set but returning an empty map, boosts equal the no-support boosts for the same state"() {
++        given:
++        def stateNoSupport = buildContextState(['pNear', 'pFar'], [pNear: 0.41d, pFar: 0.44d], false)
++        def stateEmptySupport = buildContextState(['pNear', 'pFar'], [pNear: 0.41d, pFar: 0.44d], false)
++        def priorNoSupport = new GapFillingPrior()
++        def priorEmptySupport = new GapFillingPrior(contextSupport: new GapContextSupport(mode: ContextMode.UNIVERSAL, windowBp: 10000))
++
++        when:
++        priorNoSupport.beginIteration(stateNoSupport)
++        priorEmptySupport.beginIteration(stateEmptySupport)
++
++        then:
++        priorEmptySupport.contextSupport.lastReport.gaps_with_context == 0
++        for (String key : ['pNear|EC|EC:2.7.1.1', 'pFar|EC|EC:2.7.1.1']) {
++            String pid = IntegrationState.splitFunctionKey(key)[0]
++            assert priorEmptySupport.logOddsBoost(pid, key, stateEmptySupport) ==
++                priorNoSupport.logOddsBoost(pid, key, stateNoSupport)
++        }
++        priorEmptySupport.logOddsBoost('pFar', 'pFar|EC|EC:2.7.1.1', stateEmptySupport) > 0.0d
++    }
++
++    def "(h) with two candidates in the window at equal tier where the lower-likelihood one has c = 1 and the other c = 0, the c = 1 candidate receives max(1.15*mag, 0.14 - lo) * 1.5"() {
++        given: 'both candidates in tier 3 ([0.40, 0.45)), pNear has lower likelihood (0.41) and c = 1, pFar has higher likelihood (0.44) and c = 0'
++        def state = buildContextState(['pNear', 'pFar'], [pNear: 0.41d, pFar: 0.44d], true)
++        def prior = new GapFillingPrior(
++            alphaGap: 1.5d,
++            contextSupport: new GapContextSupport(mode: ContextMode.UNIVERSAL, windowBp: 10000)
++        )
++        double loNear = state.getLikelihoodLogOdds('pNear|EC|EC:2.7.1.1')
++        double expected = Math.max(1.15d * 1.5d, 0.14d - loNear) * 1.5d
++
++        when:
++        prior.beginIteration(state)
++
++        then:
++        Math.abs(prior.logOddsBoost('pNear', 'pNear|EC|EC:2.7.1.1', state) - expected) < 1e-12
++        prior.logOddsBoost('pFar', 'pFar|EC|EC:2.7.1.1', state) == 0.0d
++    }
++
++    def "(i) a candidate with c = 0 that is the only candidate receives max(1.15*mag, 0.14 - lo) * 0.5"() {
++        given: 'pFar is the only candidate in the window and is 50 kb from the anchor (c = 0)'
++        def state = buildContextState(['pFar'], [pFar: 0.42d], true)
++        def prior = new GapFillingPrior(
++            alphaGap: 1.5d,
++            contextSupport: new GapContextSupport(mode: ContextMode.UNIVERSAL, windowBp: 10000)
++        )
++        double loFar = state.getLikelihoodLogOdds('pFar|EC|EC:2.7.1.1')
++        double expected = Math.max(1.15d * 1.5d, 0.14d - loFar) * 0.5d
++
++        when:
++        prior.beginIteration(state)
++
++        then:
++        Math.abs(prior.logOddsBoost('pFar', 'pFar|EC|EC:2.7.1.1', state) - expected) < 1e-12
++    }
++
++    def "(j) EC namespace repair: a prefixed EC candidate is reached by the targeted rescue only when the fix is on"() {
++        given: 'integrated keys carry EC: while the gap record carries a bare EC number (production layout)'
++        def gap = new MetabolicGap(pathwayId: 'PWY-9', reactionId: 'RXN-9', ecNumber: '3.2.2.3', goTerm: null)
++        def mk = {
++            def st = new IntegrationState(new Genome(id: 'g'))
++            st.metabolicGaps = [gap]
++            double lo = Math.log(0.42d / 0.58d)
++            st.likelihoodLogOdds = new LinkedHashMap<String, Double>(['p1|EC|EC:3.2.2.3': lo])
++            st.posteriorLogOdds = new LinkedHashMap<String, Double>(['p1|EC|EC:3.2.2.3': lo])
++            st.claimCounts = new LinkedHashMap<String, Integer>(['p1|EC|EC:3.2.2.3': 2])
++            st
++        }
++        def stateOff = mk()
++        def stateOn = mk()
++        def priorOff = new GapFillingPrior(alphaGap: 1.5d)
++        def priorOn = new GapFillingPrior(alphaGap: 1.5d, ecNamespaceFix: true)
++
++        when:
++        priorOff.beginIteration(stateOff)
++        priorOn.beginIteration(stateOn)
++
++        then: 'today: no boost (the mismatch); with the fix: the targeted rescue boost'
++        priorOff.logOddsBoost('p1', 'p1|EC|EC:3.2.2.3', stateOff) == 0.0d
++        Math.abs(priorOn.logOddsBoost('p1', 'p1|EC|EC:3.2.2.3', stateOn) -
++            Math.max(1.15d * 1.5d, 0.14d - stateOn.getLikelihoodLogOdds('p1|EC|EC:3.2.2.3'))) < 1e-12
++    }
+ }
+diff --git a/gspa-core/src/test/groovy/gspa/integration/workflow/IntegrationWorkflowConfigSpec.groovy b/gspa-core/src/test/groovy/gspa/integration/workflow/IntegrationWorkflowConfigSpec.groovy
+index 5bb9d160..1cfe016a 100644
+--- a/gspa-core/src/test/groovy/gspa/integration/workflow/IntegrationWorkflowConfigSpec.groovy
++++ b/gspa-core/src/test/groovy/gspa/integration/workflow/IntegrationWorkflowConfigSpec.groovy
+@@ -53,6 +53,41 @@ class IntegrationWorkflowConfigSpec extends Specification {
+         'dark matter mode'       | [darkMatterMode: 'everywhere']                  | 'dark-matter mode'
+         'outer loop w/o suggester' | [iterateGapseq: true]                         | '--iterate-gapseq requires --dark-matter'
+         'beam width'             | [beamWidth: 0]                                  | '--beam-width'
++        'unknown gap prior mode' | [gapPriorContextMode: 'invalid']                | 'gap-prior-context-mode'
++        'gap prior window <= 0'  | [gapPriorContextWindowBp: 0]                    | '--gap-prior-context-window-bp'
++    }
++
++    def 'gap prior context mode validation checks required files and allows none without extra files'() {
++        given:
++        File rxnGraph = new File(dir, 'rxns.tsv')
++        rxnGraph.text = 'id\tstoichiometry\tec_numbers\nr1\t-1:a:0:0;1:b:0:0\t1.1.1.1\n'
++
++        when: 'mode none with no extra files passes'
++        new IntegrationWorkflowConfig(gapPriorContextMode: 'none').validate()
++
++        then:
++        noExceptionThrown()
++
++        when: 'mode pathway without groups file fails with a plain message'
++        new IntegrationWorkflowConfig(gapPriorContextMode: 'pathway', reactionGraphFile: rxnGraph).validate()
++
++        then:
++        def ep = thrown(IllegalArgumentException)
++        ep.message.contains('gapPriorPathwayGroupsFile')
++
++        when: 'mode organism without organism reactions file fails with a plain message'
++        new IntegrationWorkflowConfig(gapPriorContextMode: 'organism', reactionGraphFile: rxnGraph).validate()
++
++        then:
++        def eo = thrown(IllegalArgumentException)
++        eo.message.contains('gapPriorOrganismReactionsFile')
++
++        when: 'non-none mode without reactionGraphFile fails'
++        new IntegrationWorkflowConfig(gapPriorContextMode: 'universal').validate()
++
++        then:
++        def eg = thrown(IllegalArgumentException)
++        eg.message.contains('reactionGraphFile')
+     }
+ 
+     def 'a named reference file that does not exist is an error, not an absent prior'() {

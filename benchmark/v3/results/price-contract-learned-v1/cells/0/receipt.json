@@ -1,0 +1,3185 @@
+{
+ "arms": {
+  "cohort_organism": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_organism/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/cohort_organism",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_organism/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_organism/batch_stats.tsv",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+    "--cohort",
+    "--cohort-orthogroups",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv",
+    "--cohort-metadata",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_organism/cohort_metadata.json",
+    "--cohort-pathways",
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv",
+    "--cohort-holdout",
+    "CLADE",
+    "--cohort-context-mode",
+    "ORGANISM",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv": "8a59f3effe53dc23352d389f88b24e04b99f591c0824091871451c5bda5eb5e5",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/cohort_metadata.json": "e6c08b49f85a709b4a7b1b2ba25f2a75716515749e21a160a6d13725f834f522",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv": "b3bbc7a624a9064156f02e49e9f7a750392114a96d0bd421061cce510a00466d",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/layout_metadata.json": "c9475c54b36ca73c864892ebce23f9cdaf1d3d646a4091f06b33853080440a3b",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_organism/cohort_metadata.json": "3c95cf5fb18176fe1e1f627009d7268d764c14798c3e763313628d0db68cdd44",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "unplaced_absent_from_layout_proteome": 0,
+    "unplaced_declared_by_layout_bundle": 0
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 47329,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 19493,
+     "unsupported": 19493
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "45e8edfaa31634e4ab28822c7ea0895b26d279a1e1c357888b7c291f5e3fb996",
+    "status_by_type": {
+     "EC/scored": 1803,
+     "EC/unsupported": 3130,
+     "GO/scored": 45526,
+     "GO/unsupported": 16363
+    },
+    "unsupported_reasons": {
+     "EC/sequence_score_outside_training_calibration_range": 27,
+     "EC/unseen_reaction_context_mode": 3103,
+     "GO/profile_lacks_both_classes_in_train_and_calibration": 15498,
+     "GO/sequence_score_outside_training_calibration_range": 83,
+     "GO/unseen_source_function_role_or_availability_profile": 782
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_organism/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "68274da5d2e1b8dc947aeee90a8df9d066494a95ba87b769a7f6eaff5f59bcd1",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/cohort_organism -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_organism/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_organism/batch_stats.tsv --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv --cohort --cohort-orthogroups /scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv --cohort-metadata /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_organism/cohort_metadata.json --cohort-pathways /data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv --cohort-holdout CLADE --cohort-context-mode ORGANISM --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 1328.45\n\tSystem time (seconds): 47.35\n\tPercent of CPU this job got: 995%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 2:18.17\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 7522284\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 7\n\tMinor (reclaiming a frame) page faults: 2346479\n\tVoluntary context switches: 1105231\n\tInvoluntary context switches: 44097\n\tSwaps: 0\n\tFile system inputs: 272\n\tFile system outputs: 352808\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 138.2,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 0.644625714,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "baseline": "stage0_raw_max_score",
+     "baseline_snapshot_id": "stage0_raw_max_score:e46dd808bedee173aa3558e2",
+     "cohort_genomes": 1,
+     "elapsed_seconds": 0.000800007,
+     "keys_with_cohort_features": 0,
+     "keys_with_local_features": 1823,
+     "n_peer_genomes": 0,
+     "name": "cohort_context",
+     "no_peers": true,
+     "route": "batch",
+     "status": "executed"
+    },
+    {
+     "elapsed_seconds": 30.451704619,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 47329,
+     "candidates_unsupported": 19493,
+     "context_supplied": true,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 62.492926645,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 21,
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "rescored": 47329,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "executed",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 0,
+     "unchanged_unsupported": 19493
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "cohort_pathway": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_pathway/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/cohort_pathway",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_pathway/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_pathway/batch_stats.tsv",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+    "--cohort",
+    "--cohort-orthogroups",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv",
+    "--cohort-metadata",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_pathway/cohort_metadata.json",
+    "--cohort-pathways",
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv",
+    "--cohort-holdout",
+    "CLADE",
+    "--cohort-context-mode",
+    "PATHWAY",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv": "8a59f3effe53dc23352d389f88b24e04b99f591c0824091871451c5bda5eb5e5",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/cohort_metadata.json": "e6c08b49f85a709b4a7b1b2ba25f2a75716515749e21a160a6d13725f834f522",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv": "b3bbc7a624a9064156f02e49e9f7a750392114a96d0bd421061cce510a00466d",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/layout_metadata.json": "c9475c54b36ca73c864892ebce23f9cdaf1d3d646a4091f06b33853080440a3b",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_pathway/cohort_metadata.json": "3c95cf5fb18176fe1e1f627009d7268d764c14798c3e763313628d0db68cdd44",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "unplaced_absent_from_layout_proteome": 0,
+    "unplaced_declared_by_layout_bundle": 0
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 47329,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 19493,
+     "unsupported": 19493
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "f4fbb33c13e8149cfbb53316423deb7d52e36694163a3ced48adec38c32f995d",
+    "status_by_type": {
+     "EC/scored": 1803,
+     "EC/unsupported": 3130,
+     "GO/scored": 45526,
+     "GO/unsupported": 16363
+    },
+    "unsupported_reasons": {
+     "EC/sequence_score_outside_training_calibration_range": 27,
+     "EC/unseen_reaction_context_mode": 3103,
+     "GO/profile_lacks_both_classes_in_train_and_calibration": 15498,
+     "GO/sequence_score_outside_training_calibration_range": 83,
+     "GO/unseen_source_function_role_or_availability_profile": 782
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_pathway/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "68274da5d2e1b8dc947aeee90a8df9d066494a95ba87b769a7f6eaff5f59bcd1",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/cohort_pathway -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_pathway/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_pathway/batch_stats.tsv --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv --cohort --cohort-orthogroups /scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv --cohort-metadata /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_pathway/cohort_metadata.json --cohort-pathways /data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv --cohort-holdout CLADE --cohort-context-mode PATHWAY --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 1061.88\n\tSystem time (seconds): 44.98\n\tPercent of CPU this job got: 778%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 2:22.12\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 8114448\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 6\n\tMinor (reclaiming a frame) page faults: 2588214\n\tVoluntary context switches: 1001921\n\tInvoluntary context switches: 39584\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 352808\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 142.2,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 0.71755999,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "baseline": "stage0_raw_max_score",
+     "baseline_snapshot_id": "stage0_raw_max_score:e46dd808bedee173aa3558e2",
+     "cohort_genomes": 1,
+     "elapsed_seconds": 0.000992032,
+     "keys_with_cohort_features": 0,
+     "keys_with_local_features": 2103,
+     "n_peer_genomes": 0,
+     "name": "cohort_context",
+     "no_peers": true,
+     "route": "batch",
+     "status": "executed"
+    },
+    {
+     "elapsed_seconds": 29.770176176,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 47329,
+     "candidates_unsupported": 19493,
+     "context_supplied": true,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 63.326106467,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 21,
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "rescored": 47329,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "executed",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 0,
+     "unchanged_unsupported": 19493
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "cohort_universal": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_universal/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/cohort_universal",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_universal/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_universal/batch_stats.tsv",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+    "--cohort",
+    "--cohort-orthogroups",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv",
+    "--cohort-metadata",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_universal/cohort_metadata.json",
+    "--cohort-pathways",
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv",
+    "--cohort-holdout",
+    "CLADE",
+    "--cohort-context-mode",
+    "UNIVERSAL",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv": "8a59f3effe53dc23352d389f88b24e04b99f591c0824091871451c5bda5eb5e5",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/cohort_metadata.json": "e6c08b49f85a709b4a7b1b2ba25f2a75716515749e21a160a6d13725f834f522",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv": "b3bbc7a624a9064156f02e49e9f7a750392114a96d0bd421061cce510a00466d",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/layout_metadata.json": "c9475c54b36ca73c864892ebce23f9cdaf1d3d646a4091f06b33853080440a3b",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_universal/cohort_metadata.json": "3c95cf5fb18176fe1e1f627009d7268d764c14798c3e763313628d0db68cdd44",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "unplaced_absent_from_layout_proteome": 0,
+    "unplaced_declared_by_layout_bundle": 0
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 47329,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 19493,
+     "unsupported": 19493
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "ac6c38a0932ad7ddf1b5b3db76bb3d023ba190f785b5ae483982542b2b6e09a4",
+    "status_by_type": {
+     "EC/scored": 1803,
+     "EC/unsupported": 3130,
+     "GO/scored": 45526,
+     "GO/unsupported": 16363
+    },
+    "unsupported_reasons": {
+     "EC/sequence_score_outside_training_calibration_range": 27,
+     "EC/unseen_source_function_role_or_availability_profile": 3103,
+     "GO/profile_lacks_both_classes_in_train_and_calibration": 15498,
+     "GO/sequence_score_outside_training_calibration_range": 83,
+     "GO/unseen_source_function_role_or_availability_profile": 782
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_universal/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "68274da5d2e1b8dc947aeee90a8df9d066494a95ba87b769a7f6eaff5f59bcd1",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/cohort_universal -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_universal/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_universal/batch_stats.tsv --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv --cohort --cohort-orthogroups /scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv --cohort-metadata /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/cohort_universal/cohort_metadata.json --cohort-pathways /data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv --cohort-holdout CLADE --cohort-context-mode UNIVERSAL --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 1120.36\n\tSystem time (seconds): 39.50\n\tPercent of CPU this job got: 815%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 2:22.17\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 7843916\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 12\n\tMinor (reclaiming a frame) page faults: 2440902\n\tVoluntary context switches: 840301\n\tInvoluntary context switches: 106121\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 353088\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 142.2,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 0.618435148,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "baseline": "stage0_raw_max_score",
+     "baseline_snapshot_id": "stage0_raw_max_score:e46dd808bedee173aa3558e2",
+     "cohort_genomes": 1,
+     "elapsed_seconds": 0.000808601,
+     "keys_with_cohort_features": 0,
+     "keys_with_local_features": 2677,
+     "n_peer_genomes": 0,
+     "name": "cohort_context",
+     "no_peers": true,
+     "route": "batch",
+     "status": "executed"
+    },
+    {
+     "elapsed_seconds": 29.41780378,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 47329,
+     "candidates_unsupported": 19493,
+     "context_supplied": true,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 65.622769725,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 21,
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "rescored": 47329,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "executed",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 0,
+     "unchanged_unsupported": 19493
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "gaps": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/gaps",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps/batch_stats.tsv",
+    "--pathway-observations",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json",
+    "--rlc-suggester",
+    "--suggestions-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps/GCA_000006965.1.suggestions.tsv",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "gap_context": {
+    "available": true,
+    "candidate_gap_records": 80,
+    "ec2go_sha256": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "genome_id": "GCA_000006965.1",
+    "schema": "gspa.metabolic-gap-context/1",
+    "source": "pathway_observations"
+   },
+   "gap_records": 80,
+   "inputs": {
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "59c6f20c497f35d2d02d8f6b9a3b4ce875073e5b15d37cbe201e52cf7e0206c9",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/gaps -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps/batch_stats.tsv --pathway-observations /scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json --rlc-suggester --suggestions-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps/GCA_000006965.1.suggestions.tsv --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv\"\n\tUser time (seconds): 606.55\n\tSystem time (seconds): 19.59\n\tPercent of CPU this job got: 997%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 1:02.75\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 7167404\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 9\n\tMinor (reclaiming a frame) page faults: 2150554\n\tVoluntary context switches: 473136\n\tInvoluntary context switches: 45101\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 56024\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 62.8,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 1.928287291,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": true,
+     "metabolic_gap_records": 80,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 31.781017942,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 10.357791314,
+     "input_candidates": 66822,
+     "name": "reaction_context",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 59
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "learned_integration",
+     "reason": "learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them",
+     "status": "skipped"
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "gaps_learned": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps_learned/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/gaps_learned",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps_learned/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps_learned/batch_stats.tsv",
+    "--pathway-observations",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json",
+    "--rlc-suggester",
+    "--suggestions-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps_learned/GCA_000006965.1.suggestions.tsv",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "gap_context": {
+    "available": true,
+    "candidate_gap_records": 80,
+    "ec2go_sha256": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "genome_id": "GCA_000006965.1",
+    "schema": "gspa.metabolic-gap-context/1",
+    "source": "pathway_observations"
+   },
+   "gap_records": 80,
+   "inputs": {
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 0,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 66822,
+     "unsupported": 66822
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "e2d135faba5a59dbe7fa49c1307c7a0d29c34e2409b0607148a46423f7be0b3d",
+    "status_by_type": {
+     "EC/unsupported": 4933,
+     "GO/unsupported": 61889
+    },
+    "unsupported_reasons": {
+     "EC/unseen_source_function_role_or_availability_profile": 4933,
+     "GO/unseen_source_function_role_or_availability_profile": 61889
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps_learned/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "59c6f20c497f35d2d02d8f6b9a3b4ce875073e5b15d37cbe201e52cf7e0206c9",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/gaps_learned -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps_learned/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps_learned/batch_stats.tsv --pathway-observations /scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json --rlc-suggester --suggestions-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/gaps_learned/GCA_000006965.1.suggestions.tsv --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 1006.09\n\tSystem time (seconds): 32.86\n\tPercent of CPU this job got: 984%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 1:45.57\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 7519424\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 6\n\tMinor (reclaiming a frame) page faults: 2320052\n\tVoluntary context switches: 701214\n\tInvoluntary context switches: 35556\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 295224\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 105.6,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 2.184872561,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": true,
+     "metabolic_gap_records": 80,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 32.197783559,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 11.067557473,
+     "input_candidates": 66822,
+     "name": "reaction_context",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 59
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 0,
+     "candidates_unsupported": 66822,
+     "context_supplied": false,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 40.806055695,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 0,
+     "reason": "no candidates supported by the model input-coverage manifest; baseline scores retained",
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "requested": true,
+     "rescored": 0,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "skipped",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 59,
+     "unchanged_unsupported": 66822
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "learned": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/learned",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned/batch_stats.tsv",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 50395,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 16427,
+     "unsupported": 16427
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "a8ce12ed1b931426b6c68b3b571a5b87ab33a20aa6c660d5336fce8d63f2739d",
+    "status_by_type": {
+     "EC/scored": 4869,
+     "EC/unsupported": 64,
+     "GO/scored": 45526,
+     "GO/unsupported": 16363
+    },
+    "unsupported_reasons": {
+     "EC/sequence_score_outside_training_calibration_range": 64,
+     "GO/profile_lacks_both_classes_in_train_and_calibration": 15498,
+     "GO/sequence_score_outside_training_calibration_range": 83,
+     "GO/unseen_source_function_role_or_availability_profile": 782
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "2b87b93649677b560fe79b01888cbfcc1b91969294954acf47ce8417aa1e0be4",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/learned -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned/batch_stats.tsv --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 1131.77\n\tSystem time (seconds): 39.70\n\tPercent of CPU this job got: 965%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 2:01.29\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 6623300\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 26\n\tMinor (reclaiming a frame) page faults: 2264198\n\tVoluntary context switches: 799448\n\tInvoluntary context switches: 52336\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 355848\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 121.3,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 0.840408792,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 31.471595805,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 50395,
+     "candidates_unsupported": 16427,
+     "context_supplied": false,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 69.519815784,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 21,
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "rescored": 50395,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "executed",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 0,
+     "unchanged_unsupported": 16427
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "learned_gbdt": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned_gbdt/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/learned_gbdt",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned_gbdt/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned_gbdt/batch_stats.tsv",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_gbdt.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_gbdt.json": "d319630bf1ced1989b4cae920841c0f8464f9b8d5bc06fd8de4c99bd5bfde42e",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 50395,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 16427,
+     "unsupported": 16427
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-gbdt-06c05a618c57-d9537b61",
+     "kind": "gbdt",
+     "sha256": "d319630bf1ced1989b4cae920841c0f8464f9b8d5bc06fd8de4c99bd5bfde42e"
+    },
+    "sha256": "276c7176ebef684e28f2cd9dc3ce96c7f05e086704ebca260934876a1b130643",
+    "status_by_type": {
+     "EC/scored": 4869,
+     "EC/unsupported": 64,
+     "GO/scored": 45526,
+     "GO/unsupported": 16363
+    },
+    "unsupported_reasons": {
+     "EC/sequence_score_outside_training_calibration_range": 64,
+     "GO/profile_lacks_both_classes_in_train_and_calibration": 15498,
+     "GO/sequence_score_outside_training_calibration_range": 83,
+     "GO/unseen_source_function_role_or_availability_profile": 782
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned_gbdt/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "bff7bf4e174cabeddbbe3d0cd73272ca254c80ede7e642aef886052431364d07",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/learned_gbdt -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned_gbdt/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/learned_gbdt/batch_stats.tsv --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_gbdt.json\"\n\tUser time (seconds): 1118.66\n\tSystem time (seconds): 37.63\n\tPercent of CPU this job got: 970%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 1:59.12\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 6712484\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 6\n\tMinor (reclaiming a frame) page faults: 2141639\n\tVoluntary context switches: 834425\n\tInvoluntary context switches: 52326\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 355792\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 119.1,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 0.804564922,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 31.917495519,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 50395,
+     "candidates_unsupported": 16427,
+     "context_supplied": false,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 67.773102334,
+     "input_candidates": 66822,
+     "model_id": "context-gbdt-06c05a618c57-d9537b61",
+     "model_kind": "gbdt",
+     "model_sha256": "d319630bf1ced1989b4cae920841c0f8464f9b8d5bc06fd8de4c99bd5bfde42e",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 21,
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "rescored": 50395,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "executed",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 0,
+     "unchanged_unsupported": 16427
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "obs_learned": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/obs_learned/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/obs_learned",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/obs_learned/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/obs_learned/batch_stats.tsv",
+    "--pathway-observations",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "gap_context": {
+    "available": true,
+    "candidate_gap_records": 80,
+    "ec2go_sha256": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "genome_id": "GCA_000006965.1",
+    "schema": "gspa.metabolic-gap-context/1",
+    "source": "pathway_observations"
+   },
+   "gap_records": 80,
+   "inputs": {
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 0,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 66822,
+     "unsupported": 66822
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "e2d135faba5a59dbe7fa49c1307c7a0d29c34e2409b0607148a46423f7be0b3d",
+    "status_by_type": {
+     "EC/unsupported": 4933,
+     "GO/unsupported": 61889
+    },
+    "unsupported_reasons": {
+     "EC/unseen_source_function_role_or_availability_profile": 4933,
+     "GO/unseen_source_function_role_or_availability_profile": 61889
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/obs_learned/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "59c6f20c497f35d2d02d8f6b9a3b4ce875073e5b15d37cbe201e52cf7e0206c9",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/obs_learned -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/obs_learned/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/obs_learned/batch_stats.tsv --pathway-observations /scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 847.95\n\tSystem time (seconds): 29.47\n\tPercent of CPU this job got: 911%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 1:36.26\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 6386212\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 13\n\tMinor (reclaiming a frame) page faults: 2077460\n\tVoluntary context switches: 647917\n\tInvoluntary context switches: 39130\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 295160\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 96.3,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 1.785974819,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": true,
+     "metabolic_gap_records": 80,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 32.592615049,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 0,
+     "candidates_unsupported": 66822,
+     "context_supplied": false,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 42.804474076,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 0,
+     "reason": "no candidates supported by the model input-coverage manifest; baseline scores retained",
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "requested": true,
+     "rescored": 0,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "skipped",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 0,
+     "unchanged_unsupported": 66822
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "organism": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/organism",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/batch_stats.tsv",
+    "--pathway-observations",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json",
+    "--rlc-suggester",
+    "--suggestions-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/GCA_000006965.1.suggestions.tsv",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+    "--cohort",
+    "--cohort-orthogroups",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv",
+    "--cohort-metadata",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/cohort_metadata.json",
+    "--cohort-pathways",
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv",
+    "--cohort-holdout",
+    "CLADE",
+    "--cohort-context-mode",
+    "ORGANISM",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "gap_context": {
+    "available": true,
+    "candidate_gap_records": 80,
+    "ec2go_sha256": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "genome_id": "GCA_000006965.1",
+    "schema": "gspa.metabolic-gap-context/1",
+    "source": "pathway_observations"
+   },
+   "gap_records": 80,
+   "inputs": {
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv": "8a59f3effe53dc23352d389f88b24e04b99f591c0824091871451c5bda5eb5e5",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/cohort_metadata.json": "e6c08b49f85a709b4a7b1b2ba25f2a75716515749e21a160a6d13725f834f522",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv": "b3bbc7a624a9064156f02e49e9f7a750392114a96d0bd421061cce510a00466d",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/layout_metadata.json": "c9475c54b36ca73c864892ebce23f9cdaf1d3d646a4091f06b33853080440a3b",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/cohort_metadata.json": "3c95cf5fb18176fe1e1f627009d7268d764c14798c3e763313628d0db68cdd44",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "unplaced_absent_from_layout_proteome": 0,
+    "unplaced_declared_by_layout_bundle": 0
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 0,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 66822,
+     "unsupported": 66822
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "1d16107dad8606c884491e4cb2dc903a67d15174ebc9a192320de71fbd050544",
+    "status_by_type": {
+     "EC/unsupported": 4933,
+     "GO/unsupported": 61889
+    },
+    "unsupported_reasons": {
+     "EC/unseen_reaction_context_mode": 3103,
+     "EC/unseen_source_function_role_or_availability_profile": 1830,
+     "GO/unseen_source_function_role_or_availability_profile": 61889
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "59c6f20c497f35d2d02d8f6b9a3b4ce875073e5b15d37cbe201e52cf7e0206c9",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/organism -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/batch_stats.tsv --pathway-observations /scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json --rlc-suggester --suggestions-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/GCA_000006965.1.suggestions.tsv --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv --cohort --cohort-orthogroups /scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv --cohort-metadata /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/organism/cohort_metadata.json --cohort-pathways /data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv --cohort-holdout CLADE --cohort-context-mode ORGANISM --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 832.65\n\tSystem time (seconds): 33.62\n\tPercent of CPU this job got: 655%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 2:12.09\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 9309156\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 2\n\tMinor (reclaiming a frame) page faults: 2770185\n\tVoluntary context switches: 770627\n\tInvoluntary context switches: 57322\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 295832\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 132.1,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 1.493372974,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": true,
+     "metabolic_gap_records": 80,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "baseline": "stage0_raw_max_score",
+     "baseline_snapshot_id": "stage0_raw_max_score:e46dd808bedee173aa3558e2",
+     "cohort_genomes": 1,
+     "elapsed_seconds": 0.0009526,
+     "keys_with_cohort_features": 0,
+     "keys_with_local_features": 1823,
+     "n_peer_genomes": 0,
+     "name": "cohort_context",
+     "no_peers": true,
+     "route": "batch",
+     "status": "executed"
+    },
+    {
+     "elapsed_seconds": 31.396443569,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 10.691862557,
+     "input_candidates": 66822,
+     "name": "reaction_context",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 59
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 0,
+     "candidates_unsupported": 66822,
+     "context_supplied": true,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 41.821312032,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 0,
+     "reason": "no candidates supported by the model input-coverage manifest; baseline scores retained",
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "requested": true,
+     "rescored": 0,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "skipped",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 59,
+     "unchanged_unsupported": 66822
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "pathway": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/pathway",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/batch_stats.tsv",
+    "--pathway-observations",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json",
+    "--rlc-suggester",
+    "--suggestions-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/GCA_000006965.1.suggestions.tsv",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+    "--cohort",
+    "--cohort-orthogroups",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv",
+    "--cohort-metadata",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/cohort_metadata.json",
+    "--cohort-pathways",
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv",
+    "--cohort-holdout",
+    "CLADE",
+    "--cohort-context-mode",
+    "PATHWAY",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "gap_context": {
+    "available": true,
+    "candidate_gap_records": 80,
+    "ec2go_sha256": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "genome_id": "GCA_000006965.1",
+    "schema": "gspa.metabolic-gap-context/1",
+    "source": "pathway_observations"
+   },
+   "gap_records": 80,
+   "inputs": {
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv": "8a59f3effe53dc23352d389f88b24e04b99f591c0824091871451c5bda5eb5e5",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/cohort_metadata.json": "e6c08b49f85a709b4a7b1b2ba25f2a75716515749e21a160a6d13725f834f522",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv": "b3bbc7a624a9064156f02e49e9f7a750392114a96d0bd421061cce510a00466d",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/layout_metadata.json": "c9475c54b36ca73c864892ebce23f9cdaf1d3d646a4091f06b33853080440a3b",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/cohort_metadata.json": "3c95cf5fb18176fe1e1f627009d7268d764c14798c3e763313628d0db68cdd44",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "unplaced_absent_from_layout_proteome": 0,
+    "unplaced_declared_by_layout_bundle": 0
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 0,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 66822,
+     "unsupported": 66822
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "39ec8fc0e0fd9d1d6f6f6fe33b0371f9d2b7ed04ef81b61bac62df56ba4c5f6d",
+    "status_by_type": {
+     "EC/unsupported": 4933,
+     "GO/unsupported": 61889
+    },
+    "unsupported_reasons": {
+     "EC/unseen_reaction_context_mode": 3103,
+     "EC/unseen_source_function_role_or_availability_profile": 1830,
+     "GO/unseen_source_function_role_or_availability_profile": 61889
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "59c6f20c497f35d2d02d8f6b9a3b4ce875073e5b15d37cbe201e52cf7e0206c9",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/pathway -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/batch_stats.tsv --pathway-observations /scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json --rlc-suggester --suggestions-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/GCA_000006965.1.suggestions.tsv --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv --cohort --cohort-orthogroups /scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv --cohort-metadata /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/pathway/cohort_metadata.json --cohort-pathways /data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv --cohort-holdout CLADE --cohort-context-mode PATHWAY --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 1046.45\n\tSystem time (seconds): 35.17\n\tPercent of CPU this job got: 797%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 2:15.62\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 7581456\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 9\n\tMinor (reclaiming a frame) page faults: 2568651\n\tVoluntary context switches: 917435\n\tInvoluntary context switches: 43402\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 295832\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 135.6,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 1.448932366,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": true,
+     "metabolic_gap_records": 80,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "baseline": "stage0_raw_max_score",
+     "baseline_snapshot_id": "stage0_raw_max_score:e46dd808bedee173aa3558e2",
+     "cohort_genomes": 1,
+     "elapsed_seconds": 0.000796031,
+     "keys_with_cohort_features": 0,
+     "keys_with_local_features": 2103,
+     "n_peer_genomes": 0,
+     "name": "cohort_context",
+     "no_peers": true,
+     "route": "batch",
+     "status": "executed"
+    },
+    {
+     "elapsed_seconds": 32.697771012,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 10.216628478,
+     "input_candidates": 66822,
+     "name": "reaction_context",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 59
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 0,
+     "candidates_unsupported": 66822,
+     "context_supplied": true,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 41.169868179,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 0,
+     "reason": "no candidates supported by the model input-coverage manifest; baseline scores retained",
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "requested": true,
+     "rescored": 0,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "skipped",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 59,
+     "unchanged_unsupported": 66822
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "rlc_learned": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/rlc_learned/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/rlc_learned",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/rlc_learned/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/rlc_learned/batch_stats.tsv",
+    "--rlc-suggester",
+    "--suggestions-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/rlc_learned/GCA_000006965.1.suggestions.tsv",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 50395,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 16427,
+     "unsupported": 16427
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "a8ce12ed1b931426b6c68b3b571a5b87ab33a20aa6c660d5336fce8d63f2739d",
+    "status_by_type": {
+     "EC/scored": 4869,
+     "EC/unsupported": 64,
+     "GO/scored": 45526,
+     "GO/unsupported": 16363
+    },
+    "unsupported_reasons": {
+     "EC/sequence_score_outside_training_calibration_range": 64,
+     "GO/profile_lacks_both_classes_in_train_and_calibration": 15498,
+     "GO/sequence_score_outside_training_calibration_range": 83,
+     "GO/unseen_source_function_role_or_availability_profile": 782
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/rlc_learned/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "2b87b93649677b560fe79b01888cbfcc1b91969294954acf47ce8417aa1e0be4",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/rlc_learned -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/rlc_learned/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/rlc_learned/batch_stats.tsv --rlc-suggester --suggestions-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/rlc_learned/GCA_000006965.1.suggestions.tsv --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 1130.23\n\tSystem time (seconds): 36.73\n\tPercent of CPU this job got: 993%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 1:57.47\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 7029616\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 11\n\tMinor (reclaiming a frame) page faults: 2247365\n\tVoluntary context switches: 748274\n\tInvoluntary context switches: 44299\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 355864\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 117.5,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 1.058106922,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 30.848930789,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 0.015909949,
+     "input_candidates": 66822,
+     "name": "reaction_context",
+     "output_candidates": 66822,
+     "reason": "no metabolic gaps to evaluate",
+     "requested": true,
+     "status": "skipped",
+     "suggestions": 0
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 50395,
+     "candidates_unsupported": 16427,
+     "context_supplied": false,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 65.413015354,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 21,
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "rescored": 50395,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "executed",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 0,
+     "unchanged_unsupported": 16427
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "stage0": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage0/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/stage0",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage0/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage0/batch_stats.tsv",
+    "--enable-priors",
+    "none"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage0/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "ca0d17922e897ee229f973469bce29b2547009f650ef5d0ee5337cced3ab2c6b",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/stage0 -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage0/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage0/batch_stats.tsv --enable-priors none\"\n\tUser time (seconds): 285.08\n\tSystem time (seconds): 15.25\n\tPercent of CPU this job got: 1202%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:24.98\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 4791452\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 2245\n\tMinor (reclaiming a frame) page faults: 1481674\n\tVoluntary context switches: 299674\n\tInvoluntary context switches: 17232\n\tSwaps: 0\n\tFile system inputs: 150680\n\tFile system outputs: 55904\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 25.0,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 0.568646168,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 3.49865613,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "learned_integration",
+     "reason": "learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them",
+     "status": "skipped"
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "stage1": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage1/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/stage1",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage1/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage1/batch_stats.tsv"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "inputs": {
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a"
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage1/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "682f177a6c0f40ed15dfcecff763f079b430f6a6233cab5a28322767df66a689",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/stage1 -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage1/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/stage1/batch_stats.tsv\"\n\tUser time (seconds): 350.00\n\tSystem time (seconds): 13.33\n\tPercent of CPU this job got: 722%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:50.26\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 5735732\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 4\n\tMinor (reclaiming a frame) page faults: 1776099\n\tVoluntary context switches: 393766\n\tInvoluntary context switches: 25748\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 55936\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 50.3,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 0.655523228,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": false,
+     "metabolic_gap_records": 0,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "name": "cohort_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 31.352704339,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "reaction_context",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "learned_integration",
+     "reason": "learned stage not requested: scores are the legacy heuristic ones (evidence combiner and hand-set priors); no trained model produced them",
+     "status": "skipped"
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  },
+  "universal": {
+   "command": [
+    "/usr/bin/time",
+    "-v",
+    "-o",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/resources.txt",
+    "java",
+    "-Xmx16g",
+    "-Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/universal",
+    "-jar",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar",
+    "integrate",
+    "--batch-manifest",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/manifest.tsv",
+    "--batch-threads",
+    "1",
+    "--go-owl",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/go.owl",
+    "--ec2go",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt",
+    "--pathways",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv",
+    "--modules",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv",
+    "--reasoner-cache",
+    "/data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache",
+    "--batch-stats-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/batch_stats.tsv",
+    "--pathway-observations",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json",
+    "--rlc-suggester",
+    "--suggestions-out",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/GCA_000006965.1.suggestions.tsv",
+    "--reaction-graph",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv",
+    "--reaction-ec-aliases",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv",
+    "--cohort",
+    "--cohort-orthogroups",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv",
+    "--cohort-metadata",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/cohort_metadata.json",
+    "--cohort-pathways",
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv",
+    "--cohort-holdout",
+    "CLADE",
+    "--cohort-context-mode",
+    "UNIVERSAL",
+    "--learned-model",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json"
+   ],
+   "duplicate_reference_ec_rows": 0,
+   "gap_context": {
+    "available": true,
+    "candidate_gap_records": 80,
+    "ec2go_sha256": "98ca99f82e1ec02e4b6dad83be91ca54ddf2c0191839a51eb1f4b9c044da5abd",
+    "genome_id": "GCA_000006965.1",
+    "schema": "gspa.metabolic-gap-context/1",
+    "source": "pathway_observations"
+   },
+   "gap_records": 80,
+   "inputs": {
+    "/data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv": "8a59f3effe53dc23352d389f88b24e04b99f591c0824091871451c5bda5eb5e5",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv": "6cc36738360acb6e33ba242334e517082e27de4f1cf3dc2aed3aae05dc84ca58",
+    "/data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv": "1704b965916324e84bb99088330bf06e6d33526a579f1ba645dbc751590279c7",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/GCA_000006965.1.layout.tsv": "12d2c19d049b04de4b1a03dffbfb9b67bd9d0fcccf50a29e528541c8118941f8",
+    "/data/hohndor/gspa-v3/price-full-matrix-v2/layout/report.json": "f040107e5417e4fa4bdae51189207fd1cf8690ef78eaf64d642517a5f226f3ab",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/cohort_metadata.json": "e6c08b49f85a709b4a7b1b2ba25f2a75716515749e21a160a6d13725f834f522",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json": "cea630be36a935635900a8895dee0c1639c2c91673392949dc7200408e475851",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv": "b3bbc7a624a9064156f02e49e9f7a750392114a96d0bd421061cce510a00466d",
+    "/scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/layout_metadata.json": "c9475c54b36ca73c864892ebce23f9cdaf1d3d646a4091f06b33853080440a3b",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/cohort_metadata.json": "3c95cf5fb18176fe1e1f627009d7268d764c14798c3e763313628d0db68cdd44",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+    "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1/claims.jsonl": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+    "/scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar": "08f8b5a132f4f1e5bf458f45b7604b1aa3b94388c96f170682bd2c27f2559c5a",
+    "unplaced_absent_from_layout_proteome": 0,
+    "unplaced_declared_by_layout_bundle": 0
+   },
+   "learned": {
+    "contract_unavailable": 0,
+    "counts": {
+     "added": 0,
+     "candidates": 66822,
+     "removed_no_projection": 0,
+     "rescored": 0,
+     "retracted": 0,
+     "scored_only": 0,
+     "unchanged_unsupported": 66822,
+     "unsupported": 66822
+    },
+    "locus_layer_unavailable_reason": "train split has 0 no-correct-candidate groups and 1 single-positive groups; need >= 20 and >= 20 to learn an honest null outcome",
+    "model": {
+     "id": "context-logistic-06c05a618c57-d9537b61",
+     "kind": "logistic",
+     "sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c"
+    },
+    "sha256": "d93577f315500fc108d43977e927b7f419c48ac6c75463d6644177fa804d640f",
+    "status_by_type": {
+     "EC/unsupported": 4933,
+     "GO/unsupported": 61889
+    },
+    "unsupported_reasons": {
+     "EC/unseen_source_function_role_or_availability_profile": 4933,
+     "GO/unseen_source_function_role_or_availability_profile": 61889
+    }
+   },
+   "output": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/GCA_000006965.1.integrated.tsv",
+   "output_sha256": "59c6f20c497f35d2d02d8f6b9a3b4ce875073e5b15d37cbe201e52cf7e0206c9",
+   "prediction_rows": 66822,
+   "published_claims": 66822,
+   "reference_proteins_with_ec_candidates": 14,
+   "resources.txt": "\tCommand being timed: \"java -Xmx16g -Djava.io.tmpdir=/scratch/project/k10018/gspa-v3/work/price-contract-15753627/cell-0/tmp/universal -jar /scratch/project/k10018/gspa-v3/out/routes-learned-v1/engine/gspa-3.0.0.jar integrate --batch-manifest /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/manifest.tsv --batch-threads 1 --go-owl /data/hohndor/gspa-v3/price-production-v1/reference/go.owl --ec2go /data/hohndor/gspa-v3/price-production-v1/reference/ec2go.txt --pathways /data/hohndor/gspa-v3/price-production-v1/reference/kegg_pathways.tsv --modules /data/hohndor/gspa-v3/price-production-v1/reference/kegg_modules.tsv --reasoner-cache /data/hohndor/gspa-v3/price-production-v1/reference/reasoner-cache --batch-stats-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/batch_stats.tsv --pathway-observations /scratch/project/k10018/gspa-v3/out/price-context-v1/inputs/observations/GCA_000006965.1.json --rlc-suggester --suggestions-out /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/GCA_000006965.1.suggestions.tsv --reaction-graph /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_reactions.tsv --reaction-ec-aliases /data/hohndor/gspa-v3/gapsmith-reference-bacteria-v1/reference/seed_Enzyme_Class_Reactions_Aliases_unique.tsv --cohort --cohort-orthogroups /scratch/project/k10018/gspa-v3/out/price-context-v1/price-cohort/cohort_orthogroups.tsv --cohort-metadata /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/cells/0/universal/cohort_metadata.json --cohort-pathways /data/hohndor/gspa-v3/cohort-context-modes-v2-inputs/pathway-groups.tsv --cohort-holdout CLADE --cohort-context-mode UNIVERSAL --learned-model /scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/models/model_logistic.json\"\n\tUser time (seconds): 1192.33\n\tSystem time (seconds): 36.19\n\tPercent of CPU this job got: 921%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 2:13.28\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 7301104\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 8\n\tMinor (reclaiming a frame) page faults: 2306487\n\tVoluntary context switches: 959143\n\tInvoluntary context switches: 135496\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 296096\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+   "returncode": 0,
+   "rows_by_type": {
+    "EC": 4933,
+    "GO": 61889
+   },
+   "rows_equal_claims": true,
+   "seconds": 133.4,
+   "stages": [
+    {
+     "ec_claims_checkable": 3839,
+     "ec_claims_not_checkable": 1094,
+     "ec_to_go_mapping_available": true,
+     "elapsed_seconds": 1.591596141,
+     "mapped_ec_count": 4822,
+     "metabolic_gap_context_available": true,
+     "metabolic_gap_records": 80,
+     "name": "reference_preparation",
+     "organism_taxon": "NCBITaxon_266834",
+     "status": "executed",
+     "taxon_consistency_state": "taxon not in hierarchy: constraints not applied",
+     "taxon_in_hierarchy": false,
+     "taxon_not_in_hierarchy_count": 1
+    },
+    {
+     "baseline": "stage0_raw_max_score",
+     "baseline_snapshot_id": "stage0_raw_max_score:e46dd808bedee173aa3558e2",
+     "cohort_genomes": 1,
+     "elapsed_seconds": 0.001463519,
+     "keys_with_cohort_features": 0,
+     "keys_with_local_features": 2677,
+     "n_peer_genomes": 0,
+     "name": "cohort_context",
+     "no_peers": true,
+     "route": "batch",
+     "status": "executed"
+    },
+    {
+     "elapsed_seconds": 32.892509948,
+     "input_candidates": 0,
+     "name": "evidence_integration",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 0
+    },
+    {
+     "name": "dark_matter",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "elapsed_seconds": 9.624951826,
+     "input_candidates": 66822,
+     "name": "reaction_context",
+     "output_candidates": 66822,
+     "status": "executed",
+     "suggestions": 59
+    },
+    {
+     "name": "cross_genome",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "symbolic_enforcement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_refinement",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "agent_completion",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "metabolic_experiments",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "name": "community_metabolism",
+     "reason": "disabled",
+     "status": "skipped"
+    },
+    {
+     "add_unretained_claims": false,
+     "added": 0,
+     "candidates_scored": 0,
+     "candidates_unsupported": 66822,
+     "context_supplied": true,
+     "contract_fingerprint": "d9537b61c3e41251e6a9cafba9acb376385b66c58db0ede758f52a4994e58803",
+     "contract_id": "gspa.context-features/3",
+     "elapsed_seconds": 42.386705044,
+     "input_candidates": 66822,
+     "model_id": "context-logistic-06c05a618c57-d9537b61",
+     "model_kind": "logistic",
+     "model_sha256": "c9df93d60e7b290b7562fb8f0b25f69f72ecea5edcb9b17492251dfd1cd5512c",
+     "name": "learned_integration",
+     "note": "Supported candidates were scored by the frozen model. Projected learned scores replace the heuristic posterior; scored-only candidates remain in the report. A display threshold, if any, is advisory.",
+     "output_candidates": 66822,
+     "pinned_floors_cleared": 0,
+     "reason": "no candidates supported by the model input-coverage manifest; baseline scores retained",
+     "removed_no_projection": 0,
+     "replaced_baseline": "legacy_prior_baseline",
+     "requested": true,
+     "rescored": 0,
+     "retract_below": null,
+     "retracted": 0,
+     "scored_only": 0,
+     "status": "skipped",
+     "structurally_forbidden_go_terms": 0,
+     "suggestions": 59,
+     "unchanged_unsupported": 66822
+    },
+    {
+     "name": "feature_export",
+     "reason": "disabled",
+     "status": "skipped"
+    }
+   ]
+  }
+ },
+ "cell": {
+  "assembly": "GCA_000006965.1",
+  "claims": 66822,
+  "claims_sha256": "464617221985c8c9817058d61b5997a79f43708beef6104321cd28d0e8ffa5a2",
+  "contract_identity_sha256": "ae823453d3efa4717fffb0942699b17d714d4298259686f2525cdac5c5388379",
+  "index": 0,
+  "part": "/scratch/project/k10018/gspa-v3/out/price-contract-learned-v1/parts/swissprot_diamond_baseline/GCA_000006965.1",
+  "predictor": "swissprot_diamond_baseline"
+ },
+ "differences": {
+  "cohort_pathway_vs_cohort_organism": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "cohort_universal_vs_cohort_organism": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "cohort_universal_vs_cohort_pathway": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "gaps_learned_vs_cohort_organism": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "gaps_learned_vs_cohort_pathway": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "gaps_learned_vs_cohort_universal": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "gaps_learned_vs_obs_learned": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "gaps_learned_vs_organism": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "gaps_learned_vs_pathway": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "gaps_learned_vs_rlc_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "gaps_learned_vs_universal": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "gaps_vs_cohort_organism": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "gaps_vs_cohort_pathway": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "gaps_vs_cohort_universal": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "gaps_vs_gaps_learned": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "gaps_vs_obs_learned": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "gaps_vs_organism": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "gaps_vs_pathway": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "gaps_vs_rlc_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "gaps_vs_universal": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_cohort_organism": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_cohort_pathway": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_cohort_universal": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_gaps": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_gaps_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_obs_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_organism": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_pathway": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_rlc_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_gbdt_vs_universal": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_vs_cohort_organism": {
+   "differing": 3066,
+   "rows": 66822
+  },
+  "learned_vs_cohort_pathway": {
+   "differing": 3066,
+   "rows": 66822
+  },
+  "learned_vs_cohort_universal": {
+   "differing": 3066,
+   "rows": 66822
+  },
+  "learned_vs_gaps": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_vs_gaps_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_vs_learned_gbdt": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_vs_obs_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_vs_organism": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_vs_pathway": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "learned_vs_rlc_learned": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "learned_vs_universal": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "obs_learned_vs_cohort_organism": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "obs_learned_vs_cohort_pathway": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "obs_learned_vs_cohort_universal": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "obs_learned_vs_rlc_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "organism_vs_cohort_organism": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "organism_vs_cohort_pathway": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "organism_vs_cohort_universal": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "organism_vs_obs_learned": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "organism_vs_rlc_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "pathway_vs_cohort_organism": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "pathway_vs_cohort_pathway": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "pathway_vs_cohort_universal": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "pathway_vs_obs_learned": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "pathway_vs_organism": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "pathway_vs_rlc_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "rlc_learned_vs_cohort_organism": {
+   "differing": 3066,
+   "rows": 66822
+  },
+  "rlc_learned_vs_cohort_pathway": {
+   "differing": 3066,
+   "rows": 66822
+  },
+  "rlc_learned_vs_cohort_universal": {
+   "differing": 3066,
+   "rows": 66822
+  },
+  "stage0_vs_cohort_organism": {
+   "differing": 47330,
+   "rows": 66822
+  },
+  "stage0_vs_cohort_pathway": {
+   "differing": 47330,
+   "rows": 66822
+  },
+  "stage0_vs_cohort_universal": {
+   "differing": 47330,
+   "rows": 66822
+  },
+  "stage0_vs_gaps": {
+   "differing": 66,
+   "rows": 66822
+  },
+  "stage0_vs_gaps_learned": {
+   "differing": 66,
+   "rows": 66822
+  },
+  "stage0_vs_learned": {
+   "differing": 50396,
+   "rows": 66822
+  },
+  "stage0_vs_learned_gbdt": {
+   "differing": 50396,
+   "rows": 66822
+  },
+  "stage0_vs_obs_learned": {
+   "differing": 66,
+   "rows": 66822
+  },
+  "stage0_vs_organism": {
+   "differing": 66,
+   "rows": 66822
+  },
+  "stage0_vs_pathway": {
+   "differing": 66,
+   "rows": 66822
+  },
+  "stage0_vs_rlc_learned": {
+   "differing": 50396,
+   "rows": 66822
+  },
+  "stage0_vs_stage1": {
+   "differing": 45,
+   "rows": 66822
+  },
+  "stage0_vs_universal": {
+   "differing": 66,
+   "rows": 66822
+  },
+  "stage1_vs_cohort_organism": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "stage1_vs_cohort_pathway": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "stage1_vs_cohort_universal": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "stage1_vs_gaps": {
+   "differing": 21,
+   "rows": 66822
+  },
+  "stage1_vs_gaps_learned": {
+   "differing": 21,
+   "rows": 66822
+  },
+  "stage1_vs_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "stage1_vs_learned_gbdt": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "stage1_vs_obs_learned": {
+   "differing": 21,
+   "rows": 66822
+  },
+  "stage1_vs_organism": {
+   "differing": 21,
+   "rows": 66822
+  },
+  "stage1_vs_pathway": {
+   "differing": 21,
+   "rows": 66822
+  },
+  "stage1_vs_rlc_learned": {
+   "differing": 50395,
+   "rows": 66822
+  },
+  "stage1_vs_universal": {
+   "differing": 21,
+   "rows": 66822
+  },
+  "universal_vs_cohort_organism": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "universal_vs_cohort_pathway": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "universal_vs_cohort_universal": {
+   "differing": 47329,
+   "rows": 66822
+  },
+  "universal_vs_obs_learned": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "universal_vs_organism": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "universal_vs_pathway": {
+   "differing": 0,
+   "rows": 66822
+  },
+  "universal_vs_rlc_learned": {
+   "differing": 50395,
+   "rows": 66822
+  }
+ },
+ "finished": "2026-11-02T14:07:02+0300",
+ "heap": "16g",
+ "host": "nid00098",
+ "learned_executed": {
+  "cohort_organism": true,
+  "cohort_pathway": true,
+  "cohort_universal": true,
+  "gaps_learned": false,
+  "learned": true,
+  "learned_gbdt": true,
+  "obs_learned": false,
+  "organism": false,
+  "pathway": false,
+  "rlc_learned": true,
+  "universal": false
+ },
+ "plan": "tasks/v3-price-contract-learned-2026-11-02.md",
+ "retained_sha256": "a31fc5f880968a279b50b9007c69ad20756227419a42345d6c00d9d45b66ecf5",
+ "schema": "gspa.price-contract-learned-cell/1",
+ "started": "2026-11-02T13:41:15+0300",
+ "status": "complete"
+}
